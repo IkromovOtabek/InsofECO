@@ -123,7 +123,9 @@ After=network.target docker.service
 
 [Service]
 WorkingDirectory=/var/www/insof-eco/apps/api
-ExecStart=/usr/bin/node dist/main.js
+# tsconfig'da `include` ham src, ham prisma/seed.ts ni qamraydi → TS ildizni apps/api
+# deb oladi va natija dist/src/ ga tushadi (dist/main.js emas)
+ExecStart=/usr/bin/node dist/src/main.js
 Restart=always
 
 [Install]
