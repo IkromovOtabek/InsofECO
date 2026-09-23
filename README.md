@@ -96,7 +96,8 @@ rm -f /tmp/jwt.key /tmp/jwt.pub && chmod 600 apps/api/.env
 grep -n "DATABASE_URL\|JWT_PRIVATE_KEY" apps/api/.env
 
 # 4. Postgres+PostGIS, Redis, MinIO
-docker compose --env-file apps/api/.env -f infra/docker-compose.prod.yml up -d
+ln -sf apps/api/.env .env     # compose parollarni shu yerdan oladi
+docker compose -f infra/docker-compose.prod.yml up -d
 docker compose -f infra/docker-compose.prod.yml ps
 
 # 5. Qurish va baza
@@ -106,7 +107,15 @@ yarn workspace @insof/api prisma:generate
 yarn workspace @insof/api prisma:deploy
 yarn workspace @insof/api build
 
-# 6. systemd — API va fon ishchisi (navbatlar) alohida
+# 6. systemd
+#
+# `EnvironmentFile` ATAYLAB yo'q: ilova `.env` ni o'zi yuklaydi (`import 'dotenv/config'`)
+# va `WorkingDirectory` aynan o'sha papka. Systemd'ning EnvironmentFile tahlili esa
+# JWT kalitini buzishi mumkin — PEM sarlavhasida bo'sh joy bor.
+#
+# Fon ishchisi (`dist/worker.js`) hozircha alohida ko'tarilmaydi: navbat prosessorlari
+# API bilan bir prosessda ishlaydi (`worker.ts` izohiga qarang). Yuk oshganda uni
+# alohida xizmat qilib ajratasiz va API'dan prosessorlarni olib tashlaysiz.
 sudo tee /etc/systemd/system/insof-eco.service >/dev/null <<'EOF'
 [Unit]
 Description=Insof ECO API
@@ -114,28 +123,13 @@ After=network.target docker.service
 
 [Service]
 WorkingDirectory=/var/www/insof-eco/apps/api
-EnvironmentFile=/var/www/insof-eco/apps/api/.env
 ExecStart=/usr/bin/node dist/main.js
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo tee /etc/systemd/system/insof-eco-worker.service >/dev/null <<'EOF'
-[Unit]
-Description=Insof ECO worker
-After=insof-eco.service
-
-[Service]
-WorkingDirectory=/var/www/insof-eco/apps/api
-EnvironmentFile=/var/www/insof-eco/apps/api/.env
-ExecStart=/usr/bin/node dist/worker.js
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl daemon-reload && sudo systemctl enable --now insof-eco insof-eco-worker
+sudo systemctl daemon-reload && sudo systemctl enable --now insof-eco
 sudo systemctl status insof-eco --no-pager | head -5
 ```
 
@@ -168,7 +162,7 @@ sudo certbot --nginx -d api.insof-erp.uz          # DNS A-yozuvi shu serverga qa
 | Ish | Buyruq |
 | --- | --- |
 | Loglar | `journalctl -u insof-eco -f` |
-| Keyingi deploylar | `cd /var/www/insof-eco && git pull && yarn install && yarn workspace @insof/shared build && yarn workspace @insof/api prisma:deploy && yarn workspace @insof/api build && sudo systemctl restart insof-eco insof-eco-worker` |
+| Keyingi deploylar | `cd /var/www/insof-eco && git pull && yarn install && yarn workspace @insof/shared build && yarn workspace @insof/api prisma:deploy && yarn workspace @insof/api build && sudo systemctl restart insof-eco` |
 | Baza nusxasi | `docker exec insof-eco-prod-postgres-1 pg_dump -U insof insof > nusxa.sql` |
 
 `JWT_PRIVATE_KEY` bo'lmasa server **ataylab ko'tarilmaydi** (`auth.module.ts`) — kalitsiz ishga
