@@ -1,0 +1,49 @@
+# Insof ECO — serverdagi yordamchi xizmatlar.
+#
+# `docker-compose.yml` dan farqi:
+#  · portlar FAQAT 127.0.0.1 ga ochiladi — internetdan Postgres/Redis/MinIO ga
+#    to'g'ridan-to'g'ri kirib bo'lmaydi (dev faylida ular 0.0.0.0 da turadi);
+#  · parollar .env dan olinadi, kodda yozilmaydi;
+#  · server qayta yuklansa xizmatlar o'zi ko'tariladi;
+#  · MinIO konsoli ham tashqariga chiqmaydi — kerak bo'lsa SSH tunnel orqali.
+#
+#   docker compose --env-file /var/www/insof-eco/apps/api/.env -f infra/docker-compose.prod.yml up -d
+name: insof-eco-prod
+services:
+  postgres:
+    # PostGIS shart: schema.prisma da `extensions = [postgis]`
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-insof}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?parol .env da bo'lsin}
+      POSTGRES_DB: ${POSTGRES_DB:-insof}
+    ports: ["127.0.0.1:5438:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-insof}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6382:6379"]
+    volumes: [redisdata:/data]
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?kalit .env da bo'lsin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?kalit .env da bo'lsin}
+    ports: ["127.0.0.1:9010:9000", "127.0.0.1:9011:9001"]
+    volumes: [miniodata:/data]
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
