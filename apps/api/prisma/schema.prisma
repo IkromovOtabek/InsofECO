@@ -1,0 +1,978 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+
+enum Role {
+  TADBIRKOR
+  QURUVCHI
+  HAYDOVCHI
+}
+
+enum OrganizationType {
+  PLANT
+  CONTRACTOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  fullName  String?
+  /// argon2; null — faqat OTP bilan kiradi
+  passwordHash String?
+  locale    String   @default("uz")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships   Membership[]
+  sessions      Session[]
+  devices       Device[]
+  driverProfile DriverProfile?
+  deliveryEvents DeliveryEvent[]
+  notifications Notification[]
+  workerProfile  WorkerProfile?
+  projectMembers ProjectMember[]
+  tasks          Task[]
+  workOrders     WorkOrder[]  @relation("workOrderWorker")
+  shipments      Shipment[]   @relation("shipmentDriver")
+  payouts        Payout[]
+  conversations  ConversationParticipant[]
+  messages       Message[]
+  reviewsReceived Review[]    @relation("reviewTarget")
+  integrations   IntegrationClient[]
+}
+
+model Organization {
+  id        String           @id @default(cuid())
+  type      OrganizationType
+  name      String
+  inn       String?          @unique
+  address   String?
+  /// Insof ERP mijoz kartasi id — INN kiritilmagan mijozni ham aniq topish uchun
+  externalRef String?        @unique
+  /// Tashkilot darajasidagi biznes qoidalar (DEFAULT_RULES override), JSON
+  settings  Json             @default("{}")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  memberships    Membership[]
+  mixes          ConcreteMix[]
+  vehicles       Vehicle[]
+  sites          ConstructionSite[]
+  ordersAsPlant  Order[]            @relation("plantOrders")
+  ordersAsClient Order[]            @relation("clientOrders")
+  invoices       Invoice[]          @relation("invoiceClient")
+  creditLimits   CreditLimit[]      @relation("creditClient")
+  integrations   IntegrationClient[]
+}
+
+/// Tashqi tizim (masalan, Insof ERP) uchun mashina-mashina kirish.
+/// Kalit faqat yaratilganda bir marta ko'rsatiladi; bazada sha256 xeshi saqlanadi.
+/// Har bir amal `userId` (xizmat foydalanuvchisi, TADBIRKOR a'zoligi) nomidan bajariladi —
+/// DeliveryEvent/audit yozuvlarida "Insof ERP" ko'rinadi.
+model IntegrationClient {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  name           String // "Insof ERP"
+  keyPrefix      String // kalitning birinchi 12 belgisi — ro'yxatda tanish uchun
+  keyHash        String    @unique // sha256(kalit)
+  /// ERP tomonidagi webhook: reys holati o'zgarganda POST qilinadi (HMAC-SHA256 imzo bilan)
+  webhookUrl     String?
+  webhookSecret  String?
+  isActive       Boolean   @default(true)
+  lastUsedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+}
+
+/// Bitta foydalanuvchi bir nechta tashkilotda turli rolda bo'lishi mumkin.
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role
+  isActive       Boolean      @default(true)
+  invitedByPhone Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role])
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  deviceId         String
+  /// argon2 hash of current refresh token
+  refreshTokenHash String
+  /// Refresh rotatsiya oilasi — reuse aniqlansa butun oila bekor qilinadi
+  familyId         String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model Device {
+  id            String   @id @default(cuid())
+  userId        String
+  deviceId      String
+  platform      String
+  model         String?
+  appVersion    String?
+  expoPushToken String?
+  lastSeenAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, deviceId])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+// ───────────────────────────── Catalog ─────────────────────────────
+
+model ConcreteMix {
+  id             String    @id @default(cuid())
+  organizationId String
+  grade          String // M200, M300 ...
+  name           String // "M300 B22.5 P3"
+  slump          String? // P2..P4
+  unitPrice      Decimal   @db.Decimal(14, 2) // so'm / m³
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  orderItems   OrderItem[]
+
+  @@index([organizationId, isActive])
+}
+
+// ───────────────────────────── Logistics ─────────────────────────────
+
+enum VehicleType {
+  MIXER
+  PUMP
+  DUMP
+  TRUCK
+  PICKUP
+}
+
+model Vehicle {
+  id             String      @id @default(cuid())
+  organizationId String
+  type           VehicleType @default(MIXER)
+  plateNumber    String
+  capacityM3     Decimal     @db.Decimal(6, 2)
+  brand          String?     // DAF, KamAZ, Isuzu...
+  capacityTons   Decimal?    @db.Decimal(6, 1)
+  fuelPercent    Int?
+  odometerKm     Int?
+  nextServiceAt  DateTime?
+  driverUserId   String?     // doimiy biriktirilgan haydovchi
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  deliveries   Delivery[]
+  shipments    Shipment[]
+
+  @@unique([organizationId, plateNumber])
+}
+
+model DriverProfile {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  licenseNumber String?
+  isAvailable   Boolean @default(true)
+
+  user       User       @relation(fields: [userId], references: [id])
+  deliveries Delivery[]
+}
+
+// ───────────────────────────── Construction ─────────────────────────────
+
+model ConstructionSite {
+  id             String   @id @default(cuid())
+  organizationId String // CONTRACTOR
+  name           String
+  address        String
+  lat            Float
+  lng            Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  stages       Stage[]
+  orders       Order[]
+
+  @@index([organizationId])
+}
+
+model Stage {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String // Poydevor, Devor, Tom...
+  order     Int
+  progress  Int      @default(0) // 0..100
+  startedAt DateTime?
+  doneAt    DateTime?
+
+  site    ConstructionSite @relation(fields: [siteId], references: [id])
+  reports DailyReport[]
+}
+
+model DailyReport {
+  id        String   @id @default(cuid())
+  stageId   String
+  date      DateTime @db.Date
+  text      String
+  workers   Int      @default(0)
+  photoKeys String[]
+  createdBy String
+  createdAt DateTime @default(now())
+
+  stage Stage @relation(fields: [stageId], references: [id])
+
+  @@index([stageId, date])
+}
+
+// ───────────────────────────── Orders ─────────────────────────────
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  DELIVERED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  number          Int         @default(autoincrement()) // odam o'qiydigan raqam
+  plantOrgId      String
+  clientOrgId     String
+  siteId          String?
+  createdByUserId String
+  status          OrderStatus @default(DRAFT)
+  address         String
+  lat             Float
+  lng             Float
+  scheduledAt     DateTime
+  intervalMinutes Int         @default(30)
+  needsPump       Boolean     @default(false)
+  note            String?
+  /// Tasdiqlashda muzlatiladi
+  deliveryFee     Decimal     @default(0) @db.Decimal(14, 2)
+  totalAmount     Decimal     @default(0) @db.Decimal(14, 2)
+  totalVolumeM3   Decimal     @default(0) @db.Decimal(8, 2)
+  rejectReason    String?
+  cancelReason    String?
+  cancelPenalty   Decimal?    @db.Decimal(14, 2)
+  confirmedAt     DateTime?
+  completedAt     DateTime?
+  /// Tashqi tizim (Insof ERP) zayavka raqami
+  externalRef     String?
+  /// true — zayavka ERP'dan to'liq kelgan (hajm va summa ERP'niki).
+  /// Bunda reys qo'shilganda ECO jamini o'zi hisoblamaydi, ERP yuborganini saqlaydi.
+  erpManaged      Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  plant      Organization      @relation("plantOrders", fields: [plantOrgId], references: [id])
+  client     Organization      @relation("clientOrders", fields: [clientOrgId], references: [id])
+  site       ConstructionSite? @relation(fields: [siteId], references: [id])
+  items      OrderItem[]
+  deliveries Delivery[]
+  invoice    Invoice?
+
+  @@unique([plantOrgId, externalRef])
+  @@index([plantOrgId, status, scheduledAt])
+  @@index([clientOrgId, status])
+  @@index([updatedAt])
+}
+
+model OrderItem {
+  id                String  @id @default(cuid())
+  orderId           String
+  mixId             String
+  gradeSnapshot     String
+  nameSnapshot      String
+  volumeM3          Decimal @db.Decimal(8, 2)
+  unitPriceSnapshot Decimal @db.Decimal(14, 2)
+
+  order Order       @relation(fields: [orderId], references: [id])
+  mix   ConcreteMix @relation(fields: [mixId], references: [id])
+}
+
+// ───────────────────────────── Deliveries ─────────────────────────────
+
+enum DeliveryStatus {
+  ASSIGNED
+  ACCEPTED
+  DECLINED
+  LOADING
+  EN_ROUTE
+  ARRIVED
+  UNLOADING
+  COMPLETED
+  DISPUTED
+  FAILED
+  CANCELLED
+}
+
+model Delivery {
+  id             String         @id @default(cuid())
+  orderId        String
+  sequence       Int // buyurtma ichidagi reys raqami
+  status         DeliveryStatus @default(ASSIGNED)
+  plannedM3      Decimal        @db.Decimal(8, 2)
+  loadedM3       Decimal?       @db.Decimal(8, 2)
+  acceptedM3     Decimal?       @db.Decimal(8, 2)
+  driverId       String?
+  vehicleId      String?
+  plannedAt      DateTime
+  /// EN_ROUTE vaqti — 90 daqiqa hisoblanadi shu yerdan
+  departedAt     DateTime?
+  arrivedAt      DateTime?
+  completedAt    DateTime?
+  slaBreached    Boolean        @default(false)
+  signatureKey   String?
+  waybillPhotoKey String?
+  /// Quruvchi ilovasiz bo'lsa — SMS orqali qabul kodi
+  acceptOtpHash  String?
+  disputeReason  String?
+  disputeComment String?
+  /// Tashqi tizim (Insof ERP) nakladnoy raqami — integratsiya orqali yaratilgan reyslar
+  externalRef    String?        @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  order   Order          @relation(fields: [orderId], references: [id])
+  driver  DriverProfile? @relation(fields: [driverId], references: [id])
+  vehicle Vehicle?       @relation(fields: [vehicleId], references: [id])
+  events  DeliveryEvent[]
+  gps     GpsPoint[]
+  invoiceLine InvoiceLine?
+
+  @@unique([orderId, sequence])
+  @@index([driverId, status, plannedAt])
+  @@index([status, plannedAt])
+}
+
+/// Append-only audit: kim, qachon, qaysi holatga, qayerda.
+model DeliveryEvent {
+  id         String         @id @default(cuid())
+  deliveryId String
+  from       DeliveryStatus?
+  to         DeliveryStatus
+  byUserId   String
+  byRole     Role
+  at         DateTime // qurilma vaqti
+  receivedAt DateTime       @default(now()) // server vaqti
+  lat        Float?
+  lng        Float?
+  photoKey   String?
+  note       String?
+  /// Idempotency-Key — takror yozuvni oldini oladi
+  clientEventId String?      @unique
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+  byUser   User     @relation(fields: [byUserId], references: [id])
+
+  @@index([deliveryId, receivedAt])
+}
+
+/// Yuqori hajmli jadval — prod'da oylik partitsiya (migration SQL da), 90 kun saqlanadi.
+model GpsPoint {
+  id         BigInt   @id @default(autoincrement())
+  deliveryId String
+  lat        Float
+  lng        Float
+  speedKmh   Float?
+  heading    Float?
+  at         DateTime
+  receivedAt DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([deliveryId, at])
+}
+
+// ───────────────────────────── Billing ─────────────────────────────
+
+enum PaymentMethod {
+  CASH
+  PAYME
+  CLICK
+  TRANSFER
+}
+
+enum InvoiceStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  number      Int           @default(autoincrement())
+  orderId     String        @unique
+  clientOrgId String
+  status      InvoiceStatus @default(OPEN)
+  amount      Decimal       @default(0) @db.Decimal(14, 2)
+  paidAmount  Decimal       @default(0) @db.Decimal(14, 2)
+  issuedAt    DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order  Order         @relation(fields: [orderId], references: [id])
+  client Organization  @relation("invoiceClient", fields: [clientOrgId], references: [id])
+  lines  InvoiceLine[]
+  payments Payment[]
+
+  @@index([clientOrgId, status])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  deliveryId  String  @unique
+  description String
+  quantityM3  Decimal @db.Decimal(8, 2)
+  unitPrice   Decimal @db.Decimal(14, 2)
+  amount      Decimal @db.Decimal(14, 2)
+
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id])
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  invoiceId      String
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(14, 2)
+  /// Payme/Click tranzaksiya ID — idempotency
+  externalId     String?       @unique
+  status         String        @default("CONFIRMED") // PENDING | CONFIRMED | CANCELLED
+  recordedByUserId String?
+  paidAt         DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model CreditLimit {
+  id          String  @id @default(cuid())
+  plantOrgId  String
+  clientOrgId String
+  limitAmount Decimal @db.Decimal(14, 2)
+
+  client Organization @relation("creditClient", fields: [clientOrgId], references: [id])
+
+  @@unique([plantOrgId, clientOrgId])
+}
+
+// ───────────────────────────── Notifications ─────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // ORDER_CONFIRMED, DELIVERY_EN_ROUTE, SLA_BREACH ...
+  title     String
+  body      String
+  data      Json     @default("{}")
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt, createdAt])
+}
+
+// ═══════════════════════════ ECO SYSTEM ═══════════════════════════
+// Tadbirkor (biznes) · Quruvchi (ish) · Haydovchi (tashish) → Loyiha/Buyurtma → Material · Ish · Yetkazish → Hisob-kitob
+
+enum Specialty {
+  GISHT_TERUVCHI
+  ELEKTRIK
+  SANTEXNIK
+  PAYVANDCHI
+  BETONCHI
+  SUVOQCHI
+  BOYOQCHI
+  UNIVERSAL
+}
+
+model WorkerProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  specialty       Specialty @default(UNIVERSAL)
+  experienceYears Int       @default(0)
+  dailyRate       Decimal   @default(0) @db.Decimal(14, 2)
+  ratingAvg       Float     @default(0)
+  ratingCount     Int       @default(0)
+  completedJobs   Int       @default(0)
+  bio             String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  DELAYED
+  ON_HOLD
+  COMPLETED
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  address        String
+  lat            Float?
+  lng            Float?
+  status         ProjectStatus @default(PLANNING)
+  progress       Int           @default(0)
+  budget         Decimal       @default(0) @db.Decimal(16, 2)
+  /// Kesh: Σ Expense (tezkor dashboard uchun); har xarajatda yangilanadi
+  spent          Decimal       @default(0) @db.Decimal(16, 2)
+  clientName     String?
+  description    String?
+  startDate      DateTime?
+  deadline       DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tasks            Task[]
+  members          ProjectMember[]
+  workOrders       WorkOrder[]
+  materialRequests MaterialRequest[]
+  shipments        Shipment[]
+  expenses         Expense[]
+  incomes          Income[]
+  documents        Document[]
+  conversations    Conversation[]
+
+  @@index([organizationId, status])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      Role
+  joinedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  projectId      String
+  title          String
+  description    String?
+  status         TaskStatus @default(TODO)
+  priority       Priority   @default(MEDIUM)
+  assigneeUserId String?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  photoKeys      String[]
+  comment        String?
+  sortOrder      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id])
+  assignee User?   @relation(fields: [assigneeUserId], references: [id])
+
+  @@index([assigneeUserId, status, dueDate])
+  @@index([projectId, status])
+}
+
+enum WorkOrderStatus {
+  NEW
+  ACCEPTED
+  WORKER_ASSIGNED
+  IN_PROGRESS
+  REVIEW
+  DONE
+  PAID
+  CANCELLED
+}
+
+/// Ish buyurtmasi: Tadbirkor → Quruvchi (devor qurish, suvoq...). Narx, muddat, holat zanjiri.
+model WorkOrder {
+  id             String          @id @default(cuid())
+  number         Int             @default(autoincrement())
+  organizationId String
+  projectId      String?
+  title          String
+  description    String?
+  address        String
+  price          Decimal         @db.Decimal(14, 2)
+  deadline       DateTime
+  status         WorkOrderStatus @default(NEW)
+  workerUserId   String?
+  createdByUserId String
+  acceptedAt     DateTime?
+  startedAt      DateTime?
+  submittedAt    DateTime?
+  completedAt    DateTime?
+  paidAt         DateTime?
+  photoKeys      String[]
+  workerComment  String?
+  reviewComment  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id])
+  worker  User?    @relation("workOrderWorker", fields: [workerUserId], references: [id])
+  payouts Payout[]
+  reviews Review[]
+
+  @@index([organizationId, status, deadline])
+  @@index([workerUserId, status])
+}
+
+// ───────────── Materiallar / Ombor ─────────────
+
+model Material {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// Insof ERP xomashyo kartasi id — nomi o'zgarsa ham dublikat yaratilmaydi
+  externalRef    String?
+  name           String
+  category       String   @default("Umumiy") // Bog'lovchi, Armatura, Devor, Inert, Pardoz...
+  unit           String   @default("dona") // qop, tonna, m³, dona, m²
+  price          Decimal  @db.Decimal(14, 2)
+  minStock       Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  inventory InventoryItem[]
+  requests  MaterialRequest[]
+
+  @@unique([organizationId, externalRef])
+  @@index([organizationId])
+}
+
+model Warehouse {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  address        String
+  lat            Float?
+  lng            Float?
+
+  inventory InventoryItem[]
+  shipments Shipment[]
+}
+
+model InventoryItem {
+  id          String  @id @default(cuid())
+  warehouseId String
+  materialId  String
+  quantity    Decimal @default(0) @db.Decimal(12, 2)
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  material  Material  @relation(fields: [materialId], references: [id])
+
+  @@unique([warehouseId, materialId])
+}
+
+enum MaterialRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  LOADING
+  DELIVERED
+  CONFIRMED
+}
+
+/// Quruvchi: "Menga 20 qop sement kerak" → Tadbirkor tasdiqlaydi → Shipment → Haydovchi → Quruvchi tasdiqlaydi → Stock−, Expense+, Project.spent+
+model MaterialRequest {
+  id              String                @id @default(cuid())
+  number          Int                   @default(autoincrement())
+  organizationId  String
+  projectId       String
+  materialId      String
+  quantity        Decimal               @db.Decimal(12, 2)
+  reason          String?
+  status          MaterialRequestStatus @default(PENDING)
+  requestedByUserId String
+  decidedByUserId String?
+  decidedAt       DateTime?
+  rejectReason    String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  project   Project   @relation(fields: [projectId], references: [id])
+  material  Material  @relation(fields: [materialId], references: [id])
+  shipment  Shipment?
+
+  @@index([organizationId, status])
+}
+
+enum ShipmentStatus {
+  NEW
+  ACCEPTED
+  LOADING
+  EN_ROUTE
+  DELIVERED
+  CONFIRMED
+  CANCELLED
+}
+
+/// Yuk (material) yetkazish — Haydovchi uchun "Yetkazib berish".
+model Shipment {
+  id                String         @id @default(cuid())
+  number            Int            @default(autoincrement())
+  organizationId    String
+  materialRequestId String?        @unique
+  projectId         String
+  warehouseId       String
+  driverUserId      String?
+  vehicleId         String?
+  status            ShipmentStatus @default(NEW)
+  cargo             String // "Sement — 50 qop"
+  quantity          Decimal        @db.Decimal(12, 2)
+  unit              String
+  distanceKm        Decimal?       @db.Decimal(8, 1)
+  driverFee         Decimal        @default(0) @db.Decimal(14, 2)
+  acceptedAt        DateTime?
+  loadedAt          DateTime?
+  departedAt        DateTime?
+  deliveredAt       DateTime?
+  confirmedAt       DateTime?
+  photoKey          String?
+  receiverName      String?
+  deliveredLat      Float?
+  deliveredLng      Float?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  project   Project          @relation(fields: [projectId], references: [id])
+  warehouse Warehouse        @relation(fields: [warehouseId], references: [id])
+  request   MaterialRequest? @relation(fields: [materialRequestId], references: [id])
+  driver    User?            @relation("shipmentDriver", fields: [driverUserId], references: [id])
+  vehicle   Vehicle?         @relation(fields: [vehicleId], references: [id])
+  payouts   Payout[]
+  reviews   Review[]
+
+  @@index([driverUserId, status])
+  @@index([organizationId, status])
+}
+
+// ───────────── Moliya ─────────────
+
+enum ExpenseCategory {
+  MATERIAL
+  WORKER
+  DRIVER
+  FUEL
+  TRANSPORT
+  REPAIR
+  OTHER
+}
+
+model Expense {
+  id             String          @id @default(cuid())
+  organizationId String
+  projectId      String?
+  category       ExpenseCategory
+  amount         Decimal         @db.Decimal(16, 2)
+  description    String
+  date           DateTime        @default(now())
+  createdByUserId String?
+  refType        String? // MATERIAL_REQUEST | WORK_ORDER | SHIPMENT
+  refId          String?
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([projectId])
+}
+
+enum IncomeSource {
+  ORDER
+  PROJECT
+  SERVICE
+}
+
+model Income {
+  id             String       @id @default(cuid())
+  organizationId String
+  projectId      String?
+  source         IncomeSource
+  amount         Decimal      @db.Decimal(16, 2)
+  description    String
+  date           DateTime     @default(now())
+  /// Kutilayotgan daromad (shartnoma bo'yicha, hali olinmagan)
+  isExpected     Boolean      @default(false)
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId, date])
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
+/// Quruvchi / Haydovchi daromadi (ish yoki reys uchun).
+model Payout {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  workOrderId    String?
+  shipmentId     String?
+  amount         Decimal      @db.Decimal(14, 2)
+  status         PayoutStatus @default(PENDING)
+  description    String
+  earnedAt       DateTime     @default(now())
+  paidAt         DateTime?
+
+  user      User       @relation(fields: [userId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+  shipment  Shipment?  @relation(fields: [shipmentId], references: [id])
+
+  @@index([userId, status, earnedAt])
+}
+
+// ───────────── Xabarlar ─────────────
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  PROJECT
+}
+
+model Conversation {
+  id             String           @id @default(cuid())
+  organizationId String
+  type           ConversationType @default(DIRECT)
+  title          String?
+  projectId      String?
+  lastMessageAt  DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+
+  project      Project?                  @relation(fields: [projectId], references: [id])
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([organizationId, lastMessageAt])
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@id([conversationId, userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  text           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+}
+
+// ───────────── Reyting / Hujjat ─────────────
+
+model Review {
+  id           String   @id @default(cuid())
+  organizationId String
+  targetUserId String
+  authorUserId String
+  workOrderId  String?
+  shipmentId   String?
+  scoreOverall Int // 1..5
+  scoreTime    Int?
+  scoreManner  Int?
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  target    User       @relation("reviewTarget", fields: [targetUserId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+  shipment  Shipment?  @relation(fields: [shipmentId], references: [id])
+
+  @@index([targetUserId, createdAt])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  fileKey   String
+  kind      String   @default("doc") // doc | photo | video | report
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+}

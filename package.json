@@ -1,0 +1,29 @@
+{
+  "name": "insof-eco",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "yarn@1.22.22",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "yarn workspace @insof/api start:dev",
+    "dev:mobile": "yarn workspace @insof/mobile start",
+    "mobil": "bash scripts/mobil.sh",
+    "build": "yarn workspaces run build",
+    "typecheck": "yarn workspaces run typecheck",
+    "lint": "yarn workspaces run lint",
+    "test": "yarn workspaces run test",
+    "db:migrate": "yarn workspace @insof/api prisma:migrate",
+    "db:seed": "yarn workspace @insof/api prisma:seed",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "resolutions": {
+    "query-string": "7.1.3"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.expo/
+.turbo/
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+# Expo prebuild artefaktlari — app.config.ts dan qayta generatsiya qilinadi
+apps/mobile/ios/
+apps/mobile/android/
+.DS_Store
