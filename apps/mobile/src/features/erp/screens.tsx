@@ -9,6 +9,7 @@ import { erpText, erpTint } from '@/design/tokens';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import { useSession } from '@/core/session';
 import MapView, { Marker } from 'react-native-maps';
+import { config } from '@/core/config';
 import type { ErpLiveTruck, ErpRole } from '@/core/erp';
 import { erpRoleConfig } from './roles';
 import { useErpHome, useErpList } from './api';
@@ -177,6 +178,9 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
   return (
     <View style={{ paddingHorizontal: 18, paddingTop: 20 }}>
       <SectionHead title={`Yo'lda · ${trucks.length} ta`} />
+      {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda pastdagi ro'yxat qoladi,
+          ya'ni ma'lumot yo'qolmaydi, faqat ko'rinish soddalashadi (`core/config.ts`). */}
+      {config.mapsEnabled && (
       <View style={{ height: 190, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.border }}>
         {/* Scroll bilan urishmasin deb xarita ichida siljimaydi — tafsilot pastdagi qatordan ochiladi */}
         <MapView style={{ flex: 1 }} initialRegion={region} scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false}>
@@ -191,6 +195,7 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
           ))}
         </MapView>
       </View>
+      )}
       {trucks.map((t) => (
         <PressScale key={t.ref} haptic={false} onPress={t.tripId ? () => router.push(`/erp/trips/${t.tripId}` as never) : undefined}>
           <View style={{ marginTop: 8, backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>

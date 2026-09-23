@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
 import MapView, { Marker } from 'react-native-maps';
+import { config } from '@/core/config';
 import { DRIVER_PRIMARY_NEXT, DeliveryStatus } from '@insof/shared';
 import { Button, Card, Field, Gap, Row, Screen, StatusChip, Txt, fmtM3, fmtTime, STATUS_LABEL } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
@@ -46,12 +47,15 @@ export default function DeliveryScreen() {
         {d.slaBreached ? <Txt v="bodyStrong" color="danger" style={{ marginTop: 6 }}>⚠️ 90 daqiqa oshdi</Txt> : null}
         <Gap />
 
+        {/* Kalitsiz Android'da Google Maps ilovani yiqitadi — `core/config.ts` ga qarang */}
+        {config.mapsEnabled && (
         <View style={{ height: 220, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.border }}>
           <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
             <Marker coordinate={dest} title="Obyekt" pinColor={c.brandPrimary} />
             {truck ? <Marker coordinate={truck} title="Mashina" description={live?.etaMin != null ? `~${live.etaMin} daq` : undefined} pinColor={c.info} /> : null}
           </MapView>
         </View>
+        )}
         {live?.etaMin != null && d.status === 'EN_ROUTE' ? <Txt v="heading" color="brand" style={{ marginTop: 8 }}>Taxminan {live.etaMin} daqiqada yetib keladi</Txt> : null}
         <Gap />
 

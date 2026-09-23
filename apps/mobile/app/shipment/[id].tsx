@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import { config } from '@/core/config';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { Button, Card, Field, Gap, Screen, StatusChip, Txt, fmtSum } from '@/design/primitives';
 import { Icon, Pill, ProgressBar, Row, Section } from '@/design/ui';
@@ -39,7 +40,7 @@ export default function ShipmentScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Txt v="caption" color="secondary">YUK №{s.number}</Txt><StatusChip status={s.status} /></View>
         <Txt v="title" style={{ marginTop: 2 }}>{s.cargo}</Txt>
         <Gap h={12} />
-        {from && to ? (
+        {from && to && config.mapsEnabled ? (
           <View style={{ height: 200, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.border }}>
             <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }}>
               <Marker coordinate={from} title="Ombor" pinColor={c.info} /><Marker coordinate={to} title="Obyekt" pinColor={c.brandPrimary} />
@@ -100,7 +101,7 @@ function DriverView({ s, idx, next, tr, err, receiver, setReceiver, navigate, fr
         {!done ? <Card style={{ paddingVertical: 16 }}><StepDots steps={['Ombor', 'Yuklash', "Yo'l", 'Obyekt']} current={step} /></Card> : null}
         <Gap h={12} />
         <Card style={{ padding: 18 }}><RouteBlock from={`${s.warehouse.name}`} to={`${s.project.name}`} /><Txt v="callout" color="secondary" style={{ marginTop: 10 }}>{s.project.address}</Txt></Card>
-        {from && to ? (
+        {from && to && config.mapsEnabled ? (
           <View style={{ height: 170, borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
             <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }} pointerEvents="none">
               <Marker coordinate={from} pinColor={c.info} /><Marker coordinate={to} pinColor={c.brandPrimary} /><Polyline coordinates={[from, to]} strokeColor={c.brandPrimary} strokeWidth={4} lineDashPattern={[8, 6]} />

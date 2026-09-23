@@ -47,6 +47,10 @@ const config: ExpoConfig = {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',
     // Insof ERP — zavod xodimlari (sotuv, logistika, sklad...) shu backend bilan kiradi
     erpUrl: process.env.EXPO_PUBLIC_ERP_URL ?? 'http://localhost:3000',
+    // Android'da react-native-maps Google Maps'ni ishlatadi va kalitsiz ilovani YIQITADI
+    // (IllegalStateException: API key not found). Shuning uchun kalit bor-yo'qligini
+    // to'plam ichiga chiqaramiz — kalitsiz xarita umuman chizilmaydi.
+    hasMaps: !!process.env.GOOGLE_MAPS_ANDROID_KEY,
     eas: { projectId: process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9' },
   },
   updates: { url: process.env.EAS_UPDATE_URL },
