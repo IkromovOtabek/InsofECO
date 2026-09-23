@@ -167,5 +167,17 @@ sudo certbot --nginx -d api.insof-erp.uz          # DNS A-yozuvi shu serverga qa
 | Keyingi deploylar | `cd /var/www/insof-eco && git pull && yarn install && yarn workspace @insof/shared build && yarn workspace @insof/api prisma:deploy && yarn workspace @insof/api build && sudo systemctl restart insof-eco` |
 | Baza nusxasi | `docker exec insof-eco-prod-postgres-1 pg_dump -U insof insof > nusxa.sql` |
 
+**Prodda `db:seed` ishlatmang** — u demo hisoblar yaratadi (`123456` parol bilan). Zavod
+tashkilotini alohida oching, keyin ERP uchun kalit oling:
+
+```bash
+yarn workspace @insof/api plant:create -- --inn <INN> --name "Zavod nomi"
+yarn workspace @insof/api integration:create -- --org <INN> --webhook https://insof-erp.uz/api/eco/webhook
+```
+
+Kalit va webhook siri **bir marta** chop etiladi (bazada faqat sha256 xeshi qoladi) — ularni
+darhol ERP'ning `.env` iga yozing: `ECO_API_KEY`, `ECO_WEBHOOK_SECRET`. Bir serverda bo'lgani
+uchun `ECO_API_URL=http://127.0.0.1:3010` qiling — so'rov internetga chiqmaydi.
+
 `JWT_PRIVATE_KEY` bo'lmasa server **ataylab ko'tarilmaydi** (`auth.module.ts`) — kalitsiz ishga
 tushsa tokenlar koddagi ochiq matnli parol bilan imzolanardi.
