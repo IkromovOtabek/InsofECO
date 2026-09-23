@@ -8,8 +8,18 @@ export const useErpHome = () =>
 export const useErpList = (key: string, q?: string, filter?: string) =>
   useQuery({ queryKey: ['erp', 'list', key, q ?? '', filter ?? ''], queryFn: () => erpAuth.list(key, q, filter), enabled: !!key });
 
+/**
+ * Kartochka. Reys kartochkasi davriy yangilanadi — reys davomida "Yurilgan yo'l" raqami
+ * o'sib boradi va haydovchi ham, logistika ham uni kutmasdan ko'radi. Boshqa kartochkalarda
+ * bunga hojat yo'q (schyot yoki xodim ma'lumoti o'z-o'zidan o'zgarmaydi).
+ */
 export const useErpDetail = (key: string, id: string) =>
-  useQuery({ queryKey: ['erp', 'detail', key, id], queryFn: () => erpAuth.detail(key, id), enabled: !!key && !!id });
+  useQuery({
+    queryKey: ['erp', 'detail', key, id],
+    queryFn: () => erpAuth.detail(key, id),
+    enabled: !!key && !!id,
+    refetchInterval: key === 'trips' ? 30_000 : false,
+  });
 
 export const useErpForm = (key: string) =>
   useQuery({ queryKey: ['erp', 'form', key], queryFn: () => erpAuth.form(key), enabled: !!key, staleTime: 0 });
