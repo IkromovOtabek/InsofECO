@@ -16,8 +16,17 @@ import { erpApi } from './erp';
 export const ERP_GPS_TASK = 'insof.erp.gps';
 const BUF = 'erp.gps.buffer';
 const ACTIVE = 'erp.gps.activeTripId';
+const LAST_SENT = 'erp.gps.lastSentAt';
 /** Bir yuborishda nechta nuqta — serverdagi chek bilan bir xil (`lib/mobile/track.ts`). */
 const CHUNK = 200;
+/**
+ * Necha soniyada bir yuborish. Logistika xaritani 15 soniyada bir yangilaydi, shuning uchun
+ * bundan ko'p kutish ma'nosiz — dispetcher mashinani kechikkan joyda ko'rardi.
+ * Buferning o'zi aloqa uzilganda ishlaydi: nuqtalar yo'qolmaydi, aloqa tiklanganda ketadi.
+ */
+const SEND_EVERY_MS = 30_000;
+/** Bufer shuncha to'lsa — vaqtni kutmaymiz (aloqasiz joydan chiqqanda darhol bo'shatish uchun). */
+const SEND_AT_POINTS = 10;
 
 interface Pt { lat: number; lng: number; speedKmh?: number; heading?: number; at: string }
 
@@ -38,7 +47,8 @@ TaskManager.defineTask(ERP_GPS_TASK, async ({ data, error }) => {
     });
   }
   kv.set(BUF, JSON.stringify(buf));
-  if (buf.length >= 20) await flushErpGps();
+  const last = Number(kv.getString(LAST_SENT) ?? 0);
+  if (buf.length >= SEND_AT_POINTS || Date.now() - last >= SEND_EVERY_MS) await flushErpGps();
 });
 
 /** Buferni serverga yuborish. Yubora olmasa nuqtalar joyida qoladi — keyingi safar ketadi. */
@@ -49,6 +59,7 @@ export async function flushErpGps() {
   try {
     await erpApi('/track', { method: 'POST', body: { tripId, points: buf.slice(0, CHUNK) } });
     kv.set(BUF, JSON.stringify(buf.slice(CHUNK)));
+    kv.set(LAST_SENT, String(Date.now()));
   } catch {
     /* keyingi safar */
   }
@@ -60,6 +71,7 @@ export async function startErpTracking(tripId: string): Promise<boolean> {
   if (fg.status !== 'granted') return false;
   const bg = await Location.requestBackgroundPermissionsAsync();
   kv.set(ACTIVE, tripId);
+  kv.set(LAST_SENT, '0'); // birinchi nuqta darhol ketsin — dispetcher mashinani kutmasin
   if (!(await Location.hasStartedLocationUpdatesAsync(ERP_GPS_TASK))) {
     await Location.startLocationUpdatesAsync(ERP_GPS_TASK, {
       accuracy: Location.Accuracy.High,
@@ -82,6 +94,7 @@ export async function startErpTracking(tripId: string): Promise<boolean> {
 export async function stopErpTracking() {
   await flushErpGps();
   kv.delete(ACTIVE);
+  kv.delete(LAST_SENT);
   if (await Location.hasStartedLocationUpdatesAsync(ERP_GPS_TASK)) await Location.stopLocationUpdatesAsync(ERP_GPS_TASK);
 }
 
