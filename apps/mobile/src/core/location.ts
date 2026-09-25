@@ -53,7 +53,7 @@ export async function startTracking(deliveryId: string) {
       pausesUpdatesAutomatically: false,
       showsBackgroundLocationIndicator: true,
       // Android: majburiy foreground service bildirishnomasi (Samsung One UI fon jarayonlarni o'ldiradi)
-      foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: '#1B5E3F' },
+      foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: '#0A4CD5' },
     });
   }
   return bg.status === 'granted';

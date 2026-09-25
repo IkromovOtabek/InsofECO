@@ -15,7 +15,7 @@ export default function Welcome() {
   const router = useRouter();
   const { c, dark } = useTheme();
   const insets = useSafeAreaInsets();
-  const brand = dark ? '#12563A' : '#0E8A4F';
+  const brand = dark ? '#082E7F' : '#0A4CD5';
 
   return (
     <View style={{ flex: 1, backgroundColor: brand }}>

@@ -65,6 +65,22 @@ export async function flushErpGps() {
   }
 }
 
+/**
+ * Ekrandagi jonli nuqtani izga qo'shib, darhol yuborish.
+ *
+ * Reysni yopishdan oldin chaqiriladi: server "obyektga yetib keldimi?" degan qoidani
+ * OXIRGI saqlangan nuqta bo'yicha tekshiradi (`lib/trips.ts`), fon vazifasi esa nuqtalarni
+ * 15 soniyada bir oladi va 30 soniyada bir yuboradi. Yubormasdan tursak, obyektga endigina
+ * yetib kelgan haydovchiga "hali uzoqdasiz" deb javob berilardi.
+ */
+export async function pushErpFix(p: { lat: number; lng: number; speedKmh?: number; at?: number }) {
+  if (!kv.getString(ACTIVE)) return;
+  const buf = readBuf();
+  buf.push({ lat: p.lat, lng: p.lng, speedKmh: p.speedKmh, at: new Date(p.at ?? Date.now()).toISOString() });
+  kv.set(BUF, JSON.stringify(buf));
+  await flushErpGps();
+}
+
 /** Reys boshlanganda. `false` — fon ruxsati berilmagan: ilova ochiq turganda ishlaydi. */
 export async function startErpTracking(tripId: string): Promise<boolean> {
   const fg = await Location.requestForegroundPermissionsAsync();
@@ -83,7 +99,7 @@ export async function startErpTracking(tripId: string): Promise<boolean> {
       foregroundService: {
         notificationTitle: 'Insof ERP — reys davom etmoqda',
         notificationBody: 'Joylashuv logistika bo\'limiga uzatilmoqda',
-        notificationColor: '#1B5E3F',
+        notificationColor: '#0A4CD5',
       },
     });
   }

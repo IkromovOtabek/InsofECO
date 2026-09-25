@@ -21,6 +21,43 @@ export const useErpDetail = (key: string, id: string) =>
     refetchInterval: key === 'trips' ? 30_000 : false,
   });
 
+/**
+ * Marshrut ekrani. Yo'l mashinaning hozirgi joyidan quriladi, shuning uchun joylashuvni
+ * beruvchi funksiya uziladi (`ref` dan o'qiydi): har GPS nuqtasida so'rov qayta tuzilsa,
+ * OSRM'ga daqiqada o'nlab murojaat ketardi.
+ *
+ * 90 soniyada bir yangilanadi — "bosib o'tilgan yo'l" serverdagi bitta manbadan keladi
+ * (veb xaritasi bilan bir xil raqam), qolgan masofa esa ilovaning o'zida, har nuqtada.
+ * `keepLine` — yo'lning o'zi kerak emas, faqat raqamlar (yo'l o'zgarmagan bo'lsa).
+ */
+export const useErpTripRoute = (
+  id: string,
+  pos: () => { lat: number; lng: number } | null,
+  keepLine: () => boolean,
+) =>
+  useQuery({
+    queryKey: ['erp', 'trip-route', id],
+    queryFn: () => erpAuth.tripRoute(id, pos() ?? undefined, keepLine()),
+    enabled: !!id,
+    refetchInterval: 90_000,
+  });
+
+/**
+ * Bildirishnomalar. Yarim daqiqada bir yangilanadi: push kelmagan bo'lsa ham
+ * (ruxsat berilmagan, telefon o'chiq edi) xodim ro'yxatda ko'radi.
+ */
+export const useErpNotifications = () =>
+  useQuery({ queryKey: ['erp', 'notifications'], queryFn: erpAuth.notifications, refetchInterval: 30_000 });
+
+/** Ro'yxat ochilganda hammasi o'qilgan deb belgilanadi. */
+export function useErpReadNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids?: string[]) => erpAuth.readNotifications(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp', 'notifications'] }),
+  });
+}
+
 export const useErpForm = (key: string) =>
   useQuery({ queryKey: ['erp', 'form', key], queryFn: () => erpAuth.form(key), enabled: !!key, staleTime: 0 });
 

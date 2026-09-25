@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Role } from '@insof/shared';
 import { kv, KEYS, secure } from './storage';
 import type { ErpUser } from './erp';
+import { unregisterPush } from './push';
 
 export interface Membership { role: Role; isActive: boolean; organization: { id: string; name: string; type: 'PLANT' | 'CONTRACTOR' } }
 export interface Profile { id: string; phone: string; fullName: string | null; locale: string; memberships: Membership[] }
@@ -93,13 +94,15 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   async signOut() {
+    // Tokenlar o'chishidan OLDIN: shu telefonga endi xabar yuborilmasin, aks holda
+    // ishdan ketgan xodimning ekranida zavod xabarlari chiqib turardi.
+    await unregisterPush(get().kind === 'erp' ? 'erp' : 'eco');
     await Promise.all([secure.del(KEYS.access), secure.del(KEYS.refresh), secure.del(KEYS.erpAccess), secure.del(KEYS.erpRefresh)]);
     kv.delete('session.user');
     kv.delete(ACTIVE_KEY);
     kv.delete(KIND_KEY);
     kv.delete(ERP_USER_KEY);
     set({ status: 'anon', kind: null, user: null, active: null, erp: null });
-    void get;
   },
 }));
 

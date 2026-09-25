@@ -1,33 +1,44 @@
 import { Platform } from 'react-native';
 
+/**
+ * Brend palitrasi — Insof ko'ki (#0A4CD5, logotip plitkasining rangi) va to'q sariq urg'u.
+ * Ikonka, splash, bildirishnoma va auth ekranlari shu ranglarda: ilova ochilganda
+ * splashdan keyin boshqa rangga sakrab tushmaydi.
+ *
+ * Qorong'i rejadagi fon — to'q dengiz ko'ki (navy), yashil emas: brend ko'ki bilan bitta
+ * oilada turadi va oq matn kontrasti yuqori chiqadi.
+ *
+ * Rol skinlari (Tadbirkor / Quruvchi / Haydovchi) pastda, o'z ranglarida qoladi —
+ * bu palitra rol tanlanmaguncha va umumiy ekranlarda ishlaydi.
+ */
 export const palette = {
   light: {
-    brandPrimary: '#0E8A4F',
-    brandPrimarySoft: '#D6F7E4',
+    brandPrimary: '#0A4CD5',
+    brandPrimarySoft: '#DCE8FF',
     brandAccent: '#FFA800',
-    bgCanvas: '#F4FAF6',
+    bgCanvas: '#F4F7FD',
     bgSurface: '#FFFFFF',
-    bgSurfaceMuted: '#EAF5EE',
-    textPrimary: '#111827',
-    textSecondary: '#69737F',
+    bgSurfaceMuted: '#E9EFFB',
+    textPrimary: '#0E1726',
+    textSecondary: '#68758A',
     textOnBrand: '#FFFFFF',
-    border: '#DFE9E3',
+    border: '#DCE3EF',
     success: '#00B34D',
     warning: '#F08A00',
     danger: '#E60D28',
     info: '#0062F0',
   },
   dark: {
-    brandPrimary: '#22C97A',
-    brandPrimarySoft: '#12402C',
+    brandPrimary: '#4D8DFF',
+    brandPrimarySoft: '#123063',
     brandAccent: '#FFC233',
-    bgCanvas: '#101A15',
-    bgSurface: '#1D2A23',
-    bgSurfaceMuted: '#28362E',
-    textPrimary: '#F4F6F5',
-    textSecondary: '#A6B2AB',
-    textOnBrand: '#04241A',
-    border: '#36473D',
+    bgCanvas: '#06172B',
+    bgSurface: '#0E2340',
+    bgSurfaceMuted: '#16304F',
+    textPrimary: '#EAF1FB',
+    textSecondary: '#9DB0C8',
+    textOnBrand: '#04122A',
+    border: '#22405F',
     success: '#2EE39B',
     warning: '#FFC233',
     danger: '#FF6070',
@@ -174,7 +185,7 @@ export function onColor(hex: string): string {
 // Yer rangi — iliq qog'oz (#F3F1EC), yuzalar oq, chegara issiq kulrang; asosiy ko'rsatkich
 // qora siyoh kartochkada turadi. Har bo'limning o'z "ink" rangi va shu rangning ochiq "tint" i bor.
 
-export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER';
+export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
 
 /** Bo'lim rangi: [ink — matn va ikon, tint — ikon kvadrati foni, darkInk — qorong'i rejada]. */
 const ERP_ROLE_COLOR: Record<ErpRoleKey, [ink: string, tint: string, darkInk: string]> = {
@@ -190,12 +201,13 @@ const ERP_ROLE_COLOR: Record<ErpRoleKey, [ink: string, tint: string, darkInk: st
   HR:          ['#C4360D', '#FFE3D9', '#FF8F5E'],
   CASHIER:     ['#0F8544', '#D9F7E2', '#4FD97F'],
   DRIVER:      ['#4A7A1A', '#E8F9D6', '#9EDB57'],
+  BRIGADIER:   ['#A8511C', '#FFEBDB', '#FFA766'],
 };
 
 export const ERP_ROLE_NAME: Record<ErpRoleKey, string> = {
   DIRECTOR: 'Direktor', SALES: 'Sotuv', PRODUCTION: 'Ishlab chiqarish', SUPERVISOR: 'Ish boshqaruvchi',
   LOGISTICS: 'Logistika', WAREHOUSE: 'Sklad', PROCUREMENT: 'Snabjeniye', ACCOUNTING: 'Buxgalteriya',
-  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', DRIVER: 'Haydovchi',
+  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir',
 };
 
 /**

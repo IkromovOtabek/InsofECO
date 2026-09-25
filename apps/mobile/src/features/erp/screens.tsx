@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,9 +12,10 @@ import MapView, { Marker } from 'react-native-maps';
 import { config } from '@/core/config';
 import type { ErpLiveTruck, ErpRole } from '@/core/erp';
 import { erpRoleConfig } from './roles';
-import { useErpHome, useErpList } from './api';
+import { useErpHome, useErpList, useErpNotifications } from './api';
 import { FilterChips, HeroCard, ListRow, ROW_ICON, SectionHead, StatTile } from './ui';
 import { pinStore } from '@/core/pin';
+import { setBadge } from '@/core/push';
 
 /**
  * ERP bo'limlarining ekranlari — "ERP Mobil" maketi bo'yicha.
@@ -84,6 +85,7 @@ export function ErpHome() {
           <Txt style={{ ...erpText.eyebrow, color: c.brandPrimary }}>{data.roleLabel}</Txt>
           <Txt style={{ ...erpText.title, color: c.textPrimary, marginTop: 2 }} numberOfLines={1}>{data.fullName}</Txt>
         </View>
+        <NotificationsBell />
         <Pressable onPress={() => router.push(`/${erpRoleConfig(role).group}/menu` as never)} hitSlop={8}>
           <Avatar name={data.fullName} size={44} />
         </Pressable>
@@ -152,6 +154,35 @@ export function ErpHome() {
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+/**
+ * Qo'ng'iroq — o'qilmagan xabarlar soni bilan.
+ *
+ * Nega tab emas: 13 ta rol bo'limida 13 ta qo'shimcha tab kerak bo'lardi, holbuki
+ * bildirishnoma kun bo'yi ochib turiladigan bo'lim emas — kelganda bosiladi.
+ * Ilova ikonkasidagi raqam ham shu yerda tizim bilan moslanadi.
+ */
+function NotificationsBell() {
+  const { c } = useTheme();
+  const router = useRouter();
+  const unread = useErpNotifications().data?.unread ?? 0;
+
+  useEffect(() => { setBadge(unread); }, [unread]);
+
+  return (
+    <Pressable onPress={() => router.push('/erp/bildirishnomalar' as never)} hitSlop={10} style={{ paddingHorizontal: 4 }}>
+      <Icon name={unread > 0 ? 'notifications' : 'notifications-outline'} size={24} color={unread > 0 ? c.brandPrimary : c.textSecondary} />
+      {unread > 0 ? (
+        <View style={{
+          position: 'absolute', top: -5, right: -4, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+          backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.bgSurface,
+        }}>
+          <Txt style={{ ...erpText.chip, color: '#FFFFFF' }}>{unread > 99 ? '99+' : unread}</Txt>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 

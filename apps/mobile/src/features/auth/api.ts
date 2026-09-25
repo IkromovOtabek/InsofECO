@@ -1,14 +1,11 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { api, uuid } from '@/core/api';
-import { kv, KEYS } from '@/core/storage';
+import { api, deviceId } from '@/core/api';
 import { Profile } from '@/core/session';
 
 function deviceInfo() {
-  let deviceId = kv.getString(KEYS.deviceId);
-  if (!deviceId) { deviceId = uuid(); kv.set(KEYS.deviceId, deviceId); }
-  return { deviceId, platform: Platform.OS as 'ios' | 'android', model: Device.modelName ?? undefined, appVersion: Constants.expoConfig?.version };
+  return { deviceId: deviceId(), platform: Platform.OS as 'ios' | 'android', model: Device.modelName ?? undefined, appVersion: Constants.expoConfig?.version };
 }
 
 export const authApi = {
@@ -31,5 +28,5 @@ export const authApi = {
   plants: () => api<{ id: string; name: string; address?: string | null }[]>('/organizations/plants', { auth: false }),
   me: () => api<Profile>('/me'),
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
-  registerPush: (expoPushToken: string) => api('/me/devices', { method: 'PUT', body: { deviceId: deviceInfo().deviceId, expoPushToken } }),
+  registerPush: (expoPushToken: string) => api('/me/devices', { method: 'PUT', body: { deviceId: deviceId(), expoPushToken } }),
 };

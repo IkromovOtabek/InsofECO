@@ -10,7 +10,8 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   icon: './assets/icon.png',
-  splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: '#1B5E3F' },
+  // Brend ko'ki — logotip plitkasining rangi; ikonka, splash va bildirishnoma bittada
+  splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: '#0A4CD5' },
   ios: {
     bundleIdentifier: 'uz.insofeco.app',
     supportsTablet: false,
@@ -24,7 +25,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'uz.insofeco.app',
-    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#1B5E3F' },
+    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#0A4CD5' },
     permissions: [
       'ACCESS_COARSE_LOCATION',
       'ACCESS_FINE_LOCATION',
@@ -41,7 +42,9 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     ['expo-location', { isAndroidBackgroundLocationEnabled: true, isAndroidForegroundServiceEnabled: true }],
-    ['expo-notifications', { color: '#1B5E3F' }],
+    // `sounds` — ovoz fayli native to'plamga qo'shiladi: iOS bundle'ga, Android `res/raw` ga.
+    // Shuning uchun ovoz o'zgarsa ilovani qayta chiqarish kerak (OTA yetarli emas).
+    ['expo-notifications', { color: '#0A4CD5', sounds: ['./assets/bildirishnoma.wav'] }],
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',

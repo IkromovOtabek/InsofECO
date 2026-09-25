@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, EmptyState, Gap, Txt } from '@/design/primitives';
+import { EmptyState, Gap, Txt } from '@/design/primitives';
 import { Icon, IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
-import { startErpTracking, stopErpTracking } from '@/core/erp-track';
+import { flushErpGps, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
+import { ActionSheet } from '@/features/erp/action-sheet';
 import { Chip, ListRow, ROW_ICON, SectionHead, statusLabel } from '@/features/erp/ui';
 import { erpText } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { Appear, PressScale, stagger } from '@/design/motion';
-import { FieldInput, firstMissing, initialValues, toPayload, visibleFields, type ItemRow, type Values } from '@/features/erp/form';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -28,6 +27,7 @@ const ACTION_ICON: Record<string, IconName> = {
   'order.cancel': 'close-circle',
   'trip.loaded': 'cube',
   'trip.onroad': 'navigate',
+  'trip.route': 'map',
   'trip.delivered': 'flag',
   'trip.cancel': 'close-circle',
   'trip.eco': 'phone-portrait',
@@ -38,28 +38,20 @@ export default function ErpDetail() {
   const { key, id } = useLocalSearchParams<{ key: string; id: string }>();
   const { c } = useTheme();
   const nav = useNavigation();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const role = useSession((s) => s.erp?.role ?? 'DIRECTOR');
   const { data, isLoading, error, refetch, isRefetching } = useErpDetail(key!, id!);
   const run = useErpAction();
-  const [form, setForm] = useState<{ action: ErpAction; values: Values } | null>(null);
+  const [form, setForm] = useState<ErpAction | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (data) nav.setOptions({ title: data.title });
   }, [data, nav]);
 
-  // Forma ochiq bo'lsa apparat "orqaga" tugmasi ekrandan chiqmasin — avval formani yopsin.
-  React.useEffect(() => {
-    if (!form) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setForm(null); return true; });
-    return () => sub.remove();
-  }, [form]);
-
   /**
-   * Amaldan keyingi ish — serverdagi `effect` aytadi (kuzatuv, navigatsiya).
-   * Tartib muhim: navigatsiya ilovaga o'tib ketadi, shuning uchun kuzatuv avval yoqiladi.
+   * Amaldan keyingi ish — serverdagi `effect` aytadi (kuzatuv, marshrut, navigatsiya).
+   * Tartib muhim: marshrut ekrani ustiga chiqadi, shuning uchun kuzatuv avval yoqiladi.
    */
   const applyEffect = async (a: ErpAction): Promise<string | null> => {
     const e = a.effect;
@@ -70,7 +62,10 @@ export default function ErpDetail() {
       if (!bg) note = 'Joylashuv fon rejimida ruxsat etilmagan — ilova yopilsa iz uzilib qoladi.';
     }
     if (e.track === 'stop') await stopErpTracking();
-    if (e.navigate && !(await openNavigation(e.navigate.lat, e.navigate.lng, e.navigate.label))) {
+    // Marshrut ilova ichida ko'rsatiladi; tashqi navigator faqat `route` bo'lmaganda
+    // (eski server javobi) — haydovchini ilovadan olib chiqib ketmaslik uchun.
+    if (e.route) router.push(`/yolda/${id}` as never);
+    else if (e.navigate && !(await openNavigation(e.navigate.lat, e.navigate.lng, e.navigate.label))) {
       note = note ?? 'Navigatsiya ilovasi topilmadi.';
     }
     return note;
@@ -78,10 +73,15 @@ export default function ErpDetail() {
 
   const execute = async (a: ErpAction, payload?: Record<string, unknown>) => {
     try {
-      const r = await run.mutateAsync({ action: a.id, id: id!, payload });
+      // Reysni yopadigan amal (`track: 'stop'`) — avval yo'l izini yuboramiz: server
+      // "obyektga yetib keldimi?" degan qoidani oxirgi saqlangan nuqta bo'yicha tekshiradi.
+      if (a.effect?.track === 'stop') await flushErpGps();
+      // `local` amal serverga bormaydi — u faqat ilova ichidagi ish (marshrutni ochish)
+      const message = a.local ? null : (await run.mutateAsync({ action: a.id, id: id!, payload })).message;
       setForm(null);
       const note = await applyEffect(a);
-      Alert.alert('Bajarildi', note ? `${r.message}\n\n${note}` : r.message);
+      if (message) Alert.alert('Bajarildi', note ? `${message}\n\n${note}` : message);
+      else if (note) Alert.alert('Diqqat', note);
     } catch (e) {
       const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi';
       if (form) setFormError(msg); else Alert.alert('Bajarilmadi', msg);
@@ -90,10 +90,9 @@ export default function ErpDetail() {
 
   const press = (a: ErpAction) => {
     setFormError(null);
-    if (a.form?.length) {
-      setForm({ action: a, values: initialValues(a.form) });
-      return;
-    }
+    // Yopiq tugma bosilsa sababini aytamiz — nega ochilmagani noma'lum qolmasin
+    if (a.disabled) { Alert.alert(a.label, a.hint ?? 'Hozir bajarib bo\'lmaydi'); return; }
+    if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       Alert.alert(a.label, a.confirm, [
         { text: 'Bekor', style: 'cancel' },
@@ -165,14 +164,21 @@ export default function ErpDetail() {
             {data.actions.map((a) => {
               const col = a.tone === 'danger' ? c.danger : a.tone === 'success' ? c.success : a.tone === 'warning' ? c.warning : c.brandPrimary;
               const soft = a.tone === 'danger' || a.tone === 'warning';
+              // Yopiq tugma kulrang bo'ladi, lekin o'rnida qoladi: haydovchi keyingi qadam
+              // qaysi tugma ekanini ko'rib turadi, faqat hozir bosib bo'lmasligini biladi.
+              const bg = a.disabled ? c.bgSurface : soft ? col + '14' : col;
+              const ink = a.disabled ? c.textSecondary : soft ? col : '#FFFFFF';
               return (
                 <View key={a.id} style={{ marginBottom: 10 }}>
-                  <PressScale onPress={() => press(a)} disabled={run.isPending}>
-                    <View style={{ height: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: soft ? col + '14' : col, borderWidth: soft ? 1 : 0, borderColor: col + '33', opacity: run.isPending ? 0.6 : 1 }}>
-                      <Icon name={ACTION_ICON[a.id] ?? 'arrow-forward'} size={18} color={soft ? col : '#FFFFFF'} />
-                      <Txt style={{ ...erpText.button, marginLeft: 8, color: soft ? col : '#FFFFFF' }}>{a.label}</Txt>
+                  <PressScale onPress={() => press(a)} disabled={run.isPending} haptic={!a.disabled}>
+                    <View style={{ height: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: bg, borderWidth: soft || a.disabled ? 1 : 0, borderColor: a.disabled ? c.border : col + '33', opacity: run.isPending ? 0.6 : 1 }}>
+                      <Icon name={a.disabled ? 'lock-closed' : ACTION_ICON[a.id] ?? 'arrow-forward'} size={18} color={ink} />
+                      <Txt style={{ ...erpText.button, marginLeft: 8, color: ink }}>{a.label}</Txt>
                     </View>
                   </PressScale>
+                  {a.disabled && a.hint ? (
+                    <Txt style={{ fontSize: 12, color: c.textSecondary, marginTop: 6, textAlign: 'center' }}>{a.hint}</Txt>
+                  ) : null}
                 </View>
               );
             })}
@@ -180,45 +186,14 @@ export default function ErpDetail() {
         ) : null}
       </ScrollView>
 
-      {/* Ma'lumot so'raydigan amallar — qabul qilgan kishi, to'lov summasi va h.k.
-          React Native'ning `<Modal>` i yangi arxitekturada (Fabric) ekranga chiqmaydi:
-          holat o'zgaradi, lekin oyna ko'rinmaydi va "Yetkazdim" bosilmagandek tuyuladi.
-          Shuning uchun oddiy qatlam — ekran ichida, native oynasiz. */}
       {form ? (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-          {/* Fon bosilsa yopiladi */}
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setForm(null)} />
-          <View style={{ backgroundColor: c.bgCanvas, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 16, maxHeight: '88%' }}>
-            {/* Sarlavha doim ko'rinib turadi, maydonlar ko'p bo'lsa ichi aylanadi */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 10 }}>
-              <Txt v="heading" style={{ flex: 1 }}>{form?.action.label}</Txt>
-              <Pressable onPress={() => setForm(null)} hitSlop={10}><Icon name="close" size={24} /></Pressable>
-            </View>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
-              {form ? visibleFields(form.action.form ?? [], form.values).map((f) => (
-                <FieldInput
-                  key={f.name}
-                  field={f}
-                  values={form.values}
-                  onChange={(name: string, v: string | ItemRow[]) => setForm((s) => (s ? { ...s, values: { ...s.values, [name]: v } } : s))}
-                />
-              )) : null}
-              {formError ? <Txt v="callout" color="danger" style={{ marginTop: 8 }}>{formError}</Txt> : null}
-            </ScrollView>
-            <View style={{ paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: c.border }}>
-              <Button
-                title={form?.action.label ?? 'Saqlash'}
-                loading={run.isPending}
-                onPress={() => {
-                  if (!form) return;
-                  const missing = firstMissing(form.action.form ?? [], form.values);
-                  if (missing) { setFormError(missing); return; }
-                  void execute(form.action, toPayload(form.action.form ?? [], form.values));
-                }}
-              />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+        <ActionSheet
+          action={form}
+          loading={run.isPending}
+          error={formError}
+          onClose={() => setForm(null)}
+          onSubmit={(payload) => void execute(form, payload)}
+        />
       ) : null}
     </View>
   );

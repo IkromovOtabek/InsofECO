@@ -12,6 +12,7 @@ import { queryClient, persister } from '@/core/query';
 import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
 import { authApi } from '@/features/auth/api';
+import { registerPush, routeOf } from '@/core/push';
 import { LaunchOverlay } from '@/components/launch';
 import { PinLock } from '@/components/pin-lock';
 import { useFonts } from 'expo-font';
@@ -45,8 +46,9 @@ function Gate() {
     if (kind === 'erp') {
       if (!erp) { router.replace('/(auth)/login'); return; }
       const target = erpRoleConfig(erp.role).group;
-      // `erp/<kartochka>` — barcha bo'limlar uchun umumiy ekran, guruhdan tashqarida
-      if (group !== target && group !== 'erp') router.replace(`/${target}` as never);
+      // `erp/<kartochka>` va haydovchi marshruti (`yolda/<reys>`) — barcha bo'limlar uchun
+      // umumiy ekranlar, guruhdan tashqarida turadi va bu yerda qaytarilmasligi kerak
+      if (group !== target && group !== 'erp' && group !== 'yolda') router.replace(`/${target}` as never);
       return;
     }
 
@@ -58,6 +60,9 @@ function Gate() {
 
   useEffect(() => {
     if (status !== 'authed') return;
+    // Xabarlar ikkala hisobga ham keladi: zavod xodimi ham, pudratchi ham telefonini
+    // qo'liga olmay turib bilishi kerak. Token qaysi backendga yozilishi `kind` bo'yicha.
+    void registerPush(kind === 'erp' ? 'erp' : 'eco');
     if (kind === 'erp') {
       // Xodim o'chirilgan yoki roli o'zgargan bo'lsa — darhol bilinadi (401 → signOut)
       void erpAuth.me().then((u) => useSession.getState().setErpUser(u)).catch(() => {});
@@ -65,22 +70,39 @@ function Gate() {
     }
     void outbox.flush();
     void authApi.me().then((u) => useSession.getState().setUser(u)).catch(() => {});
-    void registerPush();
     void user;
   }, [status, kind, user?.id, erp?.id]);
 
   return null;
 }
 
-async function registerPush() {
-  try {
-    const { status } = await Notifications.getPermissionsAsync();
-    const granted = status === 'granted' || (await Notifications.requestPermissionsAsync()).status === 'granted';
-    if (!granted) return;
-    if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('default', { name: 'Umumiy', importance: Notifications.AndroidImportance.HIGH, vibrationPattern: [0, 250, 250, 250], lightColor: '#0E8A4F' });
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    await authApi.registerPush(token);
-  } catch { /* push ixtiyoriy */ }
+/**
+ * Bildirishnoma bosilganda kerakli kartochka ochiladi — Telegram'da xabar bosilganda
+ * suhbat ochilgani kabi. Ilova yopiq bo'lsa ham: `getLastNotificationResponseAsync`
+ * sovuq startda bosilgan xabarni qaytaradi.
+ */
+function PushRouting() {
+  const router = useRouter();
+  const status = useSession((s) => s.status);
+
+  useEffect(() => {
+    if (status !== 'authed') return;
+    let handled: string | null = null;
+    const open = (res: Notifications.NotificationResponse | null) => {
+      if (!res) return;
+      // Bitta xabar ikki marta ochilmasin (sovuq start + tinglovchi bir vaqtda kelishi mumkin)
+      const id = res.notification.request.identifier;
+      if (id === handled) return;
+      handled = id;
+      const path = routeOf(res.notification.request.content.data);
+      if (path) router.push(path as never);
+    };
+    void Notifications.getLastNotificationResponseAsync().then(open);
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    return () => sub.remove();
+  }, [status, router]);
+
+  return null;
 }
 
 function Nav() {
@@ -113,6 +135,9 @@ function Nav() {
         <Stack.Screen name="erp/[key]/[id]" options={{ title: 'Kartochka', headerLargeTitle: false }} />
         <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', headerLargeTitle: false, presentation: 'modal' }} />
         <Stack.Screen name="erp/list/[key]" options={{ title: "Ro'yxat", headerLargeTitle: false }} />
+        <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar', headerLargeTitle: false }} />
+        {/* Haydovchi marshruti — "Yo'lga chiqdim" dan keyin ochiladi */}
+        <Stack.Screen name="yolda/[id]" options={{ title: 'Marshrut', headerLargeTitle: false }} />
         <Stack.Screen name="delivery/[id]" options={{ title: 'Reys' }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Buyurtma' }} />
         <Stack.Screen name="project/[id]" options={{ title: 'Loyiha', headerLargeTitle: false }} />
@@ -135,6 +160,7 @@ export default function RootLayout() {
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000 }}>
         <ThemeProvider>
           <Gate />
+          <PushRouting />
           <Nav />
           {/* PIN qulfi — hisob ustida; ochilish ekrani esa hammasining ustida */}
           <PinLock />

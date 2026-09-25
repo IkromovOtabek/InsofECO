@@ -1,6 +1,6 @@
 import { ApiError } from '@insof/shared';
 import { config } from './config';
-import { KEYS, secure } from './storage';
+import { KEYS, kv, secure } from './storage';
 import { useSession } from './session';
 
 export class ApiException extends Error {
@@ -56,3 +56,14 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
 }
 
 export const uuid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+/**
+ * Shu telefonning barqaror id'si — push manzili va sessiya shu bo'yicha bog'lanadi.
+ * Bir marta yaratiladi va saqlanadi: ilova qayta ochilganda o'zgarmasligi kerak,
+ * aks holda har ishga tushishda serverda yangi qurilma paydo bo'lardi.
+ */
+export function deviceId(): string {
+  let id = kv.getString(KEYS.deviceId);
+  if (!id) { id = uuid(); kv.set(KEYS.deviceId, id); }
+  return id;
+}

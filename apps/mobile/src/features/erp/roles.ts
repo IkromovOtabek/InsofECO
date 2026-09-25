@@ -33,6 +33,7 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',    homeIcon: 'people-outline',        homeIconActive: 'people',        listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'id-card-outline',       workIconActive: 'id-card' },
   CASHIER:     { group: '(erp-cashier)',     label: 'Kassa / bank',     homeTitle: 'Kassa',      homeIcon: 'wallet-outline',        homeIconActive: 'wallet',        listKey: 'payments',   workTitle: "To'lovlar",  workIcon: 'cash-outline',          workIconActive: 'cash' },
   DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',      homeIcon: 'today-outline',         homeIconActive: 'today',         listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'bus-outline',           workIconActive: 'bus' },
+  BRIGADIER:   { group: '(erp-brigadier)',   label: 'Brigadir',         homeTitle: 'Brigadam',   homeIcon: 'hammer-outline',        homeIconActive: 'hammer',        listKey: 'tasks',      workTitle: 'Topshiriqlar', workIcon: 'checkbox-outline',    workIconActive: 'checkbox' },
 };
 
 /**
