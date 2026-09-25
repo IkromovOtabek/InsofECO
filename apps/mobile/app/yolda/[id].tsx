@@ -91,6 +91,17 @@ export default function TripRoute() {
       const { status } = await Location.getForegroundPermissionsAsync();
       const ok = status === 'granted' || (await Location.requestForegroundPermissionsAsync()).status === 'granted';
       if (!ok) { if (alive) setNoGps(true); return; }
+
+      // Aniq nuqta kelguncha 5-30 soniya ketadi. Shuncha vaqt mashina xaritada
+      // ko'rinmay tursa, haydovchi "yo'qolib qoldim" deb o'ylaydi — shuning uchun avval
+      // tizimdagi oxirgi ma'lum nuqtani olamiz: u darhol keladi va xarita bo'sh qolmaydi.
+      const last = await Location.getLastKnownPositionAsync();
+      if (last && alive && !fixRef.current) {
+        const p: Fix = { lat: last.coords.latitude, lng: last.coords.longitude, speedKmh: 0, at: last.timestamp };
+        fixRef.current = p;
+        setFix(p);
+      }
+
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 10 },
         (l) => {
@@ -185,6 +196,41 @@ export default function TripRoute() {
     id: 'trip.delivered', label: 'Yetkazdim', tone: 'success', form: data?.deliverForm ?? [],
   }), [data?.deliverForm]);
 
+  /**
+   * "Meni top" — xaritani mashinaga qaytaradi va kuzatuvni yoqadi.
+   *
+   * Nuqta hali yo'q bo'lsa (ekranga endi kirilgan, GPS tutmagan) shu yerda so'rab olamiz:
+   * tugma bosilganda bir-ikki soniya kutish maqbul, xaritada mashinaning umuman
+   * ko'rinmasligi esa yo'q.
+   */
+  const centerOnMe = useCallback(async () => {
+    setFollow(true);
+    let p = fixRef.current;
+    if (!p) {
+      try {
+        const l = (await Location.getLastKnownPositionAsync())
+          ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+        if (l) {
+          p = { lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: 0, at: l.timestamp };
+          fixRef.current = p;
+          setFix(p);
+        }
+      } catch { /* ruxsat yo'q — pastdagi ogohlantirish buni aytadi */ }
+    }
+    if (p) mapRef.current?.animateCamera({ center: { latitude: p.lat, longitude: p.lng } }, { duration: 500 });
+  }, []);
+
+  /** Mashina va obyekt bir ekranga sig'adi. Kuzatuv o'chadi — aks holda kamera darhol qaytib ketardi. */
+  const fitAll = useCallback(() => {
+    const here = fixRef.current;
+    if (!here || !dest) { void centerOnMe(); return; }
+    setFollow(false);
+    mapRef.current?.fitToCoordinates(
+      [{ latitude: here.lat, longitude: here.lng }, { latitude: dest.lat, longitude: dest.lng }],
+      { edgePadding: { top: 90, right: 70, bottom: 90, left: 70 }, animated: true },
+    );
+  }, [dest, centerOnMe]);
+
   const onDeliver = useCallback(() => {
     if (!near) { Alert.alert('Yetkazdim', nearHint ?? 'Obyektga yetib borilmagan'); return; }
     setFormError(null);
@@ -225,13 +271,23 @@ export default function TripRoute() {
             />
             <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.brandPrimary} />
           </MapView>
-          {!follow ? (
-            <PressScale onPress={() => setFollow(true)} style={{ position: 'absolute', right: 14, bottom: 14 }}>
-              <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="locate" size={22} color={c.brandPrimary} />
-              </View>
-            </PressScale>
-          ) : null}
+          {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda
+              chiqardi, ya'ni ekranga qaytib kirilganda mashina ko'rinmay qolsa, uni
+              qaytaradigan tugma ham yo'q edi. To'ldirilgan holat — kuzatuv yoqiq. */}
+          <PressScale onPress={() => void centerOnMe()} style={{ position: 'absolute', right: 14, bottom: 14 }}>
+            <View style={{
+              width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center',
+              backgroundColor: follow ? c.brandPrimary : c.bgSurface, borderWidth: 1, borderColor: follow ? c.brandPrimary : c.border,
+            }}>
+              <Icon name={follow ? 'locate' : 'locate-outline'} size={23} color={follow ? '#FFFFFF' : c.brandPrimary} />
+            </View>
+          </PressScale>
+          {/* Butun marshrutni ko'rish — mashina ham, obyekt ham bir ekranga sig'adi */}
+          <PressScale onPress={fitAll} style={{ position: 'absolute', right: 14, bottom: 74 }}>
+            <View style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border }}>
+              <Icon name="scan-outline" size={22} color={c.brandPrimary} />
+            </View>
+          </PressScale>
         </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
