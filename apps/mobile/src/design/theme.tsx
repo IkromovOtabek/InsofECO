@@ -2,43 +2,38 @@ import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useSession } from '@/core/session';
-import { ErpRoleKey, Palette, RoleKey, Shape, Skin, defaultSkin, erpSkin, skins } from './tokens';
+import { ErpRoleKey, Palette, RoleKey, palette } from './tokens';
 
 interface Theme {
   c: Palette;
   dark: boolean;
-  /** Faol rol — null bo'lsa auth/rol tanlash (ECO yashil skin). */
+  /** Faol ECO roli — auth va rol tanlashda null. */
   role: RoleKey | null;
-  /** ERP xodimi kirgan bo'lsa uning bo'limi; ECO sessiyasida null. */
+  /** ERP xodimi bo'limi; ECO sessiyasida null. */
   erpRole: ErpRoleKey | null;
-  shape: Shape;
-  skin: Skin;
 }
 
-const ThemeCtx = createContext<Theme>({ c: defaultSkin.light, dark: false, role: null, erpRole: null, shape: defaultSkin.shape, skin: defaultSkin });
+const ThemeCtx = createContext<Theme>({ c: palette.light, dark: false, role: null, erpRole: null });
 
-/** Rolga qarab skin: Tadbirkor (navy), Quruvchi (terrakota), Haydovchi (qorong'i kabina), ERP xodimi (bo'lim rangi). Ekranlar `useTheme().c` orqali oladi — rolni bilmaydi. */
+/**
+ * Bitta dizayn tizimi — hamma rol uchun bir xil palitra. Yorug'/qorong'i tizim sozlamasiga ergashadi.
+ * Ekranlar `useTheme().c` orqali oladi — rolni bilmaydi.
+ */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const scheme = useColorScheme();
   const role = useSession((s) => (s.kind === 'eco' ? s.active?.role ?? null : null));
   const erpRole = useSession((s) => (s.kind === 'erp' ? s.erp?.role ?? null : null));
   const value = useMemo<Theme>(() => {
-    const skin = erpRole ? erpSkin(erpRole) : role ? skins[role] : defaultSkin;
-    const dark = skin.forceDark ? true : scheme === 'dark';
-    return { c: dark ? skin.dark : skin.light, dark, role, erpRole, shape: skin.shape, skin };
+    const dark = scheme === 'dark';
+    return { c: dark ? palette.dark : palette.light, dark, role, erpRole };
   }, [scheme, role, erpRole]);
 
-  /**
-   * Pastdagi tizim tugmalari paneli ham mavzuga ergashsin.
-   *
-   * Aks holda haydovchining qorong'i ekrani ostida oq chiziq bo'lib turadi va ilova
-   * ekranga to'liq egalik qilmagandek ko'rinadi. Faqat Android'da — iOS'da bunday panel yo'q.
-   */
+  /** Android pastki tizim paneli ham mavzuga ergashsin (chrome rangi). */
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    void NavigationBar.setBackgroundColorAsync(value.c.bgSurface).catch(() => {});
+    void NavigationBar.setBackgroundColorAsync(value.c.bgChrome).catch(() => {});
     void NavigationBar.setButtonStyleAsync(value.dark ? 'light' : 'dark').catch(() => {});
-  }, [value.c.bgSurface, value.dark]);
+  }, [value.c.bgChrome, value.dark]);
 
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
 }

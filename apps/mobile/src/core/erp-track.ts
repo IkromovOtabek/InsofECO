@@ -1,3 +1,4 @@
+import { brand } from '@/design/tokens';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { kv } from './storage';
@@ -123,7 +124,7 @@ export async function startErpTracking(tripId: string): Promise<boolean> {
       foregroundService: {
         notificationTitle: 'Insof ERP — reys davom etmoqda',
         notificationBody: 'Joylashuv logistika bo\'limiga uzatilmoqda',
-        notificationColor: '#0A4CD5',
+        notificationColor: brand[500],
       },
     });
   }

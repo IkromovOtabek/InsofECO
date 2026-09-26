@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Txt } from '@/design/primitives';
-import { Icon } from '@/design/ui';
-import { erpText } from '@/design/tokens';
+import { Card, IconTile, ListItem, Txt } from '@/design/primitives';
+import { StatusLine } from '@/design/ui';
+import { radius, size, space, type } from '@/design/tokens';
+import { useTheme } from '@/design/theme';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, D, ErrorBox, PrimaryButton, Title } from '@/features/auth/ui';
+import { AuthScreen, ErrorBox, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 
 /**
  * SMS tasdiqlash kodi — oltita alohida katak.
@@ -20,8 +21,10 @@ const LEN = 6;
 export default function OtpScreen() {
   const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: string }>();
   const router = useRouter();
+  const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
   const [digits, setDigits] = useState<string[]>(Array(LEN).fill(''));
+  const [focused, setFocused] = useState<number | null>(null);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [left, setLeft] = useState(60);
@@ -36,12 +39,12 @@ export default function OtpScreen() {
     return () => clearTimeout(t);
   }, [left]);
 
-  const submit = async (c = code) => {
-    if (c.length !== LEN) return;
-    if (isReset) { router.push({ pathname: '/(auth)/new-password', params: { phone, code: c } }); return; }
+  const submit = async (value = code) => {
+    if (value.length !== LEN) return;
+    if (isReset) { router.push({ pathname: '/(auth)/new-password', params: { phone, code: value } }); return; }
     setLoading(true); setError(undefined);
     try {
-      const r = await authApi.verifyOtp(phone, c);
+      const r = await authApi.verifyOtp(phone, value);
       await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');
@@ -81,28 +84,28 @@ export default function OtpScreen() {
 
   return (
     <AuthScreen>
-      <Appear delay={60} style={{ marginTop: 26 }}>
-        <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: D.surface, borderWidth: 1, borderColor: D.border, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="chatbox-ellipses-outline" size={24} color={D.accent} />
-        </View>
+      <Appear delay={60} style={{ marginTop: space.xxl }}>
+        <IconTile icon="message-square" module="brand" size={size.iconTile + space.md} />
       </Appear>
 
       <Title>Tasdiqlash kodi</Title>
-      <Appear delay={90}>
-        <Txt style={{ fontSize: 13.5, lineHeight: 21, color: D.muted, marginTop: 8 }}>
-          <Txt style={{ ...erpText.meta, fontSize: 13.5, color: D.text }}>{phone}</Txt> raqamiga {LEN} xonali kod yubordik.{' '}
-          <Txt onPress={() => router.back()} style={{ ...erpText.label, fontSize: 13.5, color: D.accent }}>O&apos;zgartirish</Txt>
+      <Appear delay={90} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm }}>
+        <Txt v="bodySm" color="muted">
+          <Txt v="bodySm" mono color="strong">{phone}</Txt> raqamiga {LEN} xonali kod yubordik.
         </Txt>
+        <TextLink onPress={() => router.back()}>O&apos;zgartirish</TextLink>
       </Appear>
 
-      <Appear delay={140} style={{ marginTop: 24 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+      <Appear delay={140} style={{ marginTop: space.lg }}>
+        <View style={{ flexDirection: 'row', gap: space.sm }} accessibilityLabel={`Tasdiqlash kodi, ${LEN} ta raqam`}>
           {digits.map((d, i) => (
             <TextInput
               key={i}
               ref={(r) => { refs.current[i] = r; }}
               value={d}
               onChangeText={(v) => setAt(i, v)}
+              onFocus={() => setFocused(i)}
+              onBlur={() => setFocused((f) => (f === i ? null : f))}
               onKeyPress={(e) => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) refs.current[i - 1]?.focus(); }}
               keyboardType="number-pad"
               textContentType="oneTimeCode"
@@ -110,41 +113,40 @@ export default function OtpScreen() {
               maxLength={LEN}
               autoFocus={i === 0}
               selectTextOnFocus
-              style={{
-                flex: 1, height: 62, borderRadius: 14, textAlign: 'center',
-                borderWidth: 1.5, borderColor: d ? D.borderSoft : D.border,
-                backgroundColor: d ? D.surfaceAlt : D.surface,
-                color: D.text, fontFamily: erpText.meta.fontFamily, fontSize: 24,
-              }}
+              accessibilityLabel={`${i + 1}-raqam`}
+              style={[type.metric, {
+                flex: 1, height: size.driverTouch - space.sm, borderRadius: radius.sm, textAlign: 'center', paddingVertical: 0,
+                borderWidth: focused === i ? size.ring : size.hairline,
+                borderColor: error ? c.danger : focused === i ? c.brand : d ? c.borderStrong : c.borderDefault,
+                backgroundColor: c.bgSurface, color: c.textStrong,
+              }]}
             />
           ))}
         </View>
-        <View style={{ minHeight: 20, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {code.length === LEN ? (
-            <>
-              <Icon name="checkmark-circle" size={14} color={D.okSoft} />
-              <Txt style={{ ...erpText.label, fontSize: 12, color: D.okSoft }}>Kod to&apos;liq kiritildi</Txt>
-            </>
-          ) : (
-            <Txt style={{ fontSize: 12, color: D.faint }}>Kodni kiriting — SMS kelganda o&apos;zi to&apos;ladi.</Txt>
-          )}
+        <View style={{ marginTop: space.sm }}>
+          {code.length === LEN
+            ? <StatusLine icon="circle-check" tone="success" text="Kod to'liq kiritildi" />
+            : <StatusLine icon="message-square" text="Kodni kiriting — SMS kelganda o'zi to'ladi." />}
         </View>
       </Appear>
 
       <ErrorBox text={error} />
 
-      <Appear delay={190} style={{ marginTop: 14 }}>
+      <Appear delay={190} style={{ marginTop: space.md }}>
         <PrimaryButton title={loading ? 'Tekshirilmoqda…' : 'Tasdiqlash'} icon={null} onPress={() => submit()} loading={loading} disabled={code.length !== LEN} />
       </Appear>
 
-      <Appear delay={240} style={{ marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: D.surface, borderWidth: 1, borderColor: D.border, borderRadius: 14, paddingHorizontal: 14, height: 52 }}>
-          <Icon name="time-outline" size={18} color={D.muted} />
-          <Txt onPress={resend} style={{ flex: 1, fontSize: 12.5, color: left > 0 ? D.muted : D.accent }}>
-            {left > 0 ? 'Qayta yuborish' : 'Kodni qayta yuborish'}
-          </Txt>
-          {left > 0 ? <Txt style={{ ...erpText.meta, fontSize: 13, color: D.text }}>{mmss}</Txt> : null}
-        </View>
+      <Appear delay={240} style={{ marginTop: space.lg }}>
+        <Card style={{ paddingVertical: space.xs }}>
+          <ListItem
+            icon="clock"
+            title={left > 0 ? 'Qayta yuborish' : 'Kodni qayta yuborish'}
+            subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : 'SMS kelmagan bo\'lsa bosing'}
+            onPress={left > 0 ? undefined : () => void resend()}
+            right={left > 0 ? <Txt v="mono" color="strong">{mmss}</Txt> : null}
+            last
+          />
+        </Card>
       </Appear>
     </AuthScreen>
   );

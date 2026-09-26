@@ -1,24 +1,24 @@
 import React from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
-import { Card, Gap, Screen, Txt, fmtSum } from '@/design/primitives';
-import { Icon, fmtShort } from '@/design/ui';
+import { Card, EmptyState, Gap, IconButton, Screen, StatusDot, Txt, fmtSum, fmtUnit } from '@/design/primitives';
+import { Icon, IconName, fmtShort } from '@/design/ui';
 import { BigAction, BigSecondary, BigStat, RouteBlock } from '@/design/driver';
 import { useTheme } from '@/design/theme';
-import { onColor } from '@/design/tokens';
+import { size, space } from '@/design/tokens';
 import { useAction, useHaydovchiDashboard } from '@/features/eco/api';
 import { useSession } from '@/core/session';
 import { useOutboxSize } from '@/shared/hooks';
 
-const NEXT: Record<string, { label: string; icon: 'checkmark-circle' | 'cube' | 'navigate' | 'flag' }> = {
-  NEW: { label: 'QABUL QILISH', icon: 'checkmark-circle' }, ACCEPTED: { label: 'YUKLASHNI BOSHLADIM', icon: 'cube' }, LOADING: { label: "YO'LGA CHIQDIM", icon: 'navigate' }, EN_ROUTE: { label: 'YETKAZDIM', icon: 'flag' },
+const NEXT: Record<string, { label: string; icon: IconName }> = {
+  NEW: { label: 'Qabul qilish', icon: 'circle-check' }, ACCEPTED: { label: 'Yuklashni boshladim', icon: 'package' }, LOADING: { label: "Yo'lga chiqdim", icon: 'navigation' }, EN_ROUTE: { label: 'Yetkazdim', icon: 'flag' },
 };
 
 /**
- * Bugun — "Kabina" skini (doim qorong'i, yorqin yashil): salom + holat chirog'i → katta raqamlar →
- * bitta faol yuk kartasi (yashil nur) + bitta katta tugma. Boshqa hamma narsa — ikkinchi darajali.
+ * Bugun: salom + holat → katta raqamlar → bitta faol yuk kartasi + bitta katta tugma.
+ * Boshqa hamma narsa — ikkinchi darajali. Ranglar tizimdan, faqat nishonlar kattaroq.
  */
 export default function DriverToday() {
   const router = useRouter();
@@ -35,68 +35,67 @@ export default function DriverToday() {
 
   return (
     <Screen padded={false}>
-      {pending > 0 ? <Txt style={{ backgroundColor: c.warning, color: onColor(c.warning), padding: 10, paddingTop: insets.top + 6, textAlign: 'center', fontSize: 16, fontWeight: '700' }}>Internet yo'q · {pending} ta o'zgarish saqlandi</Txt> : null}
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: pending ? 12 : insets.top + 8, paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={d.isFetching} onRefresh={() => void d.refetch()} />}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
-            <Txt style={{ fontSize: 26, fontWeight: '800', color: c.textPrimary }}>Salom, {(user?.fullName ?? '').split(' ')[0]} 👋</Txt>
-            {/* Holat chirog'i: reysda — yashil, bo'sh — kulrang */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: active ? c.brandPrimary : c.textSecondary }} />
-              <Txt style={{ fontSize: 16, fontWeight: '700', color: active ? c.brandPrimary : c.textSecondary }}>{active ? 'Reysda' : "Bo'sh · yuk kutilmoqda"}</Txt>
-            </View>
-          </View>
-          <Pressable onPress={() => router.push('/(haydovchi)/messages')} hitSlop={10} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center' }}><Icon name="chatbubble-ellipses" size={26} color={c.brandPrimary} /></Pressable>
+      {pending > 0 ? (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, backgroundColor: c.warningBg, paddingHorizontal: space.lg, paddingBottom: space.sm, paddingTop: insets.top + space.sm }}>
+          <Icon name="triangle-alert" tone="warning" />
+          <Txt v="bodySm" color="warning">Internet yo&apos;q · {pending} ta o&apos;zgarish saqlandi</Txt>
         </View>
-        <Gap h={14} />
+      ) : null}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: pending ? space.md : insets.top + space.md, paddingBottom: space.xxxl }} refreshControl={<RefreshControl refreshing={d.isFetching} onRefresh={() => void d.refetch()} tintColor={c.textMuted} />}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          <View style={{ flex: 1 }}>
+            <Txt v="titleLg" numberOfLines={1}>Salom, {(user?.fullName ?? '').split(' ')[0]}</Txt>
+            <StatusDot tone={active ? 'success' : 'neutral'} label={active ? 'Reysda' : "Bo'sh · yuk kutilmoqda"} style={{ marginTop: space.xs }} />
+          </View>
+          <IconButton icon="message-circle" label="Xabarlar" variant="secondary" size={size.buttonLg} onPress={() => router.push('/(haydovchi)/messages')} />
+        </View>
+        <Gap h={space.lg} />
 
         {/* Bugun — bitta qator, katta raqamlar */}
-        <Card style={{ flexDirection: 'row', paddingVertical: 14 }}>
+        <Card style={{ flexDirection: 'row', paddingVertical: space.md }}>
           <BigStat value={String(x?.todayCount ?? 0)} label="bugun yuk" />
           <BigStat value={String(x?.doneToday ?? 0)} label="bajarildi" tone="success" />
-          <BigStat value={fmtShort(x?.earnings.today ?? 0)} label="daromad" tone="brand" />
+          <BigStat value={`${fmtShort(x?.earnings.today ?? 0)} so'm`} label="daromad" tone="brand" />
         </Card>
-        <Gap h={16} />
+        <Gap h={space.lg} />
 
         {active ? (
-          <Card style={{ padding: 20, borderWidth: 2, borderColor: c.brandPrimary, shadowColor: c.brandPrimary, shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 0 } }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Txt v="caption" color="brand" style={{ fontWeight: '800', letterSpacing: 1 }}>FAOL YUK · №{active.number}</Txt>
-              <Txt v="caption" color="secondary">{active.distanceKm ? `${active.distanceKm} km` : ''}</Txt>
+          <Card style={{ padding: space.panel, borderColor: c.brand }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+              <Txt v="overline" color="brand">Faol yuk · №{active.number}</Txt>
+              <Txt v="caption">{active.distanceKm ? fmtUnit(active.distanceKm, 'km') : ''}</Txt>
             </View>
-            <Txt style={{ fontSize: 26, fontWeight: '800', color: c.textPrimary, marginTop: 6 }}>{active.cargo}</Txt>
-            <Gap h={16} />
+            <Txt v="titleMd" style={{ marginTop: space.xs }}>{active.cargo}</Txt>
+            <Gap h={space.lg} />
             <RouteBlock from={active.warehouse.name} to={active.project.name} />
-            <Gap h={20} />
+            <Gap h={space.xl} />
             {next ? <BigAction title={NEXT[active.status]?.label ?? next} icon={NEXT[active.status]?.icon} loading={tr.isPending} onPress={() => (active.status === 'EN_ROUTE' ? router.push(`/shipment/${active.id}`) : tr.mutate({ id: active.id, to: next }))} /> : null}
-            <Gap h={12} />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <BigSecondary title="Yo'l" icon="navigate" onPress={() => navigate(active)} />
+            <Gap h={space.md} />
+            <View style={{ flexDirection: 'row', gap: space.md }}>
+              <BigSecondary title="Yo'l" icon="navigation" onPress={() => navigate(active)} />
               <BigSecondary title="Batafsil" icon="list" onPress={() => router.push(`/shipment/${active.id}`)} />
             </View>
           </Card>
         ) : (
-          <Card style={{ alignItems: 'center', paddingVertical: 28 }}>
-            <Icon name="cafe-outline" size={44} color={c.textSecondary} />
-            <Txt style={{ fontSize: 20, fontWeight: '700', color: c.textPrimary, marginTop: 10 }}>Hozir faol yuk yo'q</Txt>
-            <Txt v="callout" color="secondary" style={{ marginTop: 4, textAlign: 'center' }}>Yangi yuk kelganda xabar keladi</Txt>
+          <Card>
+            <EmptyState icon="coffee" title="Hozir faol yuk yo'q" hint="Yangi yuk kelganda xabar keladi" style={{ paddingVertical: space.md }} />
           </Card>
         )}
 
         {(x?.open ?? []).length ? (
           <>
-            <Gap h={24} />
-            <Txt style={{ fontSize: 20, fontWeight: '800', color: c.textPrimary, marginBottom: 10 }}>Yangi yuklar · {x!.open.length}</Txt>
+            <Gap h={space.section} />
+            <Txt v="titleMd" style={{ marginBottom: space.md }}>Yangi yuklar · {x!.open.length}</Txt>
             {x!.open.map((s) => (
-              <Card key={s.id} style={{ marginBottom: 12, padding: 18 }}>
-                <Txt style={{ fontSize: 22, fontWeight: '800', color: c.textPrimary }}>{s.cargo}</Txt>
-                <Txt style={{ fontSize: 17, color: c.textSecondary, marginTop: 4 }}>{s.warehouse.name} → {s.project.name}</Txt>
-                <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-                  <Txt style={{ fontSize: 17, fontWeight: '700', color: c.brandPrimary }}>{fmtSum(s.driverFee)}</Txt>
-                  {s.distanceKm ? <Txt style={{ fontSize: 17, color: c.textSecondary }}>{s.distanceKm} km</Txt> : null}
+              <Card key={s.id} style={{ marginBottom: space.md, padding: space.panel }}>
+                <Txt v="titleMd">{s.cargo}</Txt>
+                <Txt v="body" color="muted" style={{ marginTop: space.xs }}>{s.warehouse.name} → {s.project.name}</Txt>
+                <View style={{ flexDirection: 'row', gap: space.lg, marginTop: space.sm }}>
+                  <Txt v="bodyStrong" color="brand">{fmtSum(s.driverFee)}</Txt>
+                  {s.distanceKm ? <Txt v="body" color="muted">{fmtUnit(s.distanceKm, 'km')}</Txt> : null}
                 </View>
-                <Gap h={14} />
-                <BigAction title="QABUL QILISH" icon="checkmark-circle" loading={tr.isPending} disabled={!!active} onPress={() => tr.mutate({ id: s.id, to: 'ACCEPTED' })} />
+                <Gap h={space.md} />
+                <BigAction title="Qabul qilish" icon="circle-check" loading={tr.isPending} disabled={!!active} onPress={() => tr.mutate({ id: s.id, to: 'ACCEPTED' })} />
               </Card>
             ))}
           </>

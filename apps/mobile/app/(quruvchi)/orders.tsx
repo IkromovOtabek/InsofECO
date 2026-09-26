@@ -1,34 +1,44 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, Card, EmptyState, Gap, Screen, StatusChip, Txt, fmtSum } from '@/design/primitives';
-import { Segmented, daysLeft } from '@/design/ui';
+import { Button, Card, EmptyState, Gap, Screen, StatusChip, Txt, fmtDateFull, fmtSum } from '@/design/primitives';
+import { Tabs, daysLeft, toast } from '@/design/ui';
+import { space } from '@/design/tokens';
 import { useAction, useWorkOrders } from '@/features/eco/api';
 
 const SEG = [{ key: 'ACCEPTED', label: 'Ochiq' }, { key: 'WORKER_ASSIGNED,IN_PROGRESS,REVIEW', label: 'Mening' }, { key: 'DONE,PAID', label: 'Tugallangan' }] as const;
+type SegKey = (typeof SEG)[number]['key'];
 
 /** Quruvchi: ochiq buyurtmalarni qabul qiladi, o'zinikini kuzatadi. */
 export default function QuruvchiOrders() {
   const router = useRouter();
-  const [seg, setSeg] = useState<(typeof SEG)[number]['key']>('WORKER_ASSIGNED,IN_PROGRESS,REVIEW');
+  const [seg, setSeg] = useState<SegKey>('WORKER_ASSIGNED,IN_PROGRESS,REVIEW');
   const q = useWorkOrders(seg);
   const start = useAction<string>((id) => ({ path: `/work-orders/${id}/start` }), ['work-orders', 'dash']);
   return (
     <Screen padded={false}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}><Segmented value={seg} onChange={setSeg} items={SEG as never} /></View>
-      <FlatList data={q.data ?? []} keyExtractor={(o) => o.id} contentContainerStyle={{ padding: 16 }} ItemSeparatorComponent={() => <Gap h={10} />}
+      <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
+        <Tabs value={seg} onChange={setSeg} items={[...SEG]} />
+      </View>
+      <FlatList data={q.data ?? []} keyExtractor={(o) => o.id} contentContainerStyle={{ padding: space.pageX }} ItemSeparatorComponent={() => <Gap h={space.md} />}
         refreshControl={<RefreshControl refreshing={q.isFetching} onRefresh={() => void q.refetch()} />}
-        ListEmptyComponent={q.isLoading ? null : <EmptyState title="Buyurtmalar yo'q" />}
+        ListEmptyComponent={q.isLoading ? null : <EmptyState title="Buyurtmalar yo'q" hint="Yangi buyurtma kelganda xabar keladi" icon="clipboard-list" />}
         renderItem={({ item: o }) => {
           const dl = daysLeft(o.deadline);
           return (
-            <Pressable onPress={() => router.push(`/work-order/${o.id}`)}>
+            <Pressable accessibilityRole="button" onPress={() => router.push(`/work-order/${o.id}`)}>
               <Card>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Txt v="caption" color="secondary">{o.project?.name ?? 'Loyihasiz'}</Txt><StatusChip status={o.status} /></View>
-                <Txt v="heading" style={{ marginTop: 2 }}>{o.title}</Txt>
-                <Gap h={8} />
-                <Line k="Vazifa" v={o.description ?? '—'} /><Line k="Manzil" v={o.address} /><Line k="To'lov" v={fmtSum(o.price)} strong /><Line k="Deadline" v={`${new Date(o.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}${dl !== null ? ` (${dl} kun)` : ''}`} />
-                {o.status === 'ACCEPTED' && !o.workerUserId ? <><Gap h={12} /><Button title="Qabul qilish" size="md" loading={start.isPending} onPress={() => start.mutate(o.id, { onError: (e) => Alert.alert('Xato', e.message) })} /></> : null}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
+                  <Txt v="caption" style={{ flex: 1 }} numberOfLines={1}>{o.project?.name ?? 'Loyihasiz'}</Txt>
+                  <StatusChip status={o.status} />
+                </View>
+                <Txt v="titleSm" style={{ marginTop: space.xs }}>{o.title}</Txt>
+                <Gap h={space.sm} />
+                <Line k="Vazifa" v={o.description ?? '—'} />
+                <Line k="Manzil" v={o.address} />
+                <Line k="To'lov" v={fmtSum(o.price)} strong />
+                <Line k="Muddat" v={`${fmtDateFull(o.deadline)}${dl !== null ? ` (${dl} kun)` : ''}`} />
+                {o.status === 'ACCEPTED' && !o.workerUserId ? <><Gap h={space.md} /><Button title="Qabul qilish" icon="check" loading={start.isPending} onPress={() => start.mutate(o.id, { onError: (e) => toast.error(e.message, 'Xato') })} /></> : null}
               </Card>
             </Pressable>
           );
@@ -36,6 +46,12 @@ export default function QuruvchiOrders() {
     </Screen>
   );
 }
+
 function Line({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
-  return <View style={{ flexDirection: 'row', paddingVertical: 3 }}><Txt v="callout" color="secondary" style={{ width: 80 }}>{k}</Txt><Txt v={strong ? 'bodyStrong' : 'callout'} color={strong ? 'brand' : 'primary'} style={{ flex: 1 }}>{v}</Txt></View>;
+  return (
+    <View style={{ flexDirection: 'row', paddingVertical: space.xs, gap: space.sm }}>
+      <Txt v="bodySm" color="muted" style={{ width: space.x12 + space.xxxl }}>{k}</Txt>
+      <Txt v={strong ? 'bodyStrong' : 'bodySm'} color={strong ? 'brand' : 'strong'} style={{ flex: 1 }}>{v}</Txt>
+    </View>
+  );
 }

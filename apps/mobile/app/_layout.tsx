@@ -1,7 +1,6 @@
 import '@/core/i18n';
 import '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,7 +15,9 @@ import { registerPush, routeOf } from '@/core/push';
 import { LaunchOverlay } from '@/components/launch';
 import { PinLock } from '@/components/pin-lock';
 import { useFonts } from 'expo-font';
-import { ERP_FONTS } from '@/design/fonts';
+import { APP_FONTS } from '@/design/fonts';
+import { ToastHost } from '@/design/ui';
+import { stackOptions } from '@/design/nav';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
 
@@ -110,18 +111,7 @@ function Nav() {
   return (
     <>
       <StatusBar style={dark ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: c.bgCanvas },
-          headerTintColor: c.textPrimary,
-          headerShadowVisible: false,
-          headerBackTitle: 'Orqaga',
-          contentStyle: { backgroundColor: c.bgCanvas },
-          // iOS: large title HIG; Android: Material — markazsiz, oddiy
-          headerLargeTitle: Platform.OS === 'ios',
-          headerTitleAlign: Platform.OS === 'android' ? 'left' : 'center',
-        }}
-      >
+      <Stack screenOptions={stackOptions(c)}>
         {/* Sessiya yuklanguncha ko'rinadigan ekran. E'lon qilinmasa standart sarlavha bilan
             chiziladi va Gate uni darhol `replace` qilganda react-native-screens yangi
             arxitekturada yiqiladi: "ScreenStackFragment added into a non-stack container". */}
@@ -132,19 +122,19 @@ function Nav() {
         <Stack.Screen name="(haydovchi)" options={{ headerShown: false }} />
         {/* Insof ERP — har bir bo'lim o'z guruhida */}
         {ERP_GROUPS.map((g) => <Stack.Screen key={g} name={g} options={{ headerShown: false }} />)}
-        <Stack.Screen name="erp/[key]/[id]" options={{ title: 'Kartochka', headerLargeTitle: false }} />
-        <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', headerLargeTitle: false, presentation: 'modal' }} />
-        <Stack.Screen name="erp/list/[key]" options={{ title: "Ro'yxat", headerLargeTitle: false }} />
-        <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar', headerLargeTitle: false }} />
+        <Stack.Screen name="erp/[key]/[id]" options={{ title: 'Kartochka' }} />
+        <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', presentation: 'modal' }} />
+        <Stack.Screen name="erp/list/[key]" options={{ title: "Ro'yxat" }} />
+        <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar' }} />
         {/* Haydovchi marshruti — "Yo'lga chiqdim" dan keyin ochiladi */}
-        <Stack.Screen name="yolda/[id]" options={{ title: 'Marshrut', headerLargeTitle: false }} />
+        <Stack.Screen name="yolda/[id]" options={{ title: 'Marshrut' }} />
         <Stack.Screen name="delivery/[id]" options={{ title: 'Reys' }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Buyurtma' }} />
-        <Stack.Screen name="project/[id]" options={{ title: 'Loyiha', headerLargeTitle: false }} />
-        <Stack.Screen name="work-order/[id]" options={{ title: 'Ish buyurtmasi', headerLargeTitle: false }} />
-        <Stack.Screen name="shipment/[id]" options={{ title: 'Yuk', headerLargeTitle: false }} />
-        <Stack.Screen name="chat/[id]" options={{ title: 'Suhbat', headerLargeTitle: false }} />
-        <Stack.Screen name="worker/[id]" options={{ title: 'Quruvchi', headerLargeTitle: false }} />
+        <Stack.Screen name="project/[id]" options={{ title: 'Loyiha' }} />
+        <Stack.Screen name="work-order/[id]" options={{ title: 'Ish buyurtmasi' }} />
+        <Stack.Screen name="shipment/[id]" options={{ title: 'Yuk' }} />
+        <Stack.Screen name="chat/[id]" options={{ title: 'Suhbat' }} />
+        <Stack.Screen name="worker/[id]" options={{ title: 'Quruvchi' }} />
       </Stack>
     </>
   );
@@ -167,7 +157,7 @@ export default function RootLayout() {
    * Nega ekranni kutdirib turmaymiz: expo-router ildiz maketidan navigatorni HAR DOIM
    * chizishni talab qiladi — shart ichiga olinsa ilova oq ekranda qotib qoladi.
    */
-  const [fontsReady] = useFonts(ERP_FONTS);
+  const [fontsReady] = useFonts(APP_FONTS);
   useEffect(() => { void hydrate(); }, [hydrate]);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -178,6 +168,7 @@ export default function RootLayout() {
           <Nav key={fontsReady ? 'fonts-ready' : 'fonts-loading'} />
           {/* PIN qulfi — hisob ustida; ochilish ekrani esa hammasining ustida */}
           <PinLock />
+          <ToastHost />
           <LaunchOverlay />
         </ThemeProvider>
       </PersistQueryClientProvider>

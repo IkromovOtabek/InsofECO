@@ -1,3 +1,4 @@
+import { brand } from '@/design/tokens';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { DEFAULT_RULES } from '@insof/shared';
@@ -53,7 +54,7 @@ export async function startTracking(deliveryId: string) {
       pausesUpdatesAutomatically: false,
       showsBackgroundLocationIndicator: true,
       // Android: majburiy foreground service bildirishnomasi (Samsung One UI fon jarayonlarni o'ldiradi)
-      foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: '#0A4CD5' },
+      foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: brand[500] },
     });
   }
   return bg.status === 'granted';

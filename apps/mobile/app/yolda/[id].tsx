@@ -5,11 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import { EmptyState, Txt } from '@/design/primitives';
+import { Button, Card, EmptyState, IconButton, Txt } from '@/design/primitives';
 import { Icon } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { erpText, hit } from '@/design/tokens';
-import { PressScale } from '@/design/motion';
+import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
 import { openNavigation } from '@/core/navigate';
@@ -290,7 +289,7 @@ export default function TripRoute() {
     setForm(deliverAction);
   }, [near, nearHint, deliverAction]);
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brandPrimary} /></View>;
+  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
   if (error || !data) return <EmptyState title="Marshrut ochilmadi" hint="Internetni tekshiring" />;
 
   const region = {
@@ -301,7 +300,7 @@ export default function TripRoute() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bgCanvas }}>
+    <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda faqat raqamlar qoladi
           (`core/config.ts`), ya'ni reys baribir olib boriladi va yopiladi. */}
       {config.mapsEnabled && dest && canMap ? (
@@ -317,30 +316,31 @@ export default function TripRoute() {
             showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
           >
-            <Polyline coordinates={line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brandPrimary} strokeWidth={5} />
+            {/* Yo'l — brend; obyekt va yetib borish doirasi — yashil; mashina — ko'k */}
+            <Polyline coordinates={line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={5} />
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
               center={{ latitude: dest.lat, longitude: dest.lng }}
               radius={data.arriveWithinM}
-              strokeColor={c.success + '99'}
-              fillColor={c.success + '1A'}
+              strokeColor={c.successSolid + '99'}
+              fillColor={c.successSolid + '1A'}
             />
-            <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.brandPrimary} />
+            <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.successSolid} />
             {fix ? (
               <Marker coordinate={{ latitude: fix.lat, longitude: fix.lng }} title="Siz" anchor={{ x: 0.5, y: 0.5 }} flat>
                 {/* Yurayotganda — yo'nalishga qaragan o'q, turganda — oddiy nuqta */}
-                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.brandPrimary }}>
+                <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.bgSurface, alignItems: 'center', justifyContent: 'center', borderWidth: size.ring, borderColor: c.infoSolid }}>
                   {fix.heading != null && fix.speedKmh >= HEADING_MIN_KMH ? (
                     <View style={{ transform: [{ rotate: `${fix.heading}deg` }] }}>
                       {/* Uchburchak — chegaralar orqali chiziladi, rasm fayli kerak emas */}
                       <View style={{
                         width: 0, height: 0,
                         borderLeftWidth: 7, borderRightWidth: 7, borderBottomWidth: 15,
-                        borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: c.brandPrimary,
+                        borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: c.infoSolid,
                       }} />
                     </View>
                   ) : (
-                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.brandPrimary }} />
+                    <View style={{ width: size.iconSm - 2, height: size.iconSm - 2, borderRadius: radius.pill, backgroundColor: c.infoSolid }} />
                   )}
                 </View>
               </Marker>
@@ -348,70 +348,57 @@ export default function TripRoute() {
           </MapView>
           {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda
               chiqardi, ya'ni ekranga qaytib kirilganda mashina ko'rinmay qolsa, uni
-              qaytaradigan tugma ham yo'q edi. To'ldirilgan holat — kuzatuv yoqiq. */}
-          <PressScale onPress={() => void centerOnMe()} style={{ position: 'absolute', right: 14, bottom: 14 }}>
-            <View style={{
-              width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: follow ? c.brandPrimary : c.bgSurface, borderWidth: 1, borderColor: follow ? c.brandPrimary : c.border,
-            }}>
-              <Icon name={follow ? 'locate' : 'locate-outline'} size={23} color={follow ? '#FFFFFF' : c.brandPrimary} />
-            </View>
-          </PressScale>
-          {/* Butun marshrutni ko'rish — mashina ham, obyekt ham bir ekranga sig'adi */}
-          <PressScale onPress={fitAll} style={{ position: 'absolute', right: 14, bottom: 74 }}>
-            <View style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border }}>
-              <Icon name="scan-outline" size={22} color={c.brandPrimary} />
-            </View>
-          </PressScale>
+              qaytaradigan tugma ham yo'q edi. Brend chegarali holat — kuzatuv yoqiq. */}
+          <View style={{ position: 'absolute', right: space.lg, bottom: space.lg, gap: space.md }}>
+            {/* Butun marshrutni ko'rish — mashina ham, obyekt ham bir ekranga sig'adi */}
+            <IconButton
+              icon="scan-line" label="Butun marshrut" variant="secondary" tone="strong" size={size.iconTile + space.sm}
+              onPress={fitAll}
+              style={[{ borderRadius: radius.pill }, shadow.card]}
+            />
+            <IconButton
+              icon={follow ? 'locate-fixed' : 'locate'} label="Meni top" variant="secondary" tone={follow ? 'brand' : 'strong'} size={size.iconTile + space.sm}
+              onPress={() => void centerOnMe()}
+              style={[{ borderRadius: radius.pill }, follow && { backgroundColor: c.brandSoft, borderColor: c.brand }, shadow.card]}
+            />
+          </View>
         </View>
       ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Icon name="map-outline" size={34} color={c.textSecondary} />
-          <Txt style={{ ...erpText.rowTitle, color: c.textPrimary, marginTop: 10, textAlign: 'center' }}>{data.address}</Txt>
-          <Txt style={{ fontSize: 13, color: c.textSecondary, marginTop: 6, textAlign: 'center' }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.sm }}>
+          <Icon name="map" size={size.iconXl} tone="muted" />
+          <Txt v="bodyStrong" align="center">{data.address}</Txt>
+          <Txt v="bodySm" color="muted" align="center">
             {dest ? 'Xarita bu qurilmada ko\'rsatilmaydi' : 'Zayavkada obyekt nuqtasi belgilanmagan'}
           </Txt>
         </View>
       )}
 
       {/* Pastki panel: mijoz, to'rtta raqam va keyingi qadam */}
-      <View style={{ backgroundColor: c.bgSurface, borderTopWidth: 1, borderTopColor: c.border, paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 12 }}>
-        <Txt style={{ ...erpText.rowTitle, color: c.textPrimary }} numberOfLines={1}>{data.customer}</Txt>
-        <Txt style={{ fontSize: 12.5, color: c.textSecondary, marginTop: 2 }} numberOfLines={1}>{data.address}</Txt>
+      <View style={{ backgroundColor: c.bgSurface, borderTopWidth: size.hairline, borderTopColor: c.borderDefault, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md }}>
+        <Txt v="bodyStrong" numberOfLines={1}>{data.customer}</Txt>
+        <Txt v="caption" numberOfLines={1}>{data.address}</Txt>
 
-        <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 14 }}>
+        <Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.md, marginTop: space.md, marginBottom: space.md }}>
           <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
           <Metric label="Bosib o'tildi" value={distanceLabel(data.traveledMeters)} unit={data.traveledMinutes > 0 ? durationLabel(data.traveledMinutes) : '—'} />
           <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={data.routeSource === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
           <Metric label="Yetib borish" value={arrivalClock(etaMin)} unit={durationLabel(etaMin)} />
-        </View>
+        </Card>
 
         {noGps ? (
-          <Txt style={{ fontSize: 12, color: c.danger, marginBottom: 10, textAlign: 'center' }}>
+          <Txt v="caption" color="danger" align="center" style={{ marginBottom: space.sm }}>
             Joylashuvga ruxsat berilmagan — tezlik va qolgan masofa ko&apos;rinmaydi
           </Txt>
         ) : null}
 
-        <PressScale onPress={onDeliver} disabled={run.isPending} haptic={near}>
-          <View style={{
-            height: hit.driverTarget, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            backgroundColor: near ? c.success : c.bgCanvas, borderWidth: near ? 0 : 1, borderColor: c.border, opacity: run.isPending ? 0.6 : 1,
-          }}>
-            <Icon name={near ? 'flag' : 'lock-closed'} size={20} color={near ? '#FFFFFF' : c.textSecondary} />
-            <Txt style={{ ...erpText.button, marginLeft: 8, color: near ? '#FFFFFF' : c.textSecondary }}>Yetkazdim</Txt>
-          </View>
-        </PressScale>
-        {nearHint ? <Txt style={{ fontSize: 12, color: c.textSecondary, marginTop: 6, textAlign: 'center' }}>{nearHint}</Txt> : null}
+        {/* Obyektga yetilmaguncha tugma yopiq turadi; sababi ostidagi izohda */}
+        <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} onPress={onDeliver} />
+        {nearHint ? <Txt v="caption" align="center" style={{ marginTop: space.xs }}>{nearHint}</Txt> : null}
 
         {/* Ovozli yo'l-yo'riq kerak bo'lsa — tashqi navigator. Ixtiyoriy: reysni olib borish
             uchun shart emas, shuning uchun ikkinchi darajali tugma. */}
         {dest ? (
-          <PressScale onPress={() => void openNavigation(dest.lat, dest.lng, data.address)} style={{ marginTop: 8 }}>
-            <View style={{ height: 44, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="navigate" size={16} color={c.brandPrimary} />
-              <Txt style={{ ...erpText.label, marginLeft: 6, color: c.brandPrimary }}>Navigatorda ochish</Txt>
-            </View>
-          </PressScale>
+          <Button variant="ghost" icon="navigation" title="Navigatorda ochish" onPress={() => void openNavigation(dest.lat, dest.lng, data.address)} style={{ marginTop: space.sm }} />
         ) : null}
       </View>
 
@@ -428,14 +415,13 @@ export default function TripRoute() {
   );
 }
 
-/** Pastki paneldagi bitta raqam — hammasi bir xil kenglikda, ustma-ust bir chiziqda. */
+/** Pastki paneldagi bitta raqam — ikkitadan qator, hammasi bir xil kenglikda. */
 function Metric({ label, value, unit, tone }: { label: string; value: string; unit: string; tone?: 'brand' }) {
-  const { c } = useTheme();
   return (
-    <View style={{ flex: 1 }}>
-      <Txt style={{ fontSize: 11, color: c.textSecondary }} numberOfLines={1}>{label}</Txt>
-      <Txt style={{ ...erpText.stat, color: tone === 'brand' ? c.brandPrimary : c.textPrimary, marginTop: 2 }} numberOfLines={1}>{value}</Txt>
-      <Txt style={{ fontSize: 10.5, color: c.textSecondary }} numberOfLines={1}>{unit}</Txt>
+    <View style={{ flexGrow: 1, flexBasis: '45%' }}>
+      <Txt v="caption" numberOfLines={1}>{label}</Txt>
+      <Txt v="metric" color={tone === 'brand' ? 'brand' : 'strong'} numberOfLines={1} adjustsFontSizeToFit>{value}</Txt>
+      <Txt v="caption" numberOfLines={1}>{unit}</Txt>
     </View>
   );
 }

@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { EmptyState, Gap, Txt } from '@/design/primitives';
-import { Icon, IconName } from '@/design/ui';
+import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
+import { toast, type IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { size, space, toneColors } from '@/design/tokens';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
-import { Chip, ListRow, ROW_ICON, SectionHead, statusLabel } from '@/features/erp/ui';
-import { erpText } from '@/design/tokens';
-import { useSession } from '@/core/session';
-import { Appear, PressScale, stagger } from '@/design/motion';
+import { ListRow, ROW_ICON, SectionHead, listModule, statusLabel } from '@/features/erp/ui';
+import { SectionEmpty } from '@/features/erp/screens';
+import { Appear, stagger } from '@/design/motion';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -22,16 +22,16 @@ import { Appear, PressScale, stagger } from '@/design/motion';
  */
 /** Tugma ikonkalari — amal nimani anglatishini bir qarashda ko'rsatadi. */
 const ACTION_ICON: Record<string, IconName> = {
-  'order.confirm': 'checkmark-circle',
+  'order.confirm': 'circle-check',
   'order.unblock': 'lock-open',
-  'order.cancel': 'close-circle',
-  'trip.loaded': 'cube',
-  'trip.onroad': 'navigate',
+  'order.cancel': 'circle-x',
+  'trip.loaded': 'package',
+  'trip.onroad': 'navigation',
   'trip.route': 'map',
   'trip.delivered': 'flag',
-  'trip.cancel': 'close-circle',
-  'trip.eco': 'phone-portrait',
-  'invoice.pay': 'cash',
+  'trip.cancel': 'circle-x',
+  'trip.eco': 'smartphone',
+  'invoice.pay': 'banknote',
 };
 
 export default function ErpDetail() {
@@ -39,7 +39,6 @@ export default function ErpDetail() {
   const { c } = useTheme();
   const nav = useNavigation();
   const router = useRouter();
-  const role = useSession((s) => s.erp?.role ?? 'DIRECTOR');
   const { data, isLoading, error, refetch, isRefetching } = useErpDetail(key!, id!);
   const run = useErpAction();
   const [form, setForm] = useState<ErpAction | null>(null);
@@ -80,11 +79,13 @@ export default function ErpDetail() {
       const message = a.local ? null : (await run.mutateAsync({ action: a.id, id: id!, payload })).message;
       setForm(null);
       const note = await applyEffect(a);
-      if (message) Alert.alert('Bajarildi', note ? `${message}\n\n${note}` : message);
+      // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
+      if (message && note) Alert.alert('Bajarildi', `${message}\n\n${note}`);
+      else if (message) toast.success(message, 'Bajarildi');
       else if (note) Alert.alert('Diqqat', note);
     } catch (e) {
-      const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi';
-      if (form) setFormError(msg); else Alert.alert('Bajarilmadi', msg);
+      const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
+      if (form) setFormError(msg); else toast.error(msg, 'Bajarilmadi');
     }
   };
 
@@ -96,7 +97,7 @@ export default function ErpDetail() {
   const recheck = async () => {
     const ok = await refreshErpPosition(id!);
     await refetch();
-    if (!ok) Alert.alert('Joylashuv topilmadi', "GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.");
+    if (!ok) toast.error("GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.", 'Joylashuv topilmadi');
   };
 
   const press = (a: ErpAction) => {
@@ -121,55 +122,49 @@ export default function ErpDetail() {
     void execute(a);
   };
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brandPrimary} /></View>;
-  if (error || !data) return <EmptyState title="Kartochka ochilmadi" hint="Internetni tekshiring" />;
-
-  const tone = (t?: string) => (t ? { brand: c.brandPrimary, success: c.success, warning: c.warning, danger: c.danger, info: c.info }[t] ?? c.textPrimary : c.textPrimary);
+  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
+  if (error || !data) return <EmptyState title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta oching" />;
 
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brandPrimary} />}
+        contentContainerStyle={{ padding: space.pageX, paddingBottom: space.x10 }}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
       >
         <Appear>
-          <View style={{ backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, borderRadius: 16, padding: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
               <View style={{ flex: 1 }}>
-                <Txt style={{ ...erpText.titleLg, color: c.textPrimary }}>{data.title}</Txt>
-                {data.subtitle ? <Txt style={{ fontSize: 13.5, color: c.textSecondary, marginTop: 3 }}>{data.subtitle}</Txt> : null}
+                <Txt v="titleMd">{data.title}</Txt>
+                {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
               </View>
-              {data.status ? <Chip label={statusLabel(data.status)} tone={data.status === 'CANCELLED' ? 'danger' : undefined} /> : null}
+              {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
             </View>
-          </View>
+          </Card>
         </Appear>
-        <Gap h={12} />
+        <Gap h={space.md} />
 
-        <Appear delay={60}>
-          <View style={{ backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, borderRadius: 14, overflow: 'hidden' }}>
+        <Appear delay={stagger(1)}>
+          <Card style={{ paddingVertical: 0 }}>
             {data.fields.map((f, i) => (
-              <View key={f.label} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: i === data.fields.length - 1 ? 0 : 1, borderBottomColor: c.border }}>
-                <Txt style={{ fontSize: 13, color: c.textSecondary, width: 128 }}>{f.label}</Txt>
-                <Txt style={{ ...erpText.rowTitle, flex: 1, color: tone(f.tone) }}>{f.value}</Txt>
+              <View key={f.label} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingVertical: space.md, borderBottomWidth: i === data.fields.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }}>
+                <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
+                <Txt v="bodyStrong" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
               </View>
             ))}
-          </View>
+          </Card>
         </Appear>
 
         {data.sections.map((s, i) => (
-          <Appear key={s.title} delay={stagger(i + 2, 70)} style={{ marginTop: 22 }}>
+          <Appear key={s.title} delay={stagger(i + 2)} style={{ marginTop: space.xxl }}>
             <SectionHead title={s.title} />
-            {s.rows.length === 0 ? (
-              <View style={{ backgroundColor: c.bgSurface, borderWidth: 1, borderColor: c.border, borderRadius: 14, paddingVertical: 22, alignItems: 'center' }}>
-                <Txt style={{ fontSize: 13, color: c.textSecondary }}>{s.empty}</Txt>
-              </View>
-            ) : s.rows.map((r, j) => (
+            {s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : s.rows.map((r, j) => (
               <ListRow
                 key={r.id}
                 row={r}
                 index={j}
-                role={role}
-                icon={ROW_ICON[s.target ?? ''] ?? 'ellipse-outline'}
+                module={listModule(s.target)}
+                icon={ROW_ICON[s.target ?? ''] ?? 'circle'}
                 onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined}
               />
             ))}
@@ -177,29 +172,31 @@ export default function ErpDetail() {
         ))}
 
         {data.actions.length ? (
-          <Appear delay={stagger(data.sections.length + 2, 70)} style={{ marginTop: 26 }}>
+          <Appear delay={stagger(data.sections.length + 2)} style={{ marginTop: space.xxl }}>
             <SectionHead title="Amallar" />
-            {data.actions.map((a) => {
-              const col = a.tone === 'danger' ? c.danger : a.tone === 'success' ? c.success : a.tone === 'warning' ? c.warning : c.brandPrimary;
-              const soft = a.tone === 'danger' || a.tone === 'warning';
-              // Yopiq tugma kulrang bo'ladi, lekin o'rnida qoladi: haydovchi keyingi qadam
-              // qaysi tugma ekanini ko'rib turadi, faqat hozir bosib bo'lmasligini biladi.
-              const bg = a.disabled ? c.bgSurface : soft ? col + '14' : col;
-              const ink = a.disabled ? c.textSecondary : soft ? col : '#FFFFFF';
-              return (
-                <View key={a.id} style={{ marginBottom: 10 }}>
-                  <PressScale onPress={() => press(a)} disabled={run.isPending} haptic={!a.disabled}>
-                    <View style={{ height: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: bg, borderWidth: soft || a.disabled ? 1 : 0, borderColor: a.disabled ? c.border : col + '33', opacity: run.isPending ? 0.6 : 1 }}>
-                      <Icon name={a.disabled ? 'lock-closed' : ACTION_ICON[a.id] ?? 'arrow-forward'} size={18} color={ink} />
-                      <Txt style={{ ...erpText.button, marginLeft: 8, color: ink }}>{a.label}</Txt>
+            <View style={{ gap: space.md }}>
+              {data.actions.map((a) => (
+                <View key={a.id}>
+                  {/* Yopiq tugma kulrang bo'ladi, lekin o'rnida qoladi: haydovchi keyingi qadam
+                      qaysi tugma ekanini ko'rib turadi, faqat hozir bosib bo'lmasligini biladi. */}
+                  <Button
+                    size="lg"
+                    title={a.label}
+                    icon={a.disabled ? 'lock' : ACTION_ICON[a.id] ?? 'arrow-right'}
+                    variant={a.tone === 'danger' ? 'danger' : a.tone === 'warning' ? 'secondary' : 'primary'}
+                    disabled={a.disabled || run.isPending}
+                    onPress={() => press(a)}
+                  />
+                  {a.disabled ? (
+                    <View style={{ alignItems: 'center', marginTop: space.xs }}>
+                      {a.hint ? <Txt v="caption" align="center">{a.hint}</Txt> : null}
+                      {/* Yopiq tugma bosilmaydi — qulfni ochishga urinish alohida havola orqali */}
+                      <Button variant="ghost" icon="refresh-cw" title="Qayta tekshirish" full={false} onPress={() => void recheck()} />
                     </View>
-                  </PressScale>
-                  {a.disabled && a.hint ? (
-                    <Txt style={{ fontSize: 12, color: c.textSecondary, marginTop: 6, textAlign: 'center' }}>{a.hint}</Txt>
                   ) : null}
                 </View>
-              );
-            })}
+              ))}
+            </View>
           </Appear>
         ) : null}
       </ScrollView>

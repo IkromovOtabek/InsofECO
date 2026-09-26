@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, View } from 'react-native';
-import { Card, Field, Gap, SectionLabel, Txt } from '@/design/primitives';
-import { Icon } from '@/design/ui';
+import { Button, Card, IconButton, Input, Label, Select, Txt, type SelectOption } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
+import { radius, size, space } from '@/design/tokens';
 import type { ErpFormField, ErpFormOption } from '@/core/erp';
 
 /**
@@ -70,39 +70,55 @@ export function toPayload(fields: ErpFormField[], values: Values): Record<string
 export function FieldInput({ field, values, onChange }: { field: ErpFormField; values: Values; onChange: (name: string, v: string | ItemRow[]) => void }) {
   const { c } = useTheme();
   const value = str(values[field.name]);
-  const label = field.required ? `${field.label} *` : field.label;
 
-  const body = () => {
-    switch (field.type) {
-      case 'select': return <SelectInput field={field} value={value} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />;
-      case 'switch': return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
-          <Txt v="bodyStrong" style={{ flex: 1 }}>{field.label}</Txt>
-          <Switch value={value === 'true'} onValueChange={(v) => onChange(field.name, String(v))} trackColor={{ true: c.brandPrimary }} />
+  // Input/Select o'z pastki bo'shlig'ini o'zi qo'yadi; qolgan turlar Label + tana + izoh sifatida chiziladi
+  switch (field.type) {
+    case 'select':
+      return (
+        <View>
+          <SelectField field={field} value={value} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />
+          {field.hint ? <Txt v="caption" style={{ marginTop: -space.md, marginBottom: space.lg }}>{field.hint}</Txt> : null}
         </View>
       );
-      case 'date': return <DateInput value={value} onChange={(v) => onChange(field.name, v)} />;
-      case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
-      case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
-      default: return (
-        <Field
+    case 'text':
+    case 'number':
+      return (
+        <Input
+          label={field.label}
+          required={field.required}
+          hint={field.hint}
           value={value}
-          onChangeText={(v) => onChange(field.name, v)}
+          onChangeText={(v: string) => onChange(field.name, v)}
           placeholder={field.placeholder}
           keyboardType={field.type === 'number' ? 'numeric' : 'default'}
           autoCapitalize={field.type === 'number' ? 'none' : 'sentences'}
           autoCorrect={false}
         />
       );
+    default:
+      break;
+  }
+
+  const body = () => {
+    switch (field.type) {
+      case 'switch': return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: size.touch, gap: space.md }}>
+          <Txt v="bodyStrong" style={{ flex: 1 }}>{field.label}</Txt>
+          <Switch value={value === 'true'} onValueChange={(v) => onChange(field.name, String(v))} trackColor={{ true: c.brand }} accessibilityLabel={field.label} />
+        </View>
+      );
+      case 'date': return <DateInput value={value} onChange={(v) => onChange(field.name, v)} />;
+      case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
+      case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
+      default: return null;
     }
   };
 
   return (
-    <View style={{ marginBottom: 6 }}>
-      {field.type === 'switch' ? null : <SectionLabel>{label}</SectionLabel>}
+    <View style={{ marginBottom: space.lg }}>
+      {field.type === 'switch' ? null : <Label required={field.required}>{field.label}</Label>}
       {body()}
-      {field.hint ? <Txt v="caption" color="secondary" style={{ marginTop: 4 }}>{field.hint}</Txt> : null}
-      <Gap h={8} />
+      {field.hint ? <Txt v="caption" style={{ marginTop: space.xs }}>{field.hint}</Txt> : null}
     </View>
   );
 }
@@ -117,61 +133,26 @@ function autofill(field: ErpFormField, option: ErpFormOption | undefined, values
 
 // ───────────────────────── Turlar ─────────────────────────
 
-function SelectInput({ field, value, onChange, compact }: { field: ErpFormField; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean }) {
-  const { c, shape } = useTheme();
-  const [q, setQ] = useState('');
-  const all = field.options ?? [];
-  const searchable = all.length > 8;
-  // Uchtadan ko'p variant — yig'iladigan ro'yxat: forma cho'zilib ketmasin va
-  // tanlanganini bir qarashda ko'rsatib tursin. Ikki-uchta bo'lsa hammasi ko'rinadi.
-  const collapsible = all.length > 3 || compact;
-  const [open, setOpen] = useState(false);
-  const list = useMemo(() => (q.trim() ? all.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase())) : all), [all, q]);
-  const selected = all.find((o) => o.value === value);
+/** Serverdagi variant — umumiy `Select` uchun `extra` (avto-to'ldirish) bilan. */
+type FormOption = SelectOption & Pick<ErpFormOption, 'extra'>;
 
-  if (all.length === 0) return <Txt v="callout" color="secondary">Variant yo&apos;q</Txt>;
-
-  if (collapsible) {
-    return (
-      <View>
-        <Pressable
-          onPress={() => setOpen((v) => !v)}
-          style={{ flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: shape.input, borderWidth: 1, borderColor: open ? c.brandPrimary : c.border, backgroundColor: c.bgSurface }}
-        >
-          <Txt v="bodyStrong" style={{ flex: 1, color: selected ? c.textPrimary : c.textSecondary }} numberOfLines={1}>
-            {selected?.label ?? 'Tanlang…'}
-          </Txt>
-          <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} />
-        </Pressable>
-        {open ? (
-          <View style={{ marginTop: 8 }}>
-            {searchable ? <><Field value={q} onChangeText={setQ} placeholder="Qidirish…" autoCorrect={false} /><Gap h={8} /></> : null}
-            <ScrollView style={{ maxHeight: 260 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-              {list.map((o) => <Option key={o.value} o={o} on={o.value === value} onPress={() => { onChange(o.value, o); setOpen(false); setQ(''); }} />)}
-              {list.length === 0 ? <Txt v="callout" color="secondary" style={{ padding: 12 }}>Topilmadi</Txt> : null}
-            </ScrollView>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
-
-  return <View style={{ gap: 8 }}>{all.map((o) => <Option key={o.value} o={o} on={o.value === value} onPress={() => onChange(o.value, o)} />)}</View>;
-}
-
-function Option({ o, on, onPress }: { o: ErpFormOption; on: boolean; onPress: () => void }) {
-  const { c, shape } = useTheme();
+/**
+ * Umumiy `Select` ustidagi yupqa qatlam: variant tanlanganda `extra`si bilan qaytaradi —
+ * `Select` faqat {value,label} biladi, marka → narx to'ldirish uchun asl variant kerak.
+ */
+function SelectField({ field, value, onChange, compact }: { field: ErpFormField; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean }) {
+  const all: FormOption[] = field.options ?? [];
   return (
-    <Pressable
-      onPress={onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 8, borderRadius: shape.input, borderWidth: 1, borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimary + '12' : c.bgSurface }}
-    >
-      <Icon name={on ? 'radio-button-on' : 'radio-button-off'} size={20} color={on ? c.brandPrimary : c.textSecondary} />
-      <Txt v="bodyStrong" style={{ marginLeft: 10, flex: 1 }}>{o.label}</Txt>
-    </Pressable>
+    <Select
+      label={field.label}
+      required={field.required}
+      compact={compact}
+      value={value || null}
+      options={all}
+      onChange={(v) => onChange(v, all.find((o) => o.value === v))}
+    />
   );
 }
-
 
 /** Tanlangan qiymat ekrandan tashqarida qolmasin — ochilganda unga suriladi. */
 function useScrollToSelected(index: number, itemWidth: number) {
@@ -186,27 +167,42 @@ function useScrollToSelected(index: number, itemWidth: number) {
   return ref;
 }
 
+/** Gorizontal tanlov chipi (sana/soat) — tanlangani brend fonida, matni to'q. */
+function ChoiceChip({ on, onPress, label, children }: { on: boolean; onPress: () => void; label: string; children: React.ReactNode }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={label}
+      android_ripple={{ color: c.bgMuted }}
+      style={({ pressed }) => [
+        { minHeight: size.touch, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderDefault, backgroundColor: on ? c.brandSoft : c.bgSurface, alignItems: 'center', justifyContent: 'center' },
+        pressed && !on && { backgroundColor: c.bgMuted },
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 const DAY_NAMES = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Sana — yaqin 14 kun. Beton zayavkasi deyarli doim shu oraliqda. */
 function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { c, shape } = useTheme();
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i); return d; }), []);
   const ref = useScrollToSelected(days.findIndex((d) => ymd(d) === value), 70);
   return (
-    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
       {days.map((d, i) => {
         const v = ymd(d); const on = v === value;
+        const day = i === 0 ? 'Bugun' : i === 1 ? 'Ertaga' : DAY_NAMES[d.getDay()];
+        const date = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
         return (
-          <Pressable
-            key={v}
-            onPress={() => onChange(v)}
-            style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: shape.input, borderWidth: 1, borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimary : c.bgSurface, alignItems: 'center', minWidth: 62 }}
-          >
-            <Txt v="caption" style={{ color: on ? c.textOnBrand : c.textSecondary }}>{i === 0 ? 'Bugun' : i === 1 ? 'Ertaga' : DAY_NAMES[d.getDay()]}</Txt>
-            <Txt v="bodyStrong" style={{ color: on ? c.textOnBrand : c.textPrimary }}>{d.getDate()}.{String(d.getMonth() + 1).padStart(2, '0')}</Txt>
-          </Pressable>
+          <ChoiceChip key={v} on={on} onPress={() => onChange(v)} label={`${day} ${date}`}>
+            <Txt v="caption" color={on ? 'brand' : 'muted'}>{day}</Txt>
+            <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{date}</Txt>
+          </ChoiceChip>
         );
       })}
     </ScrollView>
@@ -215,21 +211,16 @@ function DateInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 /** Soat — 06:00 dan 20:00 gacha yarim soatlik qadam. */
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { c, shape } = useTheme();
   const slots = useMemo(() => { const out: string[] = []; for (let h = 6; h <= 20; h++) { out.push(`${String(h).padStart(2, '0')}:00`); if (h < 20) out.push(`${String(h).padStart(2, '0')}:30`); } return out; }, []);
   const ref = useScrollToSelected(slots.indexOf(value), 82);
   return (
-    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
       {slots.map((t) => {
         const on = t === value;
         return (
-          <Pressable
-            key={t}
-            onPress={() => onChange(t)}
-            style={{ paddingHorizontal: 14, paddingVertical: 11, borderRadius: shape.input, borderWidth: 1, borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimary : c.bgSurface }}
-          >
-            <Txt v="bodyStrong" style={{ color: on ? c.textOnBrand : c.textPrimary }}>{t}</Txt>
-          </Pressable>
+          <ChoiceChip key={t} on={on} onPress={() => onChange(t)} label={t}>
+            <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{t}</Txt>
+          </ChoiceChip>
         );
       })}
     </ScrollView>
@@ -238,49 +229,40 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 /** Takrorlanuvchi qatorlar — zayavka mahsulotlari. */
 function ItemsInput({ field, rows, onChange }: { field: ErpFormField; rows: ItemRow[]; onChange: (rows: ItemRow[]) => void }) {
-  const { c } = useTheme();
   const cols = field.columns ?? [];
   const set = (i: number, name: string, v: string) => onChange(rows.map((r, x) => (x === i ? { ...r, [name]: v } : r)));
 
   return (
-    <View>
+    <View style={{ gap: space.md }}>
       {rows.map((row, i) => (
-        <Card key={i} style={{ padding: 14, marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-            <Txt v="caption" color="secondary" style={{ flex: 1 }}>{i + 1}-qator</Txt>
+        <Card key={i}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm, minHeight: size.touch - space.sm }}>
+            <Txt v="label" style={{ flex: 1 }}>{i + 1}-qator</Txt>
             {rows.length > 1 ? (
-              <Pressable onPress={() => onChange(rows.filter((_, x) => x !== i))} hitSlop={8}>
-                <Icon name="trash-outline" size={18} color={c.danger} />
-              </Pressable>
+              <IconButton icon="trash" label="Qatorni o'chirish" tone="danger" size={size.touch - space.sm} onPress={() => onChange(rows.filter((_, x) => x !== i))} />
             ) : null}
           </View>
           {cols.map((col) => (
-            <View key={col.name} style={{ marginBottom: 8 }}>
-              <SectionLabel>{col.label}</SectionLabel>
-              {col.type === 'select'
-                ? <SelectInput field={col} value={row[col.name] ?? ''} compact onChange={(v, o) => {
-                    const next = { ...row, [col.name]: v };
-                    // Marka tanlansa narx avtomatik to'ladi (bo'sh bo'lsa)
-                    if (o?.extra) for (const [k, ev] of Object.entries(o.extra)) if (!next[k]?.trim()) next[k] = ev;
-                    onChange(rows.map((r, x) => (x === i ? next : r)));
-                  }} />
-                : <Field
-                    value={row[col.name] ?? ''}
-                    onChangeText={(v) => set(i, col.name, v)}
-                    placeholder={col.placeholder}
-                    keyboardType={col.type === 'number' ? 'numeric' : 'default'}
-                  />}
-            </View>
+            col.type === 'select'
+              ? <SelectField key={col.name} field={col} value={row[col.name] ?? ''} compact onChange={(v, o) => {
+                  const next = { ...row, [col.name]: v };
+                  // Marka tanlansa narx avtomatik to'ladi (bo'sh bo'lsa)
+                  if (o?.extra) for (const [k, ev] of Object.entries(o.extra)) if (!next[k]?.trim()) next[k] = ev;
+                  onChange(rows.map((r, x) => (x === i ? next : r)));
+                }} />
+              : <Input
+                  key={col.name}
+                  label={col.label}
+                  required={col.required}
+                  value={row[col.name] ?? ''}
+                  onChangeText={(v: string) => set(i, col.name, v)}
+                  placeholder={col.placeholder}
+                  keyboardType={col.type === 'number' ? 'numeric' : 'default'}
+                />
           ))}
         </Card>
       ))}
-      <Pressable
-        onPress={() => onChange([...rows, emptyRow(field)])}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border }}
-      >
-        <Icon name="add" size={18} color={c.brandPrimary} />
-        <Txt v="bodyStrong" color="brand" style={{ marginLeft: 6 }}>Yana qator</Txt>
-      </Pressable>
+      <Button variant="secondary" icon="plus" title="Yana qator" onPress={() => onChange([...rows, emptyRow(field)])} />
     </View>
   );
 }

@@ -1,42 +1,41 @@
 /**
- * Shafyor rejimi komponentlari: katta nishonlar (≥64 pt), 19–24 pt matn, yuqori kontrast, minimal matn.
- * Qo'lqopda, quyoshda, rulda — bitta qarashda tushunish, bitta bosish.
+ * Haydovchi rejimi: katta nishonlar (64 pt), yirik matn, bitta qarashda tushunish, bitta bosish.
+ * Ranglar va shakl umumiy tizimdan — faqat o'lcham kattaroq.
  */
 import React from 'react';
 import { Platform, Pressable, View, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './theme';
-import { onColor } from './tokens';
+import { Tone, radius, size, space, toneColors } from './tokens';
 import { Txt } from './primitives';
-import { IconName } from './ui';
+import { Icon, IconName } from './icons';
 
-/** Asosiy harakat: 72 pt, 22 pt shrift, ikon. */
+/** Asosiy harakat: 64 pt, titleMd matn, ikonka. */
 export function BigAction({ title, icon, onPress, tone = 'brand', loading, disabled, style }: { title: string; icon?: IconName; onPress: () => void; tone?: 'brand' | 'success' | 'danger' | 'dark'; loading?: boolean; disabled?: boolean; style?: ViewStyle }) {
-  const { c, shape } = useTheme();
-  const bg = { brand: c.brandPrimary, success: c.success, danger: c.danger, dark: c.textPrimary }[tone];
-  const fg = onColor(bg);
+  const { c } = useTheme();
+  const bg = { brand: c.brand, success: c.successSolid, danger: c.dangerSolid, dark: c.textStrong }[tone];
+  const fg = tone === 'brand' ? c.textOnBrand : tone === 'dark' ? c.bgSurface : c.textOnSolid;
   return (
     <Pressable
-      accessibilityRole="button" accessibilityLabel={title} disabled={disabled || loading}
+      accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: !!(disabled || loading) }} disabled={disabled || loading}
       onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress(); }}
-      android_ripple={{ color: 'rgba(255,255,255,0.25)' }}
-      style={({ pressed }) => [{ height: 72, borderRadius: shape.button, backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 20, overflow: 'hidden' }, (disabled || loading) && { opacity: 0.5 }, pressed && { transform: [{ scale: 0.98 }] }, style]}
+      android_ripple={{ color: c.brandHover }}
+      style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.md, backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.xl, overflow: 'hidden' }, (disabled || loading) && { opacity: 0.5 }, pressed && { opacity: 0.9 }, style]}
     >
-      {icon ? <Ionicons name={icon} size={28} color={fg} /> : null}
-      <Txt style={{ color: fg, fontSize: 22, fontWeight: '800', letterSpacing: 0.2 }}>{loading ? '…' : title}</Txt>
+      {icon ? <Icon name={icon} size={size.iconXl} color={fg} /> : null}
+      <Txt v="titleMd" style={{ color: fg }} numberOfLines={1}>{loading ? '…' : title}</Txt>
     </Pressable>
   );
 }
 
-/** Ikkilamchi katta tugma (qo'ng'iroq, navigatsiya): 64 pt, oq fon. */
+/** Ikkilamchi katta tugma (qo'ng'iroq, navigatsiya): 64 pt, chegarali. */
 export function BigSecondary({ title, icon, onPress, style }: { title: string; icon: IconName; onPress: () => void; style?: ViewStyle }) {
-  const { c, shape } = useTheme();
+  const { c } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => { void Haptics.selectionAsync(); onPress(); }} android_ripple={{ color: c.border }}
-      style={({ pressed }) => [{ height: 64, borderRadius: shape.button, backgroundColor: c.bgSurface, borderWidth: Platform.OS === 'android' ? 1 : 0, borderColor: c.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, flex: 1 }, pressed && { opacity: 0.7 }, style]}>
-      <Ionicons name={icon} size={26} color={c.brandPrimary} />
-      <Txt style={{ fontSize: 18, fontWeight: '700', color: c.textPrimary }}>{title}</Txt>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => { void Haptics.selectionAsync(); onPress(); }} android_ripple={{ color: c.bgMuted }}
+      style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.md, backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, flex: 1 }, pressed && { backgroundColor: c.bgMuted }, style]}>
+      <Icon name={icon} size={size.iconLg} tone="strong" />
+      <Txt v="titleSm" numberOfLines={1}>{title}</Txt>
     </Pressable>
   );
 }
@@ -46,33 +45,33 @@ export function RouteBlock({ from, to }: { from: string; to: string }) {
   const { c } = useTheme();
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 3, borderColor: c.info, marginRight: 12 }} />
-        <View style={{ flex: 1 }}><Txt v="caption" color="secondary">OLISH</Txt><Txt style={{ fontSize: 19, fontWeight: '600', color: c.textPrimary }}>{from}</Txt></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <View style={{ width: size.iconSm, height: size.iconSm, borderRadius: radius.pill, borderWidth: 3, borderColor: c.info }} />
+        <View style={{ flex: 1 }}><Txt v="overline">Olish</Txt><Txt v="titleMd">{from}</Txt></View>
       </View>
-      <View style={{ width: 3, height: 22, backgroundColor: c.border, marginLeft: 5.5, marginVertical: 2 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Ionicons name="location" size={18} color={c.brandPrimary} style={{ marginRight: 10, marginLeft: -2 }} />
-        <View style={{ flex: 1 }}><Txt v="caption" color="secondary">YETKAZISH</Txt><Txt style={{ fontSize: 19, fontWeight: '600', color: c.textPrimary }}>{to}</Txt></View>
+      <View style={{ width: 2, height: space.xl, backgroundColor: c.borderDefault, marginLeft: size.iconSm / 2 - 1, marginVertical: 2 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <Icon name="map-pin" tone="brand" size={size.iconSm} />
+        <View style={{ flex: 1 }}><Txt v="overline">Yetkazish</Txt><Txt v="titleMd">{to}</Txt></View>
       </View>
     </View>
   );
 }
 
-/** 4 bosqichli katta stepper: Ombor → Yuklash → Yo'l → Obyekt. */
+/** Bosqichli stepper: Ombor → Yuklash → Yo'l → Obyekt. */
 export function StepDots({ steps, current }: { steps: string[]; current: number }) {
   const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {steps.map((s, i) => (
         <React.Fragment key={s}>
-          <View style={{ alignItems: 'center', width: 64 }}>
-            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: i < current ? c.success : i === current ? c.brandPrimary : c.bgSurfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
-              {i < current ? <Ionicons name="checkmark" size={18} color={onColor(c.success)} /> : <Txt style={{ color: i === current ? onColor(c.brandPrimary) : c.textSecondary, fontWeight: '700' }}>{i + 1}</Txt>}
+          <View style={{ alignItems: 'center', width: size.driverTouch }}>
+            <View style={{ width: size.iconXl, height: size.iconXl, borderRadius: radius.pill, backgroundColor: i < current ? c.successSolid : i === current ? c.brand : c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
+              {i < current ? <Icon name="check" size={size.iconSm} color={c.textOnSolid} /> : <Txt v="label" style={{ color: i === current ? c.textOnBrand : c.textMuted }}>{i + 1}</Txt>}
             </View>
-            <Txt v="caption" style={{ marginTop: 4, fontWeight: i === current ? '700' : '400', color: i === current ? c.textPrimary : c.textSecondary }}>{s}</Txt>
+            <Txt v="caption" color={i === current ? 'strong' : 'muted'} style={{ marginTop: space.xs }}>{s}</Txt>
           </View>
-          {i < steps.length - 1 ? <View style={{ flex: 1, height: 3, backgroundColor: i < current ? c.success : c.bgSurfaceMuted, marginTop: -18 }} /> : null}
+          {i < steps.length - 1 ? <View style={{ flex: 1, height: 2, backgroundColor: i < current ? c.successSolid : c.bgMuted, marginTop: -space.xl }} /> : null}
         </React.Fragment>
       ))}
     </View>
@@ -80,14 +79,13 @@ export function StepDots({ steps, current }: { steps: string[]; current: number 
 }
 
 /** Katta raqamli statistika: "3 yuk · 2 bajarildi". */
-export function BigStat({ value, label, tone = 'primary' }: { value: string; label: string; tone?: 'primary' | 'brand' | 'success' | 'warning' }) {
+export function BigStat({ value, label, tone }: { value: string; label: string; tone?: 'primary' | Tone }) {
   const { c } = useTheme();
-  const col = { primary: c.textPrimary, brand: c.brandPrimary, success: c.success, warning: c.warning }[tone];
-  const big = value.length <= 3;
+  const col = !tone || tone === 'primary' || tone === 'neutral' ? c.textStrong : tone === 'brand' ? c.brandInk : toneColors(c, tone).ink;
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Txt style={{ fontSize: big ? 32 : 24, lineHeight: 40, fontWeight: '800', color: col, letterSpacing: -0.5 }} numberOfLines={1} adjustsFontSizeToFit>{value}</Txt>
-      <Txt v="caption" color="secondary" style={{ marginTop: 2 }}>{label}</Txt>
+      <Txt v={value.length <= 3 ? 'metricHero' : 'metric'} style={{ color: col }} numberOfLines={1} adjustsFontSizeToFit>{value}</Txt>
+      <Txt v="caption" style={{ marginTop: 2 }}>{label}</Txt>
     </View>
   );
 }

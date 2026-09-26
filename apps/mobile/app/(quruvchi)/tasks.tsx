@@ -1,11 +1,17 @@
 import React from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { Card, EmptyState, Gap, Screen, StatusChip, Txt } from '@/design/primitives';
-import { Icon, Pill, Section } from '@/design/ui';
+import { Badge, EmptyState, Gap, Panel, Screen, StatusChip, Txt, fmtDate } from '@/design/primitives';
+import { Icon, IconName, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { Tone, size, space } from '@/design/tokens';
 import { useAction, useMyTasks } from '@/features/eco/api';
 
-/** Vazifalar: checkbox bilan holat o'zgaradi (TODO → IN_PROGRESS → REVIEW), Tadbirkor DONE qiladi. */
+const STATUS_ICON: Record<string, { icon: IconName; tone: Tone }> = {
+  DONE: { icon: 'circle-check', tone: 'success' }, REVIEW: { icon: 'clock', tone: 'warning' }, IN_PROGRESS: { icon: 'circle-dot', tone: 'brand' }, TODO: { icon: 'circle', tone: 'neutral' },
+};
+const PRIORITY_LABEL: Record<string, string> = { LOW: 'Past', MEDIUM: "O'rta", HIGH: 'Muhim' };
+
+/** Vazifalar: holat o'zgaradi (TODO → IN_PROGRESS → REVIEW), Tadbirkor DONE qiladi. */
 export default function Tasks() {
   const { c } = useTheme();
   const q = useMyTasks();
@@ -14,27 +20,39 @@ export default function Tasks() {
   const next = (s: string) => ({ TODO: 'IN_PROGRESS', IN_PROGRESS: 'REVIEW', REVIEW: 'REVIEW', DONE: 'DONE' })[s] ?? 'IN_PROGRESS';
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: 16 }} refreshControl={<RefreshControl refreshing={q.isFetching} onRefresh={() => void q.refetch()} />}>
-        {(q.data ?? []).length === 0 && !q.isLoading ? <EmptyState title="Vazifalar yo'q" /> : null}
+      <ScrollView contentContainerStyle={{ padding: space.pageX }} refreshControl={<RefreshControl refreshing={q.isFetching} onRefresh={() => void q.refetch()} />}>
+        {(q.data ?? []).length === 0 && !q.isLoading ? <EmptyState title="Vazifalar yo'q" hint="Tadbirkor vazifa bersa shu yerda ko'rinadi" icon="square-check" /> : null}
         {groups.map(([title, f]) => {
           const list = (q.data ?? []).filter(f as never);
           if (!list.length) return null;
           return (
-            <Section key={title} title={title} style={{ marginTop: 8 }}>
-              {list.map((t, i) => (
-                <Pressable key={t.id} onPress={() => t.status === 'DONE' ? null : Alert.alert(t.title, t.description ?? 'Holatni o\'zgartirish', [{ text: t.status === 'TODO' ? 'Boshlash' : 'Tekshiruvga topshirish', onPress: () => upd.mutate({ id: t.id, status: next(t.status) }) }, { text: 'Bekor', style: 'cancel' }])} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: i === list.length - 1 ? 0 : 0.5, borderBottomColor: c.border }}>
-                  <Icon name={t.status === 'DONE' ? 'checkbox' : t.status === 'REVIEW' ? 'time' : t.status === 'IN_PROGRESS' ? 'ellipse-outline' : 'square-outline'} size={24} color={t.status === 'DONE' ? c.success : t.status === 'REVIEW' ? c.warning : c.brandPrimary} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Txt v="bodyStrong" style={t.status === 'DONE' ? { textDecorationLine: 'line-through', color: c.textSecondary } : undefined}>{t.title}</Txt>
-                    <Txt v="caption" color="secondary">{t.project?.name}{t.dueDate ? ` · ${new Date(t.dueDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}` : ''}</Txt>
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}><Pill label={({ LOW: 'Past', MEDIUM: "O'rta", HIGH: 'Muhim' })[t.priority]} tone={t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'neutral'} />{t.photoKeys.length ? <Pill label={`📷 ${t.photoKeys.length}`} tone="info" /> : null}<StatusChip status={t.status} /></View>
-                  </View>
-                </Pressable>
-              ))}
-            </Section>
+            <Panel key={title} title={title} style={{ marginTop: space.sm }}>
+              {list.map((t, i) => {
+                const st = STATUS_ICON[t.status] ?? STATUS_ICON.TODO!;
+                const done = t.status === 'DONE';
+                return (
+                  <Pressable
+                    key={t.id} accessibilityRole="button" accessibilityLabel={t.title} accessibilityState={{ checked: done }} disabled={done} android_ripple={{ color: c.bgMuted }}
+                    onPress={() => Alert.alert(t.title, t.description ?? 'Holatni o\'zgartirish', [{ text: t.status === 'TODO' ? 'Boshlash' : 'Tekshiruvga topshirish', onPress: () => upd.mutate({ id: t.id, status: next(t.status) }, { onError: (e) => toast.error(e.message, 'Xato') }) }, { text: 'Bekor', style: 'cancel' }])}
+                    style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.row, paddingVertical: space.md, borderBottomWidth: i === list.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }, pressed && { backgroundColor: c.bgMuted }]}
+                  >
+                    <Icon name={st.icon} size={size.iconLg} tone={st.tone === 'neutral' ? 'muted' : st.tone} />
+                    <View style={{ flex: 1 }}>
+                      <Txt v="bodyStrong" color={done ? 'muted' : 'strong'} style={done ? { textDecorationLine: 'line-through' } : undefined}>{t.title}</Txt>
+                      <Txt v="caption">{t.project?.name}{t.dueDate ? ` · ${fmtDate(t.dueDate)}` : ''}</Txt>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs }}>
+                        <Badge label={PRIORITY_LABEL[t.priority] ?? t.priority} tone={t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'neutral'} icon={t.priority === 'HIGH' ? 'triangle-alert' : null} />
+                        {t.photoKeys.length ? <Badge label={String(t.photoKeys.length)} tone="info" icon="camera" /> : null}
+                        <StatusChip status={t.status} />
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </Panel>
           );
         })}
-        <Gap h={30} /><Card style={{ display: 'none' }} />
+        <Gap h={space.xxxl} />
       </ScrollView>
     </Screen>
   );

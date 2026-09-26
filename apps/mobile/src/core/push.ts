@@ -1,3 +1,4 @@
+import { brand } from '@/design/tokens';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { deviceId } from './api';
@@ -37,7 +38,7 @@ export async function ensureChannels(): Promise<void> {
     importance: Notifications.AndroidImportance.MAX,
     sound: PUSH_SOUND,
     vibrationPattern: [0, 200, 110, 200],
-    lightColor: '#0A4CD5',
+    lightColor: brand[500],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     enableVibrate: true,
     showBadge: true,
@@ -47,7 +48,7 @@ export async function ensureChannels(): Promise<void> {
     importance: Notifications.AndroidImportance.DEFAULT,
     sound: PUSH_SOUND,
     vibrationPattern: [0, 120],
-    lightColor: '#0A4CD5',
+    lightColor: brand[500],
     showBadge: true,
   });
 }

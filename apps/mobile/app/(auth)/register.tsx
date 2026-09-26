@@ -4,17 +4,18 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { RegisterSchema } from '@insof/shared';
-import { Txt } from '@/design/primitives';
-import { Icon, IconName } from '@/design/ui';
-import { erpText } from '@/design/tokens';
+import { Card, IconTile, Input, Label, Select, Txt } from '@/design/primitives';
+import { Icon, IconName } from '@/design/icons';
+import { radius, size, space } from '@/design/tokens';
+import { useTheme } from '@/design/theme';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, D, DarkField, ErrorBox, FieldError, FooterLink, Hint, Label, PrimaryButton, Steps, Strength, Title } from '@/features/auth/ui';
+import { AuthScreen, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title } from '@/features/auth/ui';
 
 /**
- * Ro'yxatdan o'tish — maketdagi uch qadamli oqim.
+ * Ro'yxatdan o'tish — uch qadamli oqim.
  *   1) Ma'lumotlar: kim sifatida va shaxsiy/tashkilot ma'lumotlari;
  *   2) SMS tasdiq: ro'yxatdan o'tgach raqam tasdiqlanadi (OTP ekrani);
  *   3) Tayyor.
@@ -23,13 +24,24 @@ import { AuthScreen, D, DarkField, ErrorBox, FieldError, FooterLink, Hint, Label
  */
 type RoleKey = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
 const ROLES: { key: RoleKey; icon: IconName; title: string; desc: string }[] = [
-  { key: 'TADBIRKOR', icon: 'business-outline', title: 'Tadbirkor', desc: 'Beton zavodi yoki qurilish kompaniyasi egasi' },
-  { key: 'QURUVCHI', icon: 'home-outline', title: 'Quruvchi', desc: 'Prorab yoki xususiy quruvchi — beton buyurtma qiladi' },
-  { key: 'HAYDOVCHI', icon: 'bus-outline', title: 'Haydovchi', desc: 'Mikser haydovchisi — reyslarni qabul qiladi' },
+  { key: 'TADBIRKOR', icon: 'briefcase', title: 'Tadbirkor', desc: 'Beton zavodi yoki qurilish kompaniyasi egasi' },
+  { key: 'QURUVCHI', icon: 'hard-hat', title: 'Quruvchi', desc: 'Prorab yoki xususiy quruvchi — beton buyurtma qiladi' },
+  { key: 'HAYDOVCHI', icon: 'truck', title: 'Haydovchi', desc: 'Mikser haydovchisi — reyslarni qabul qiladi' },
 ];
+
+/** "+998" prefiksi — input balandligida, fokus halqasi hisobga olingan. */
+function PhonePrefix() {
+  const { c } = useTheme();
+  return (
+    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
+      <Txt v="body" mono color="muted">+998</Txt>
+    </View>
+  );
+}
 
 export default function Register() {
   const router = useRouter();
+  const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
   const [role, setRole] = useState<RoleKey | null>(null);
   const [fullName, setFullName] = useState('');
@@ -82,23 +94,23 @@ export default function Register() {
       >
         <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={0} />
         <Title hint="Keyinchalik bitta hisobga boshqa rollar ham qo'shiladi.">Kim sifatida ro&apos;yxatdan o&apos;tasiz?</Title>
-        <View style={{ marginTop: 24, gap: 10 }}>
+        <View style={{ marginTop: space.xxl, gap: space.md }}>
           {ROLES.map((r, i) => (
             <Appear key={r.key} delay={stagger(i, 60)}>
               <PressScale
                 onPress={() => { if (Platform.OS === 'ios') void Haptics.selectionAsync(); setRole(r.key); }}
                 haptic={false}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.title}. ${r.desc}`}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: D.surface, borderWidth: 1, borderColor: D.border, borderRadius: 15, padding: 14, minHeight: 74 }}>
-                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: D.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={r.icon} size={20} color={D.accent} />
-                  </View>
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <IconTile icon={r.icon} module="brand" />
                   <View style={{ flex: 1 }}>
-                    <Txt style={{ ...erpText.rowTitle, fontSize: 15, color: D.text }}>{r.title}</Txt>
-                    <Txt style={{ fontSize: 12, lineHeight: 17, color: D.muted, marginTop: 3 }}>{r.desc}</Txt>
+                    <Txt v="bodyStrong">{r.title}</Txt>
+                    <Txt v="caption">{r.desc}</Txt>
                   </View>
-                  <Icon name="chevron-forward" size={18} color={D.faint} />
-                </View>
+                  <Icon name="chevron-right" tone="faint" />
+                </Card>
               </PressScale>
             </Appear>
           ))}
@@ -116,111 +128,98 @@ export default function Register() {
     >
       <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={0} />
 
-      <Appear delay={60} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 22 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: D.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={meta.icon} size={19} color={D.accent} />
-        </View>
+      <Appear delay={60} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xxl }}>
+        <IconTile icon={meta.icon} module="brand" />
         <View style={{ flex: 1 }}>
-          <Txt style={{ ...erpText.eyebrow, color: D.accent }}>ROL</Txt>
-          <Txt style={{ fontFamily: erpText.title.fontFamily, fontSize: 20, color: D.text }}>{meta.title}</Txt>
+          <Txt v="overline" color="brand">Rol</Txt>
+          <Txt v="titleMd">{meta.title}</Txt>
         </View>
-        <Txt onPress={() => setRole(null)} style={{ ...erpText.label, fontSize: 12.5, color: D.muted }}>O&apos;zgartirish</Txt>
+        <TextLink onPress={() => setRole(null)}>O&apos;zgartirish</TextLink>
       </Appear>
 
-      <Appear delay={110} style={{ marginTop: 22 }}>
-        <Label>Ism va familiya</Label>
-        <DarkField value={fullName} onChangeText={setFullName} placeholder="Rustam Yusupov" textContentType="name" autoComplete="name" error={errors.fullName} autoFocus />
-        <FieldError text={errors.fullName} />
+      <Appear delay={110} style={{ marginTop: space.xxl }}>
+        <Input label="Ism va familiya" value={fullName} onChangeText={setFullName} placeholder="Rustam Yusupov" textContentType="name" autoComplete="name" error={errors.fullName} autoFocus />
       </Appear>
 
-      <Appear delay={150} style={{ marginTop: 14 }}>
+      <Appear delay={150}>
         <Label>Telefon raqam</Label>
-        <View style={{ flexDirection: 'row', gap: 9 }}>
-          <View style={{ height: 52, paddingHorizontal: 13, borderRadius: 13, borderWidth: 1, borderColor: D.border, backgroundColor: D.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt style={{ ...erpText.meta, fontSize: 14.5, color: D.muted }}>+998</Txt>
-          </View>
-          <DarkField value={local} onChangeText={(v) => setLocal(v.replace(/\D/g, '').slice(0, 9))} keyboardType="number-pad" placeholder="90 123 45 67" mono error={errors.phone} style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm }}>
+          <PhonePrefix />
+          <Input
+            value={local}
+            onChangeText={(v) => setLocal(v.replace(/\D/g, '').slice(0, 9))}
+            keyboardType="number-pad"
+            placeholder="90 123 45 67"
+            accessibilityLabel="Telefon raqam"
+            mono
+            error={errors.phone}
+            containerStyle={{ flex: 1 }}
+          />
         </View>
-        <FieldError text={errors.phone} />
       </Appear>
 
       {role === 'TADBIRKOR' ? (
-        <Appear delay={190} style={{ marginTop: 14 }}>
-          <Label>Tashkilot turi</Label>
-          <View style={{ flexDirection: 'row', gap: 9 }}>
-            {(['PLANT', 'CONTRACTOR'] as const).map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => setOrgType(t)}
-                style={{ flex: 1, height: 48, borderRadius: 13, borderWidth: orgType === t ? 1.5 : 1, borderColor: orgType === t ? D.accent : D.border, backgroundColor: orgType === t ? D.surfaceAlt : D.surface, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Txt style={{ ...erpText.label, fontSize: 13, color: orgType === t ? D.text : D.muted }}>{t === 'PLANT' ? 'Beton zavodi' : 'Qurilish firmasi'}</Txt>
-              </Pressable>
-            ))}
-          </View>
-          <View style={{ marginTop: 14 }}>
-            <Label>Korxona nomi</Label>
-            <DarkField value={orgName} onChangeText={setOrgName} placeholder="Meridian Industrial MChJ" autoComplete="organization" error={errors.organization} />
-            <FieldError text={errors.organization} />
-          </View>
+        <Appear delay={190}>
+          <Select
+            label="Tashkilot turi"
+            value={orgType}
+            options={[{ value: 'PLANT', label: 'Beton zavodi' }, { value: 'CONTRACTOR', label: 'Qurilish firmasi' }]}
+            onChange={setOrgType}
+          />
+          <Input label="Korxona nomi" value={orgName} onChangeText={setOrgName} placeholder="Meridian Industrial MChJ" autoComplete="organization" error={errors.organization} />
         </Appear>
       ) : null}
 
       {role === 'QURUVCHI' ? (
-        <Appear delay={190} style={{ marginTop: 14 }}>
-          <Label>Qurilish firmasi (ixtiyoriy)</Label>
-          <DarkField value={orgName} onChangeText={setOrgName} placeholder="Nomi yoki bo'sh qoldiring" autoComplete="organization" />
+        <Appear delay={190}>
+          <Input label="Qurilish firmasi (ixtiyoriy)" value={orgName} onChangeText={setOrgName} placeholder="Nomi yoki bo'sh qoldiring" autoComplete="organization" />
         </Appear>
       ) : null}
 
       {role === 'HAYDOVCHI' ? (
-        <Appear delay={190} style={{ marginTop: 14 }}>
-          <Label>Qaysi zavodda ishlaysiz</Label>
-          {plants.length === 0 ? <Hint>Zavodlar yuklanmoqda…</Hint> : null}
-          <View style={{ gap: 8 }}>
-            {plants.map((p) => {
-              const on = plantOrgId === p.id;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => setPlantOrgId(p.id)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: on ? 1.5 : 1, borderColor: on ? D.accent : D.border, backgroundColor: on ? D.surfaceAlt : D.surface }}
-                >
-                  <Icon name={on ? 'radio-button-on' : 'radio-button-off'} size={20} color={on ? D.accent : D.faint} />
-                  <View style={{ flex: 1 }}>
-                    <Txt style={{ ...erpText.rowTitle, color: D.text }}>{p.name}</Txt>
-                    {p.address ? <Txt style={{ fontSize: 11.5, color: D.muted, marginTop: 2 }}>{p.address}</Txt> : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-          <FieldError text={errors.plantOrgId} />
+        <Appear delay={190}>
+          {plants.length === 0 ? (
+            <View style={{ marginBottom: space.lg }}>
+              <Label>Qaysi zavodda ishlaysiz</Label>
+              <Hint>Zavodlar yuklanmoqda…</Hint>
+            </View>
+          ) : (
+            <Select
+              label="Qaysi zavodda ishlaysiz"
+              value={plantOrgId ?? null}
+              options={plants.map((p) => ({ value: p.id, label: p.name, hint: p.address ?? undefined }))}
+              onChange={(v) => setPlantOrgId(v)}
+              error={errors.plantOrgId}
+            />
+          )}
           <Hint>Zavod tadbirkori tasdiqlagach, reyslar ko&apos;rina boshlaydi.</Hint>
         </Appear>
       ) : null}
 
-      <Appear delay={230} style={{ marginTop: 14 }}>
-        <Label>Parol</Label>
-        <DarkField value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" placeholder="••••••••" mono error={errors.password} />
-        <FieldError text={errors.password} />
+      <Appear delay={230} style={{ marginTop: space.lg }}>
+        <Input label="Parol" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" placeholder="••••••••" mono error={errors.password} containerStyle={{ marginBottom: 0 }} />
         <Strength password={password} />
       </Appear>
 
-      <Appear delay={270} style={{ marginTop: 16 }}>
-        <Pressable onPress={() => setAgree((v) => !v)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-          <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: agree ? D.accent : D.borderSoft, backgroundColor: agree ? D.accent : 'transparent', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-            {agree ? <Icon name="checkmark" size={13} color={D.bg} /> : null}
+      <Appear delay={270} style={{ marginTop: space.lg }}>
+        <Pressable
+          onPress={() => setAgree((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agree }}
+          accessibilityLabel="Ommaviy oferta va maxfiylik siyosati shartlariga roziman"
+          hitSlop={space.sm}
+          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, minHeight: size.touch, paddingVertical: space.sm }}
+        >
+          <View style={{ width: size.iconMd, height: size.iconMd, borderRadius: radius.xs, borderWidth: size.ring, borderColor: agree ? c.brand : c.borderStrong, backgroundColor: agree ? c.brand : c.bgSurface, alignItems: 'center', justifyContent: 'center' }}>
+            {agree ? <Icon name="check" size={size.iconSm - 2} tone="onBrand" strokeWidth={2.5} /> : null}
           </View>
-          <Txt style={{ flex: 1, fontSize: 12.5, lineHeight: 18, color: '#D5DBE3' }}>
-            Ommaviy oferta va maxfiylik siyosati shartlariga roziman
-          </Txt>
+          <Txt v="bodySm" style={{ flex: 1 }}>Ommaviy oferta va maxfiylik siyosati shartlariga roziman</Txt>
         </Pressable>
       </Appear>
 
       <ErrorBox text={errors.form} />
 
-      <Appear delay={310} style={{ marginTop: 20 }}>
+      <Appear delay={310} style={{ marginTop: space.xl }}>
         <PrimaryButton title={loading ? 'Yuborilmoqda…' : 'Davom etish'} onPress={submit} loading={loading} disabled={!agree} />
       </Appear>
     </AuthScreen>

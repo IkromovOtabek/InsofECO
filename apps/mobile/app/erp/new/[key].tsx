@@ -4,6 +4,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, EmptyState, Gap, Txt } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
+import { size, space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
 import { FieldInput, firstMissing, initialValues, toPayload, visibleFields, type ItemRow, type Values } from '@/features/erp/form';
@@ -51,19 +52,19 @@ export default function ErpNew() {
     }
   };
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brandPrimary} /></View>;
+  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
   if (error || !data) return <EmptyState title="Forma ochilmadi" hint={error instanceof ApiException ? error.message : 'Internetni tekshiring'} />;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
         {visibleFields(data.fields, values).map((f) => (
           <FieldInput key={f.name} field={f} values={values} onChange={setValue} />
         ))}
-        {formError ? <Txt v="callout" color="danger" style={{ marginTop: 4 }}>{formError}</Txt> : null}
-        <Gap h={12} />
+        {formError ? <Txt v="bodySm" color="danger">{formError}</Txt> : null}
+        <Gap h={space.md} />
       </ScrollView>
-      <View style={{ padding: 16, paddingBottom: insets.bottom + 12, borderTopWidth: 0.5, borderTopColor: c.border, backgroundColor: c.bgCanvas }}>
+      <View style={{ padding: space.lg, paddingBottom: insets.bottom + space.md, borderTopWidth: size.hairline, borderTopColor: c.borderDefault, backgroundColor: c.bgChrome }}>
         <Button title={data.submitLabel} loading={create.isPending} onPress={submit} />
       </View>
     </KeyboardAvoidingView>

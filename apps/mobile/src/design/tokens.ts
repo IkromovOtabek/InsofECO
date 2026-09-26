@@ -1,331 +1,289 @@
 import { Platform } from 'react-native';
 
 /**
- * Brend palitrasi — Insof ko'ki (#0A4CD5, logotip plitkasining rangi) va to'q sariq urg'u.
- * Ikonka, splash, bildirishnoma va auth ekranlari shu ranglarda: ilova ochilganda
- * splashdan keyin boshqa rangga sakrab tushmaydi.
+ * Insof dizayn tizimi — yagona manba.
  *
- * Qorong'i rejadagi fon — to'q dengiz ko'ki (navy), yashil emas: brend ko'ki bilan bitta
- * oilada turadi va oq matn kontrasti yuqori chiqadi.
- *
- * Rol skinlari (Tadbirkor / Quruvchi / Haydovchi) pastda, o'z ranglarida qoladi —
- * bu palitra rol tanlanmaguncha va umumiy ekranlarda ishlaydi.
+ * Rang, o'lcham, radius, soya, tipografika va harakat tezligi FAQAT shu yerdan olinadi.
+ * Ekran kodida hex, fontSize, borderRadius raqami yozilmaydi (`scripts/design-lint.mjs`
+ * tekshiradi). Qorong'i mavzu yorug'ning teskarisi emas — alohida qiymatlar.
  */
+
+// ───────────────────────── Ranglar ─────────────────────────
+
+/** Brend — ikkala mavzuda bir xil. */
+export const brand = {
+  500: '#f59e0b',
+  600: '#d97706',
+  100: '#fef3c7',
+  /** Brend fonidagi (100) matn — 4.5:1 uchun to'q amber. */
+  ink: '#92400e',
+  ring: '#f59e0b80',
+} as const;
+
+/** Grafik palitrasi — tartib qat'iy, beshinchi qator yo'q. */
+export const chart = {
+  1: '#155dfc',
+  2: '#d97706',
+  3: '#009966',
+  4: '#be185d',
+} as const;
+
 export const palette = {
   light: {
-    brandPrimary: '#0A4CD5',
-    brandPrimarySoft: '#DCE8FF',
-    brandAccent: '#FFA800',
-    bgCanvas: '#F4F7FD',
-    bgSurface: '#FFFFFF',
-    bgSurfaceMuted: '#E9EFFB',
-    textPrimary: '#0E1726',
-    textSecondary: '#68758A',
-    textOnBrand: '#FFFFFF',
-    border: '#DCE3EF',
-    success: '#00B34D',
-    warning: '#F08A00',
-    danger: '#E60D28',
-    info: '#0062F0',
+    bgApp: '#f5f6f8',
+    bgSurface: '#ffffff',
+    bgSubtle: '#f8fafc',
+    bgMuted: '#f1f5f9',
+    bgChrome: '#ffffff',
+    borderSubtle: '#f1f5f9',
+    borderDefault: '#e2e8f0',
+    borderStrong: '#cad5e2',
+    textStrong: '#0f172b',
+    textBody: '#314158',
+    textMuted: '#5f7088',
+    textFaint: '#7f8da5',
+    textOnBrand: '#0f172b',
+
+    brand: brand[500],
+    brandHover: brand[600],
+    brandSoft: brand[100],
+    brandInk: brand.ink,
+    brandRing: brand.ring,
+
+    success: '#007a55', successBg: '#ecfdf5', successSolid: '#009966',
+    warning: '#bb4d00', warningBg: '#fffbeb', warningSolid: '#e17100',
+    danger: '#c10007', dangerBg: '#fef2f2', dangerSolid: '#e7000b',
+    info: '#1447e6', infoBg: '#eff6ff', infoSolid: '#155dfc',
+
+    moduleProduction: '#7008e7', moduleProductionBg: '#f5f3ff',
+    moduleLogistics: '#0069a8', moduleLogisticsBg: '#f0f9ff',
+    moduleWarehouse: '#ca3500', moduleWarehouseBg: '#fff7ed',
+
+    chart1: chart[1], chart2: chart[2], chart3: chart[3], chart4: chart[4],
+    chartGrid: '#e2e8f0',
+    chartTrack: '#f1f5f9',
+
+    /** Modal/sheet ortidagi parda. */
+    scrim: '#0f172b99',
+    /** Yorqin holat rangi ustidagi matn (success/danger solid). */
+    textOnSolid: '#ffffff',
   },
   dark: {
-    brandPrimary: '#4D8DFF',
-    brandPrimarySoft: '#123063',
-    brandAccent: '#FFC233',
-    bgCanvas: '#06172B',
-    bgSurface: '#0E2340',
-    bgSurfaceMuted: '#16304F',
-    textPrimary: '#EAF1FB',
-    textSecondary: '#9DB0C8',
-    textOnBrand: '#04122A',
-    border: '#22405F',
-    success: '#2EE39B',
-    warning: '#FFC233',
-    danger: '#FF6070',
-    info: '#5FA8FF',
+    bgApp: '#0f172a',
+    bgSurface: '#1e293b',
+    bgSubtle: '#243044',
+    bgMuted: '#2c3a50',
+    bgChrome: '#0b1120',
+    borderSubtle: '#243044',
+    borderDefault: '#334155',
+    borderStrong: '#42536c',
+    textStrong: '#f1f5f9',
+    textBody: '#cbd5e1',
+    textMuted: '#94a3b8',
+    textFaint: '#8794a9',
+    textOnBrand: '#0f172b',
+
+    brand: brand[500],
+    brandHover: brand[600],
+    brandSoft: '#3b2a0c',
+    brandInk: '#fbbf24',
+    brandRing: brand.ring,
+
+    success: '#34d399', successBg: '#0f2a22', successSolid: '#009966',
+    warning: '#fbbf24', warningBg: '#2a2110', warningSolid: '#e17100',
+    danger: '#f87171', dangerBg: '#2b1517', dangerSolid: '#e7000b',
+    info: '#60a5fa', infoBg: '#14213a', infoSolid: '#155dfc',
+
+    moduleProduction: '#a78bfa', moduleProductionBg: '#251b3d',
+    moduleLogistics: '#38bdf8', moduleLogisticsBg: '#0f2436',
+    moduleWarehouse: '#fb923c', moduleWarehouseBg: '#2e1a0e',
+
+    chart1: chart[1], chart2: chart[2], chart3: chart[3], chart4: chart[4],
+    chartGrid: '#334155',
+    chartTrack: '#243044',
+
+    scrim: '#020617b3',
+    textOnSolid: '#ffffff',
   },
 } as const;
 export type Palette = Record<keyof typeof palette.light, string>;
+export type ColorKey = keyof Palette;
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
+/** Holat toni — faqat holat uchun (grafikda ishlatilmaydi). */
+export type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
+/** Modul toni — faqat ikonka plitkasi foni + ikonka rangi. */
+export type ModuleTone = 'production' | 'logistics' | 'warehouse' | 'brand';
 
-/** Platforma odati: iOS — 12, Android (Material 3) — 20 tugma radiusi. */
-export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  button: Platform.select({ ios: 14, android: 20, default: 14 })!,
-  card: Platform.select({ ios: 14, android: 16, default: 14 })!,
-  full: 999,
-} as const;
-
-const androidBump = Platform.OS === 'android' ? 1 : 0;
-/**
- * Tipografika — Apple HIG "Large Title / Title 1 / Title 3 / Body / Callout / Footnote" shkalasi.
- * Tizim shrifti (SF Pro iOS'da, Roboto/One UI Android'da) — fontFamily berilmaydi, letterSpacing HIG bo'yicha.
- */
-export const type = {
-  display: { fontSize: 34 + androidBump, fontWeight: '700' as const, lineHeight: 41, letterSpacing: Platform.OS === 'ios' ? 0.37 : 0 },
-  title: { fontSize: 28 + androidBump, fontWeight: '700' as const, lineHeight: 34, letterSpacing: Platform.OS === 'ios' ? 0.36 : 0 },
-  subtitle: { fontSize: 22 + androidBump, fontWeight: '600' as const, lineHeight: 28, letterSpacing: Platform.OS === 'ios' ? 0.35 : 0 },
-  heading: { fontSize: 17 + androidBump, fontWeight: '600' as const, lineHeight: 22, letterSpacing: Platform.OS === 'ios' ? -0.41 : 0 },
-  body: { fontSize: 17 + androidBump, fontWeight: '400' as const, lineHeight: 22, letterSpacing: Platform.OS === 'ios' ? -0.41 : 0 },
-  bodyStrong: { fontSize: 17 + androidBump, fontWeight: '600' as const, lineHeight: 22, letterSpacing: Platform.OS === 'ios' ? -0.41 : 0 },
-  callout: { fontSize: 16 + androidBump, fontWeight: '400' as const, lineHeight: 21, letterSpacing: Platform.OS === 'ios' ? -0.32 : 0 },
-  caption: { fontSize: 13 + androidBump, fontWeight: '400' as const, lineHeight: 18, letterSpacing: Platform.OS === 'ios' ? -0.08 : 0 },
-  /** Haydovchi rejimi */
-  driverBody: { fontSize: 19, fontWeight: '500' as const, lineHeight: 25 },
-  driverButton: { fontSize: 20, fontWeight: '700' as const, lineHeight: 26 },
-} as const;
-
-/** iOS soya, Android elevation. */
-export const elevation = {
-  card: Platform.select({
-    ios: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-    android: { elevation: 2 },
-    default: {},
-  })!,
-} as const;
-
-export const hit = { minTarget: 48, driverTarget: 64 } as const;
-
-// ───────── Rol skinlari: 3 rol = 3 xil dizayn ─────────
-// Auth ekranlari `palette` (ECO yashil) da qoladi; rol tanlangach ThemeProvider shu skinlardan birini beradi.
-export type RoleKey = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
-
-/** Shakl — har rolda burchak yumaloqligi turlicha: Tadbirkor o'tkir (biznes), Quruvchi yumaloq (do'stona), Haydovchi o'rta-katta (qo'lqop). */
-export interface Shape { card: number; button: number; input: number; chip: number }
-
-export interface Skin {
-  name: string;
-  tagline: string;
-  light: Palette;
-  dark: Palette;
-  shape: Shape;
-  /** Haydovchi: tizim rejimidan qat'i nazar qorong'i "kabina" (tungi haydash, chalg'itmaydigan fon). */
-  forceDark?: boolean;
+/** Ton → [matn/ikonka rangi, fon] juftligi. */
+export function toneColors(c: Palette, tone: Tone = 'neutral'): { ink: string; bg: string; solid: string } {
+  switch (tone) {
+    case 'brand': return { ink: c.brandInk, bg: c.brandSoft, solid: c.brand };
+    case 'success': return { ink: c.success, bg: c.successBg, solid: c.successSolid };
+    case 'warning': return { ink: c.warning, bg: c.warningBg, solid: c.warningSolid };
+    case 'danger': return { ink: c.danger, bg: c.dangerBg, solid: c.dangerSolid };
+    case 'info': return { ink: c.info, bg: c.infoBg, solid: c.infoSolid };
+    default: return { ink: c.textMuted, bg: c.bgMuted, solid: c.textMuted };
+  }
 }
 
-/**
- * Rol tanasi (skin). Rang — hamma bo'limda BITTA: ilova ikonkasining ko'ki (#0A4CD5).
- * Bo'limlar bir-biridan rang bilan emas, SHAKL bilan ajraladi (burchak radiusi, tugma
- * o'lchami): ilova bitta mahsulotdek ko'rinishi kerak, ikonkasi ko'k bo'lib ichi yashil
- * yoki to'q sariq bo'lsa, u boshqa ilovaga o'xshab qoladi.
- */
-export const skins: Record<RoleKey, Skin> = {
-  /** Tadbirkor — "Boshqaruv": brend ko'ki + amber, salqin fon, o'tkir burchaklar, zich ma'lumot. */
-  TADBIRKOR: {
-    name: 'Boshqaruv',
-    tagline: 'KPI, moliya, jamoa — bitta ekranda',
-    light: {
-      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
-      bgCanvas: '#F2F7FF', bgSurface: '#FFFFFF', bgSurfaceMuted: '#E7EFFB',
-      textPrimary: '#0F172A', textSecondary: '#64748B', textOnBrand: '#FFFFFF', border: '#D8E4F2',
-      success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0062F0',
-    },
-    dark: {
-      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
-      bgCanvas: '#0E1B31', bgSurface: '#172642', bgSurfaceMuted: '#203255',
-      textPrimary: '#EDF3FC', textSecondary: '#A3B3C9', textOnBrand: '#0A1424', border: '#2C3F66',
-      success: '#2EE39B', warning: '#FFB524', danger: '#FF6070', info: '#5FA8FF',
-    },
-    shape: { card: 10, button: 10, input: 10, chip: 6 },
-  },
-  /** Quruvchi — "Qurilish": brend ko'ki, yumaloq shakllar, katta asosiy tugma. */
-  QURUVCHI: {
-    name: 'Qurilish',
-    tagline: 'Buyurtma bering, obyektni yuriting',
-    light: {
-      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
-      bgCanvas: '#F5F8FF', bgSurface: '#FFFFFF', bgSurfaceMuted: '#E9F0FC',
-      textPrimary: '#0F172A', textSecondary: '#64748B', textOnBrand: '#FFFFFF', border: '#D9E4F5',
-      success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0062F0',
-    },
-    dark: {
-      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
-      bgCanvas: '#0E1522', bgSurface: '#182133', bgSurfaceMuted: '#222E44',
-      textPrimary: '#EDF3FC', textSecondary: '#A3B3C9', textOnBrand: '#0A1424', border: '#2C3B57',
-      success: '#2EE39B', warning: '#FFB524', danger: '#FF6070', info: '#5FA8FF',
-    },
-    shape: { card: 22, button: 26, input: 16, chip: 999 },
-  },
-  /** Haydovchi — "Kabina": doim qorong'i (tungi haydash), brend ko'ki, katta nishonlar. */
-  HAYDOVCHI: {
-    name: 'Kabina',
-    tagline: 'Bitta yuk, bitta tugma',
-    forceDark: true,
-    light: {
-      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
-      bgCanvas: '#FFFFFF', bgSurface: '#F2F7FC', bgSurfaceMuted: '#E3ECF6',
-      textPrimary: '#020617', textSecondary: '#475569', textOnBrand: '#FFFFFF', border: '#C6D3E6',
-      success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0A4FC4',
-    },
-    dark: {
-      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
-      bgCanvas: '#0A1017', bgSurface: '#16202C', bgSurfaceMuted: '#212D3D',
-      textPrimary: '#F8FAFC', textSecondary: '#A8B6C9', textOnBrand: '#FFFFFF', border: '#2E3D51',
-      success: '#4DEB90', warning: '#FFCB3D', danger: '#FF8089', info: '#5FA8FF',
-    },
-    shape: { card: 18, button: 18, input: 14, chip: 10 },
-  },
-};
+export function moduleColors(c: Palette, m: ModuleTone = 'brand'): { ink: string; bg: string } {
+  switch (m) {
+    case 'production': return { ink: c.moduleProduction, bg: c.moduleProductionBg };
+    case 'logistics': return { ink: c.moduleLogistics, bg: c.moduleLogisticsBg };
+    case 'warehouse': return { ink: c.moduleWarehouse, bg: c.moduleWarehouseBg };
+    default: return { ink: c.brandInk, bg: c.brandSoft };
+  }
+}
 
-/** Auth va rol tanlanmagan holat — ECO brend yashili, standart shakl. */
-export const defaultSkin: Skin = {
-  name: 'ECO', tagline: '', light: palette.light, dark: palette.dark,
-  shape: { card: radius.card, button: radius.button, input: radius.md, chip: radius.full },
-};
-
-/** Fon rangiga qarab o'qiladigan matn rangi (yorqin yashil/apelsin ustida qora, to'q ko'k ustida oq). */
+/** Fon rangiga qarab o'qiladigan matn rangi (yorqin fon ustida to'q, to'q fon ustida oq). */
 export function onColor(hex: string): string {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((x) => x + x).join('') : h.slice(0, 6), 16);
   const lum = (v: number) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
   const L = 0.2126 * lum((n >> 16) & 255) + 0.7152 * lum((n >> 8) & 255) + 0.0722 * lum(n & 255);
-  return L > 0.4 ? '#0B1220' : '#FFFFFF';
+  return L > 0.4 ? palette.light.textStrong : palette.light.bgSurface;
 }
 
-// ───────────────────────── Insof ERP — maket bo'yicha ─────────────────────────
-// Dizayn manbai: "ERP Mobil — 9 rol uchun dizayn" kanvasi.
-// Yer rangi — iliq qog'oz (#F3F1EC), yuzalar oq, chegara issiq kulrang; asosiy ko'rsatkich
-// qora siyoh kartochkada turadi. Har bo'limning o'z "ink" rangi va shu rangning ochiq "tint" i bor.
+// ───────────────────────── O'lcham, shakl, soya ─────────────────────────
 
-export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
+/** 4 px setkasi. */
+export const space = {
+  none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, x7: 28, xxxl: 32, x10: 40, x12: 48,
+  /** Ma'noli nomlar. */
+  card: 16, panel: 20, grid: 12, section: 24, pageX: 20, pageY: 24,
+} as const;
 
-/** Bo'lim rangi: [ink — matn va ikon, tint — ikon kvadrati foni, darkInk — qorong'i rejada]. */
+export const radius = {
+  xs: 4,
+  /** Input. */
+  sm: 6,
+  /** Tugma. */
+  md: 8,
+  /** Ikonka plitkasi. */
+  lg: 12,
+  /** BARCHA kartalar — tizimning imzosi. */
+  card: 14,
+  /** Modal / sheet. */
+  xl: 16,
+  pill: 9999,
+} as const;
+
+export const size = {
+  touch: 44,
+  driverTouch: 64,
+  input: 44,
+  button: 44,
+  buttonLg: 52,
+  topBar: 56,
+  tabBar: 56,
+  row: 44,
+  iconSm: 16,
+  iconMd: 20,
+  iconLg: 24,
+  iconXl: 28,
+  iconTile: 40,
+  iconTileSm: 32,
+  avatar: 40,
+  avatarLg: 56,
+  hairline: 1,
+  ring: 2,
+  dot: 8,
+  progress: 6,
+} as const;
+
+/** Ierarxiya soya bilan emas, chegara bilan — soya juda yengil. */
+export const shadow = {
+  card: Platform.select({
+    ios: { shadowColor: palette.light.textStrong, shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+    android: { elevation: 1 },
+    default: {},
+  })!,
+  /** Faqat dropdown / modal. */
+  pop: Platform.select({
+    ios: { shadowColor: palette.light.textStrong, shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+    android: { elevation: 8 },
+    default: {},
+  })!,
+} as const;
+
+// ───────────────────────── Tipografika ─────────────────────────
+
+/** Plus Jakarta Sans (400/500/600/700). Mono — faqat tekislanadigan ustunlar uchun. */
+export const FONT = {
+  400: 'PlusJakartaSans_400Regular',
+  500: 'PlusJakartaSans_500Medium',
+  600: 'PlusJakartaSans_600SemiBold',
+  700: 'PlusJakartaSans_700Bold',
+  mono: 'IBMPlexMono_500Medium',
+} as const;
+export type FontWeight = 400 | 500 | 600 | 700;
+
+/** Shrift yuklanmasa tizim shrifti (Inter → system-ui) ishlaydi — ekran baribir chiziladi. */
+const f = (w: FontWeight, fontSize: number, lineHeight: number, letterSpacing = 0, upper = false) => ({
+  fontFamily: FONT[w], fontSize, lineHeight, letterSpacing,
+  ...(upper ? { textTransform: 'uppercase' as const } : null),
+});
+
+export const type = {
+  /** Faqat kirish ekrani. */
+  display: f(700, 32, 38, -0.64),
+  /** Sahifa sarlavhasi — har sahifada BITTA. */
+  titleLg: f(600, 24, 32),
+  titleMd: f(600, 18, 26),
+  titleSm: f(600, 16, 24),
+  body: f(400, 14, 20),
+  bodyStrong: f(600, 14, 20),
+  bodySm: f(400, 13, 19),
+  label: f(500, 13, 19),
+  caption: f(400, 12, 16),
+  overline: f(600, 11, 16, 0.55, true),
+  overlineXs: f(600, 10.5, 14, 1.47, true),
+  /** Sahifada bittadan ko'p emas. */
+  metricHero: f(600, 34, 40),
+  metric: f(600, 22, 28),
+  /** Tekislanadigan ustun (mono). */
+  mono: { fontFamily: FONT.mono, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
+} as const;
+export type TypeVariant = keyof typeof type;
+
 /**
- * Bo'lim rangi: [ink — matn va ikon, tint — ikon kvadrati foni, darkInk — qorong'i rejada].
- *
- * Hamma bo'limda BITTA rang — ilova ikonkasining ko'ki. Ilgari har rolga alohida rang
- * berilgandi (haydovchi yashil, sotuv qizil...), lekin ilova ikonkasi ko'k bo'lib ichi
- * har xil rangda bo'lsa, u bitta mahsulotdek ko'rinmaydi. Bo'limlar bir-biridan nomi va
- * ikonkasi bilan ajraladi.
+ * Matn qutisiga zaxira kenglik, dp.
+ * Android matn kengligini bir oz kam o'lchaydi va oxirgi harfni qirqadi ("Yetkazildi" → "Yetkazil…").
+ * Harf soniga mutanosib zaxira beriladi. `extra` — harf oralig'i bo'lgan joylar uchun.
  */
-const ERP_ROLE_COLOR: Record<ErpRoleKey, [ink: string, tint: string, darkInk: string]> = {
-  DIRECTOR:    ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  SALES:       ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  PRODUCTION:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  SUPERVISOR:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  LOGISTICS:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  WAREHOUSE:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  PROCUREMENT: ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  ACCOUNTING:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  FINANCE:     ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  HR:          ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  CASHIER:     ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  DRIVER:      ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
-  BRIGADIER:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+export const textRoom = (text: string, fontSize: number, extra = 0) => text.length * (fontSize * 0.59 + extra);
+
+// ───────────────────────── Harakat ─────────────────────────
+
+/** Yagona tezliklar: mikro (hover/fokus), holat, ekran o'tishi, yuklanish sikli. */
+export const duration = { micro: 120, state: 200, screen: 280, loop: 1200 } as const;
+
+// ───────────────────────── Rollar (kontent, dizayn emas) ─────────────────────────
+
+export type RoleKey = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
+export const ECO_ROLE_NAME: Record<RoleKey, { name: string; tagline: string }> = {
+  TADBIRKOR: { name: 'Boshqaruv', tagline: 'KPI, moliya, jamoa — bitta ekranda' },
+  QURUVCHI: { name: 'Qurilish', tagline: 'Buyurtma bering, obyektni yuriting' },
+  HAYDOVCHI: { name: 'Kabina', tagline: 'Bitta yuk, bitta tugma' },
 };
 
+export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
 export const ERP_ROLE_NAME: Record<ErpRoleKey, string> = {
   DIRECTOR: 'Direktor', SALES: 'Sotuv', PRODUCTION: 'Ishlab chiqarish', SUPERVISOR: 'Ish boshqaruvchi',
   LOGISTICS: 'Logistika', WAREHOUSE: 'Sklad', PROCUREMENT: 'Snabjeniye', ACCOUNTING: 'Buxgalteriya',
   FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir',
 };
 
-/**
- * Bo'lim rangi — noma'lum rol uchun ham javob qaytaradi.
- * ERP'da yangi rol paydo bo'lsa (masalan DRIVER) ilova eski versiyada qulab tushmaydi,
- * shunchaki direktor rangida chiziladi.
- */
-const roleColor = (role: ErpRoleKey): [string, string, string] => ERP_ROLE_COLOR[role] ?? ERP_ROLE_COLOR.DIRECTOR;
-
-/** Bo'lim ikonlari ortidagi ochiq kvadrat rangi. */
-export const erpTint = (role: ErpRoleKey, dark: boolean) => {
-  const [, tint, darkInk] = roleColor(role);
-  return dark ? darkInk + '33' : tint;
+/** Rol → modul toni (ikonka plitkasi). Boshqa rollar brend tonida. */
+export const ERP_ROLE_MODULE: Partial<Record<ErpRoleKey, ModuleTone>> = {
+  PRODUCTION: 'production', BRIGADIER: 'production', SUPERVISOR: 'production',
+  LOGISTICS: 'logistics', DRIVER: 'logistics',
+  WAREHOUSE: 'warehouse', PROCUREMENT: 'warehouse',
 };
 
-/** Qora siyoh kartochka — bosh ko'rsatkich shu yerda turadi. */
-export const INK = { bg: '#1A1F29', text: '#F7F6F2', muted: '#A8B2C0' } as const;
-
-/** Holat chiplari — maketdagi juftliklar. */
-export const CHIP: Record<'neutral' | 'info' | 'brand' | 'success' | 'warning' | 'danger', [bg: string, ink: string]> = {
-  neutral: ['#EDF1F7', '#4A5566'],
-  info:    ['#DCEDFF', '#0D5AAD'],
-  brand:   ['#D4F5EF', '#00756A'],
-  success: ['#D9F7E2', '#0F8544'],
-  warning: ['#FFF0CC', '#8C5E00'],
-  danger:  ['#FFE3D9', '#C4360D'],
+/** Ro'yxat kaliti → modul toni. */
+export const LIST_MODULE: Record<string, ModuleTone> = {
+  production: 'production', tasks: 'production',
+  trips: 'logistics',
+  stock: 'warehouse', receipts: 'warehouse',
 };
-
-const erpBase = {
-  light: {
-    brandPrimarySoft: '#FDFCFA', brandAccent: '#FFBE3D',
-    bgCanvas: '#F8F6F1', bgSurface: '#FFFFFF', bgSurfaceMuted: '#FDFCFA',
-    textPrimary: '#1A1F29', textSecondary: '#69727E', textOnBrand: '#FFFFFF', border: '#EAE5DC',
-    success: '#0F8544', warning: '#8C5E00', danger: '#C4360D', info: '#0D5AAD',
-  },
-  dark: {
-    brandPrimarySoft: '#1D222B', brandAccent: '#FFBE3D',
-    bgCanvas: '#12151B', bgSurface: '#1D222B', bgSurfaceMuted: '#252C37',
-    textPrimary: '#F5F4EF', textSecondary: '#AEB6C1', textOnBrand: '#12151B', border: '#343C48',
-    success: '#4FD97F', warning: '#F0C04D', danger: '#FF8F5E', info: '#66AEFF',
-  },
-};
-
-export function erpSkin(role: ErpRoleKey): Skin {
-  const [ink, tint, darkInk] = roleColor(role);
-  return {
-    name: ERP_ROLE_NAME[role] ?? 'Insof ERP',
-    tagline: 'Insof ERP',
-    light: { ...erpBase.light, brandPrimary: ink, brandPrimarySoft: tint },
-    dark: { ...erpBase.dark, brandPrimary: darkInk, textOnBrand: onColor(darkInk) },
-    shape: { card: 14, button: 14, input: 13, chip: 999 },
-    // Haydovchi doim qorong'i "kabina" da — tungi haydashda ekran chalg'itmasin
-    forceDark: role === 'DRIVER',
-  };
-}
-
-// ───────────────────────── Maket shriftlari ─────────────────────────
-/**
- * Archivo — sarlavhalar (qalin, siqiq), IBM Plex Sans — matn, IBM Plex Mono — raqamlar va kodlar.
- * Raqam monoshriftda bo'lgani uchun ustma-ust turgan qiymatlar bir chiziqda ko'rinadi.
- * Shrift yuklanmasa `Txt` tizim shriftiga tushadi — ekran baribir to'g'ri chiziladi.
- */
-export const FONT = {
-  display: 'Archivo_700Bold',
-  displayMid: 'Archivo_600SemiBold',
-  body: 'IBMPlexSans_400Regular',
-  bodyMid: 'IBMPlexSans_500Medium',
-  bodyStrong: 'IBMPlexSans_600SemiBold',
-  mono: 'IBMPlexMono_500Medium',
-  monoStrong: 'IBMPlexMono_600SemiBold',
-} as const;
-
-/** ERP ekranlaridagi matn uslublari — maketdagi o'lchamlar. */
-/**
- * Matn qutisiga zaxira kenglik, dp.
- *
- * Android matn kengligini o'lchaganda haqiqiydan bir oz kam chiqaradi va bitta piksel
- * yetmagani uchun butun bir harfni tashlab yuboradi: "Yetkazildi" → "Yetkazil…",
- * "20 dona" → "20 d…". Harf soni va shrift o'lchamiga mutanosib zaxira beramiz —
- * quti shunchaga kengayadi, matn esa to'liq chiqadi.
- *
- * `extra` — harf oralig'i (`letterSpacing`) bo'lgan joylar uchun.
- */
-export const textRoom = (text: string, fontSize: number, extra = 0) =>
-  text.length * (fontSize * 0.59 + extra);
-
-export const erpText = {
-  /** Bo'lim nomi sarlavha ustida: kichik, katta harf, keng oraliq. */
-  eyebrow: { fontFamily: FONT.bodyStrong, fontSize: 10.5, letterSpacing: 0.95, textTransform: 'uppercase' as const },
-  /** Ekran sarlavhasi (ism, hujjat raqami). */
-  title: { fontFamily: FONT.display, fontSize: 19, letterSpacing: -0.3 },
-  titleLg: { fontFamily: FONT.display, fontSize: 25, letterSpacing: -0.5 },
-  /** Bo'limlar orasidagi kichik sarlavha. */
-  section: { fontFamily: FONT.bodyStrong, fontSize: 12, letterSpacing: 0.9, textTransform: 'uppercase' as const },
-  /** Ro'yxat qatori sarlavhasi. */
-  rowTitle: { fontFamily: FONT.bodyStrong, fontSize: 13.5 },
-  /** Qator ostidagi tafsilot — mono, chunki raqam va kod ko'p. */
-  meta: { fontFamily: FONT.mono, fontSize: 11 },
-  /** Katta ko'rsatkich. */
-  hero: { fontFamily: FONT.monoStrong, fontSize: 30, letterSpacing: -0.6 },
-  /** Kichik kartochkadagi ko'rsatkich. */
-  stat: { fontFamily: FONT.monoStrong, fontSize: 19, letterSpacing: -0.2 },
-  body: { fontFamily: FONT.body, fontSize: 13.5, lineHeight: 20 },
-  label: { fontFamily: FONT.bodyStrong, fontSize: 11.5 },
-  chip: { fontFamily: FONT.bodyStrong, fontSize: 10.5 },
-  button: { fontFamily: FONT.display, fontSize: 15.5, letterSpacing: 0.15 },
-  tab: { fontFamily: FONT.bodyStrong, fontSize: 10 },
-} as const;
