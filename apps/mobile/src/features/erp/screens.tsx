@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, Field, Gap, Txt } from '@/design/primitives';
 import { Avatar, Icon, IconName, tabIcon } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { erpText, erpTint } from '@/design/tokens';
+import { erpText, erpTint, textRoom } from '@/design/tokens';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import { useSession } from '@/core/session';
 import MapView, { Marker } from 'react-native-maps';
@@ -241,7 +241,7 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
                 {t.customer} · {t.status}{t.etaMin != null ? ` · ~${t.etaMin} daq` : ''}
               </Txt>
             </View>
-            <Txt style={{ ...erpText.label, color: c.textPrimary, flexShrink: 0 }} numberOfLines={1}>{t.km} km</Txt>
+            <Txt style={{ ...erpText.label, color: c.textPrimary, flexShrink: 0, minWidth: textRoom(`${t.km} km`, 11.5) }} numberOfLines={1}>{t.km} km</Txt>
           </View>
         </PressScale>
       ))}

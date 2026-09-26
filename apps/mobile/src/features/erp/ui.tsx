@@ -3,7 +3,7 @@ import { ScrollView, View, ViewStyle } from 'react-native';
 import { Txt } from '@/design/primitives';
 import { Icon, IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { CHIP, INK, erpText, erpTint } from '@/design/tokens';
+import { CHIP, INK, erpText, erpTint, textRoom } from '@/design/tokens';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import type { ErpCard, ErpListFilter, ErpRow } from '@/core/erp';
 
@@ -24,7 +24,7 @@ export function Chip({ label, tone }: { label: string; tone?: string }) {
           bitta piksel yetmagani uchun butun bir harfni tashlab yuboradi:
           "Yetkazildi" → "Yetkazil…". Harf soniga qarab kichik zaxira beramiz — pill
           shunchaga kengayadi, matn esa to'liq chiqadi. */}
-      <Txt style={{ ...erpText.chip, color: ink, flexShrink: 0, minWidth: label.length * 6.2 }} numberOfLines={1}>{label}</Txt>
+      <Txt style={{ ...erpText.chip, color: ink, flexShrink: 0, minWidth: textRoom(label, 10.5) }} numberOfLines={1}>{label}</Txt>
     </View>
   );
 }
@@ -125,7 +125,9 @@ export function ListRow({ row, icon, role, onPress, index = 0 }: { row: ErpRow; 
         {/* `flexShrink: 0` — chapdagi uzun nom o'ng ustunni siqib, holat chipining
             oxirgi harfini qirqib yuborardi ("Yetkazild", "Yo'ld"). */}
         <View style={{ alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-          {row.right ? <Txt style={{ fontFamily: erpText.meta.fontFamily, fontSize: 13, color: c.textPrimary }} numberOfLines={1}>{row.right}</Txt> : null}
+          {/* minWidth — chipdagi bilan bir xil sabab: Android o'lchaganda kenglikni kam
+              chiqaradi va "20 dona" → "20 d…" bo'lib qolardi */}
+          {row.right ? <Txt style={{ fontFamily: erpText.meta.fontFamily, fontSize: 13, color: c.textPrimary, minWidth: textRoom(row.right, 13) }} numberOfLines={1}>{row.right}</Txt> : null}
           {row.status ? <Chip label={statusLabel(row.status)} tone={row.tone} /> : null}
         </View>
       </View>
@@ -144,8 +146,8 @@ export function SectionHead({ title, action, onAction, style }: { title: string;
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 11 }, style]}>
       {/* Tor ekranda sarlavha havolaning tagiga kirib qirqilmasin */}
-      <Txt style={{ ...erpText.section, color: c.textSecondary, flexShrink: 1, marginRight: 10 }} numberOfLines={1}>{title}</Txt>
-      {action ? <Txt onPress={onAction} numberOfLines={1} style={{ fontSize: 12, fontFamily: erpText.label.fontFamily, color: c.brandPrimary, flexShrink: 0 }}>{action}</Txt> : null}
+      <Txt numberOfLines={1} style={{ ...erpText.section, color: c.textSecondary, flexShrink: 0, marginRight: 10, minWidth: textRoom(title, 12, 2.1) }}>{title}</Txt>
+      {action ? <Txt onPress={onAction} numberOfLines={1} style={{ fontSize: 12, fontFamily: erpText.label.fontFamily, color: c.brandPrimary, flexShrink: 0, minWidth: textRoom(action, 12) }}>{action}</Txt> : null}
     </View>
   );
 }

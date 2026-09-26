@@ -294,6 +294,19 @@ export const FONT = {
 } as const;
 
 /** ERP ekranlaridagi matn uslublari — maketdagi o'lchamlar. */
+/**
+ * Matn qutisiga zaxira kenglik, dp.
+ *
+ * Android matn kengligini o'lchaganda haqiqiydan bir oz kam chiqaradi va bitta piksel
+ * yetmagani uchun butun bir harfni tashlab yuboradi: "Yetkazildi" → "Yetkazil…",
+ * "20 dona" → "20 d…". Harf soni va shrift o'lchamiga mutanosib zaxira beramiz —
+ * quti shunchaga kengayadi, matn esa to'liq chiqadi.
+ *
+ * `extra` — harf oralig'i (`letterSpacing`) bo'lgan joylar uchun.
+ */
+export const textRoom = (text: string, fontSize: number, extra = 0) =>
+  text.length * (fontSize * 0.59 + extra);
+
 export const erpText = {
   /** Bo'lim nomi sarlavha ustida: kichik, katta harf, keng oraliq. */
   eyebrow: { fontFamily: FONT.bodyStrong, fontSize: 10.5, letterSpacing: 0.95, textTransform: 'uppercase' as const },
