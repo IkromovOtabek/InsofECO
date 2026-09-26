@@ -49,7 +49,20 @@ const OFF_ROUTE_M = 120;
 /** Yo'lni qayta so'rash chastotasi — chetlashish uzoq davom etsa ham serverni bosmaslik uchun. */
 const REROUTE_EVERY_MS = 20_000;
 
-interface Fix extends LatLng { speedKmh: number; at: number }
+interface Fix extends LatLng {
+  speedKmh: number;
+  at: number;
+  /** Qaysi tomonga qarab ketyapti, gradus (0 — shimol). Aniqlanmasa `null`. */
+  heading: number | null;
+}
+
+/**
+ * Tezlik shundan past bo'lsa yo'nalish ko'rsatilmaydi.
+ *
+ * Turgan mashinada GPS yo'nalishi tasodifiy raqam beradi va o'q aylanib turadi —
+ * bu xaritaga ishonchni yo'qotadi. Turganda oddiy nuqta ko'rsatilgani halolroq.
+ */
+const HEADING_MIN_KMH = 3;
 
 export default function TripRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -132,7 +145,7 @@ export default function TripRoute() {
       // tizimdagi oxirgi ma'lum nuqtani olamiz: u darhol keladi va xarita bo'sh qolmaydi.
       const last = await Location.getLastKnownPositionAsync();
       if (last && alive && !fixRef.current) {
-        const p: Fix = { lat: last.coords.latitude, lng: last.coords.longitude, speedKmh: 0, at: last.timestamp };
+        const p: Fix = { lat: last.coords.latitude, lng: last.coords.longitude, speedKmh: 0, heading: null, at: last.timestamp };
         fixRef.current = p;
         setFix(p);
       }
@@ -144,6 +157,7 @@ export default function TripRoute() {
             lat: l.coords.latitude,
             lng: l.coords.longitude,
             speedKmh: l.coords.speed != null ? Math.max(0, l.coords.speed * 3.6) : 0,
+            heading: l.coords.heading != null && l.coords.heading >= 0 ? l.coords.heading : null,
             at: l.timestamp,
           };
           fixRef.current = next;
@@ -244,7 +258,7 @@ export default function TripRoute() {
           new Promise<null>((r) => setTimeout(() => r(null), 6000)),
         ]));
         if (l) {
-          p = { lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: 0, at: l.timestamp };
+          p = { lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: 0, heading: null, at: l.timestamp };
           fixRef.current = p;
           setFix(p);
         }
@@ -314,8 +328,20 @@ export default function TripRoute() {
             <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.brandPrimary} />
             {fix ? (
               <Marker coordinate={{ latitude: fix.lat, longitude: fix.lng }} title="Siz" anchor={{ x: 0.5, y: 0.5 }} flat>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.border }}>
-                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.brandPrimary }} />
+                {/* Yurayotganda — yo'nalishga qaragan o'q, turganda — oddiy nuqta */}
+                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.brandPrimary }}>
+                  {fix.heading != null && fix.speedKmh >= HEADING_MIN_KMH ? (
+                    <View style={{ transform: [{ rotate: `${fix.heading}deg` }] }}>
+                      {/* Uchburchak — chegaralar orqali chiziladi, rasm fayli kerak emas */}
+                      <View style={{
+                        width: 0, height: 0,
+                        borderLeftWidth: 7, borderRightWidth: 7, borderBottomWidth: 15,
+                        borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: c.brandPrimary,
+                      }} />
+                    </View>
+                  ) : (
+                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.brandPrimary }} />
+                  )}
                 </View>
               </Marker>
             ) : null}
