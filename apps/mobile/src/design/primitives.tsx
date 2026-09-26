@@ -25,10 +25,22 @@ type Variant = keyof typeof type;
 export function Txt({ v = 'body', color, style, ...p }: TextProps & { v?: Variant; color?: 'primary' | 'secondary' | 'onBrand' | 'danger' | 'success' | 'warning' | 'brand' }) {
   const { c } = useTheme();
   const col = { primary: c.textPrimary, secondary: c.textSecondary, onBrand: c.textOnBrand, danger: c.danger, success: c.success, warning: c.warning, brand: c.brandPrimary }[color ?? 'primary'];
-  // Maxsus fontSize berilsa (lineHeight'siz) — shkala lineHeight'i kesib qo'ymasligi uchun avtomatik hisoblanadi
   const flat = StyleSheet.flatten(style) as TextStyle | undefined;
+  /**
+   * O'z shriftimiz berilgan bo'lsa (`erpText.*`), variantning `fontWeight` va
+   * `lineHeight` i olib tashlanadi.
+   *
+   * Nega: "IBMPlexSans_600SemiBold" allaqachon yarim qalin shrift. Ustiga yana
+   * `fontWeight: '400'` qo'shilsa, Android harflarni sun'iy o'zgartirib chizadi —
+   * lekin matn kengligi O'LCHANGANDA bu hisobga olinmaydi. Natijada bemalol
+   * sig'adigan yozuv ham qirqilib qoladi ("Yetkazildi" → "Yetkazil…").
+   * `lineHeight` ham variantniki (17 px matn uchun) bo'lib, 10 px chip ichida
+   * ortiqcha joy egallardi — pastdagi `auto` uni o'lchamga qarab qayta hisoblaydi.
+   */
+  const base = flat?.fontFamily ? { ...type[v], fontWeight: undefined, lineHeight: undefined } : type[v];
+  // Maxsus fontSize berilsa (lineHeight'siz) — shkala lineHeight'i kesib qo'ymasligi uchun avtomatik hisoblanadi
   const auto = flat?.fontSize && !flat.lineHeight ? { lineHeight: Math.round(flat.fontSize * 1.25) } : null;
-  return <Text {...p} style={[type[v], { color: col }, style, auto]} maxFontSizeMultiplier={1.4} />;
+  return <Text {...p} style={[base, { color: col }, style, auto]} maxFontSizeMultiplier={1.4} />;
 }
 
 // ───────── Layout ─────────

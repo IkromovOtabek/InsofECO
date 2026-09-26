@@ -77,8 +77,16 @@ export default function TripRoute() {
    * yangilashda qayta kelmaydi.
    */
   const needLineRef = useRef(true);
-  /** Xarita tayyor bo'lgunicha belgi va chiziqlarni qo'shib bo'lmaydi (pastda izoh). */
-  const [mapReady, setMapReady] = useState(false);
+  /**
+   * Xarita HAQIQIY o'lchamga ega bo'lgunicha belgi va chiziqlar qo'shilmaydi.
+   *
+   * `flex: 1` li xarita birinchi renderda balandligi 0 bilan mount bo'ladi. O'sha payt
+   * qo'shilgan Marker/Polyline/Circle yo'qoladi: xarita keyin o'lchamga ega bo'lib
+   * plitkalarni chizadi, lekin bolalarni qayta qo'shmaydi. Bosh ekrandagi xarita
+   * qat'iy balandlikda bo'lgani uchun u yerda bu muammo yo'q edi.
+   */
+  const [mapH, setMapH] = useState(0);
+  const mapReady = mapH > 0;
 
   const { data, isLoading, error, refetch } = useErpTripRoute(id!, () => fixRef.current, () => needLineRef.current);
   const run = useErpAction();
@@ -283,7 +291,7 @@ export default function TripRoute() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
-            onMapReady={() => setMapReady(true)}
+            onLayout={(e) => setMapH(e.nativeEvent.layout.height)}
           >
             {/* Xarita tayyor bo'lmasdan qo'shilgan belgi va chiziqlar Android'da
                 yo'qoladi — xarita ularni qabul qiladi-yu, ekranga chiqarmaydi.

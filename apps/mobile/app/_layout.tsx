@@ -152,8 +152,22 @@ function Nav() {
 
 export default function RootLayout() {
   const hydrate = useSession((s) => s.hydrate);
-  // Maket shriftlari — yuklangunicha tizim shrifti chiziladi, ekran bloklanmaydi
-  useFonts(ERP_FONTS);
+  /**
+   * Maket shriftlari.
+   *
+   * Muammo: matn avval tizim shrifti bilan o'lchanadi, keyin maket shrifti bilan
+   * chiziladi, React Native esa `numberOfLines={1}` bo'lgan matnni QAYTA o'lchamaydi —
+   * shuning uchun bemalol sig'adigan yozuvlar qirqilib qolardi ("Yetkazildi" →
+   * "Yetkazil…", "Reyslarim" → "Reyslari…").
+   *
+   * Yechim: shriftlar tayyor bo'lganda `key` o'zgaradi va daraxt bir marta qayta
+   * quriladi, ya'ni hamma matn yangi shrift bilan qaytadan o'lchanadi. Bu ochilish
+   * animatsiyasi ostida bo'lib o'tadi va ko'rinmaydi.
+   *
+   * Nega ekranni kutdirib turmaymiz: expo-router ildiz maketidan navigatorni HAR DOIM
+   * chizishni talab qiladi — shart ichiga olinsa ilova oq ekranda qotib qoladi.
+   */
+  const [fontsReady] = useFonts(ERP_FONTS);
   useEffect(() => { void hydrate(); }, [hydrate]);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -161,7 +175,7 @@ export default function RootLayout() {
         <ThemeProvider>
           <Gate />
           <PushRouting />
-          <Nav />
+          <Nav key={fontsReady ? 'fonts-ready' : 'fonts-loading'} />
           {/* PIN qulfi — hisob ustida; ochilish ekrani esa hammasining ustida */}
           <PinLock />
           <LaunchOverlay />

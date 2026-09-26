@@ -20,7 +20,11 @@ export function Chip({ label, tone }: { label: string; tone?: string }) {
   const [bg, ink] = CHIP[toneKey(tone)];
   return (
     <View style={{ borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: bg, flexShrink: 0 }}>
-      <Txt style={{ ...erpText.chip, color: ink }} numberOfLines={1}>{label}</Txt>
+      {/* Android matn kengligini o'lchaganda bir oz kam chiqaradi (harfiga ~0.2 px), va
+          bitta piksel yetmagani uchun butun bir harfni tashlab yuboradi:
+          "Yetkazildi" → "Yetkazil…". Harf soniga qarab kichik zaxira beramiz — pill
+          shunchaga kengayadi, matn esa to'liq chiqadi. */}
+      <Txt style={{ ...erpText.chip, color: ink, flexShrink: 0, minWidth: label.length * 6.2 }} numberOfLines={1}>{label}</Txt>
     </View>
   );
 }

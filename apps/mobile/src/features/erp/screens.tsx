@@ -241,7 +241,7 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
                 {t.customer} · {t.status}{t.etaMin != null ? ` · ~${t.etaMin} daq` : ''}
               </Txt>
             </View>
-            <Txt style={{ ...erpText.label, color: c.textPrimary }}>{t.km} km</Txt>
+            <Txt style={{ ...erpText.label, color: c.textPrimary, flexShrink: 0 }} numberOfLines={1}>{t.km} km</Txt>
           </View>
         </PressScale>
       ))}
