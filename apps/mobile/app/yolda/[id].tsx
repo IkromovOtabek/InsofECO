@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, InteractionManager, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
@@ -85,8 +85,19 @@ export default function TripRoute() {
    * plitkalarni chizadi, lekin bolalarni qayta qo'shmaydi. Bosh ekrandagi xarita
    * qat'iy balandlikda bo'lgani uchun u yerda bu muammo yo'q edi.
    */
-  const [mapH, setMapH] = useState(0);
-  const mapReady = mapH > 0;
+  /**
+   * Xarita ekran ochilish ANIMATSIYASI tugagandan keyin yaratiladi.
+   *
+   * Android'da animatsiya paytida yaratilgan xarita `initialRegion` ni ham e'tiborga
+   * olmaydi, unga qo'shilgan belgi va chiziqlarni ham chizmaydi — xarita o'zi ishlaydi,
+   * usti esa bo'sh qoladi. Bosh ekrandagi xarita animatsiyasiz ochilgani uchun u yerda
+   * bu muammo sezilmasdi.
+   */
+  const [canMap, setCanMap] = useState(false);
+  useEffect(() => {
+    const t = InteractionManager.runAfterInteractions(() => setCanMap(true));
+    return () => t.cancel();
+  }, []);
 
   const { data, isLoading, error, refetch } = useErpTripRoute(id!, () => fixRef.current, () => needLineRef.current);
   const run = useErpAction();
@@ -279,7 +290,7 @@ export default function TripRoute() {
     <View style={{ flex: 1, backgroundColor: c.bgCanvas }}>
       {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda faqat raqamlar qoladi
           (`core/config.ts`), ya'ni reys baribir olib boriladi va yopiladi. */}
-      {config.mapsEnabled && dest ? (
+      {config.mapsEnabled && dest && canMap ? (
         <View style={{ flex: 1 }}>
           <MapView
             ref={(r) => { mapRef.current = r; }}
@@ -291,12 +302,7 @@ export default function TripRoute() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
-            onLayout={(e) => setMapH(e.nativeEvent.layout.height)}
           >
-            {/* Xarita tayyor bo'lmasdan qo'shilgan belgi va chiziqlar Android'da
-                yo'qoladi — xarita ularni qabul qiladi-yu, ekranga chiqarmaydi.
-                Shuning uchun `onMapReady` dan keyin chiziladi. */}
-            {mapReady ? <>
             <Polyline coordinates={line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brandPrimary} strokeWidth={5} />
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
@@ -313,7 +319,6 @@ export default function TripRoute() {
                 </View>
               </Marker>
             ) : null}
-            </> : null}
           </MapView>
           {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda
               chiqardi, ya'ni ekranga qaytib kirilganda mashina ko'rinmay qolsa, uni
