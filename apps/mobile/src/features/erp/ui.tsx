@@ -3,7 +3,7 @@ import { Pressable, ScrollView, View, ViewStyle } from 'react-native';
 import { Badge, IconTile, KPICard, Txt, statusLabel } from '@/design/primitives';
 import { Icon, IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { LIST_MODULE, ModuleTone, radius, shadow, size, space, textRoom } from '@/design/tokens';
+import { LIST_MODULE, ModuleTone, radius, shadow, size, space, textRoom, type } from '@/design/tokens';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import type { ErpCard, ErpListFilter, ErpRow } from '@/core/erp';
 
@@ -27,7 +27,7 @@ export function FilterChips({ filters, onPick }: { filters: ErpListFilter[]; onP
           key={f.key} onPress={() => onPick(f.key)} accessibilityRole="tab" accessibilityState={{ selected: !!f.active }}
           style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, minHeight: size.touch - space.sm, paddingHorizontal: space.md, borderRadius: radius.pill, backgroundColor: f.active ? c.brandSoft : c.bgSurface, borderWidth: size.hairline, borderColor: f.active ? c.brand : c.borderDefault }, pressed && { borderColor: c.borderStrong }]}
         >
-          <Txt v="label" color={f.active ? 'brand' : 'body'}>{f.label}</Txt>
+          <Txt v="label" color={f.active ? 'brand' : 'body'} numberOfLines={1} style={{ minWidth: textRoom(f.label, type.label.fontSize) }}>{f.label}</Txt>
           <View style={{ minWidth: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: f.active ? c.bgSurface : c.bgMuted, alignItems: 'center' }}>
             <Txt v="caption" color={f.active ? 'brand' : 'muted'}>{f.count}</Txt>
           </View>
@@ -114,7 +114,9 @@ export function SectionHead({ title, action, onAction, style }: { title: string;
 
 /** Ro'yxat kaliti → qator ikoni. */
 export const ROW_ICON: Record<string, IconName> = {
-  orders: 'file-text', trips: 'truck', tasks: 'square-check', production: 'package',
-  stock: 'layers', receipts: 'download', invoices: 'receipt',
+  orders: 'file-text', sales: 'trending-up', customers: 'users', leads: 'inbox', invoices: 'receipt',
+  production: 'package', recipes: 'droplets', tasks: 'square-check', brigades: 'hard-hat',
+  trips: 'truck', drivers: 'id-card',
+  stock: 'layers', snabjeniye: 'shopping-cart', supply: 'clipboard-list', receipts: 'download', suppliers: 'store',
   cashflow: 'arrow-up-down', payments: 'banknote', employees: 'user',
 };

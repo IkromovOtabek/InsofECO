@@ -21,7 +21,7 @@ import i18n from '@/core/i18n';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
 import { Icon, IconName, IconTone } from './icons';
-import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, moduleColors, radius, shadow, size, space, toneColors, type } from './tokens';
+import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, moduleColors, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 
 // ───────────────────────── Matn ─────────────────────────
 
@@ -87,7 +87,7 @@ export function Panel({ title, action, onAction, children, style, icon }: { titl
         </View>
         {action ? (
           <Pressable onPress={onAction} hitSlop={space.sm} accessibilityRole="link" style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: size.touch, justifyContent: 'center' }}>
-            <Txt v="label" color="brand">{action}</Txt>
+            <Txt v="label" color="brand" style={{ minWidth: textRoom(action, type.label.fontSize) }}>{action}</Txt>
             <Icon name="arrow-right" tone="brand" />
           </Pressable>
         ) : null}
@@ -142,7 +142,8 @@ export function Button({
       {loading ? <ActivityIndicator color={fg} /> : (
         <>
           {icon ? <Icon name={icon} size={iconSize} color={fg} /> : null}
-          <Text style={[type[txt], { color: fg }]} maxFontSizeMultiplier={1.4} numberOfLines={1}>{title}</Text>
+          {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — zaxira kenglik */}
+          <Text style={[type[txt], { color: fg, minWidth: textRoom(title, type[txt].fontSize) }]} maxFontSizeMultiplier={1.4} numberOfLines={1}>{title}</Text>
           {iconRight ? <Icon name={iconRight} size={iconSize} color={fg} /> : null}
         </>
       )}
@@ -319,7 +320,7 @@ export function Badge({ label, tone = 'neutral', icon, style }: { label: string;
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm, minHeight: 24, borderRadius: radius.pill, backgroundColor: bg, flexShrink: 0 }, style]}>
       {ic ? <Icon name={ic} size={size.iconSm - 4} color={ink} /> : null}
-      <Txt v="caption" style={{ color: ink, fontFamily: FONT[600] }} numberOfLines={1}>{label}</Txt>
+      <Txt v="caption" style={{ color: ink, fontFamily: FONT[600], minWidth: textRoom(label, type.caption.fontSize) }} numberOfLines={1}>{label}</Txt>
     </View>
   );
 }

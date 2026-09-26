@@ -283,7 +283,7 @@ export const ERP_ROLE_MODULE: Partial<Record<ErpRoleKey, ModuleTone>> = {
 
 /** Ro'yxat kaliti → modul toni. */
 export const LIST_MODULE: Record<string, ModuleTone> = {
-  production: 'production', tasks: 'production',
-  trips: 'logistics',
-  stock: 'warehouse', receipts: 'warehouse',
+  production: 'production', tasks: 'production', brigades: 'production', recipes: 'production',
+  trips: 'logistics', drivers: 'logistics',
+  stock: 'warehouse', receipts: 'warehouse', supply: 'warehouse', snabjeniye: 'warehouse', suppliers: 'warehouse',
 };

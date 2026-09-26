@@ -300,6 +300,11 @@ export function ErpMenu() {
   const module = roleModule(erp?.role ?? 'DIRECTOR');
   const [hasPin, setHasPin] = React.useState(false);
   React.useEffect(() => { void pinStore.has().then(setHasPin); }, []);
+  // Bo'limlar ro'yxati — bosh ekrandagi "Tezkor amallar" bilan bir manba (`/api/mobile/home`):
+  // kompyuterdagi ERP menyusida ko'ringan har bir bo'lim shu yerda ham turadi.
+  const quick = useErpHome().data?.quick ?? [];
+  const lists = quick.filter((q) => q.kind === 'list');
+  const forms = quick.filter((q) => q.kind === 'new');
   return (
     <ScrollView style={{ backgroundColor: c.bgApp }} contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxxl }}>
       <Appear>
@@ -325,7 +330,31 @@ export function ErpMenu() {
         </Card>
       </Appear>
 
-      <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+      {lists.length || forms.length ? (
+        <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+          <SectionHead title="Bo'limlar" />
+          <Card style={{ paddingVertical: 0 }}>
+            {forms.map((q, i) => (
+              <ListItem
+                key={`new-${q.key}`} icon="plus" module={module}
+                title={q.label} subtitle="Yangi hujjat"
+                onPress={() => router.push(`/erp/new/${q.key}` as never)}
+                last={i === forms.length - 1 && lists.length === 0}
+              />
+            ))}
+            {lists.map((q, i) => (
+              <ListItem
+                key={`list-${q.key}`} icon={q.icon} module={listModule(q.key)}
+                title={q.label}
+                onPress={() => router.push(`/erp/list/${q.key}` as never)}
+                last={i === lists.length - 1}
+              />
+            ))}
+          </Card>
+        </Appear>
+      ) : null}
+
+      <Appear delay={stagger(3)} style={{ marginTop: space.xl }}>
         <SectionHead title="Xavfsizlik" />
         <Card style={{ paddingVertical: 0 }}>
           <ListItem
@@ -344,7 +373,7 @@ export function ErpMenu() {
         </Card>
       </Appear>
 
-      <Appear delay={stagger(3)} style={{ marginTop: space.xl }}>
+      <Appear delay={stagger(4)} style={{ marginTop: space.xl }}>
         <Button variant="secondary" icon="log-out" title="Chiqish" onPress={() => void signOut()} />
       </Appear>
     </ScrollView>

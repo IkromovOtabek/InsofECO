@@ -12,7 +12,7 @@ import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { DUR, EASE_STATE } from './motion';
-import { Palette, Tone, duration, radius, shadow, size, space, toneColors } from './tokens';
+import { Palette, Tone, duration, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 import { Badge, Button, IconButton, StatusDot, Txt, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
@@ -49,7 +49,7 @@ export function Tabs<T extends string>({ value, onChange, items, style }: { valu
         key={s.key} onPress={() => onChange(s.key)} accessibilityRole="tab" accessibilityState={{ selected: on }}
         style={({ pressed }) => [{ flex: scroll ? undefined : 1, minHeight: size.touch - space.sm, paddingHorizontal: space.md, borderRadius: radius.md - 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, backgroundColor: on ? c.bgSurface : 'transparent', borderWidth: size.hairline, borderColor: on ? c.borderDefault : 'transparent' }, on && shadow.card, pressed && !on && { backgroundColor: c.bgMuted }]}
       >
-        <Txt v="label" color={on ? 'strong' : 'muted'} numberOfLines={1}>{s.label}</Txt>
+        <Txt v="label" color={on ? 'strong' : 'muted'} numberOfLines={1} style={{ minWidth: textRoom(s.label, type.label.fontSize) }}>{s.label}</Txt>
         {s.count != null ? <Txt v="caption" color={on ? 'body' : 'faint'}>{s.count}</Txt> : null}
       </Pressable>
     );
