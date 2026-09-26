@@ -7,7 +7,7 @@ import { useTheme } from '@/design/theme';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
-import { flushErpGps, startErpTracking, stopErpTracking } from '@/core/erp-track';
+import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import { Chip, ListRow, ROW_ICON, SectionHead, statusLabel } from '@/features/erp/ui';
@@ -88,10 +88,28 @@ export default function ErpDetail() {
     }
   };
 
+  /**
+   * Yopiq tugmani ochishga urinish: hozirgi joylashuvni olib serverga yuboramiz va
+   * kartochkani qayta so'raymiz. Qoida oxirgi SAQLANGAN nuqtaga qaraydi, u esa ilova
+   * yopiq turgan vaqtda eskirib qolgan bo'lishi mumkin.
+   */
+  const recheck = async () => {
+    const ok = await refreshErpPosition(id!);
+    await refetch();
+    if (!ok) Alert.alert('Joylashuv topilmadi', "GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.");
+  };
+
   const press = (a: ErpAction) => {
     setFormError(null);
-    // Yopiq tugma bosilsa sababini aytamiz — nega ochilmagani noma'lum qolmasin
-    if (a.disabled) { Alert.alert(a.label, a.hint ?? 'Hozir bajarib bo\'lmaydi'); return; }
+    // Yopiq tugma bosilsa sababini aytamiz va qulfni ochishga urinib ko'ramiz —
+    // xabarni o'qib, hech narsa qila olmay qolish eng yomoni
+    if (a.disabled) {
+      Alert.alert(a.label, a.hint ?? 'Hozir bajarib bo\'lmaydi', [
+        { text: 'Yopish', style: 'cancel' },
+        { text: 'Qayta tekshirish', onPress: () => void recheck() },
+      ]);
+      return;
+    }
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       Alert.alert(a.label, a.confirm, [

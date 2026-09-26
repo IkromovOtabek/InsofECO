@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import { Platform, useColorScheme } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useSession } from '@/core/session';
 import { ErpRoleKey, Palette, RoleKey, Shape, Skin, defaultSkin, erpSkin, skins } from './tokens';
 
@@ -26,6 +27,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const dark = skin.forceDark ? true : scheme === 'dark';
     return { c: dark ? skin.dark : skin.light, dark, role, erpRole, shape: skin.shape, skin };
   }, [scheme, role, erpRole]);
+
+  /**
+   * Pastdagi tizim tugmalari paneli ham mavzuga ergashsin.
+   *
+   * Aks holda haydovchining qorong'i ekrani ostida oq chiziq bo'lib turadi va ilova
+   * ekranga to'liq egalik qilmagandek ko'rinadi. Faqat Android'da — iOS'da bunday panel yo'q.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void NavigationBar.setBackgroundColorAsync(value.c.bgSurface).catch(() => {});
+    void NavigationBar.setButtonStyleAsync(value.dark ? 'light' : 'dark').catch(() => {});
+  }, [value.c.bgSurface, value.dark]);
+
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
 }
 

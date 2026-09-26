@@ -193,20 +193,28 @@ export function onColor(hex: string): string {
 export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
 
 /** Bo'lim rangi: [ink — matn va ikon, tint — ikon kvadrati foni, darkInk — qorong'i rejada]. */
+/**
+ * Bo'lim rangi: [ink — matn va ikon, tint — ikon kvadrati foni, darkInk — qorong'i rejada].
+ *
+ * Hamma bo'limda BITTA rang — ilova ikonkasining ko'ki. Ilgari har rolga alohida rang
+ * berilgandi (haydovchi yashil, sotuv qizil...), lekin ilova ikonkasi ko'k bo'lib ichi
+ * har xil rangda bo'lsa, u bitta mahsulotdek ko'rinmaydi. Bo'limlar bir-biridan nomi va
+ * ikonkasi bilan ajraladi.
+ */
 const ERP_ROLE_COLOR: Record<ErpRoleKey, [ink: string, tint: string, darkInk: string]> = {
-  DIRECTOR:    ['#A06E00', '#FFF0CC', '#FFBE3D'],
-  SALES:       ['#C4360D', '#FFE3D9', '#FF8F5E'],
-  PRODUCTION:  ['#8C5E00', '#FBEBCC', '#F0C04D'],
-  SUPERVISOR:  ['#5227B8', '#EDE3FF', '#B794FF'],
-  LOGISTICS:   ['#00756A', '#D4F5EF', '#2FD9C2'],
-  WAREHOUSE:   ['#0D5AAD', '#DCEDFF', '#66AEFF'],
-  PROCUREMENT: ['#8A2BB0', '#F7E2FF', '#DC8FFA'],
-  ACCOUNTING:  ['#5227B8', '#EDE3FF', '#B794FF'],
-  FINANCE:     ['#0D5AAD', '#DCEDFF', '#66AEFF'],
-  HR:          ['#C4360D', '#FFE3D9', '#FF8F5E'],
-  CASHIER:     ['#0F8544', '#D9F7E2', '#4FD97F'],
-  DRIVER:      ['#4A7A1A', '#E8F9D6', '#9EDB57'],
-  BRIGADIER:   ['#A8511C', '#FFEBDB', '#FFA766'],
+  DIRECTOR:    ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  SALES:       ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  PRODUCTION:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  SUPERVISOR:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  LOGISTICS:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  WAREHOUSE:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  PROCUREMENT: ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  ACCOUNTING:  ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  FINANCE:     ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  HR:          ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  CASHIER:     ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  DRIVER:      ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
+  BRIGADIER:   ['#0A4CD5', '#DCE8FF', '#4D8DFF'],
 };
 
 export const ERP_ROLE_NAME: Record<ErpRoleKey, string> = {

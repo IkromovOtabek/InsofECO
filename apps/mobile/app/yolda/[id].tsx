@@ -13,7 +13,7 @@ import { PressScale } from '@/design/motion';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
 import { openNavigation } from '@/core/navigate';
-import { flushErpGps, pushErpFix, stopErpTracking } from '@/core/erp-track';
+import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters, type LatLng } from '@/core/geo';
 import { useErpAction, useErpTripRoute } from '@/features/erp/api';
 import { ActionSheet } from '@/features/erp/action-sheet';
@@ -71,22 +71,32 @@ export default function TripRoute() {
   const mapRef = useRef<MapView | null>(null);
 
   /**
-   * Yo'lning o'zi ilovada saqlanadi: ko'rsatkichlar har daqiqa-yarimda yangilanadi, lekin
-   * chiziq faqat marshrut o'zgarganda qayta so'raladi (`needLine`) — 17 KB geometriya
-   * har safar kelmasin va OSRM keraksiz chaqirilmasin.
+   * Yo'l faqat kerak bo'lganda qayta quriladi: birinchi ochilishda va yo'ldan chiqib
+   * ketilganda. Chiziqning o'zi so'rov keshida saqlanadi (`useErpTripRoute`), shuning
+   * uchun ekrandan chiqib qaytilganda ham joyida turadi va 17 KB geometriya har
+   * yangilashda qayta kelmaydi.
    */
-  const [route, setRoute] = useState<{ line: LatLng[]; meters: number; seconds: number; source: 'ROUTE' | 'LINE' } | null>(null);
-  const haveLineRef = useRef(false);
   const needLineRef = useRef(true);
+  /** Xarita tayyor bo'lgunicha belgi va chiziqlarni qo'shib bo'lmaydi (pastda izoh). */
+  const [mapReady, setMapReady] = useState(false);
 
-  const { data, isLoading, error, refetch } = useErpTripRoute(
-    id!,
-    () => fixRef.current,
-    () => haveLineRef.current && !needLineRef.current,
-  );
+  const { data, isLoading, error, refetch } = useErpTripRoute(id!, () => fixRef.current, () => needLineRef.current);
   const run = useErpAction();
 
   useEffect(() => { nav.setOptions({ title: data ? data.ref : 'Marshrut' }); }, [data, nav]);
+
+  /**
+   * Fon kuzatuvi to'xtab qolgan bo'lsa tiklaymiz.
+   *
+   * Reys yo'lda, lekin ilova yopilgan yoki telefon o'chib yongan bo'lsa, fon vazifasi
+   * qayta boshlanmaydi va server oxirgi nuqtani eski deb biladi — natijada "Yetkazdim"
+   * abadiy qulf bo'lib qolardi. Marshrut ekrani ochilishi shu holatni to'g'rilaydi.
+   */
+  useEffect(() => {
+    if (!id || data?.status !== 'ON_ROAD') return;
+    if (activeErpTripId() === id) return;
+    void startErpTracking(id);
+  }, [id, data?.status]);
 
   // Jonli joylashuv — ko'rsatkichlar uchun. Ruxsat "Yo'lga chiqdim" da so'ralgan;
   // berilmagan bo'lsa ekran baribir ochiladi, faqat raqamlar o'rniga ogohlantirish turadi.
@@ -273,7 +283,12 @@ export default function TripRoute() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
+            onMapReady={() => setMapReady(true)}
           >
+            {/* Xarita tayyor bo'lmasdan qo'shilgan belgi va chiziqlar Android'da
+                yo'qoladi — xarita ularni qabul qiladi-yu, ekranga chiqarmaydi.
+                Shuning uchun `onMapReady` dan keyin chiziladi. */}
+            {mapReady ? <>
             <Polyline coordinates={line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brandPrimary} strokeWidth={5} />
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
@@ -290,6 +305,7 @@ export default function TripRoute() {
                 </View>
               </Marker>
             ) : null}
+            </> : null}
           </MapView>
           {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda
               chiqardi, ya'ni ekranga qaytib kirilganda mashina ko'rinmay qolsa, uni

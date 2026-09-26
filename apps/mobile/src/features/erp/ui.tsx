@@ -19,8 +19,8 @@ const toneKey = (t?: string) => (t === 'brand' || t === 'success' || t === 'warn
 export function Chip({ label, tone }: { label: string; tone?: string }) {
   const [bg, ink] = CHIP[toneKey(tone)];
   return (
-    <View style={{ borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: bg }}>
-      <Txt style={{ ...erpText.chip, color: ink }}>{label}</Txt>
+    <View style={{ borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: bg, flexShrink: 0 }}>
+      <Txt style={{ ...erpText.chip, color: ink }} numberOfLines={1}>{label}</Txt>
     </View>
   );
 }
@@ -118,7 +118,9 @@ export function ListRow({ row, icon, role, onPress, index = 0 }: { row: ErpRow; 
           <Txt style={{ ...erpText.rowTitle, color: c.textPrimary }} numberOfLines={1}>{row.title}</Txt>
           {row.subtitle ? <Txt style={{ ...erpText.meta, color: c.textSecondary, marginTop: 3 }} numberOfLines={1}>{row.subtitle}</Txt> : null}
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 5 }}>
+        {/* `flexShrink: 0` — chapdagi uzun nom o'ng ustunni siqib, holat chipining
+            oxirgi harfini qirqib yuborardi ("Yetkazild", "Yo'ld"). */}
+        <View style={{ alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
           {row.right ? <Txt style={{ fontFamily: erpText.meta.fontFamily, fontSize: 13, color: c.textPrimary }} numberOfLines={1}>{row.right}</Txt> : null}
           {row.status ? <Chip label={statusLabel(row.status)} tone={row.tone} /> : null}
         </View>
@@ -137,8 +139,9 @@ export function SectionHead({ title, action, onAction, style }: { title: string;
   const { c } = useTheme();
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 11 }, style]}>
-      <Txt style={{ ...erpText.section, color: c.textSecondary }}>{title}</Txt>
-      {action ? <Txt onPress={onAction} style={{ fontSize: 12, fontFamily: erpText.label.fontFamily, color: c.brandPrimary }}>{action}</Txt> : null}
+      {/* Tor ekranda sarlavha havolaning tagiga kirib qirqilmasin */}
+      <Txt style={{ ...erpText.section, color: c.textSecondary, flexShrink: 1, marginRight: 10 }} numberOfLines={1}>{title}</Txt>
+      {action ? <Txt onPress={onAction} numberOfLines={1} style={{ fontSize: 12, fontFamily: erpText.label.fontFamily, color: c.brandPrimary, flexShrink: 0 }}>{action}</Txt> : null}
     </View>
   );
 }

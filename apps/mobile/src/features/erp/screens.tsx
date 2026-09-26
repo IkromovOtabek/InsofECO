@@ -37,7 +37,11 @@ export function ErpTabs({ role }: { role: ErpRole }) {
     <Tabs screenOptions={{
       tabBarActiveTintColor: c.brandPrimary, tabBarInactiveTintColor: '#98A2AF',
       tabBarStyle: { backgroundColor: c.bgSurface, borderTopWidth: 1, borderTopColor: c.border, height: ios ? 84 : 66, paddingBottom: ios ? 24 : 10, paddingTop: 9 },
-      tabBarLabelStyle: { ...erpText.tab },
+      // 384 dp li telefonda uchta tab yonma-yon sig'maydi: yozuv kichikroq va
+      // tizim shrift kattalashtirishiga ergashmaydi, aks holda "Reyslarim" qirqiladi
+      tabBarLabelStyle: { ...erpText.tab, fontSize: 9.5 },
+      tabBarAllowFontScaling: false,
+      tabBarItemStyle: { paddingHorizontal: 2 },
       headerStyle: { backgroundColor: c.bgSurface }, headerShadowVisible: false, headerTintColor: c.textPrimary,
       headerTitleAlign: 'center', headerTitleStyle: { fontFamily: erpText.title.fontFamily, fontSize: 17 },
       sceneStyle: { backgroundColor: c.bgCanvas },

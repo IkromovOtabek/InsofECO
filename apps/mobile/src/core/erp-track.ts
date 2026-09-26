@@ -81,6 +81,30 @@ export async function pushErpFix(p: { lat: number; lng: number; speedKmh?: numbe
   await flushErpGps();
 }
 
+/**
+ * Hozirgi joylashuvni olib, darhol serverga yuborish.
+ *
+ * "Yetkazdim" qulflangan bo'lsa shu chaqiriladi. Muammo shunda: reys yo'lda, lekin ilova
+ * yopilgan yoki telefon qayta yoqilgan bo'lsa, fon vazifasi qayta boshlanmaydi va server
+ * oxirgi nuqtani eski deb biladi. Haydovchi esa obyektda turibdi va tugma ochilmaydi —
+ * chiqish yo'li yo'q. Bu funksiya o'sha tuzoqni ochadi.
+ */
+export async function refreshErpPosition(tripId: string): Promise<boolean> {
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted' && (await Location.requestForegroundPermissionsAsync()).status !== 'granted') return false;
+    const l = (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null))
+      ?? (await Location.getLastKnownPositionAsync());
+    if (!l) return false;
+    // Kuzatuv to'xtagan bo'lsa ham nuqta ketishi kerak — buferni shu reysga bog'laymiz
+    if (!kv.getString(ACTIVE)) kv.set(ACTIVE, tripId);
+    await pushErpFix({ lat: l.coords.latitude, lng: l.coords.longitude, at: l.timestamp });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Reys boshlanganda. `false` — fon ruxsati berilmagan: ilova ochiq turganda ishlaydi. */
 export async function startErpTracking(tripId: string): Promise<boolean> {
   const fg = await Location.requestForegroundPermissionsAsync();
