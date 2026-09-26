@@ -106,59 +106,64 @@ export interface Skin {
   forceDark?: boolean;
 }
 
+/**
+ * Rol tanasi (skin). Rang — hamma bo'limda BITTA: ilova ikonkasining ko'ki (#0A4CD5).
+ * Bo'limlar bir-biridan rang bilan emas, SHAKL bilan ajraladi (burchak radiusi, tugma
+ * o'lchami): ilova bitta mahsulotdek ko'rinishi kerak, ikonkasi ko'k bo'lib ichi yashil
+ * yoki to'q sariq bo'lsa, u boshqa ilovaga o'xshab qoladi.
+ */
 export const skins: Record<RoleKey, Skin> = {
-  /** Tadbirkor — "Boshqaruv": to'q ko'k + amber, salqin kulrang fon, o'tkir burchaklar, zich ma'lumot. */
+  /** Tadbirkor — "Boshqaruv": brend ko'ki + amber, salqin fon, o'tkir burchaklar, zich ma'lumot. */
   TADBIRKOR: {
     name: 'Boshqaruv',
     tagline: 'KPI, moliya, jamoa — bitta ekranda',
     light: {
-      brandPrimary: '#17529B', brandPrimarySoft: '#DFEBFF', brandAccent: '#FFA800',
+      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
       bgCanvas: '#F2F7FF', bgSurface: '#FFFFFF', bgSurfaceMuted: '#E7EFFB',
       textPrimary: '#0F172A', textSecondary: '#64748B', textOnBrand: '#FFFFFF', border: '#D8E4F2',
       success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0062F0',
     },
     dark: {
-      brandPrimary: '#4D93E8', brandPrimarySoft: '#1C3557', brandAccent: '#FFC233',
+      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
       bgCanvas: '#0E1B31', bgSurface: '#172642', bgSurfaceMuted: '#203255',
       textPrimary: '#EDF3FC', textSecondary: '#A3B3C9', textOnBrand: '#0A1424', border: '#2C3F66',
       success: '#2EE39B', warning: '#FFB524', danger: '#FF6070', info: '#5FA8FF',
     },
     shape: { card: 10, button: 10, input: 10, chip: 6 },
   },
-  /** Quruvchi — "Qurilish": terrakota + qum, yumaloq shakllar, katta asosiy tugma. */
+  /** Quruvchi — "Qurilish": brend ko'ki, yumaloq shakllar, katta asosiy tugma. */
   QURUVCHI: {
     name: 'Qurilish',
     tagline: 'Buyurtma bering, obyektni yuriting',
     light: {
-      brandPrimary: '#E04A00', brandPrimarySoft: '#FFE6D6', brandAccent: '#00998C',
-      bgCanvas: '#FFF9F2', bgSurface: '#FFFFFF', bgSurfaceMuted: '#F9F1E7',
-      textPrimary: '#1C1917', textSecondary: '#78716C', textOnBrand: '#FFFFFF', border: '#EFE4D8',
+      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
+      bgCanvas: '#F5F8FF', bgSurface: '#FFFFFF', bgSurfaceMuted: '#E9F0FC',
+      textPrimary: '#0F172A', textSecondary: '#64748B', textOnBrand: '#FFFFFF', border: '#D9E4F5',
       success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0062F0',
     },
     dark: {
-      // yorqin apelsin ustida qora matn — kontrast uchun
-      brandPrimary: '#FF9A47', brandPrimarySoft: '#43291A', brandAccent: '#2FE5D0',
-      bgCanvas: '#191310', bgSurface: '#261E18', bgSurfaceMuted: '#332920',
-      textPrimary: '#F8F2E9', textSecondary: '#B5ABA0', textOnBrand: '#1C1917', border: '#45382E',
+      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
+      bgCanvas: '#0E1522', bgSurface: '#182133', bgSurfaceMuted: '#222E44',
+      textPrimary: '#EDF3FC', textSecondary: '#A3B3C9', textOnBrand: '#0A1424', border: '#2C3B57',
       success: '#2EE39B', warning: '#FFB524', danger: '#FF6070', info: '#5FA8FF',
     },
     shape: { card: 22, button: 26, input: 16, chip: 999 },
   },
-  /** Haydovchi — "Kabina": doim qorong'i, yorqin yashil + sariq, katta nishonlar. */
+  /** Haydovchi — "Kabina": doim qorong'i (tungi haydash), brend ko'ki, katta nishonlar. */
   HAYDOVCHI: {
     name: 'Kabina',
     tagline: 'Bitta yuk, bitta tugma',
     forceDark: true,
     light: {
-      brandPrimary: '#00964F', brandPrimarySoft: '#CFFDE2', brandAccent: '#E09600',
+      brandPrimary: '#0A4CD5', brandPrimarySoft: '#DCE8FF', brandAccent: '#FFA800',
       bgCanvas: '#FFFFFF', bgSurface: '#F2F7FC', bgSurfaceMuted: '#E3ECF6',
       textPrimary: '#020617', textSecondary: '#475569', textOnBrand: '#FFFFFF', border: '#C6D3E6',
       success: '#0F8544', warning: '#B25C00', danger: '#C0001C', info: '#0A4FC4',
     },
     dark: {
-      brandPrimary: '#2FE07A', brandPrimarySoft: '#123320', brandAccent: '#FFDB1F',
+      brandPrimary: '#4D8DFF', brandPrimarySoft: '#123063', brandAccent: '#FFC233',
       bgCanvas: '#0A1017', bgSurface: '#16202C', bgSurfaceMuted: '#212D3D',
-      textPrimary: '#F8FAFC', textSecondary: '#A8B6C9', textOnBrand: '#052E16', border: '#2E3D51',
+      textPrimary: '#F8FAFC', textSecondary: '#A8B6C9', textOnBrand: '#FFFFFF', border: '#2E3D51',
       success: '#4DEB90', warning: '#FFCB3D', danger: '#FF8089', info: '#5FA8FF',
     },
     shape: { card: 18, button: 18, input: 14, chip: 10 },

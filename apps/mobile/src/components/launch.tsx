@@ -13,7 +13,12 @@ import { useSession } from '@/core/session';
  * ko'z ilg'amay o'tib ketmasligi uchun), keyin yuqoriga ko'tarilib erib ketadi.
  */
 const MIN_MS = 1250;
-const BRAND = '#0E7A46';
+/**
+ * Ilova ikonkasining ko'ki. Native splash ham shu rangda (`app.config.ts`), shuning uchun
+ * ikonka bosilgandan keyin rang umuman o'zgarmaydi — ilova bir butun ko'rinadi.
+ * Ilgari bu yer yashil edi va ko'k splashdan keyin sakrab ketardi.
+ */
+const BRAND = '#0A4CD5';
 
 export function LaunchOverlay() {
   const status = useSession((s) => s.status);
@@ -69,7 +74,7 @@ export function LaunchOverlay() {
       </Animated.View>
 
       <View style={{ position: 'absolute', bottom: 74, width: 140, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden' }}>
-        <Animated.View style={[{ height: 3, borderRadius: 2, backgroundColor: '#FFA800' }, barStyle]} />
+        <Animated.View style={[{ height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.92)' }, barStyle]} />
       </View>
     </Animated.View>
   );

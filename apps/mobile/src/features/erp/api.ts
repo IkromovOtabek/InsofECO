@@ -1,6 +1,6 @@
 /** Insof ERP hooklari — mobil ilovadagi xodim bo'limlari uchun. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { erpAuth } from '@/core/erp';
+import { erpAuth, type ErpTripRoute } from '@/core/erp';
 
 export const useErpHome = () =>
   useQuery({ queryKey: ['erp', 'home'], queryFn: erpAuth.home, refetchInterval: 30_000 });
@@ -22,25 +22,39 @@ export const useErpDetail = (key: string, id: string) =>
   });
 
 /**
- * Marshrut ekrani. Yo'l mashinaning hozirgi joyidan quriladi, shuning uchun joylashuvni
- * beruvchi funksiya uziladi (`ref` dan o'qiydi): har GPS nuqtasida so'rov qayta tuzilsa,
- * OSRM'ga daqiqada o'nlab murojaat ketardi.
+ * Marshrut ekrani.
  *
- * 90 soniyada bir yangilanadi — "bosib o'tilgan yo'l" serverdagi bitta manbadan keladi
- * (veb xaritasi bilan bir xil raqam), qolgan masofa esa ilovaning o'zida, har nuqtada.
- * `keepLine` — yo'lning o'zi kerak emas, faqat raqamlar (yo'l o'zgarmagan bo'lsa).
+ * Yo'l mashinaning hozirgi joyidan quriladi, shuning uchun joylashuvni beruvchi funksiya
+ * uziladi (`ref` dan o'qiydi): har GPS nuqtasida so'rov qayta tuzilsa, OSRM'ga daqiqada
+ * o'nlab murojaat ketardi. 90 soniyada bir yangilanadi.
+ *
+ * Chiziq KESHDA saqlanadi. Server uni har javobda qaytarmaydi (17 KB geometriya bekorga
+ * yurmasin), shuning uchun "qaytarmadim" degan javob kelganda avvalgisini o'rnida
+ * qoldiramiz. Aks holda ekrandan chiqib qaytilganda kesh chiziqsiz javobni ko'rsatib,
+ * xaritada yo'l umuman chizilmay qolardi.
  */
 export const useErpTripRoute = (
   id: string,
   pos: () => { lat: number; lng: number } | null,
-  keepLine: () => boolean,
-) =>
-  useQuery({
-    queryKey: ['erp', 'trip-route', id],
-    queryFn: () => erpAuth.tripRoute(id, pos() ?? undefined, keepLine()),
+  /** `true` — yo'lni qayta qurish kerak (yo'ldan chiqib ketilgan yoki hali chiziq yo'q). */
+  wantNewLine: () => boolean,
+) => {
+  const qc = useQueryClient();
+  const key = ['erp', 'trip-route', id];
+  return useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const prev = qc.getQueryData<ErpTripRoute>(key);
+      const keep = !wantNewLine() && !!prev?.line.length;
+      const next = await erpAuth.tripRoute(id, pos() ?? undefined, keep);
+      if (next.lineIncluded || !prev?.line.length) return next;
+      // Server chiziqni qayta qurmadi — avvalgisi bilan to'ldiramiz
+      return { ...next, lineIncluded: true, line: prev.line, routeMeters: prev.routeMeters, routeSeconds: prev.routeSeconds, routeSource: prev.routeSource };
+    },
     enabled: !!id,
     refetchInterval: 90_000,
   });
+};
 
 /**
  * Bildirishnomalar. Yarim daqiqada bir yangilanadi: push kelmagan bo'lsa ham

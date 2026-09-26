@@ -38,10 +38,16 @@ import type { ErpAction } from '@/core/erp';
 const MOVING_KMH = 4;
 /** O'rtacha tezlik shuncha vaqt oynasi bo'yicha olinadi. */
 const SPEED_WINDOW_MS = 5 * 60_000;
-/** Chiziqdan shuncha chetga chiqilsa yo'l qayta quriladi (boshqa ko'chaga burilgan). */
-const OFF_ROUTE_M = 300;
+/**
+ * Chiziqdan shuncha chetga chiqilsa yo'l qayta quriladi.
+ *
+ * 120 m — qo'shni ko'cha masofasi. Ilgari 300 m edi va noto'g'ri burilish deyarli hech
+ * qachon sezilmasdi: shahar ichida yonma-yon ko'chalar 30-60 m narida, ya'ni haydovchi
+ * butunlay boshqa yo'ldan ketayotgan bo'lsa ham "marshrutda" hisoblanardi.
+ */
+const OFF_ROUTE_M = 120;
 /** Yo'lni qayta so'rash chastotasi — chetlashish uzoq davom etsa ham serverni bosmaslik uchun. */
-const REROUTE_EVERY_MS = 60_000;
+const REROUTE_EVERY_MS = 20_000;
 
 interface Fix extends LatLng { speedKmh: number; at: number }
 
@@ -127,20 +133,15 @@ export default function TripRoute() {
     mapRef.current.animateCamera({ center: { latitude: fix.lat, longitude: fix.lng } }, { duration: 600 });
   }, [fix, follow]);
 
-  // Yangi chiziq kelganda saqlab qo'yamiz; kelmagan javoblarda avvalgisi ishlayveradi
-  useEffect(() => {
-    if (!data?.lineIncluded || data.line.length === 0) return;
-    haveLineRef.current = true;
-    needLineRef.current = false;
-    setRoute({ line: data.line, meters: data.routeMeters, seconds: data.routeSeconds, source: data.routeSource });
-  }, [data]);
+  // Chiziq kelgach qayta so'rash shart emas — keyingi safar keshdagisi ishlatiladi
+  useEffect(() => { if (data?.line.length) needLineRef.current = false; }, [data]);
 
-  const line = route?.line ?? [];
+  const line = data?.line ?? [];
   const dest = data?.destination ?? null;
 
   /** Qolgan yo'l — marshrut chizig'i bo'ylab; chiziq yo'q bo'lsa to'g'ri masofa. */
   const along = useMemo(() => (fix && line.length ? alongRoute(line, fix) : null), [fix, line]);
-  const remainingM = along ? along.remainingM : dest && fix ? Math.round(haversineMeters(fix, dest)) : route?.meters ?? 0;
+  const remainingM = along ? along.remainingM : dest && fix ? Math.round(haversineMeters(fix, dest)) : data?.routeMeters ?? 0;
 
   // Yo'ldan chiqib ketilgan bo'lsa marshrut qayta quriladi
   useEffect(() => {
@@ -158,10 +159,10 @@ export default function TripRoute() {
   const etaMin = useMemo(() => {
     const moving = speedsRef.current.filter((s) => s.kmh >= MOVING_KMH);
     const live = moving.length >= 3 ? moving.reduce((s, x) => s + x.kmh, 0) / moving.length : 0;
-    const planned = route && route.seconds > 0 ? (route.meters / 1000) / (route.seconds / 3600) : 0;
+    const planned = data && data.routeSeconds > 0 ? (data.routeMeters / 1000) / (data.routeSeconds / 3600) : 0;
     const kmh = live || planned || 30;
     return Math.round((remainingM / 1000 / kmh) * 60);
-  }, [remainingM, route, fix]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remainingM, data, fix]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * "Yetkazdim" — obyektga 1 km qolgandan keyin ochiladi (radiusni server aytadi).
@@ -208,16 +209,25 @@ export default function TripRoute() {
     let p = fixRef.current;
     if (!p) {
       try {
-        const l = (await Location.getLastKnownPositionAsync())
-          ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+        // GPS ba'zan uzoq javob bermaydi — cheksiz kutmaymiz, 6 soniyadan keyin sabab aytiladi
+        const l = (await Location.getLastKnownPositionAsync()) ?? (await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<null>((r) => setTimeout(() => r(null), 6000)),
+        ]));
         if (l) {
           p = { lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: 0, at: l.timestamp };
           fixRef.current = p;
           setFix(p);
         }
-      } catch { /* ruxsat yo'q — pastdagi ogohlantirish buni aytadi */ }
+      } catch { /* quyida aytiladi */ }
     }
-    if (p) mapRef.current?.animateCamera({ center: { latitude: p.lat, longitude: p.lng } }, { duration: 500 });
+    if (!p) {
+      // Jim qolmaymiz: tugma bosilib hech narsa bo'lmasa, haydovchi ilova buzuq deb o'ylaydi
+      Alert.alert('Joylashuv topilmadi', "GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.");
+      return;
+    }
+    // Bosilganda yaqinlashtiramiz ham — `animateToRegion` iOS'da ham, Android'da ham bir xil ishlaydi
+    mapRef.current?.animateToRegion({ latitude: p.lat, longitude: p.lng, latitudeDelta: 0.008, longitudeDelta: 0.008 }, 500);
   }, []);
 
   /** Mashina va obyekt bir ekranga sig'adi. Kuzatuv o'chadi — aks holda kamera darhol qaytib ketardi. */
@@ -257,7 +267,10 @@ export default function TripRoute() {
             ref={(r) => { mapRef.current = r; }}
             style={{ flex: 1 }}
             initialRegion={region}
-            showsUserLocation
+            // Tizimning ko'k nuqtasi emas, o'z belgimiz (pastda): u har doim chiziladi
+            // va ko'rinishini biz boshqaramiz — haydovchi "men qayerdaman?" degan savolga
+            // bir qarashda javob topishi kerak.
+            showsUserLocation={false}
             showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
           >
@@ -270,6 +283,13 @@ export default function TripRoute() {
               fillColor={c.success + '1A'}
             />
             <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.brandPrimary} />
+            {fix ? (
+              <Marker coordinate={{ latitude: fix.lat, longitude: fix.lng }} title="Siz" anchor={{ x: 0.5, y: 0.5 }} flat>
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.border }}>
+                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: c.brandPrimary }} />
+                </View>
+              </Marker>
+            ) : null}
           </MapView>
           {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda
               chiqardi, ya'ni ekranga qaytib kirilganda mashina ko'rinmay qolsa, uni
@@ -307,7 +327,7 @@ export default function TripRoute() {
         <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 14 }}>
           <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
           <Metric label="Bosib o'tildi" value={distanceLabel(data.traveledMeters)} unit={data.traveledMinutes > 0 ? durationLabel(data.traveledMinutes) : '—'} />
-          <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={route?.source === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
+          <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={data.routeSource === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
           <Metric label="Yetib borish" value={arrivalClock(etaMin)} unit={durationLabel(etaMin)} />
         </View>
 
