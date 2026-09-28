@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { kv } from './storage';
 import { erpApi } from './erp';
+import { discloseBackgroundLocation } from './bg-disclosure';
 
 /**
  * Zavod haydovchisining fon GPS'i — faqat faol reys davomida (batareya + shaxsiy hayot).
@@ -108,9 +109,11 @@ export async function refreshErpPosition(tripId: string): Promise<boolean> {
 
 /** Reys boshlanganda. `false` — fon ruxsati berilmagan: ilova ochiq turganda ishlaydi. */
 export async function startErpTracking(tripId: string): Promise<boolean> {
+  // Tushuntirish oynasi tizim so'rovlaridan oldin — Google Play talabi (bg-disclosure.ts)
+  const allowBg = await discloseBackgroundLocation(`erp:${tripId}`, 'logistika bo\'limiga');
   const fg = await Location.requestForegroundPermissionsAsync();
   if (fg.status !== 'granted') return false;
-  const bg = await Location.requestBackgroundPermissionsAsync();
+  const bg = allowBg ? await Location.requestBackgroundPermissionsAsync() : await Location.getBackgroundPermissionsAsync();
   kv.set(ACTIVE, tripId);
   kv.set(LAST_SENT, '0'); // birinchi nuqta darhol ketsin — dispetcher mashinani kutmasin
   if (!(await Location.hasStartedLocationUpdatesAsync(ERP_GPS_TASK))) {

@@ -4,6 +4,7 @@ import * as TaskManager from 'expo-task-manager';
 import { DEFAULT_RULES } from '@insof/shared';
 import { kv } from './storage';
 import { api } from './api';
+import { discloseBackgroundLocation } from './bg-disclosure';
 
 /**
  * Fon GPS — faqat faol reys davomida (batareya + shaxsiy hayot).
@@ -41,9 +42,11 @@ export async function flushGps() {
 }
 
 export async function startTracking(deliveryId: string) {
+  // Tushuntirish oynasi tizim so'rovlaridan oldin — Google Play talabi (bg-disclosure.ts)
+  const allowBg = await discloseBackgroundLocation(`eco:${deliveryId}`, 'dispetcher va quruvchiga');
   const fg = await Location.requestForegroundPermissionsAsync();
   if (fg.status !== 'granted') return false;
-  const bg = await Location.requestBackgroundPermissionsAsync();
+  const bg = allowBg ? await Location.requestBackgroundPermissionsAsync() : await Location.getBackgroundPermissionsAsync();
   kv.set(ACTIVE, deliveryId);
   const already = await Location.hasStartedLocationUpdatesAsync(GPS_TASK);
   if (!already) {
