@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Put } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { z } from 'zod';
 import { PushTokenSchema } from '@insof/shared';
 import { AuthContext, CurrentUser } from '../../common/auth/decorators';
 import { Zod } from '../../common/validation/zod-validation.pipe';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { AccountService } from '../auth/account.service';
 import { AuthService } from '../auth/auth.service';
 import { ORG_EVENTS, UserUpdatedEvent } from '../organizations/organizations.events';
 
@@ -15,6 +16,7 @@ export class UsersController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
+    private readonly account: AccountService,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -29,6 +31,18 @@ export class UsersController {
     await this.prisma.user.update({ where: { id: a.userId }, data: body });
     if (body.fullName && body.fullName !== before?.fullName) this.events.emit(ORG_EVENTS.userUpdated, { userId: a.userId, byUserId: a.userId } satisfies UserUpdatedEvent);
     return this.auth.profile(a.userId);
+  }
+
+  /** Hisobni o'chirish (do'kon talabi). Mijoz — darhol {status:'deleted'}; zavod haydovchisi — {status:'requested'}. */
+  @Delete()
+  deleteMe(@CurrentUser() a: AuthContext) {
+    return this.account.deleteMe(a);
+  }
+
+  /** Haydovchi so'rovini qaytarib olish. */
+  @Delete('deletion')
+  cancelDeletion(@CurrentUser() a: AuthContext) {
+    return this.account.cancelRequest(a);
   }
 
   @Put('devices')

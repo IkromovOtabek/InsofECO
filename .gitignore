@@ -12,3 +12,7 @@ coverage/
 apps/mobile/ios/
 apps/mobile/android/
 .DS_Store
+
+# Play Console xizmat hisobi kaliti (eas submit) — hech qachon commit qilinmaydi
+apps/mobile/google-play-service-account.json
+apps/mobile/google-services.json

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button, Card, Gap, ListItem, Screen, Txt } from '@/design/primitives';
-import { Avatar } from '@/design/ui';
+import { Avatar, Confirm, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { authApi } from '@/features/auth/api';
@@ -11,8 +11,44 @@ const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovc
 
 export function Profile({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
-  const { user, active, selectMembership, signOut } = useSession();
+  const { user, active, selectMembership, setUser, signOut } = useSession();
   const memberships = user?.memberships.filter((m) => m.isActive) ?? [];
+  // Hisobni o'chirish (App Store / Google Play talabi). Mijoz darhol o'chadi; zavod haydovchisi
+  // so'rov qoldiradi — direktor ERP'da tasdiqlagach hisob anonimlashadi.
+  const isDriver = memberships.some((m) => m.role === 'HAYDOVCHI');
+  const requested = !!user?.deleteRequestedAt;
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const deleteAccount = async () => {
+    setBusy(true);
+    try {
+      const r = await authApi.deleteAccount();
+      setAsk(false);
+      if (r.status === 'deleted') {
+        toast.success("Hisobingiz o'chirildi");
+        await signOut();
+      } else {
+        if (user) setUser({ ...user, deleteRequestedAt: new Date().toISOString() });
+        toast.info("So'rov zavod direktoriga yuborildi. Tasdiqlangach hisob o'chiriladi.", "So'rov qabul qilindi");
+      }
+    } catch (e) {
+      toast.error((e as Error).message, 'Xato');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelRequest = async () => {
+    try {
+      await authApi.cancelDeletion();
+      if (user) setUser({ ...user, deleteRequestedAt: null });
+      toast.success("So'rov qaytarib olindi");
+    } catch (e) {
+      toast.error((e as Error).message, 'Xato');
+    }
+  };
+
   return (
     <Screen padded={false}>
       <ScrollView contentContainerStyle={{ padding: space.pageX }}>
@@ -35,13 +71,45 @@ export function Profile({ children }: { children?: React.ReactNode }) {
         <Gap />
         <Card style={{ paddingVertical: space.xs }}>
           <ListItem icon="languages" title="Til" subtitle="O'zbek (lotin)" />
-          <ListItem icon="shield-check" title="Xavfsizlik" subtitle="Parolni o'zgartirish" />
+          <ListItem icon="shield-check" title="Xavfsizlik" subtitle="Parolni o'zgartirish" onPress={() => router.push('/(auth)/change-password')} />
           <ListItem icon="circle-question-mark" title="Yordam" subtitle="+998 90 000 00 00" last />
+        </Card>
+        <Gap />
+        <Card style={{ paddingVertical: space.xs }}>
+          {requested ? (
+            <ListItem
+              icon="hourglass" tone="warning"
+              title="Hisobni o'chirish so'ralgan"
+              subtitle="Direktor tasdig'i kutilmoqda. Fikringiz o'zgarsa — bosing"
+              onPress={() => void cancelRequest()}
+              last
+            />
+          ) : (
+            <ListItem
+              icon="user-x" tone="danger"
+              title="Hisobni o'chirish"
+              subtitle={isDriver ? "So'rov zavod direktoriga boradi" : "Shaxsiy ma'lumotlar butunlay o'chiriladi"}
+              onPress={() => setAsk(true)}
+              last
+            />
+          )}
         </Card>
         <Gap h={space.xl} />
         <Button title="Chiqish" variant="danger" icon="log-out" onPress={() => { void authApi.logout().catch(() => {}); void signOut(); }} />
         <Gap h={space.xxxl} />
       </ScrollView>
+      <Confirm
+        open={ask}
+        onClose={() => setAsk(false)}
+        onConfirm={() => void deleteAccount()}
+        danger
+        loading={busy}
+        title="Hisobni o'chirish"
+        confirmLabel={isDriver ? "So'rov yuborish" : "Ha, o'chirish"}
+        message={isDriver
+          ? "Siz zavod haydovchisisiz — hisobni direktor tasdiqlagach o'chiramiz. Shu vaqtgacha ilova ishlayveradi."
+          : "Telefon raqamingiz, ismingiz va kirish ma'lumotlaringiz butunlay o'chiriladi. Buyurtma tarixi shaxsga bog'lanmagan holda qoladi. Qaytarib bo'lmaydi."}
+      />
     </Screen>
   );
 }

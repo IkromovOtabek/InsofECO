@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
-import { Badge, IconButton, IconTile, Input, Txt } from '@/design/primitives';
+import { IconButton, IconTile, Input, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
@@ -93,16 +93,7 @@ export default function Login() {
           autoCorrect={false}
           placeholder="log1  yoki  +998 90 123 45 67"
           error={error.ident}
-          containerStyle={kind ? { marginBottom: space.sm } : undefined}
         />
-        {kind ? (
-          <Badge
-            tone={kind === 'erp' ? 'info' : 'success'}
-            icon={kind === 'erp' ? 'building' : 'phone'}
-            label={kind === 'erp' ? 'Zavod xodimi — Insof ERP' : 'Telefon — Insof ECO'}
-            style={{ marginBottom: space.lg }}
-          />
-        ) : null}
       </Appear>
 
       <Appear delay={190}>

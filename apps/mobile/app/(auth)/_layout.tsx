@@ -4,10 +4,12 @@ import { useTheme } from '@/design/theme';
 import { stackOptions } from '@/design/nav';
 
 /**
- * Boshlang'ich ekran doim `welcome`: ro'yxat berilmasa expo-router alifbo bo'yicha
- * birinchi ekranni (otp/phone) ochib yuboradi.
+ * Boshlang'ich ekran `login`: ro'yxat berilmasa expo-router alifbo bo'yicha birinchi
+ * ekranni (change-password) ochib yuboradi. Ilova endi do'kon (`(shop)`) bilan ochiladi,
+ * shuning uchun `welcome` boshlang'ich emas — do'kondan "Kirish" bosilganda orqaga
+ * tugmasi to'g'ridan-to'g'ri do'konga qaytaradi.
  */
-export const unstable_settings = { initialRouteName: 'welcome' };
+export const unstable_settings = { initialRouteName: 'login' };
 
 const SCREENS = ['welcome', 'login', 'select-role', 'phone', 'otp', 'register', 'forgot', 'new-password', 'change-password', 'pin', 'done'];
 

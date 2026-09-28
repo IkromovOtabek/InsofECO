@@ -28,5 +28,8 @@ export const authApi = {
   plants: () => api<{ id: string; name: string; address?: string | null }[]>('/organizations/plants', { auth: false }),
   me: () => api<Profile>('/me'),
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
+  /** Hisobni o'chirish (do'kon talabi). Mijoz — darhol `deleted`; zavod haydovchisi — `requested` (direktor tasdiqlaydi). */
+  deleteAccount: () => api<{ status: 'deleted' | 'requested' }>('/me', { method: 'DELETE' }),
+  cancelDeletion: () => api<{ ok: true }>('/me/deletion', { method: 'DELETE' }),
   registerPush: (expoPushToken: string) => api('/me/devices', { method: 'PUT', body: { deviceId: deviceId(), expoPushToken } }),
 };

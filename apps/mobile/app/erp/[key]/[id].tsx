@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
-import { toast, type IconName } from '@/design/ui';
+import { result, toast, type IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space, toneColors } from '@/design/tokens';
 import type { ErpAction } from '@/core/erp';
@@ -81,11 +81,11 @@ export default function ErpDetail() {
       const note = await applyEffect(a);
       // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
       if (message && note) Alert.alert('Bajarildi', `${message}\n\n${note}`);
-      else if (message) toast.success(message, 'Bajarildi');
+      else if (message) result.success('Bajarildi', message);
       else if (note) Alert.alert('Diqqat', note);
     } catch (e) {
       const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
-      if (form) setFormError(msg); else toast.error(msg, 'Bajarilmadi');
+      if (form) setFormError(msg); else result.error('Bajarilmadi', msg);
     }
   };
 
@@ -164,7 +164,7 @@ export default function ErpDetail() {
                 row={r}
                 index={j}
                 module={listModule(s.target)}
-                icon={ROW_ICON[s.target ?? ''] ?? 'circle'}
+                icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
                 onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined}
               />
             ))}
@@ -183,7 +183,7 @@ export default function ErpDetail() {
                     size="lg"
                     title={a.label}
                     icon={a.disabled ? 'lock' : ACTION_ICON[a.id] ?? 'arrow-right'}
-                    variant={a.tone === 'danger' ? 'danger' : a.tone === 'warning' ? 'secondary' : 'primary'}
+                    variant={a.tone === 'danger' ? 'danger' : a.tone === 'success' ? 'success' : a.tone === 'warning' ? 'secondary' : 'primary'}
                     disabled={a.disabled || run.isPending}
                     onPress={() => press(a)}
                   />

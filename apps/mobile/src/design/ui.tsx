@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -210,6 +210,70 @@ export function ToastHost() {
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + space.sm, left: space.lg, right: space.lg, gap: space.sm }}>
       {items.map((i) => <ToastCard key={i.id} item={i} />)}
+    </View>
+  );
+}
+
+// ───────────────────────── Natija oynasi ─────────────────────────
+
+interface ResultState { open: boolean; tone: 'success' | 'danger'; title: string; subtitle?: string; onDone?: () => void }
+const useResultStore = create<ResultState & { show: (s: Omit<ResultState, 'open'>) => void; close: () => void }>((set, get) => ({
+  open: false, tone: 'success', title: '', subtitle: undefined, onDone: undefined,
+  show: (s) => set({ ...s, open: true }),
+  close: () => { const { onDone } = get(); set((s) => ({ ...s, open: false })); onDone?.(); },
+}));
+/**
+ * Amal yakunlangach o'rtada chiqadigan katta, rangli natija oynasi — muvaffaqiyat yoki xato.
+ * Ekran davomida navigatsiya qilishi kerak bo'lsa (masalan yangi kartochkani ochish), buni
+ * `onDone` orqali qiladi — oyna yopilgach chaqiriladi, foydalanuvchi natijani o'qib ulguradi.
+ * `result.success('Ochildi', 'Z-2026-00027')`, `result.error('Bajarilmadi', xabar)`.
+ */
+export const result = {
+  success: (title: string, subtitle?: string, onDone?: () => void) => useResultStore.getState().show({ tone: 'success', title, subtitle, onDone }),
+  error: (title: string, subtitle?: string, onDone?: () => void) => useResultStore.getState().show({ tone: 'danger', title, subtitle, onDone }),
+};
+
+/** Ildiz maketiga `ToastHost` bilan yonma-yon qo'yiladi. */
+export function ResultHost() {
+  const { open, tone, title, subtitle } = useResultStore();
+  const close = useResultStore((s) => s.close);
+  const { c } = useTheme();
+  const reduce = useReducedMotion();
+  const p = useSharedValue(0);
+  const pop = useSharedValue(0.5);
+  useEffect(() => {
+    if (!open) return;
+    p.value = reduce ? 1 : withTiming(1, { duration: DUR.state, easing: EASE_STATE });
+    pop.value = reduce ? 1 : withSpring(1, { damping: 9, stiffness: 160 });
+    const ms = tone === 'danger' ? 2600 : 1800;
+    const t = setTimeout(close, ms);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const scrim = useAnimatedStyle(() => ({ opacity: p.value }));
+  const card = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ scale: 0.94 + p.value * 0.06 }] }));
+  const iconPop = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  if (!open) return null;
+  const { ink, bg } = toneColors(c, tone);
+  const icon: IconName = tone === 'danger' ? 'circle-x' : 'circle-check';
+  return (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, scrim]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={i18n.t('ui.close')} />
+      </Animated.View>
+      <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', padding: space.xxl }]}>
+        <Animated.View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ alignItems: 'center', gap: space.lg, minWidth: 240, maxWidth: 320, backgroundColor: c.bgSurface, borderRadius: radius.xl, paddingVertical: space.xxl, paddingHorizontal: space.xl, borderWidth: size.hairline, borderColor: c.borderDefault }, shadow.pop, card]}>
+          <View style={{ width: 96, height: 96, borderRadius: 96, borderWidth: 1, borderColor: ink, alignItems: 'center', justifyContent: 'center' }}>
+            <Animated.View style={[{ width: 64, height: 64, borderRadius: radius.lg, backgroundColor: bg, borderWidth: 2, borderColor: ink, alignItems: 'center', justifyContent: 'center' }, iconPop]}>
+              <Icon name={icon} size={32} color={ink} strokeWidth={2} />
+            </Animated.View>
+          </View>
+          <View style={{ gap: space.xs }}>
+            <Txt v="titleLg" align="center">{title}</Txt>
+            {subtitle ? <Txt v="body" color="muted" align="center">{subtitle}</Txt> : null}
+          </View>
+        </Animated.View>
+      </View>
     </View>
   );
 }

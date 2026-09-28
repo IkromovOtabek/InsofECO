@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, EmptyState, Gap, Txt } from '@/design/primitives';
+import { result } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
@@ -46,9 +47,12 @@ export default function ErpNew() {
     if (missing) { setFormError(missing); return; }
     try {
       const r = await create.mutateAsync({ key: data.key, payload: toPayload(data.fields, values) });
-      Alert.alert('Ochildi', r.message, [{ text: 'Kartochkani ochish', onPress: () => router.replace(`/erp/${r.key}/${r.id}` as never) }]);
+      // Foydalanuvchi natijani o'qib ulgursin, kartochka shundan keyin ochiladi
+      result.success('Ochildi', r.message, () => router.replace(`/erp/${r.key}/${r.id}` as never));
     } catch (e) {
-      setFormError(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');
+      const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
+      setFormError(msg);
+      result.error('Bajarilmadi', msg);
     }
   };
 

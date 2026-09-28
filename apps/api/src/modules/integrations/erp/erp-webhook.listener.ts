@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { DeliveryStatusChangedEvent } from '../../deliveries/deliveries.events';
-import { MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent, VehicleChangedEvent } from '../../organizations/organizations.events';
+import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent, VehicleChangedEvent } from '../../organizations/organizations.events';
 
 /**
  * ECO → ERP webhook. Haydovchi ilovada tugma bosganda (qabul, yuklash, yo'lda, keldi, imzo)
@@ -61,6 +61,7 @@ export class ErpWebhookListener {
   /** Haydovchi ro'yxatdan o'tdi / tasdiqlandi / bloklandi → ERP xodimlar ro'yxati o'zi yangilanadi. */
   @OnEvent(ORG_EVENTS.membershipChanged, { async: true })
   async onMembership(e: MembershipChangedEvent) {
+    if (e.role === 'QURUVCHI') return this.onCustomerRegistered(e);
     if (e.role !== 'HAYDOVCHI') return;
     const user = await this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true } });
     if (!user) return;
@@ -75,6 +76,37 @@ export class ErpWebhookListener {
     });
   }
 
+  /**
+   * ERP'dan kelgan mijoz ilovada ro'yxatdan o'tdi (parol qo'ydi) → ERP sotuvchisiga bildirishnoma.
+   * Mijoz tashkiloti CONTRACTOR — integratsiya kaliti esa zavodda. Qaysi zavodlarga tegishli: kredit limiti
+   * yoki buyurtmasi bor zavodlar (ERP `PUT customers` har doim kredit limiti yozadi).
+   */
+  private async onCustomerRegistered(e: MembershipChangedEvent) {
+    if (e.reason !== 'registered') return;
+    const [org, user] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: e.organizationId }, select: { id: true, name: true, externalRef: true } }),
+      this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true } }),
+    ]);
+    if (!org?.externalRef || !user) return;
+    const [limits, orders] = await Promise.all([
+      this.prisma.creditLimit.findMany({ where: { clientOrgId: org.id }, select: { plantOrgId: true } }),
+      this.prisma.order.findMany({ where: { clientOrgId: org.id }, select: { plantOrgId: true }, distinct: ['plantOrgId'] }),
+    ]);
+    const plants = new Set([...limits, ...orders].map((x) => x.plantOrgId));
+    for (const plantOrgId of plants) {
+      await this.broadcast(plantOrgId, null, {
+        event: 'customer.registered',
+        externalRef: org.externalRef,
+        orgId: org.id,
+        orgName: org.name,
+        userId: user.id,
+        fullName: user.fullName,
+        phone: user.phone,
+        at: new Date().toISOString(),
+      });
+    }
+  }
+
   /** Haydovchi ilovada ismini o'zgartirdi → ERP xodim kartasi. */
   @OnEvent(ORG_EVENTS.userUpdated, { async: true })
   async onUser(e: UserUpdatedEvent) {
@@ -82,6 +114,16 @@ export class ErpWebhookListener {
     if (!user) return;
     for (const m of user.memberships) {
       await this.broadcast(m.organizationId, e.byUserId, { event: 'driver.changed', reason: 'profile', userId: user.id, membershipId: m.id, fullName: user.fullName, phone: user.phone, isActive: m.isActive });
+    }
+  }
+
+  /** Haydovchi ilovada hisobini o'chirishni so'radi → ERP direktoriga so'rov (u xodimni o'chirgach ECO anonimlashtiradi). */
+  @OnEvent(ORG_EVENTS.accountDeleteRequested, { async: true })
+  async onAccountDelete(e: AccountDeleteRequestedEvent) {
+    const user = await this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true } });
+    if (!user) return;
+    for (const organizationId of e.organizationIds) {
+      await this.broadcast(organizationId, null, { event: 'driver.delete_requested', userId: user.id, fullName: user.fullName, phone: user.phone, at: new Date().toISOString() });
     }
   }
 

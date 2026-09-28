@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
+import { AccountService } from './account.service';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 
@@ -33,7 +34,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_PRIVATE_KEY) {
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OtpService],
-  exports: [JwtModule, AuthService],
+  providers: [AuthService, OtpService, AccountService],
+  exports: [JwtModule, AuthService, AccountService],
 })
 export class AuthModule {}

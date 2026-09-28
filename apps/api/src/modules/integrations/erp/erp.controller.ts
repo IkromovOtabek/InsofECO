@@ -4,7 +4,7 @@ import { AuthContext, CurrentUser, Roles } from '../../../common/auth/decorators
 import { Zod } from '../../../common/validation/zod-validation.pipe';
 import { IntegrationGuard } from './integration.guard';
 import {
-  ErpCustomerInput, ErpCustomerSchema, ErpDriverPatchSchema, ErpDriverSchema, ErpInvoiceInput, ErpInvoiceSchema,
+  ErpCustomerInput, ErpCustomerLinkInput, ErpCustomerLinkSchema, ErpCustomerSchema, ErpDeleteUserSchema, ErpDriverPatchSchema, ErpDriverSchema, ErpInvoiceInput, ErpInvoiceSchema,
   ErpMaterialInput, ErpMaterialSchema, ErpMixInput, ErpMixSchema, ErpOrderInput, ErpOrderSchema,
   ErpPaymentInput, ErpPaymentSchema, ErpTripInput, ErpTripSchema, ErpTripStatusInput, ErpTripStatusSchema, ErpVehicleSchema,
 } from './erp.schemas';
@@ -40,6 +40,14 @@ export class ErpController {
   /** ERP'da xodim o'chirildi — ilovaga kira olmaydi. */
   @Post('drivers/:userId/deactivate') @HttpCode(200)
   deactivateDriver(@CurrentUser() a: AuthContext, @Param('userId') userId: string) { return this.erp.setDriverActive(a, userId, false); }
+
+  /** ERP direktori haydovchi so'rovini rad etdi — "o'chirish so'ralgan" belgisi olib tashlanadi. */
+  @Post('drivers/:userId/deletion-cancel') @HttpCode(200)
+  cancelDeletion(@CurrentUser() a: AuthContext, @Param('userId') userId: string) { return this.erp.cancelDeletion(a, userId); }
+
+  /** Saytdagi/ERP'dagi hisobni o'chirish so'rovi tasdiqlandi — telefon bo'yicha anonimlashtirish (faqat zavodga aloqador odam). */
+  @Post('users/delete') @HttpCode(200)
+  deleteUser(@CurrentUser() a: AuthContext, @Body(Zod(ErpDeleteUserSchema)) b: z.infer<typeof ErpDeleteUserSchema>) { return this.erp.deleteUser(a, b.phone); }
 
   @Get('vehicles')
   vehicles(@CurrentUser() a: AuthContext) { return this.erp.vehicles(a); }
@@ -79,6 +87,19 @@ export class ErpController {
 
   @Put('customers')
   upsertCustomer(@CurrentUser() a: AuthContext, @Body(Zod(ErpCustomerSchema)) b: ErpCustomerInput) { return this.erp.upsertCustomer(a, b); }
+
+  // ── Mijozning ilova hisobi: ERP mijoz kartasi ↔ ilovada ro'yxatdan o'tgan quruvchi ──
+  /** Hali hech bir ERP mijoziga ulanmagan, ilovada o'zi ro'yxatdan o'tgan mijozlar (nom / telefon / INN bo'yicha izlash). */
+  @Get('customers/unlinked')
+  unlinkedCustomers(@CurrentUser() a: AuthContext, @Query('q') q?: string) { return this.erp.unlinkedCustomers(a, q); }
+
+  /** ERP mijoz kartasi ilovada kimga ulangan: tashkilot va a'zolari (kim ro'yxatdan o'tgan, kim faqat taklif qilingan). */
+  @Get('customers/:externalRef/app')
+  customerApp(@CurrentUser() a: AuthContext, @Param('externalRef') ref: string) { return this.erp.customerApp(a, ref); }
+
+  /** ERP mijozini ilova hisobiga ulash. Mijozning ERP'dan kelgan tashkiloti bo'lsa — ikkalasi birlashtiriladi. */
+  @Post('customers/:externalRef/link') @HttpCode(200)
+  linkCustomer(@CurrentUser() a: AuthContext, @Param('externalRef') ref: string, @Body(Zod(ErpCustomerLinkSchema)) b: ErpCustomerLinkInput) { return this.erp.linkCustomer(a, ref, b.orgId); }
 
   @Put('mixes')
   upsertMix(@CurrentUser() a: AuthContext, @Body(Zod(ErpMixSchema)) b: ErpMixInput) { return this.erp.upsertMix(a, b); }

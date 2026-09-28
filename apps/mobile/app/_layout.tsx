@@ -16,7 +16,7 @@ import { LaunchOverlay } from '@/components/launch';
 import { PinLock } from '@/components/pin-lock';
 import { useFonts } from 'expo-font';
 import { APP_FONTS } from '@/design/fonts';
-import { ToastHost } from '@/design/ui';
+import { ResultHost, ToastHost } from '@/design/ui';
 import { stackOptions } from '@/design/nav';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
@@ -39,7 +39,8 @@ function Gate() {
     if (status === 'loading') return;
     const segs = segments as unknown as string[];
     const group = segs[0];
-    if (status === 'anon') { if (group !== '(auth)') router.replace('/(auth)/welcome'); return; }
+    // Mehmon uchun birinchi ekran — do'kon (E-commerce), login emas. Kirish ekranlariga o'zi o'tadi.
+    if (status === 'anon') { if (group !== '(auth)' && group !== '(shop)') router.replace('/(shop)'); return; }
     // Kirgan holda ham ochiladigan auth ekranlari: xavfsizlik sozlamalari va yakun
     const security = group === '(auth)' && ['pin', 'change-password', 'done'].includes(segs[1] ?? '');
     if (security) return;
@@ -49,13 +50,14 @@ function Gate() {
       const target = erpRoleConfig(erp.role).group;
       // `erp/<kartochka>` va haydovchi marshruti (`yolda/<reys>`) — barcha bo'limlar uchun
       // umumiy ekranlar, guruhdan tashqarida turadi va bu yerda qaytarilmasligi kerak
-      if (group !== target && group !== 'erp' && group !== 'yolda') router.replace(`/${target}` as never);
+      if (group !== target && group !== 'erp' && group !== 'yolda' && group !== '(shop)') router.replace(`/${target}` as never);
       return;
     }
 
     if (!active) { if (group !== '(auth)' || segs[1] !== 'select-role') router.replace('/(auth)/select-role'); return; }
     const target = ROLE_GROUP[active.role];
-    const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker'].includes(group ?? '');
+    // `(shop)` — do'kon kirgan foydalanuvchiga ham ochiq (menyudan)
+    const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker', '(shop)'].includes(group ?? '');
     if (group !== target && !shared) router.replace(`/${target}` as never);
   }, [status, kind, active, erp, segments, router]);
 
@@ -116,6 +118,8 @@ function Nav() {
             chiziladi va Gate uni darhol `replace` qilganda react-native-screens yangi
             arxitekturada yiqiladi: "ScreenStackFragment added into a non-stack container". */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        {/* E-commerce — mehmonning birinchi ekrani; o'z Stack'i bor (ro'yxat → mahsulot) */}
+        <Stack.Screen name="(shop)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tadbirkor)" options={{ headerShown: false }} />
         <Stack.Screen name="(quruvchi)" options={{ headerShown: false }} />
@@ -169,6 +173,7 @@ export default function RootLayout() {
           {/* PIN qulfi — hisob ustida; ochilish ekrani esa hammasining ustida */}
           <PinLock />
           <ToastHost />
+          <ResultHost />
           <LaunchOverlay />
         </ThemeProvider>
       </PersistQueryClientProvider>

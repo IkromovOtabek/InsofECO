@@ -29,6 +29,10 @@ model User {
   /// argon2; null — faqat OTP bilan kiradi
   passwordHash String?
   locale    String   @default("uz")
+  /// Hisobni o'chirish so'rovi (zavod haydovchisi): ERP direktori tasdiqlagach anonimlashtiriladi
+  deleteRequestedAt DateTime?
+  /// Anonimlashtirilgan: phone = "deleted:<id>", ism/parol yo'q, a'zoliklar o'chiq. Qator tarix (reys, xabar) uchun qoladi
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -20,6 +20,7 @@ export default function QuruvchiMenu() {
         </Card>
         <Gap />
         <Card style={{ paddingVertical: space.xs }}>
+          <ListItem icon="store" module="brand" title="Do'kon" subtitle="Zavod mahsulotlari va narxlar" onPress={() => router.push('/(shop)')} />
           <ListItem icon="banknote" tone="success" title="Daromad" subtitle="Bugun, hafta, oy · to'langan/kutilayotgan" onPress={() => router.push('/(quruvchi)/earnings')} />
           <ListItem icon="briefcase" module="production" title="Ishlarim" subtitle="Tarix va reyting" onPress={() => router.push('/(quruvchi)/my-jobs')} />
           <ListItem icon="messages-square" title="Xabarlar" right={unread ? <Badge label={String(unread)} tone="danger" icon={null} /> : undefined} onPress={() => router.push('/(quruvchi)/messages')} />

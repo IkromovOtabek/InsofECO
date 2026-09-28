@@ -43,6 +43,8 @@ export type ErpTripStatusInput = z.infer<typeof ErpTripStatusSchema>;
 export const ErpDriverSchema = z.object({ phone: PhoneSchema, fullName: z.string().min(2).max(80) });
 /** ERP xodim kartasi o'zgardi (F.I.O.) — ECO profili ham yangilanadi. */
 export const ErpDriverPatchSchema = z.object({ fullName: z.string().min(2).max(80).optional() });
+/** Hisobni o'chirish so'rovi tasdiqlandi — telefon E.164 (+998...). */
+export const ErpDeleteUserSchema = z.object({ phone: z.string().regex(/^\+\d{9,15}$/) });
 export const ErpVehicleSchema = z.object({
   plateNumber: z.string().min(4).max(12).transform((v) => v.toUpperCase().replace(/\s+/g, '')),
   capacityM3: z.number().positive().max(20),
@@ -68,6 +70,13 @@ export const ErpCustomerSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type ErpCustomerInput = z.infer<typeof ErpCustomerSchema>;
+
+/** ERP mijoz kartasini ilovada o'zi ro'yxatdan o'tgan mijoz tashkilotiga ulash. */
+export const ErpCustomerLinkSchema = z.object({
+  /** ECO CONTRACTOR tashkiloti id (GET customers/unlinked ro'yxatidan) */
+  orgId: z.string().min(1).max(40),
+});
+export type ErpCustomerLinkInput = z.infer<typeof ErpCustomerLinkSchema>;
 
 /** ERP mahsulot kartasi (beton markasi) → ECO ConcreteMix. Kalit: grade. */
 export const ErpMixSchema = z.object({

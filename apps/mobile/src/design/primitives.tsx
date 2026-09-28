@@ -69,7 +69,7 @@ export function Screen({ children, style, padded = true, ...p }: ViewProps & { p
 export function Card({ children, style, ...p }: ViewProps) {
   const { c } = useTheme();
   return (
-    <View {...p} style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, padding: space.card, borderWidth: size.hairline, borderColor: c.borderDefault }, shadow.card, style]}>
+    <View {...p} style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card, borderWidth: size.hairline, borderColor: c.borderDefault }, shadow.card, style]}>
       {children}
     </View>
   );
@@ -108,46 +108,59 @@ export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
 
 // ───────────────────────── Tugma ─────────────────────────
 
-export type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 export type BtnSize = 'md' | 'lg' | 'xl';
 
 export function Button({
   title, variant = 'primary', size: sizeKey = 'md', icon, iconRight, loading, disabled, style, onPress, full = true, ...p
 }: PressableProps & { title: string; variant?: BtnVariant; size?: BtnSize; icon?: IconName; iconRight?: IconName; loading?: boolean; full?: boolean; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
-  const bg = { primary: c.brand, secondary: c.bgSurface, ghost: 'transparent', danger: c.dangerSolid }[variant];
-  const fg = { primary: c.textOnBrand, secondary: c.textStrong, ghost: c.textBody, danger: c.textOnSolid }[variant];
+  const bg = { primary: c.brand, secondary: c.bgSurface, ghost: 'transparent', danger: c.dangerSolid, success: c.successSolid }[variant];
+  const fg = { primary: c.textOnBrand, secondary: c.textStrong, ghost: c.textBody, danger: c.textOnSolid, success: c.textOnSolid }[variant];
   const border = variant === 'secondary' ? c.borderDefault : 'transparent';
   const height = { md: size.button, lg: size.buttonLg, xl: size.driverTouch }[sizeKey];
   const txt: TypeVariant = sizeKey === 'xl' ? 'titleMd' : 'bodyStrong';
   const iconSize = sizeKey === 'xl' ? size.iconLg : size.iconSm;
+  const reduce = useReducedMotion();
+  // iOS'da tugma bosilganda tizim tugmalari kabi ozgina xiralashadi va kichrayadi
+  // (Android'da o'ziga xos to'lqin — `android_ripple` — bor, shuning uchun u yerda faqat kichrayish yetadi).
+  const scale = useSharedValue(1);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
-      {...p}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
-      disabled={disabled || loading}
-      onPress={(e) => { if (Platform.OS === 'ios') void Haptics.selectionAsync(); onPress?.(e); }}
-      android_ripple={{ color: variant === 'primary' ? c.brandHover : c.bgMuted }}
-      style={({ pressed }) => [
-        { height, minHeight: size.touch, borderRadius: radius.md, backgroundColor: bg, borderWidth: size.hairline, borderColor: border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: space.lg, overflow: 'hidden' },
-        full ? null : { alignSelf: 'flex-start' },
-        (disabled || loading) && { opacity: 0.5 },
-        pressed && variant === 'primary' && { backgroundColor: c.brandHover },
-        pressed && variant !== 'primary' && { backgroundColor: c.bgMuted },
-        style,
-      ]}
-    >
-      {loading ? <ActivityIndicator color={fg} /> : (
-        <>
-          {icon ? <Icon name={icon} size={iconSize} color={fg} /> : null}
-          {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — zaxira kenglik */}
-          <Text style={[type[txt], { color: fg, minWidth: textRoom(title, type[txt].fontSize) }]} maxFontSizeMultiplier={1.4} numberOfLines={1}>{title}</Text>
-          {iconRight ? <Icon name={iconRight} size={iconSize} color={fg} /> : null}
-        </>
-      )}
-    </Pressable>
+    <Animated.View style={[full ? null : { alignSelf: 'flex-start' }, anim]}>
+      <Pressable
+        {...p}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
+        disabled={disabled || loading}
+        onPressIn={(e) => {
+          if (!reduce) scale.value = withTiming(0.97, { duration: duration.micro, easing: Easing.out(Easing.quad) });
+          p.onPressIn?.(e);
+        }}
+        onPressOut={(e) => {
+          scale.value = withTiming(1, { duration: duration.state, easing: Easing.bezier(0.22, 1, 0.36, 1) });
+          p.onPressOut?.(e);
+        }}
+        onPress={(e) => { if (Platform.OS === 'ios') void Haptics.selectionAsync(); onPress?.(e); }}
+        android_ripple={{ color: variant === 'primary' ? c.brandHover : c.bgMuted }}
+        style={({ pressed }) => [
+          { height, minHeight: size.touch, borderRadius: radius.md, borderCurve: 'continuous', backgroundColor: bg, borderWidth: size.hairline, borderColor: border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: space.lg, overflow: 'hidden' },
+          (disabled || loading) && { opacity: 0.5 },
+          Platform.OS === 'ios' && pressed && { opacity: 0.75 },
+          style,
+        ]}
+      >
+        {loading ? <ActivityIndicator color={fg} /> : (
+          <>
+            {icon ? <Icon name={icon} size={iconSize} color={fg} /> : null}
+            {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — zaxira kenglik */}
+            <Text style={[type[txt], { color: fg, minWidth: textRoom(title, type[txt].fontSize) }]} maxFontSizeMultiplier={1.4} numberOfLines={1}>{title}</Text>
+            {iconRight ? <Icon name={iconRight} size={iconSize} color={fg} /> : null}
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -346,7 +359,7 @@ export function IconTile({ icon, module: m = 'brand', tone, size: s = size.iconT
   const { c } = useTheme();
   const col = tone ? toneColors(c, tone) : moduleColors(c, m);
   return (
-    <View style={[{ width: s, height: s, borderRadius: radius.lg, backgroundColor: col.bg, alignItems: 'center', justifyContent: 'center' }, style]}>
+    <View style={[{ width: s, height: s, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: col.bg, alignItems: 'center', justifyContent: 'center' }, style]}>
       <Icon name={icon} size={s >= size.avatarLg ? size.iconXl : s >= size.iconTile ? size.iconMd : size.iconSm} color={col.ink} />
     </View>
   );
@@ -378,22 +391,29 @@ export function ListItem({ title, subtitle, subtitleLines = 2, right, onPress, i
 export function KPICard({ label, value, caption, icon = 'activity', module: m = 'brand', tone, onPress, hero, style }: { label: string; value: string; caption?: string; icon?: IconName | string; module?: ModuleTone; tone?: Tone; onPress?: () => void; hero?: boolean; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   const valueColor: TxtColor = tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : tone === 'success' ? 'success' : 'strong';
+  const reduce = useReducedMotion();
+  const scale = useSharedValue(1);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
-      onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
-      android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ backgroundColor: c.bgSurface, borderRadius: radius.card, padding: space.card, borderWidth: size.hairline, borderColor: c.borderDefault, gap: space.md }, shadow.card, pressed && { borderColor: c.borderStrong }, style]}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
-        <IconTile icon={icon} module={m} tone={tone} />
-        {onPress ? <Icon name="chevron-right" tone="faint" /> : null}
-      </View>
-      <View>
-        <Txt v="label" numberOfLines={1}>{label}</Txt>
-        <Txt v={hero ? 'metricHero' : 'metric'} color={valueColor} numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.xs }}>{value}</Txt>
-        {caption ? <Txt v="caption" numberOfLines={1} style={{ marginTop: space.xs }}>{caption}</Txt> : null}
-      </View>
-    </Pressable>
+    <Animated.View style={anim}>
+      <Pressable
+        onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
+        onPressIn={() => { if (onPress && !reduce) scale.value = withTiming(0.97, { duration: duration.micro, easing: Easing.out(Easing.quad) }); }}
+        onPressOut={() => { scale.value = withTiming(1, { duration: duration.state, easing: Easing.bezier(0.22, 1, 0.36, 1) }); }}
+        android_ripple={{ color: c.bgMuted }}
+        style={({ pressed }) => [{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card, borderWidth: size.hairline, borderColor: c.borderDefault, gap: space.md }, shadow.card, pressed && { borderColor: c.borderStrong }, Platform.OS === 'ios' && pressed && onPress && { opacity: 0.85 }, style]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+          <IconTile icon={icon} module={m} tone={tone} />
+          {onPress ? <Icon name="chevron-right" tone="faint" /> : null}
+        </View>
+        <View>
+          <Txt v="label" numberOfLines={1}>{label}</Txt>
+          <Txt v={hero ? 'metricHero' : 'metric'} color={valueColor} numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.xs }}>{value}</Txt>
+          {caption ? <Txt v="caption" numberOfLines={1} style={{ marginTop: space.xs }}>{caption}</Txt> : null}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 

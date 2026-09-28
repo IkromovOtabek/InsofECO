@@ -17,8 +17,9 @@ export interface ErpTokens { accessToken: string; refreshToken: string }
 export type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info';
 export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string }
 export interface ErpRow { id: string; title: string; subtitle?: string; right?: string; status?: string; tone?: Tone }
-/** `target` — qator bosilganda ochiladigan kartochka turi; bo'lmasa qator bosilmaydi. */
-export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string }
+/** `target` — qator bosilganda ochiladigan kartochka turi; bo'lmasa qator bosilmaydi.
+ * `icon` — `target` yo'q bo'limlar uchun ma'noli belgi (server beradi; bo'lmasa doira). */
+export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string }
 export interface ErpField { label: string; value: string; tone?: Tone }
 export interface ErpFormOption { value: string; label: string; extra?: Record<string, string> }
 export interface ErpFormField {
@@ -34,7 +35,11 @@ export interface ErpFormField {
   showIf?: { field: string; equals: string };
   /** `items` turi uchun ustunlar. */
   columns?: ErpFormField[];
+  /** `date` maydoni uchun — 10 kunlik kunlik yuklama (veb "ish tartibi" bilan bir xil hisob). */
+  cells?: ErpDayCell[];
 }
+/** Bitta kun — sana tanlovida kunlik quvvat rangi va hajmi. */
+export interface ErpDayCell { key: string; label: string; weekday: string; m3: number; pct: number; count: number; isToday: boolean }
 export interface ErpCreateForm { key: string; title: string; submitLabel: string; fields: ErpFormField[] }
 /** Amal bajarilgandan keyin ilova nima qilishi — qaror serverda (`lib/mobile/detail.ts`). */
 export interface ErpActionEffect {
@@ -192,4 +197,8 @@ export const erpAuth = {
   form: (key: string) => erpApi<ErpCreateForm>('/form', { query: { key } }),
   create: (key: string, payload: Record<string, unknown>) =>
     erpApi<{ key: string; id: string; message: string }>('/create', { method: 'POST', body: { key, payload } }),
+  /** Hisobni o'chirish so'rovi (do'kon talabi): xodim hisobini direktor bergan — so'rov unga tushadi, u tasdiqlaydi. */
+  deletionStatus: () => erpApi<{ pending: boolean; requestedAt: string | null }>('/account'),
+  requestDeletion: (note?: string) => erpApi<{ status: 'requested'; requestId: string }>('/account', { method: 'POST', body: { note } }),
+  cancelDeletion: () => erpApi<{ ok: true }>('/account', { method: 'DELETE' }),
 };

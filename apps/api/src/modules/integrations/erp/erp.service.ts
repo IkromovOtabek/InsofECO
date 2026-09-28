@@ -10,6 +10,7 @@ import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { OrganizationsService } from '../../organizations/organizations.service';
 import { TrackingService, trackStats } from '../../tracking/tracking.service';
 import { ErpCustomerInput, ErpInvoiceInput, ErpMaterialInput, ErpMixInput, ErpOrderInput, ErpPaymentInput, ErpTripInput, ErpTripStatusInput } from './erp.schemas';
+import { AccountService } from '../../auth/account.service';
 
 const D = Prisma.Decimal;
 
@@ -49,6 +50,7 @@ export class ErpService {
     private readonly orgs: OrganizationsService,
     private readonly tracking: TrackingService,
     private readonly events: EventEmitter2,
+    private readonly account: AccountService,
   ) {}
 
   private readonly include = {
@@ -115,6 +117,15 @@ export class ErpService {
     const m = await this.orgs.setDriverActive(a.orgId!, userId, isActive, a.userId);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, fullName: true, phone: true } });
     return { userId: user.id, phone: user.phone, fullName: user.fullName, isActive: m.isActive };
+  }
+
+  /** Hisobni o'chirish so'rovi tasdiqlandi (sayt/ERP) — account.service qoidalari bilan. */
+  deleteUser(a: AuthContext, phone: string) {
+    return this.account.deleteByPlant(a, phone);
+  }
+
+  cancelDeletion(a: AuthContext, userId: string) {
+    return this.account.cancelByPlant(a, userId);
   }
 
   vehicles(a: AuthContext) {
@@ -293,6 +304,116 @@ export class ErpService {
       });
     }
     return { id: saved.id, externalRef: saved.externalRef, name: saved.name, inn: saved.inn, isActive: !saved.deletedAt };
+  }
+
+  // ───────── Mijozning ilova hisobi ─────────
+  //
+  // Zanjir: sotuvchi ERP'da mijozni kiritadi → ERP `PUT customers` bilan bu yerga yuboradi → CONTRACTOR tashkilot
+  // (externalRef = ERP mijoz id) + telefon bo'yicha parolsiz QURUVCHI a'zo. Mijoz keyin ilovada shu telefon bilan
+  // ro'yxatdan o'tsa `auth.register` o'sha foydalanuvchini to'ldiradi — hisob o'z-o'zidan ulanadi.
+  // Mijoz boshqa telefon bilan yoki ERP'dan OLDIN ro'yxatdan o'tgan bo'lsa — sotuvchi ERP'da qo'lda ulaydi
+  // (`unlinkedCustomers` → `linkCustomer`), `ensureClient` esa telefon mos kelsa o'zi ulaydi.
+
+  private readonly memberInclude = {
+    where: { role: 'QURUVCHI' as const },
+    include: { user: { select: { id: true, phone: true, fullName: true, passwordHash: true, sessions: { where: { revokedAt: null }, orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true } } } } },
+  } satisfies Prisma.Organization$membershipsArgs;
+
+  private memberView(m: { isActive: boolean; invitedByPhone: boolean; user: { id: string; phone: string; fullName: string | null; passwordHash: string | null; sessions: { createdAt: Date }[] } }) {
+    return {
+      userId: m.user.id,
+      phone: m.user.phone,
+      fullName: m.user.fullName,
+      /** parol o'rnatgan — ilovaga kira oladi; false — faqat telefon bo'yicha taklif qilingan */
+      registered: !!m.user.passwordHash,
+      invitedByPhone: m.invitedByPhone,
+      isActive: m.isActive,
+      lastLoginAt: m.user.sessions[0]?.createdAt ?? null,
+    };
+  }
+
+  private orgView(o: { id: string; name: string; inn: string | null; externalRef: string | null; createdAt: Date }) {
+    return { id: o.id, name: o.name, inn: o.inn, externalRef: o.externalRef, createdAt: o.createdAt };
+  }
+
+  /** ERP mijoz kartasi ilovada kimga ulangan. `linked=false` — ECO'da bu mijoz hali yo'q (ERP yubormagan). */
+  async customerApp(_a: AuthContext, externalRef: string) {
+    const org = await this.prisma.organization.findUnique({ where: { externalRef }, include: { memberships: this.memberInclude } });
+    if (!org || org.deletedAt) return { linked: false as const, org: null, members: [] as ReturnType<ErpService['memberView']>[] };
+    return { linked: true as const, org: this.orgView(org), members: org.memberships.map((m) => this.memberView(m)) };
+  }
+
+  /**
+   * Ilovada o'zi ro'yxatdan o'tgan, hali hech bir ERP mijoziga ulanmagan quruvchi tashkilotlari.
+   * `q` — nom qismi, telefon raqami (oxirgi 9 raqam yetadi) yoki 9 xonali INN.
+   * `ordersHere` — shu zavodga bergan buyurtmalari (ilova orqali o'zi bergan bo'lishi mumkin).
+   */
+  async unlinkedCustomers(a: AuthContext, q?: string) {
+    const text = (q ?? '').trim();
+    const digits = text.replace(/\D/g, '');
+    const or: Prisma.OrganizationWhereInput[] = [];
+    if (text) {
+      or.push({ name: { contains: text, mode: 'insensitive' } });
+      if (digits.length >= 4) or.push({ memberships: { some: { user: { phone: { contains: digits.slice(-9) } } } } });
+      if (digits.length === 9) or.push({ inn: digits });
+    }
+    const orgs = await this.prisma.organization.findMany({
+      where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI' } }, ...(or.length ? { OR: or } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: { memberships: this.memberInclude, _count: { select: { ordersAsClient: { where: { plantOrgId: a.orgId! } } } } },
+    });
+    return orgs.map((o) => ({ ...this.orgView(o), members: o.memberships.map((m) => this.memberView(m)), ordersHere: o._count.ordersAsClient }));
+  }
+
+  /**
+   * ERP mijozini ilova hisobiga (o'zi ro'yxatdan o'tgan CONTRACTOR tashkilotga) ulash.
+   *
+   * Mijozning ERP'dan kelgan tashkiloti allaqachon bo'lsa, u ilova tashkilotiga QO'SHILADI (ikkitasi bitta bo'ladi):
+   * ERP tomonidan yozilgan buyurtmalar, schyotlar, kredit limiti, a'zolar va obyektlar ilova tashkilotiga ko'chadi,
+   * ERP tashkiloti arxivlanadi. Ilova tashkiloti saqlanadi, chunki mijozning sessiyalari, qurilmalari va
+   * a'zoligi shu yerda — u ilovadan chiqib ketmaydi. Nom ERP'nikiga o'tadi (ERP — manba).
+   * ERP tashkiloti ERP'dan boshqa ma'lumot yaratmaydi, shuning uchun boshqa jadvallar ko'chirilmaydi.
+   */
+  async linkCustomer(a: AuthContext, externalRef: string, orgId: string) {
+    const target = await this.prisma.organization.findFirst({ where: { id: orgId, type: 'CONTRACTOR', deletedAt: null } });
+    if (!target) throw DomainError.notFound('Ilova tashkiloti');
+    if (target.externalRef && target.externalRef !== externalRef) throw new DomainError('CUSTOMER_ALREADY_LINKED', 'Bu ilova hisobi boshqa ERP mijoziga ulangan');
+
+    const current = await this.prisma.organization.findUnique({ where: { externalRef } });
+    if (current && current.id !== target.id) {
+      await this.prisma.$transaction(async (tx) => {
+        // A'zolar: bir xil (foydalanuvchi, rol) ikkalasida bo'lsa — ERP tomonidagi o'chadi
+        const members = await tx.membership.findMany({ where: { organizationId: current.id } });
+        for (const m of members) {
+          const dup = await tx.membership.findUnique({ where: { userId_organizationId_role: { userId: m.userId, organizationId: target.id, role: m.role } } });
+          if (dup) await tx.membership.delete({ where: { id: m.id } });
+          else await tx.membership.update({ where: { id: m.id }, data: { organizationId: target.id } });
+        }
+        // Kredit limiti: ERP'niki ustun (ERP — manba)
+        const limits = await tx.creditLimit.findMany({ where: { clientOrgId: current.id } });
+        for (const l of limits) {
+          const dup = await tx.creditLimit.findUnique({ where: { plantOrgId_clientOrgId: { plantOrgId: l.plantOrgId, clientOrgId: target.id } } });
+          if (dup) {
+            await tx.creditLimit.update({ where: { id: dup.id }, data: { limitAmount: l.limitAmount } });
+            await tx.creditLimit.delete({ where: { id: l.id } });
+          } else await tx.creditLimit.update({ where: { id: l.id }, data: { clientOrgId: target.id } });
+        }
+        await tx.order.updateMany({ where: { clientOrgId: current.id }, data: { clientOrgId: target.id } });
+        await tx.invoice.updateMany({ where: { clientOrgId: current.id }, data: { clientOrgId: target.id } });
+        await tx.constructionSite.updateMany({ where: { organizationId: current.id }, data: { organizationId: target.id } });
+        // externalRef va INN unique — avval eskisidan bo'shatiladi, keyin yangisiga yoziladi
+        await tx.organization.update({ where: { id: current.id }, data: { externalRef: null, inn: null, deletedAt: new Date(), name: `${current.name} (birlashtirildi)` } });
+        await tx.organization.update({
+          where: { id: target.id },
+          data: { externalRef, name: current.name, inn: target.inn ?? current.inn, address: target.address ?? current.address },
+        });
+      });
+      this.logger.log(`mijoz ${externalRef}: ERP tashkiloti ${current.id} ilova tashkiloti ${target.id} ga birlashtirildi`);
+    } else if (!target.externalRef) {
+      await this.prisma.organization.update({ where: { id: target.id }, data: { externalRef } });
+    }
+    return this.customerApp(a, externalRef);
   }
 
   /** ERP mahsulot kartasi (beton markasi) → ConcreteMix. Kalit: marka (grade). */
@@ -504,6 +625,16 @@ export class ErpService {
     let org = c.externalRef ? await this.prisma.organization.findUnique({ where: { externalRef: c.externalRef } }) : null;
     if (!org && c.inn) org = await this.prisma.organization.findUnique({ where: { inn: c.inn } });
     if (!org) org = await this.prisma.organization.findFirst({ where: { type: 'CONTRACTOR', name: c.name, deletedAt: null } });
+    if (!org && c.phone) {
+      // Mijoz ilovada o'zi ro'yxatdan o'tgan bo'lishi mumkin (sotuvchi uni ERP'ga keyin kiritdi) —
+      // telefoni orqali hali hech bir ERP kartasiga ulanmagan tashkilotini topamiz va yangisini ochmaymiz.
+      // Aks holda mijozda ikkita "Quruvchi" tashkilot paydo bo'lib, ilova rol tanlash ekranida qolib ketardi.
+      org = await this.prisma.organization.findFirst({
+        where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI', user: { phone: c.phone } } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (org) this.logger.log(`mijoz ${c.name} ilovadagi hisobiga ulandi: ${org.name} (${org.id})`);
+    }
     if (!org) org = await this.prisma.organization.create({ data: { type: 'CONTRACTOR', name: c.name, inn: c.inn, externalRef: c.externalRef } });
     else if (c.externalRef && !org.externalRef) {
       // Eski yozuv — endi ERP kartasiga bog'lanadi

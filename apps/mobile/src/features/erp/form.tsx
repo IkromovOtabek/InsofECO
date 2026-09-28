@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { Button, Card, IconButton, Input, Label, Select, Txt, type SelectOption } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
-import { radius, size, space } from '@/design/tokens';
-import type { ErpFormField, ErpFormOption } from '@/core/erp';
+import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
+import type { ErpDayCell, ErpFormField, ErpFormOption } from '@/core/erp';
 
 /**
  * Serverdan kelgan forma tavsifini chizadigan qism.
@@ -107,7 +107,7 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
           <Switch value={value === 'true'} onValueChange={(v) => onChange(field.name, String(v))} trackColor={{ true: c.brand }} accessibilityLabel={field.label} />
         </View>
       );
-      case 'date': return <DateInput value={value} onChange={(v) => onChange(field.name, v)} />;
+      case 'date': return <DateInput field={field} value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
       default: return null;
@@ -188,10 +188,50 @@ function ChoiceChip({ on, onPress, label, children }: { on: boolean; onPress: ()
 const DAY_NAMES = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** Sana — yaqin 14 kun. Beton zayavkasi deyarli doim shu oraliqda. */
-function DateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/** Kunlik yuklama foizidan rang — quvvat bo'sh (qizil) dan to'lgan (yashil) gacha, veb "ish tartibi" bilan bir xil g'oya. */
+const dayBand = (pct: number): Tone => (pct < 34 ? 'danger' : pct < 67 ? 'warning' : 'success');
+const m3Text = (n: number) => `${n.toFixed(n % 1 ? 1 : 0)} m³`;
+
+/** Sana chipi — kunlik quvvat rangi bilan (server yuborgan bo'lsa). Zayavka formasidagi "10 kunlik ish tartibi". */
+function DayCapacityChip({ cell, on, onPress }: { cell: ErpDayCell; on: boolean; onPress: () => void }) {
+  const { c } = useTheme();
+  const { ink, bg } = toneColors(c, dayBand(cell.pct));
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio" accessibilityState={{ selected: on }}
+      accessibilityLabel={`${cell.weekday} ${cell.label} — ${cell.count ? `${m3Text(cell.m3)}, ${cell.count} ta zayavka` : "bo'sh, joy ko'p"}`}
+      android_ripple={{ color: c.bgMuted }}
+      style={({ pressed }) => [
+        { minWidth: 68, minHeight: size.touch + space.lg, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.sm, borderWidth: on ? 2 : size.hairline, borderColor: on ? c.brand : ink, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', gap: 2 },
+        pressed && !on && { opacity: 0.85 },
+      ]}
+    >
+      <Txt v="caption" color={cell.isToday ? 'brand' : 'muted'}>{cell.weekday}</Txt>
+      <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{cell.label}</Txt>
+      <Txt v="caption" style={{ color: ink }}>{cell.count ? m3Text(cell.m3) : "bo'sh"}</Txt>
+    </Pressable>
+  );
+}
+
+/**
+ * Sana — server "10 kunlik ish tartibi" (`field.cells`) yuborsa, shu kunlar kunlik quvvat
+ * rangida chiqadi (veb bilan bir xil hisob: to'lgan kun yashil, bo'sh — qizil). Bo'lmasa
+ * yaqin 14 kunlik oddiy chip qatoriga tushadi (masalan ta'minot "qachongacha kerak").
+ */
+function DateInput({ field, value, onChange }: { field: ErpFormField; value: string; onChange: (v: string) => void }) {
+  const cells = field.cells;
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i); return d; }), []);
-  const ref = useScrollToSelected(days.findIndex((d) => ymd(d) === value), 70);
+  const selIndex = cells?.length ? cells.findIndex((x) => x.key === value) : days.findIndex((d) => ymd(d) === value);
+  const ref = useScrollToSelected(selIndex, cells?.length ? 76 : 70);
+
+  if (cells?.length) {
+    return (
+      <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
+        {cells.map((cell) => <DayCapacityChip key={cell.key} cell={cell} on={cell.key === value} onPress={() => onChange(cell.key)} />)}
+      </ScrollView>
+    );
+  }
   return (
     <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
       {days.map((d, i) => {

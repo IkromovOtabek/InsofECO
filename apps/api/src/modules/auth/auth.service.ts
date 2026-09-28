@@ -48,7 +48,8 @@ export class AuthService {
     if (exists?.passwordHash) throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam allaqachon ro\'yxatdan o\'tgan');
     const passwordHash = await argon2.hash(input.password);
 
-    const pending: { registered: MembershipChangedEvent | null } = { registered: null }; // haydovchi zavodga o'zi yozildi — ERP'ga xabar (tranzaksiyadan keyin)
+    // Tranzaksiyadan keyin ERP'ga xabar: haydovchi zavodga o'zi yozildi, yoki ERP'dan taklif qilingan mijoz ilovaga kirdi
+    const pending: { registered: MembershipChangedEvent | null; customer: MembershipChangedEvent[] } = { registered: null, customer: [] };
     const user = await this.prisma.$transaction(async (tx) => {
       // Taklif orqali oldindan yaratilgan (parolsiz) foydalanuvchi bo'lishi mumkin — uni to'ldiramiz
       const u = exists
@@ -58,6 +59,10 @@ export class AuthService {
       if (input.role === 'TADBIRKOR' && input.organization) {
         await tx.organization.create({ data: { ...input.organization, memberships: { create: { userId: u.id, role: 'TADBIRKOR' } } } });
       } else if (input.role === 'QURUVCHI') {
+        // ERP sotuvchisi mijozni telefon bilan kiritgan bo'lsa, a'zolik oldindan bor (parolsiz). Endi mijoz parol qo'ydi —
+        // ERP'ga "mijoz ilovaga kirdi" xabari ketadi (faqat ERP kartasiga ulangan tashkilotlar uchun).
+        const linked = await tx.membership.findMany({ where: { userId: u.id, role: 'QURUVCHI', organization: { externalRef: { not: null }, deletedAt: null } } });
+        pending.customer = linked.map((m) => ({ organizationId: m.organizationId, membershipId: m.id, userId: m.userId, role: m.role, isActive: m.isActive, reason: 'registered' as const, byUserId: null }));
         const hasMembership = await tx.membership.count({ where: { userId: u.id, role: 'QURUVCHI' } });
         if (!hasMembership) {
           await tx.organization.create({
@@ -78,6 +83,7 @@ export class AuthService {
       }
       return u;
     });
+    for (const ev of pending.customer) this.events.emit(ORG_EVENTS.membershipChanged, ev);
     if (pending.registered) this.events.emit(ORG_EVENTS.membershipChanged, pending.registered);
     else if (exists) this.events.emit(ORG_EVENTS.userUpdated, { userId: user.id, byUserId: null } satisfies UserUpdatedEvent); // taklif qilingan haydovchi ismini kiritdi
 
@@ -197,6 +203,7 @@ export class AuthService {
       phone: user.phone,
       fullName: user.fullName,
       locale: user.locale,
+      deleteRequestedAt: user.deleteRequestedAt,
       memberships: user.memberships.map((m) => ({ role: m.role, isActive: m.isActive, organization: m.organization })),
     };
   }

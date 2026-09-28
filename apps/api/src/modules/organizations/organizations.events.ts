@@ -5,6 +5,7 @@ export const ORG_EVENTS = {
   membershipChanged: 'membership.changed',
   vehicleChanged: 'vehicle.changed',
   userUpdated: 'user.updated',
+  accountDeleteRequested: 'account.delete_requested',
 } as const;
 
 export interface MembershipChangedEvent {
@@ -29,4 +30,11 @@ export interface VehicleChangedEvent {
 export interface UserUpdatedEvent {
   userId: string;
   byUserId: string | null;
+}
+
+/** Zavod haydovchisi ilovada hisobini o'chirishni so'radi — ERP direktori tasdiqlashi kerak (account.service). */
+export interface AccountDeleteRequestedEvent {
+  userId: string;
+  /** Faol HAYDOVCHI a'zoligi bor zavodlar — har birining ERP'siga webhook ketadi */
+  organizationIds: string[];
 }

@@ -24,6 +24,8 @@ export const ErrorCode = {
   DELIVERY_SIGNATURE_REQUIRED: 'DELIVERY_SIGNATURE_REQUIRED',
   DELIVERY_STALE: 'DELIVERY_STALE',
   IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
+  /** ERP mijozini ulash: bu ilova hisobi boshqa ERP mijoziga allaqachon ulangan */
+  CUSTOMER_ALREADY_LINKED: 'CUSTOMER_ALREADY_LINKED',
   INTERNAL: 'INTERNAL',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

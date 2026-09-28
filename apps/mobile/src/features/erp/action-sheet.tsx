@@ -37,6 +37,7 @@ export function ActionSheet({ action, loading, error, onClose, onSubmit }: {
         <Button
           title={action.label}
           loading={loading}
+          variant={action.tone === 'danger' ? 'danger' : action.tone === 'success' ? 'success' : action.tone === 'warning' ? 'secondary' : 'primary'}
           onPress={() => {
             const m = firstMissing(fields, values);
             setMiss(m);

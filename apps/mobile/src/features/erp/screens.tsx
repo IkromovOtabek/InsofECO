@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, EmptyState, Gap, IconButton, IconTile, Input, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
-import { Avatar, tabIcon } from '@/design/ui';
+import { Avatar, Confirm, tabIcon, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom } from '@/design/tokens';
 import { tabsOptions } from '@/design/nav';
@@ -11,10 +11,10 @@ import { Appear, stagger } from '@/design/motion';
 import { useSession } from '@/core/session';
 import MapView, { Marker } from 'react-native-maps';
 import { config } from '@/core/config';
-import type { ErpLiveTruck, ErpRole } from '@/core/erp';
+import { erpAuth, type ErpLiveTruck, type ErpRole } from '@/core/erp';
 import { erpRoleConfig } from './roles';
 import { useErpHome, useErpList, useErpNotifications } from './api';
-import { FilterChips, HeroCard, ListRow, QuickTile, ROW_ICON, SectionHead, StatTile, listModule } from './ui';
+import { FilterChips, HeroCard, ListRow, ROW_ICON, SectionHead, StatTile, listModule } from './ui';
 import { pinStore } from '@/core/pin';
 import { setBadge } from '@/core/push';
 
@@ -104,23 +104,8 @@ export function ErpHome() {
           ) : null}
         </View>
 
-        {data.quick.length ? (
-          <View style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
-            <SectionHead title="Tezkor amallar" />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-              {data.quick.map((q, i) => (
-                <QuickTile
-                  key={`${q.kind}-${q.key}`}
-                  label={q.label}
-                  icon={q.icon}
-                  module={module}
-                  index={i}
-                  onPress={() => router.push((q.kind === 'new' ? `/erp/new/${q.key}` : `/erp/list/${q.key}`) as never)}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
+        {/* "Tezkor amallar" bosh ekrandan olib tashlandi — bo'limlar endi faqat Profil
+            tabidagi "Bo'limlar" ro'yxatida turadi, bosh ekran esa faqat ko'rsatkichlarga bag'ishlangan. */}
 
         {data.live?.length ? <LiveTrucks trucks={data.live} /> : null}
 
@@ -137,7 +122,7 @@ export function ErpHome() {
                 row={r}
                 index={i}
                 module={rowModule(s.target)}
-                icon={ROW_ICON[s.target ?? ''] ?? 'circle'}
+                icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
                 onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined}
               />
             ))}
@@ -305,7 +290,26 @@ export function ErpMenu() {
   const quick = useErpHome().data?.quick ?? [];
   const lists = quick.filter((q) => q.kind === 'list');
   const forms = quick.filter((q) => q.kind === 'new');
+  // Hisobni o'chirish (do'kon talabi): xodim hisobini direktor bergan — darhol o'chirilmaydi,
+  // so'rov direktorga tushadi (Sozlamalar → Hisob so'rovlari), tasdiqlansa login yopiladi.
+  const [delAsk, setDelAsk] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delPending, setDelPending] = useState<boolean | null>(null);
+  useEffect(() => { erpAuth.deletionStatus().then((r) => setDelPending(r.pending)).catch(() => setDelPending(false)); }, []);
+  const requestDeletion = async () => {
+    setDelBusy(true);
+    try {
+      await erpAuth.requestDeletion();
+      setDelAsk(false); setDelPending(true);
+      toast.info("Direktor tasdiqlagach hisobingiz yopiladi.", "So'rov yuborildi");
+    } catch (e) { toast.error((e as Error).message, 'Xato'); } finally { setDelBusy(false); }
+  };
+  const cancelDeletion = async () => {
+    try { await erpAuth.cancelDeletion(); setDelPending(false); toast.success("So'rov qaytarib olindi"); }
+    catch (e) { toast.error((e as Error).message, 'Xato'); }
+  };
   return (
+    <View style={{ flex: 1, backgroundColor: c.bgApp }}>
     <ScrollView style={{ backgroundColor: c.bgApp }} contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxxl }}>
       <Appear>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
@@ -374,9 +378,31 @@ export function ErpMenu() {
       </Appear>
 
       <Appear delay={stagger(4)} style={{ marginTop: space.xl }}>
+        <SectionHead title="Hisob" />
+        <Card style={{ paddingVertical: 0 }}>
+          {delPending ? (
+            <ListItem icon="hourglass" tone="warning" title="Hisobni o'chirish so'ralgan" subtitle="Direktor tasdig'i kutilmoqda. Fikringiz o'zgarsa — bosing" onPress={() => void cancelDeletion()} last />
+          ) : (
+            <ListItem icon="user-x" tone="danger" title="Hisobni o'chirish" subtitle="So'rov direktorga boradi; tasdiqlansa login yopiladi" onPress={() => setDelAsk(true)} last />
+          )}
+        </Card>
+      </Appear>
+
+      <Appear delay={stagger(5)} style={{ marginTop: space.xl }}>
         <Button variant="secondary" icon="log-out" title="Chiqish" onPress={() => void signOut()} />
       </Appear>
     </ScrollView>
+    <Confirm
+      open={delAsk}
+      onClose={() => setDelAsk(false)}
+      onConfirm={() => void requestDeletion()}
+      danger
+      loading={delBusy}
+      title="Hisobni o'chirish"
+      confirmLabel="So'rov yuborish"
+      message="Hisobingizni direktor bergan, shuning uchun so'rov unga boradi. Tasdiqlangach login yopiladi, ilova va kompyuterdagi seanslar tugaydi. Xodim kartangiz (HR) saqlanib qoladi."
+    />
+    </View>
   );
 }
 
