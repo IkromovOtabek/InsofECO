@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { Prisma } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
 import { ChangePasswordInput, LoginInput, OtpVerify, RegisterInput, ResetPasswordInput } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -61,16 +62,7 @@ export class AuthService {
       if (input.role === 'TADBIRKOR' && input.organization) {
         await tx.organization.create({ data: { ...input.organization, memberships: { create: { userId: u.id, role: 'TADBIRKOR' } } } });
       } else if (input.role === 'QURUVCHI') {
-        // ERP sotuvchisi mijozni telefon bilan kiritgan bo'lsa, a'zolik oldindan bor (parolsiz). Endi mijoz parol qo'ydi —
-        // ERP'ga "mijoz ilovaga kirdi" xabari ketadi (faqat ERP kartasiga ulangan tashkilotlar uchun).
-        const linked = await tx.membership.findMany({ where: { userId: u.id, role: 'QURUVCHI', organization: { externalRef: { not: null }, deletedAt: null } } });
-        pending.customer = linked.map((m) => ({ organizationId: m.organizationId, membershipId: m.id, userId: m.userId, role: m.role, isActive: m.isActive, reason: 'registered' as const, byUserId: null }));
-        const hasMembership = await tx.membership.count({ where: { userId: u.id, role: 'QURUVCHI' } });
-        if (!hasMembership) {
-          await tx.organization.create({
-            data: { type: 'CONTRACTOR', name: input.organization?.name ?? `${input.fullName} (xususiy quruvchi)`, memberships: { create: { userId: u.id, role: 'QURUVCHI' } } },
-          });
-        }
+        pending.customer = await this.ensureCustomer(tx, u.id, input.organization?.name ?? `${input.fullName} (xususiy quruvchi)`);
       } else if (input.role === 'HAYDOVCHI' && input.plantOrgId) {
         const plant = await tx.organization.findFirst({ where: { id: input.plantOrgId, type: 'PLANT', deletedAt: null } });
         if (!plant) throw DomainError.notFound('Zavod');
@@ -92,6 +84,32 @@ export class AuthService {
     await this.touchDevice(user.id, input.device);
     const tokens = await this.issueSession(user.id, input.device.deviceId, randomUUID());
     return { ...tokens, user: await this.profile(user.id) };
+  }
+
+  /**
+   * Kirgan foydalanuvchi o'zini mijoz (quruvchi) qiladi — Telegram/SMS orqali parolsiz kirgan va
+   * hali roli yo'q odam uchun (aks holda "rol biriktirilmagan" ekranida qolib ketardi).
+   * Faqat QURUVCHI: tadbirkor/haydovchi zavod tasdig'ini talab qiladi, ular oddiy ro'yxatdan o'tadi.
+   */
+  async becomeCustomer(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const events = await this.prisma.$transaction((tx) => this.ensureCustomer(tx, user.id, `${user.fullName ?? user.phone} (xususiy quruvchi)`));
+    for (const ev of events) this.events.emit(ORG_EVENTS.membershipChanged, ev);
+    return this.profile(userId);
+  }
+
+  /**
+   * Quruvchi a'zoligi: ERP sotuvchisi mijozni telefon bilan kiritgan bo'lsa a'zolik oldindan bor —
+   * ERP'ga "mijoz ilovaga kirdi" xabari qaytariladi (faqat ERP kartasiga ulangan tashkilotlar);
+   * a'zolik yo'q bo'lsa xususiy quruvchi tashkiloti ochiladi.
+   */
+  private async ensureCustomer(tx: Prisma.TransactionClient, userId: string, orgName: string): Promise<MembershipChangedEvent[]> {
+    const linked = await tx.membership.findMany({ where: { userId, role: 'QURUVCHI', organization: { externalRef: { not: null }, deletedAt: null } } });
+    const hasMembership = await tx.membership.count({ where: { userId, role: 'QURUVCHI' } });
+    if (!hasMembership) {
+      await tx.organization.create({ data: { type: 'CONTRACTOR', name: orgName, memberships: { create: { userId, role: 'QURUVCHI' } } } });
+    }
+    return linked.map((m) => ({ organizationId: m.organizationId, membershipId: m.id, userId: m.userId, role: m.role, isActive: m.isActive, reason: 'registered' as const, byUserId: null }));
   }
 
   /** Telefon + parol. Xato xabari bir xil (raqam bor/yo'qligini oshkor qilmaydi). */

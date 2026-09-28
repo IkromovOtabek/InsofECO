@@ -12,7 +12,8 @@ import { Appear, PressScale, stagger } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title } from '@/features/auth/ui';
+import { useTelegramLogin } from '@/features/auth/telegram';
+import { AuthScreen, Divider, GhostButton, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title } from '@/features/auth/ui';
 
 /**
  * Ro'yxatdan o'tish — uch qadamli oqim.
@@ -43,6 +44,8 @@ export default function Register() {
   const router = useRouter();
   const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
+  // Parolsiz tez yo'l: raqam Telegram'da tasdiqlanadi, keyin rol tanlash ekranida «Mijoz sifatida davom etish»
+  const tg = useTelegramLogin();
   const [role, setRole] = useState<RoleKey | null>(null);
   const [fullName, setFullName] = useState('');
   const [local, setLocal] = useState('');
@@ -115,6 +118,21 @@ export default function Register() {
             </Appear>
           ))}
         </View>
+        <Appear delay={300}>
+          <Divider />
+          <GhostButton
+            title={tg.waiting ? "Telegram'da raqamni ulashing…" : tg.starting ? 'Telegram ochilmoqda…' : "Telegram orqali ro'yxatdan o'tish"}
+            icon="send"
+            onPress={() => void tg.start()}
+          />
+          {tg.waiting ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+              <Txt v="caption">Botda raqamingizni ulashing — hisob o&apos;zi ochiladi</Txt>
+              <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
+            </View>
+          ) : null}
+          <ErrorBox text={tg.error} />
+        </Appear>
       </AuthScreen>
     );
   }

@@ -21,6 +21,8 @@ export const authApi = {
   /** Botda raqam ulashilganmi — `pending` yoki sessiya. */
   telegramPoll: (nonce: string) =>
     api<{ status: 'pending' } | { status: 'ok'; accessToken: string; refreshToken: string; user: Profile }>('/auth/telegram/poll', { method: 'POST', body: { nonce, device: deviceInfo() }, auth: false }),
+  /** Roli yo'q foydalanuvchi (Telegram/SMS bilan kirgan) mijoz (quruvchi) bo'ladi — yangilangan profil. */
+  becomeCustomer: () => api<Profile>('/auth/customer', { method: 'POST' }),
   /** Parolni tiklash: raqamga kod yuborish. Hisob yo'q bo'lsa ham javob bir xil. */
   forgotPassword: (phone: string) =>
     api<{ retryAfter: number }>('/auth/password/forgot', { method: 'POST', body: { phone }, auth: false }),
