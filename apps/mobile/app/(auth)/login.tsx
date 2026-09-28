@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { BackHandler, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
 import { IconButton, IconTile, Input, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
@@ -9,6 +9,7 @@ import { authApi } from '@/features/auth/api';
 import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
+import { useTelegramLogin } from '@/features/auth/telegram';
 import { AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 
 /**
@@ -44,6 +45,19 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const kind = useMemo(() => detectKind(ident), [ident]);
+  const tg = useTelegramLogin();
+
+  /**
+   * Ortga — har doim do'konga (E-commerce). `router.back()` yetmaydi: login ko'pincha
+   * `replace` bilan ochiladi (ro'yxat, SMS, parolni tiklash ekranlaridan) va tarix bo'sh
+   * bo'ladi. `dismissTo` do'kon tarixda bo'lsa unga qaytadi, bo'lmasa uni o'rniga qo'yadi.
+   */
+  const toShop = useCallback(() => router.dismissTo('/(shop)'), [router]);
+  // Android'dagi tizim "orqaga" tugmasi ham ilovani yopmasin — do'konga qaytarsin
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { toShop(); return true; });
+    return () => sub.remove();
+  }, [toShop]));
 
   const submit = async () => {
     const next: typeof error = {};
@@ -73,7 +87,7 @@ export default function Login() {
   };
 
   return (
-    <AuthScreen footer={<FooterLink text="Xodimlar ERP logini bilan kiradi" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
+    <AuthScreen onBack={toShop} footer={<FooterLink text="Xodimlar ERP logini bilan kiradi" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
       <Appear delay={40} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xxl }}>
         <IconTile icon="layers" module="brand" />
         <View>
@@ -115,7 +129,7 @@ export default function Login() {
         <TextLink onPress={() => router.push('/(auth)/forgot')} style={{ alignSelf: 'flex-end' }}>Parolni unutdingizmi?</TextLink>
       </Appear>
 
-      <ErrorBox text={error.form} />
+      <ErrorBox text={error.form ?? tg.error} />
 
       <Appear delay={250} style={{ marginTop: space.lg }}>
         <PrimaryButton title={loading ? 'Kirilmoqda…' : 'Kirish'} onPress={submit} loading={loading} />
@@ -123,7 +137,20 @@ export default function Login() {
 
       <Appear delay={300}>
         <Divider />
-        <GhostButton title="SMS-kod orqali kirish" icon="message-square" onPress={() => router.push('/(auth)/phone')} />
+        <View style={{ gap: space.md }}>
+          <GhostButton
+            title={tg.waiting ? "Telegram'da raqamni ulashing…" : tg.starting ? 'Telegram ochilmoqda…' : 'Telegram orqali kirish'}
+            icon="send"
+            onPress={() => void tg.start()}
+          />
+          {tg.waiting ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
+              <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
+            </View>
+          ) : null}
+          <GhostButton title="SMS-kod orqali kirish" icon="message-square" onPress={() => router.push('/(auth)/phone')} />
+        </View>
       </Appear>
     </AuthScreen>
   );

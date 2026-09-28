@@ -26,19 +26,21 @@ export class AuthService {
 
   async verifyOtp(input: OtpVerify) {
     await this.otp.verify(input.phone, input.code);
+    return this.signInVerifiedPhone(input.phone, input.device);
+  }
 
+  /**
+   * Telefon egaligi tasdiqlangan (SMS-kod yoki Telegram kontakti) — hisob bo'lmasa yaratiladi,
+   * rol keyin tanlanadi. `fullName` faqat yangi hisobga yoziladi, mavjudini almashtirmaydi.
+   */
+  async signInVerifiedPhone(phone: string, device: OtpVerify['device'], fullName?: string) {
     const user = await this.prisma.user.upsert({
-      where: { phone: input.phone },
-      create: { phone: input.phone },
+      where: { phone },
+      create: { phone, fullName },
       update: {},
     });
-    await this.prisma.device.upsert({
-      where: { userId_deviceId: { userId: user.id, deviceId: input.device.deviceId } },
-      create: { userId: user.id, ...input.device },
-      update: { platform: input.device.platform, model: input.device.model, appVersion: input.device.appVersion, lastSeenAt: new Date() },
-    });
-
-    const tokens = await this.issueSession(user.id, input.device.deviceId, randomUUID());
+    await this.touchDevice(user.id, device);
+    const tokens = await this.issueSession(user.id, device.deviceId, randomUUID());
     return { ...tokens, user: await this.profile(user.id) };
   }
 

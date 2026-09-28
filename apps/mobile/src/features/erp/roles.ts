@@ -16,10 +16,12 @@ export interface ErpRoleConfig {
   listKey: string;
   workTitle: string;
   workIcon: IconName;
+  /** Pastki panelda "AI yordamchi" tabi — `app/(erp-<kalit>)/ai.tsx` fayli ham bo'lishi shart. */
+  ai?: boolean;
 }
 
 export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
-  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Boshqaruv',  homeIcon: 'gauge',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text' },
+  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Boshqaruv',  homeIcon: 'gauge',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text', ai: true },
   SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',      homeIcon: 'trending-up',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text' },
   PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',        homeIcon: 'factory',     listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' },
   SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',     homeIcon: 'clipboard-list',     listKey: 'tasks',      workTitle: 'Topshiriqlar', workIcon: 'square-check' },

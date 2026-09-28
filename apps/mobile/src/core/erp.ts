@@ -16,7 +16,8 @@ export interface ErpTokens { accessToken: string; refreshToken: string }
 
 export type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info';
 export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string }
-export interface ErpRow { id: string; title: string; subtitle?: string; right?: string; status?: string; tone?: Tone }
+/** `open` — bosilganda ochiladigan ro'yxat (bo'limda `target` bo'lmaganda, masalan direktorning "Bugun nima qilish kerak"i). */
+export interface ErpRow { id: string; title: string; subtitle?: string; right?: string; status?: string; tone?: Tone; open?: string }
 /** `target` — qator bosilganda ochiladigan kartochka turi; bo'lmasa qator bosilmaydi.
  * `icon` — `target` yo'q bo'limlar uchun ma'noli belgi (server beradi; bo'lmasa doira). */
 export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string }
@@ -123,6 +124,12 @@ export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: strin
 export interface ErpListFilter { key: string; label: string; count: number; active: boolean }
 export interface ErpListData { key: string; title: string; rows: ErpRow[]; filters?: ErpListFilter[] }
 
+/** AI yordamchi (`/api/mobile/ai`) — vebdagi "Tahlil → AI" bilan bitta miya. */
+export interface ErpAiAnswer { key: string; text: string; bullets?: string[]; href?: { label: string; href: string } }
+export interface ErpAiReply { answer: ErpAiAnswer; level: 0 | 2; model?: string; period: string }
+export interface ErpAiCatalog { llm: boolean; groups: { label: string; questions: { key: string; text: string }[] }[] }
+export interface ErpAiTurn { role: 'user' | 'assistant'; text: string }
+
 let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccess(): Promise<string | null> {
@@ -201,4 +208,8 @@ export const erpAuth = {
   deletionStatus: () => erpApi<{ pending: boolean; requestedAt: string | null }>('/account'),
   requestDeletion: (note?: string) => erpApi<{ status: 'requested'; requestId: string }>('/account', { method: 'POST', body: { note } }),
   cancelDeletion: () => erpApi<{ ok: true }>('/account', { method: 'DELETE' }),
+  /** AI yordamchi: tayyor savollar katalogi va savol berish. */
+  aiCatalog: () => erpApi<ErpAiCatalog>('/ai'),
+  aiQuick: (key: string) => erpApi<ErpAiReply>('/ai', { method: 'POST', body: { mode: 'quick', key } }),
+  aiAsk: (question: string, history: ErpAiTurn[]) => erpApi<ErpAiReply>('/ai', { method: 'POST', body: { mode: 'chat', question, history } }),
 };

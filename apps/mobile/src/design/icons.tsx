@@ -136,6 +136,8 @@ import Dot from 'lucide-react-native/dist/esm/icons/dot.mjs';
 import Sun from 'lucide-react-native/dist/esm/icons/sun.mjs';
 import Moon from 'lucide-react-native/dist/esm/icons/moon.mjs';
 import Minus from 'lucide-react-native/dist/esm/icons/minus.mjs';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles.mjs';
+import HeartPulse from 'lucide-react-native/dist/esm/icons/heart-pulse.mjs';
 
 export const ICONS = {
   plus: Plus, 'circle-plus': CirclePlus, minus: Minus,
@@ -160,7 +162,7 @@ export const ICONS = {
   'shield-check': ShieldCheck, gauge: Gauge, star: Star, 'star-half': StarHalf, store: Store, 'arrow-left-right': ArrowLeftRight,
   'arrow-up-down': ArrowUpDown, clock: Clock, history: ClockArrowLeft, trash: Trash, 'trending-down': TrendingDown, 'trending-up': TrendingUp,
   wallet: Wallet, droplets: Droplets, camera: Camera, pencil: Pencil, 'key-round': KeyRound, funnel: Funnel, settings: Settings,
-  warehouse: Warehouse, activity: Activity, radio: Radio, send: Send, image: Image, sun: Sun, moon: Moon,
+  warehouse: Warehouse, activity: Activity, radio: Radio, send: Send, image: Image, sun: Sun, moon: Moon, sparkles: Sparkles, 'heart-pulse': HeartPulse,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

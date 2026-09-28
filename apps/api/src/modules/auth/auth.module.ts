@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { AccountService } from './account.service';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
+import { TelegramLoginService } from './telegram-login.service';
 
 const pem = (v?: string) => v?.replace(/\\n/g, '\n');
 
@@ -34,7 +35,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_PRIVATE_KEY) {
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OtpService, AccountService],
-  exports: [JwtModule, AuthService, AccountService],
+  providers: [AuthService, OtpService, AccountService, TelegramLoginService],
+  exports: [JwtModule, AuthService, AccountService, TelegramLoginService],
 })
 export class AuthModule {}

@@ -44,6 +44,8 @@ export const ErpDriverSchema = z.object({ phone: PhoneSchema, fullName: z.string
 /** ERP xodim kartasi o'zgardi (F.I.O.) — ECO profili ham yangilanadi. */
 export const ErpDriverPatchSchema = z.object({ fullName: z.string().min(2).max(80).optional() });
 /** Hisobni o'chirish so'rovi tasdiqlandi — telefon E.164 (+998...). */
+/** ERP login sahifasi: ilovadagi telefon + parol bilan kirish — parolni ECO tekshiradi. */
+export const ErpVerifyCredentialsSchema = z.object({ phone: z.string().regex(/^\+\d{9,15}$/), password: z.string().min(1).max(200) });
 export const ErpDeleteUserSchema = z.object({ phone: z.string().regex(/^\+\d{9,15}$/) });
 export const ErpVehicleSchema = z.object({
   plateNumber: z.string().min(4).max(12).transform((v) => v.toUpperCase().replace(/\s+/g, '')),

@@ -50,6 +50,7 @@ export function ErpTabs({ role }: { role: ErpRole }) {
             : undefined,
         }}
       />
+      {cfg.ai ? <Tabs.Screen name="ai" options={{ title: 'AI yordamchi', tabBarIcon: tabIcon('sparkles') }} /> : null}
       <Tabs.Screen name="menu" options={{ title: 'Profil', tabBarIcon: tabIcon('user') }} />
     </Tabs>
   );
@@ -123,7 +124,8 @@ export function ErpHome() {
                 index={i}
                 module={rowModule(s.target)}
                 icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
-                onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined}
+                onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never)
+                  : r.open ? () => router.push(`/erp/list/${r.open}` as never) : undefined}
               />
             ))}
           </View>

@@ -4,7 +4,7 @@ import { AuthContext, CurrentUser, Roles } from '../../../common/auth/decorators
 import { Zod } from '../../../common/validation/zod-validation.pipe';
 import { IntegrationGuard } from './integration.guard';
 import {
-  ErpCustomerInput, ErpCustomerLinkInput, ErpCustomerLinkSchema, ErpCustomerSchema, ErpDeleteUserSchema, ErpDriverPatchSchema, ErpDriverSchema, ErpInvoiceInput, ErpInvoiceSchema,
+  ErpCustomerInput, ErpCustomerLinkInput, ErpCustomerLinkSchema, ErpCustomerSchema, ErpDeleteUserSchema, ErpVerifyCredentialsSchema, ErpDriverPatchSchema, ErpDriverSchema, ErpInvoiceInput, ErpInvoiceSchema,
   ErpMaterialInput, ErpMaterialSchema, ErpMixInput, ErpMixSchema, ErpOrderInput, ErpOrderSchema,
   ErpPaymentInput, ErpPaymentSchema, ErpTripInput, ErpTripSchema, ErpTripStatusInput, ErpTripStatusSchema, ErpVehicleSchema,
 } from './erp.schemas';
@@ -48,6 +48,13 @@ export class ErpController {
   /** Saytdagi/ERP'dagi hisobni o'chirish so'rovi tasdiqlandi — telefon bo'yicha anonimlashtirish (faqat zavodga aloqador odam). */
   @Post('users/delete') @HttpCode(200)
   deleteUser(@CurrentUser() a: AuthContext, @Body(Zod(ErpDeleteUserSchema)) b: z.infer<typeof ErpDeleteUserSchema>) { return this.erp.deleteUser(a, b.phone); }
+
+  /**
+   * ERP login: ilovadagi telefon + parol to'g'rimi. To'g'ri bo'lsa — ECO foydalanuvchi id; ERP'ga kira oladimi,
+   * ERP o'zi hal qiladi (direktor ruxsati). Xato javob raqam bor/yo'qligini oshkor qilmaydi.
+   */
+  @Post('auth/verify') @HttpCode(200)
+  verifyCredentials(@Body(Zod(ErpVerifyCredentialsSchema)) b: z.infer<typeof ErpVerifyCredentialsSchema>) { return this.erp.verifyCredentials(b.phone, b.password); }
 
   @Get('vehicles')
   vehicles(@CurrentUser() a: AuthContext) { return this.erp.vehicles(a); }
@@ -100,6 +107,13 @@ export class ErpController {
   /** ERP mijozini ilova hisobiga ulash. Mijozning ERP'dan kelgan tashkiloti bo'lsa — ikkalasi birlashtiriladi. */
   @Post('customers/:externalRef/link') @HttpCode(200)
   linkCustomer(@CurrentUser() a: AuthContext, @Param('externalRef') ref: string, @Body(Zod(ErpCustomerLinkSchema)) b: ErpCustomerLinkInput) { return this.erp.linkCustomer(a, ref, b.orgId); }
+
+  /** Ilovada ro'yxatdan o'tgan barcha foydalanuvchilar (direktor kabineti uchun). */
+  @Get('app-users')
+  appUsers(@CurrentUser() a: AuthContext, @Query('q') q?: string, @Query('role') role?: string) {
+    const r = role === 'TADBIRKOR' || role === 'QURUVCHI' || role === 'HAYDOVCHI' ? role : undefined;
+    return this.erp.appUsers(a, q, r);
+  }
 
   @Put('mixes')
   upsertMix(@CurrentUser() a: AuthContext, @Body(Zod(ErpMixSchema)) b: ErpMixInput) { return this.erp.upsertMix(a, b); }

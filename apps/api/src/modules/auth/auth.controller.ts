@@ -1,13 +1,21 @@
 import { Body, Controller, HttpCode, Ip, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ChangePasswordInput, ChangePasswordSchema, ForgotPasswordSchema, LoginInput, LoginSchema, OtpRequest, OtpRequestSchema, OtpVerify, OtpVerifySchema, RefreshSchema, RegisterInput, RegisterSchema, ResetPasswordInput, ResetPasswordSchema } from '@insof/shared';
+import { z } from 'zod';
+import { DeviceInfoSchema } from '@insof/shared';
 import { AuthService } from './auth.service';
+import { TelegramLoginService } from './telegram-login.service';
 import { AuthContext, CurrentUser, Public } from '../../common/auth/decorators';
 import { Zod } from '../../common/validation/zod-validation.pipe';
 
+const TelegramPollSchema = z.object({ nonce: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/), device: DeviceInfoSchema });
+
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly telegram: TelegramLoginService,
+  ) {}
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
@@ -38,6 +46,27 @@ export class AuthController {
   @HttpCode(200)
   login(@Body(Zod(LoginSchema)) body: LoginInput) {
     return this.auth.login(body);
+  }
+
+  // ── Telegram orqali kirish: havola → botda raqamni ulashish → ilova tasdiqni kutadi ──
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('telegram/start')
+  @HttpCode(200)
+  telegramStart() {
+    return this.telegram.start();
+  }
+
+  /** Ilova har ~2 s so'raydi: `pending` yoki sessiya (tokenlar + profil). */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Post('telegram/poll')
+  @HttpCode(200)
+  async telegramPoll(@Body(Zod(TelegramPollSchema)) body: z.infer<typeof TelegramPollSchema>) {
+    const done = await this.telegram.take(body.nonce);
+    if (!done) return { status: 'pending' as const };
+    return { status: 'ok' as const, ...(await this.auth.signInVerifiedPhone(done.phone, body.device, done.name)) };
   }
 
   // ── Parolni tiklash: kod → yangi parol ──

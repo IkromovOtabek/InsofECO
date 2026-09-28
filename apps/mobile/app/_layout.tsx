@@ -44,6 +44,10 @@ function Gate() {
     // Kirgan holda ham ochiladigan auth ekranlari: xavfsizlik sozlamalari va yakun
     const security = group === '(auth)' && ['pin', 'change-password', 'done'].includes(segs[1] ?? '');
     if (security) return;
+    // Sovuq start (`index` ekrani, guruh yo'q) — kirgan foydalanuvchi ham do'kon bilan ochiladi;
+    // o'z bo'limiga vitrinadagi "Kabinet" tugmasi olib boradi. Hisob to'liq bo'lmasa
+    // (ERP xodimi ma'lumoti yo'q / ECO rol tanlanmagan) — pastdagi qoidalar ishlaydi.
+    if (group === undefined && (kind === 'erp' ? !!erp : !!active)) { router.replace('/(shop)'); return; }
 
     if (kind === 'erp') {
       if (!erp) { router.replace('/(auth)/login'); return; }

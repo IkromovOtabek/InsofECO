@@ -16,6 +16,11 @@ export const authApi = {
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/register', { method: 'POST', body: { ...input, device: deviceInfo() }, auth: false }),
   login: (phone: string, password: string) =>
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/login', { method: 'POST', body: { phone, password, device: deviceInfo() }, auth: false }),
+  /** Telegram orqali kirish: bot havolasi (5 daqiqa amal qiladi). */
+  telegramStart: () => api<{ nonce: string; url: string; expiresIn: number }>('/auth/telegram/start', { method: 'POST', auth: false }),
+  /** Botda raqam ulashilganmi — `pending` yoki sessiya. */
+  telegramPoll: (nonce: string) =>
+    api<{ status: 'pending' } | { status: 'ok'; accessToken: string; refreshToken: string; user: Profile }>('/auth/telegram/poll', { method: 'POST', body: { nonce, device: deviceInfo() }, auth: false }),
   /** Parolni tiklash: raqamga kod yuborish. Hisob yo'q bo'lsa ham javob bir xil. */
   forgotPassword: (phone: string) =>
     api<{ retryAfter: number }>('/auth/password/forgot', { method: 'POST', body: { phone }, auth: false }),

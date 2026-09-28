@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { ACTIVE_DELIVERY_STATUSES, DeliveryStatus, OrderStatus } from '@insof/shared';
 import { InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
@@ -364,6 +365,63 @@ export class ErpService {
       include: { memberships: this.memberInclude, _count: { select: { ordersAsClient: { where: { plantOrgId: a.orgId! } } } } },
     });
     return orgs.map((o) => ({ ...this.orgView(o), members: o.memberships.map((m) => this.memberView(m)), ordersHere: o._count.ordersAsClient }));
+  }
+
+  /** ERP login uchun: telefon + parol (ilovadagi). Hisob o'chirilgan yoki parolsiz bo'lsa ham xuddi shu xato. */
+  async verifyCredentials(phone: string, password: string) {
+    const u = await this.prisma.user.findUnique({ where: { phone }, select: { id: true, phone: true, fullName: true, passwordHash: true, deletedAt: true } });
+    if (!u?.passwordHash || u.deletedAt || !(await argon2.verify(u.passwordHash, password))) {
+      throw new DomainError('AUTH_BAD_CREDENTIALS', "Telefon yoki parol noto'g'ri");
+    }
+    return { userId: u.id, phone: u.phone, fullName: u.fullName };
+  }
+
+  /**
+   * Ilovada ro'yxatdan o'tgan BARCHA foydalanuvchilar (tadbirkor, quruvchi, haydovchi) — ERP direktori uchun.
+   * "Ro'yxatdan o'tgan" = parol o'rnatgan; faqat telefon bo'yicha taklif qilinganlar va integratsiya xizmat
+   * foydalanuvchilari kirmaydi. `q` — ism / telefon (oxirgi 9 raqam) / tashkilot nomi; `role` — shu rolda a'zoligi borlar.
+   */
+  async appUsers(a: AuthContext, q?: string, role?: 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI') {
+    const text = (q ?? '').trim();
+    const digits = text.replace(/\D/g, '');
+    const or: Prisma.UserWhereInput[] = [];
+    if (text) {
+      or.push({ fullName: { contains: text, mode: 'insensitive' } });
+      or.push({ memberships: { some: { organization: { name: { contains: text, mode: 'insensitive' } } } } });
+      if (digits.length >= 4) or.push({ phone: { contains: digits.slice(-9) } });
+    }
+    const users = await this.prisma.user.findMany({
+      where: {
+        passwordHash: { not: null }, deletedAt: null, integrations: { none: {} },
+        ...(role ? { memberships: { some: { role } } } : {}),
+        ...(or.length ? { OR: or } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+      select: {
+        id: true, phone: true, fullName: true, createdAt: true, deleteRequestedAt: true,
+        memberships: { orderBy: { createdAt: 'asc' }, select: { role: true, isActive: true, createdAt: true, organization: { select: { id: true, name: true, type: true, inn: true, externalRef: true, deletedAt: true } } } },
+        sessions: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+        devices: { orderBy: { lastSeenAt: 'desc' }, take: 1, select: { platform: true, model: true, appVersion: true, lastSeenAt: true } },
+      },
+    });
+    return users.map((u) => ({
+      userId: u.id,
+      phone: u.phone,
+      fullName: u.fullName,
+      registeredAt: u.createdAt,
+      deleteRequestedAt: u.deleteRequestedAt,
+      lastLoginAt: u.sessions[0]?.createdAt ?? null,
+      device: u.devices[0] ?? null,
+      memberships: u.memberships.filter((m) => !m.organization.deletedAt).map((m) => ({
+        role: m.role,
+        isActive: m.isActive,
+        since: m.createdAt,
+        /** true — shu zavodning o'zi (haydovchi zavodga a'zo) */
+        ownPlant: m.organization.id === a.orgId,
+        org: { id: m.organization.id, name: m.organization.name, type: m.organization.type, inn: m.organization.inn, externalRef: m.organization.externalRef },
+      })),
+    }));
   }
 
   /**
