@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/design-lint.mjs && tsc --noEmit",
     "test": "echo skip",
-    "lint:design": "node scripts/design-lint.mjs"
+    "lint:design": "node scripts/design-lint.mjs",
+    "eas-build-post-install": "yarn workspace @insof/shared build"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
