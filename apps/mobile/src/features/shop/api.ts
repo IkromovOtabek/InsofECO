@@ -23,7 +23,8 @@ export interface ShopItem {
   minQty: number | null;
   group: string | null;
 }
-export interface ShopCatalog { company: { name: string; phone: string | null }; items: ShopItem[] }
+export interface ShopCatalog { company: { name: string; phone: string | null; address: string | null }; items: ShopItem[] }
+export interface ShopCallbackInput { name: string; phone: string; message?: string }
 export interface ShopOrderInput { productId: string; qty: number; name: string; phone: string; address?: string; note?: string }
 
 export const photoUrl = (p: string | null) => (p ? `${config.erpUrl}${p}` : null);
@@ -46,3 +47,7 @@ export const useShopCatalog = () =>
 
 export const useShopOrder = () =>
   useMutation({ mutationFn: (body: ShopOrderInput) => shopFetch<{ ok: true; message: string }>('/order', { method: 'POST', body }) });
+
+/** "Menga qo'ng'iroq qiling" — mahsulotsiz so'rov (Aloqa bo'limi). */
+export const useShopCallback = () =>
+  useMutation({ mutationFn: (body: ShopCallbackInput) => shopFetch<{ ok: true; message: string }>('/callback', { method: 'POST', body }) });
