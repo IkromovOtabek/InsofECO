@@ -31,6 +31,14 @@ const ACTION_ICON: Record<string, IconName> = {
   'trip.delivered': 'flag',
   'trip.cancel': 'circle-x',
   'trip.eco': 'smartphone',
+  // Logistika TZ: obyekt bosqichlari, muammo, yoqilg'i, yopish (ERP /api/mobile/detail yuboradi)
+  'trip.arrived': 'map-pin',
+  'trip.unloading': 'hourglass',
+  'trip.returned': 'truck',
+  'trip.problem': 'triangle-alert',
+  'trip.fuel': 'droplets',
+  'trip.close': 'circle-check',
+  'trip.resolve': 'circle-check',
   'invoice.pay': 'banknote',
 };
 

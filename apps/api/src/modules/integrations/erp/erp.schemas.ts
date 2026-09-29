@@ -32,7 +32,8 @@ export type ErpTripInput = z.infer<typeof ErpTripSchema>;
 
 /** ERP → ECO: holatni majburan o'tkazish (ERP'da "Yuklandi", "Yo'lga chiqdi", "Yetkazildi", "Bekor"). */
 export const ErpTripStatusSchema = z.object({
-  to: z.enum(['ACCEPTED', 'LOADING', 'EN_ROUTE', 'COMPLETED', 'CANCELLED']),
+  // ARRIVED / UNLOADING — dispetcher vebdan "Obyektga keldi" / "Tushirilmoqda" bosganda (ERP Logistika TZ)
+  to: z.enum(['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'COMPLETED', 'CANCELLED']),
   at: z.coerce.date().optional(),
   note: z.string().max(500).optional(),
   loadedM3: z.number().positive().optional(),
