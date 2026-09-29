@@ -20,6 +20,13 @@ export const brand = {
   ring: '#f59e0b80',
 } as const;
 
+/** Tashqi xizmatlarning o'z brend ranglari — faqat ularning belgisi uchun (Telegram ko'k, SMS yashil). */
+export const social = {
+  telegram: '#26a5e4',
+  sms: '#34c759',
+  onSocial: '#ffffff',
+} as const;
+
 /** Grafik palitrasi — tartib qat'iy, beshinchi qator yo'q. */
 export const chart = {
   1: '#155dfc',

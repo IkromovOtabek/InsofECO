@@ -1,9 +1,18 @@
 /** Insof ERP hooklari — mobil ilovadagi xodim bo'limlari uchun. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { erpAuth, type ErpTripRoute } from '@/core/erp';
 
-export const useErpHome = () =>
-  useQuery({ queryKey: ['erp', 'home'], queryFn: erpAuth.home, refetchInterval: 30_000 });
+/**
+ * Bosh sahifa. `params` — karta filtrlari (masalan `{ revenue: 'week' }`). Filtrsiz chaqiruvlar
+ * (sarlavha, "+" tugmasi) ham shu keshni o'qiydi — oldingi ma'lumot turadi, filtr almashganda sakramaydi.
+ */
+export const useErpHome = (params?: Record<string, string>) =>
+  useQuery({
+    queryKey: params && Object.keys(params).length ? ['erp', 'home', params] : ['erp', 'home'],
+    queryFn: () => erpAuth.home(params),
+    refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
+  });
 
 export const useErpList = (key: string, q?: string, filter?: string) =>
   useQuery({ queryKey: ['erp', 'list', key, q ?? '', filter ?? ''], queryFn: () => erpAuth.list(key, q, filter), enabled: !!key });

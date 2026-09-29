@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EXPENSE_LABEL, SPECIALTY_LABEL } from '@insof/shared';
 import { Badge, Button, EmptyState, Gap, KPICard, ListItem, Panel, ProgressBar, Screen, StatusChip, Txt, fmtDate, fmtDateFull, fmtSum } from '@/design/primitives';
-import { Avatar, Breakdown, Tabs, daysLeft, fmtShort } from '@/design/ui';
+import { dialog, Avatar, Breakdown, Tabs, daysLeft, fmtShort } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useProject } from '@/features/eco/api';
@@ -68,7 +68,7 @@ export default function ProjectScreen() {
                 <ListItem icon="calendar-days" title="Boshlanish" subtitle={p.startDate ? fmtDateFull(p.startDate) : '—'} />
                 <ListItem icon="flag" tone={dl !== null && dl < 0 ? 'danger' : 'brand'} title="Deadline" subtitle={p.deadline ? fmtDateFull(p.deadline) : '—'} last />
               </Panel>
-              {role === 'TADBIRKOR' ? (<><Gap h={space.lg} /><Button title="Holatni o'zgartirish" variant="secondary" size="md" icon="refresh-cw" onPress={() => Alert.alert('Holat', undefined, [{ text: 'Faol', onPress: () => setStatus.mutate('ACTIVE') }, { text: 'Kechikmoqda', onPress: () => setStatus.mutate('DELAYED') }, { text: "To'xtatish", onPress: () => setStatus.mutate('ON_HOLD') }, { text: 'Tugallandi', onPress: () => setStatus.mutate('COMPLETED') }, { text: 'Bekor', style: 'cancel' }])} /></>) : null}
+              {role === 'TADBIRKOR' ? (<><Gap h={space.lg} /><Button title="Holatni o'zgartirish" variant="secondary" size="md" icon="refresh-cw" onPress={() => dialog('Holat', undefined, [{ text: 'Faol', onPress: () => setStatus.mutate('ACTIVE') }, { text: 'Kechikmoqda', onPress: () => setStatus.mutate('DELAYED') }, { text: "To'xtatish", onPress: () => setStatus.mutate('ON_HOLD') }, { text: 'Tugallandi', onPress: () => setStatus.mutate('COMPLETED') }, { text: 'Bekor', style: 'cancel' }])} /></>) : null}
             </>
           ) : null}
           {tab === 'tasks' ? (

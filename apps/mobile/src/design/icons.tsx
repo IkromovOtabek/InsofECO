@@ -41,6 +41,7 @@ import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle.mjs
 import MessagesSquare from 'lucide-react-native/dist/esm/icons/messages-square.mjs';
 import SquareCheck from 'lucide-react-native/dist/esm/icons/square-check.mjs';
 import Check from 'lucide-react-native/dist/esm/icons/check.mjs';
+import Copy from 'lucide-react-native/dist/esm/icons/copy.mjs';
 import CircleCheck from 'lucide-react-native/dist/esm/icons/circle-check.mjs';
 import CheckCheck from 'lucide-react-native/dist/esm/icons/check-check.mjs';
 import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left.mjs';
@@ -148,7 +149,7 @@ export const ICONS = {
   briefcase: Briefcase, bus: Bus, truck: Truck, building: Building, factory: Factory, coffee: Coffee,
   calculator: Calculator, 'calendar-days': CalendarDays, phone: Phone, car: Car, 'shopping-cart': ShoppingCart,
   banknote: Banknote, 'message-square': MessageSquare, 'message-circle': MessageCircle, 'messages-square': MessagesSquare,
-  'square-check': SquareCheck, check: Check, 'circle-check': CircleCheck, 'check-check': CheckCheck,
+  'square-check': SquareCheck, check: Check, copy: Copy, 'circle-check': CircleCheck, 'check-check': CheckCheck,
   'chevron-left': ChevronLeft, 'chevron-right': ChevronRight, 'chevron-up': ChevronUp, 'chevron-down': ChevronDown,
   'clipboard-list': ClipboardList, x: X, 'circle-x': CircleX, wrench: Wrench, package: Package, 'package-check': PackageCheck,
   'file-text': FileText, files: Files, download: Download, circle: Circle, 'circle-dot': CircleDot, dot: Dot, ellipsis: Ellipsis,

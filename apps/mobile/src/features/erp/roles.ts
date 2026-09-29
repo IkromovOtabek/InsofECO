@@ -21,7 +21,8 @@ export interface ErpRoleConfig {
 }
 
 export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
-  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Boshqaruv',  homeIcon: 'gauge',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text', ai: true },
+  // Ikkinchi tab — direktor qarorini kutayotganlar (bloklangan zayavka, ta'minot tasdig'i/to'lovi); zayavkalar "Bo'limlar"da
+  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Bosh sahifa', homeIcon: 'gauge',   listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true },
   SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',      homeIcon: 'trending-up',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text' },
   PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',        homeIcon: 'factory',     listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' },
   SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',     homeIcon: 'clipboard-list',     listKey: 'tasks',      workTitle: 'Topshiriqlar', workIcon: 'square-check' },

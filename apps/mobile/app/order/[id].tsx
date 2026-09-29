@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OrderStatus } from '@insof/shared';
 import { Button, Card, Divider, EmptyState, Gap, ListItem, Panel, Row, Screen, StatusChip, Txt, fmtDate, fmtM3, fmtSum, fmtTime } from '@/design/primitives';
-import { Icon, toast } from '@/design/ui';
+import { dialog, Icon, toast } from '@/design/ui';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useOrder, useOrderAction } from '@/features/orders/api';
@@ -66,8 +66,8 @@ export default function OrderScreen() {
           </Row>
         ) : null}
         {isPlant && o.status === 'CONFIRMED' ? <Button title="Reyslarga bo'lish" icon="truck" loading={plan.isPending} onPress={() => plan.mutate(undefined, { onError: err })} /> : null}
-        {!isPlant && ['DRAFT', 'SUBMITTED', 'CONFIRMED'].includes(o.status) ? <Button title="Buyurtmani bekor qilish" variant="ghost" onPress={() => Alert.alert('Bekor qilish', o.status === 'CONFIRMED' ? '24 soatdan kam qolgan bo\'lsa jarima qo\'llanadi' : 'Ishonchingiz komilmi?', [{ text: 'Yo\'q', style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => act.mutate({ action: 'cancel', body: {} }, { onError: err }) }])} /> : null}
-        {!isPlant && o.status === 'DELIVERED' ? <Button title="Yakuniy qabul (buyurtmani yopish)" icon="circle-check" onPress={() => Alert.alert('Yakunlash', 'Barcha reyslar qabul qilingan', [{ text: 'OK' }])} /> : null}
+        {!isPlant && ['DRAFT', 'SUBMITTED', 'CONFIRMED'].includes(o.status) ? <Button title="Buyurtmani bekor qilish" variant="ghost" onPress={() => dialog('Bekor qilish', o.status === 'CONFIRMED' ? '24 soatdan kam qolgan bo\'lsa jarima qo\'llanadi' : 'Ishonchingiz komilmi?', [{ text: 'Yo\'q', style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => act.mutate({ action: 'cancel', body: {} }, { onError: err }) }])} /> : null}
+        {!isPlant && o.status === 'DELIVERED' ? <Button title="Yakuniy qabul (buyurtmani yopish)" icon="circle-check" onPress={() => dialog('Yakunlash', 'Barcha reyslar qabul qilingan', [{ text: 'OK' }])} /> : null}
 
         <Panel title="Reyslar" icon="truck">
           {(o.deliveries ?? []).length === 0 ? <EmptyState icon="truck" title={o.status === 'CONFIRMED' ? 'Reyslar hali bo\'linmagan' : 'Reyslar hali yo\'q'} hint={o.status === 'CONFIRMED' ? 'Zavod reyslarga bo\'lgach shu yerda ko\'rinadi' : undefined} /> : null}

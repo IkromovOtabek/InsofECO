@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { config } from '@/core/config';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum, fmtTime, fmtUnit } from '@/design/primitives';
-import { Avatar, Icon, StatusLine, toast } from '@/design/ui';
+import { dialog, Avatar, Icon, StatusLine, toast } from '@/design/ui';
 import { BigAction, BigSecondary, RouteBlock, StepDots } from '@/design/driver';
 import { radius, size, space } from '@/design/tokens';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -74,7 +74,7 @@ export default function ShipmentScreen() {
           s.status === 'EN_ROUTE' ? (
             <Card>
               <Txt v="titleSm">Yuk yetkazildi</Txt><Gap h={space.sm} />
-              <Button title="Foto" icon="camera" variant="secondary" size="md" onPress={() => Alert.alert('Foto', 'Kamera — keyingi versiya, demo foto biriktiriladi')} /><Gap h={space.sm} />
+              <Button title="Foto" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — keyingi versiya, demo foto biriktiriladi')} /><Gap h={space.sm} />
               <StatusLine icon="map-pin" tone="info" text="Joylashuv avtomatik qo'shiladi" />
               <Input value={receiver} onChangeText={setReceiver} placeholder="Qabul qiluvchi ismi" />
               <Button title="Yetkazildi" size="xl" icon="flag" loading={tr.isPending} onPress={() => tr.mutate({ to: 'DELIVERED', receiverName: receiver || undefined, photoKey: 'photo/demo.jpg' }, { onError: err })} />

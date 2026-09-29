@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, InteractionManager, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Button, Card, EmptyState, IconButton, Txt } from '@/design/primitives';
-import { Icon } from '@/design/ui';
+import { dialog, Icon } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
@@ -228,7 +228,7 @@ export default function TripRoute() {
       const r = await run.mutateAsync({ action: 'trip.delivered', id: id!, payload });
       setForm(null);
       await stopErpTracking(); // qolgan nuqtalar yuboriladi va kuzatuv to'xtaydi
-      Alert.alert('Bajarildi', r.message, [{ text: 'Yopish', onPress: () => router.back() }]);
+      dialog('Bajarildi', r.message, [{ text: 'Yopish', onPress: () => router.back() }]);
     } catch (e) {
       setFormError(e instanceof ApiException ? e.message : 'Tarmoq xatosi');
     }
@@ -265,7 +265,7 @@ export default function TripRoute() {
     }
     if (!p) {
       // Jim qolmaymiz: tugma bosilib hech narsa bo'lmasa, haydovchi ilova buzuq deb o'ylaydi
-      Alert.alert('Joylashuv topilmadi', "GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.");
+      dialog('Joylashuv topilmadi', "GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.");
       return;
     }
     // Bosilganda yaqinlashtiramiz ham — `animateToRegion` iOS'da ham, Android'da ham bir xil ishlaydi
@@ -284,7 +284,7 @@ export default function TripRoute() {
   }, [dest, centerOnMe]);
 
   const onDeliver = useCallback(() => {
-    if (!near) { Alert.alert('Yetkazdim', nearHint ?? 'Obyektga yetib borilmagan'); return; }
+    if (!near) { dialog('Yetkazdim', nearHint ?? 'Obyektga yetib borilmagan'); return; }
     setFormError(null);
     setForm(deliverAction);
   }, [near, nearHint, deliverAction]);

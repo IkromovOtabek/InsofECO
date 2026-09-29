@@ -1,6 +1,6 @@
-import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { kv } from './storage';
+import { dialog } from '@/design/ui';
 
 /**
  * Fon joylashuvi uchun ilova ichidagi tushuntirish ("prominent disclosure").
@@ -21,7 +21,7 @@ export async function discloseBackgroundLocation(tripKey: string, recipients: st
   if (kv.getString(DECLINED) === tripKey) return false;
 
   const ok = await new Promise<boolean>((resolve) => {
-    Alert.alert(
+    dialog(
       'Joylashuvdan foydalanish',
       `Insof ECO reys davomida mashinangiz joylashuvini to'playdi va ${recipients} jonli ko'rsatadi.\n\n` +
         "Bu ilova yopiq yoki ishlatilmayotgan paytda ham davom etadi — faqat \"Yo'lga chiqdim\" dan " +

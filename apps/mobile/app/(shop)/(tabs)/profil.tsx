@@ -46,8 +46,8 @@ export default function ShopProfile() {
               </View>
             </Card>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-              <ListItem icon="layout-grid" module="brand" title="Kabinetim" subtitle="Buyurtmalar, reyslar va hisob" chevron onPress={goHome} />
-              <ListItem icon="log-out" tone="danger" title="Chiqish" onPress={() => void signOut()} last />
+              <ListItem style={{ paddingHorizontal: space.card }} icon="layout-grid" module="brand" title="Kabinetim" subtitle="Buyurtmalar, reyslar va hisob" chevron onPress={goHome} />
+              <ListItem style={{ paddingHorizontal: space.card }} icon="log-out" tone="danger" title="Chiqish" onPress={() => void signOut()} last />
             </Card>
           </>
         ) : (
@@ -61,7 +61,7 @@ export default function ShopProfile() {
               <Button title="Ro'yxatdan o'tish" variant="secondary" size="lg" icon="user-plus" onPress={() => router.push('/(auth)/register')} />
             </View>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-              <ListItem icon="send" module="brand" title="Telegram orqali — 10 soniyada" subtitle="Parol o'ylab topish shart emas: botda raqamni ulashasiz, tamom" chevron onPress={() => router.push('/(auth)/login')} last />
+              <ListItem style={{ paddingHorizontal: space.card }} icon="send" module="brand" title="Telegram orqali — 10 soniyada" subtitle="Parol o'ylab topish shart emas: botda raqamni ulashasiz, tamom" chevron onPress={() => router.push('/(auth)/login')} last />
             </Card>
           </>
         )}

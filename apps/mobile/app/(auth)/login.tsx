@@ -10,7 +10,8 @@ import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { useTelegramLogin } from '@/features/auth/telegram';
-import { AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
+import { AuthScreen, Divider, ErrorBox, FooterLink, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
+import { SocialLogin } from '@/features/auth/social';
 
 /**
  * Kirish oynasi.
@@ -137,20 +138,14 @@ export default function Login() {
 
       <Appear delay={300}>
         <Divider />
-        <View style={{ gap: space.md }}>
-          <GhostButton
-            title={tg.waiting ? "Telegram'da raqamni ulashing…" : tg.starting ? 'Telegram ochilmoqda…' : 'Telegram orqali kirish'}
-            icon="send"
-            onPress={() => void tg.start()}
-          />
-          {tg.waiting ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
-              <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
-            </View>
-          ) : null}
-          <GhostButton title="SMS-kod orqali kirish" icon="message-square" onPress={() => router.push('/(auth)/phone')} />
-        </View>
+        {/* Telegram va SMS — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
+        <SocialLogin onTelegram={() => void tg.start()} onSms={() => router.push('/(auth)/phone')} telegramBusy={tg.starting || tg.waiting} />
+        {tg.waiting ? (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+            <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
+            <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
+          </View>
+        ) : null}
       </Appear>
     </AuthScreen>
   );

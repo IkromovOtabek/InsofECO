@@ -22,8 +22,23 @@ export interface ShopItem {
   badge: string | null;
   minQty: number | null;
   group: string | null;
+  /** Mahsulot egasi (zavod) — kartada ko'rinadi, bosilsa `/(shop)/zavod` profili ochiladi. */
+  sellerId?: string;
 }
-export interface ShopCatalog { company: { name: string; phone: string | null; address: string | null }; items: ShopItem[] }
+export interface ShopSeller {
+  id: string; name: string; legalName: string | null; about: string | null; address: string | null;
+  phone: string | null; phone2: string | null; email: string | null; workingHours: string | null;
+  foundedYear: number | null; location: { lat: number; lng: number } | null;
+}
+/** Bosh sahifa swiper'idagi reklama (ERP → E-commerce → Reklama). */
+export interface ShopBanner { id: string; title: string; subtitle: string | null; image: string | null; productId: string | null; buttonText: string | null }
+export interface ShopCatalog {
+  company: { name: string; phone: string | null; address: string | null };
+  /** Eski ERP javobida bo'lmasligi mumkin — ilova baribir ishlasin */
+  seller?: ShopSeller;
+  banners?: ShopBanner[];
+  items: ShopItem[];
+}
 export interface ShopCallbackInput { name: string; phone: string; message?: string }
 export interface ShopOrderInput { productId: string; qty: number; name: string; phone: string; address?: string; note?: string }
 

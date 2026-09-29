@@ -23,7 +23,7 @@ function GroupChips({ groups, value, onChange }: { groups: string[]; value: stri
             key={g} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => onChange(g)}
             style={{ paddingHorizontal: space.lg, minHeight: size.touch - space.sm, justifyContent: 'center', borderRadius: radius.pill, backgroundColor: on ? c.brand : c.bgSurface, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderDefault }}
           >
-            <Txt v="bodySm" style={{ color: on ? c.textOnBrand : c.textBody, fontWeight: '600' }}>{g}</Txt>
+            <Txt v="bodyStrong" style={{ color: on ? c.textOnBrand : c.textBody }}>{g}</Txt>
           </Pressable>
         );
       })}
@@ -70,7 +70,7 @@ export default function ShopCatalogScreen() {
           ListHeaderComponent={<GroupChips groups={groups} value={group} onChange={setGroup} />}
           ListHeaderComponentStyle={{ marginHorizontal: -space.pageX }}
           refreshControl={<RefreshControl refreshing={q.isFetching && !q.isLoading} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
-          renderItem={({ item }) => <ProductCard item={item} onPress={() => router.push(`/(shop)/${item.id}` as never)} />}
+          renderItem={({ item }) => <ProductCard item={item} seller={q.data?.seller?.name ?? q.data?.company.name} onSeller={() => router.push('/(shop)/zavod' as never)} onPress={() => router.push(`/(shop)/${item.id}` as never)} />}
           ListEmptyComponent={
             q.error
               ? <EmptyState icon="circle-alert" title="Ro'yxat yuklanmadi" hint="Internetni tekshirib, pastga torting" action="Qayta urinish" onAction={() => void q.refetch()} />

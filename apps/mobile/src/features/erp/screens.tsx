@@ -14,8 +14,12 @@ import { config } from '@/core/config';
 import { erpAuth, type ErpLiveTruck, type ErpRole } from '@/core/erp';
 import { erpRoleConfig } from './roles';
 import { useErpHome, useErpList, useErpNotifications } from './api';
-import { FilterChips, HeroCard, ListRow, ROW_ICON, SectionHead, StatTile, listModule } from './ui';
+import { CardFilters, FilterChips, HeroCard, ListRow, ROW_ICON, SectionHead, StatTile, listModule } from './ui';
+import { RangeCalendar } from './range-calendar';
+import { ColumnsChart, ProgressChart } from './charts';
 import { pinStore } from '@/core/pin';
+import { kv } from '@/core/storage';
+import { Icon } from '@/design/icons';
 import { setBadge } from '@/core/push';
 
 /**
@@ -63,12 +67,28 @@ export function ErpHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const erp = useSession((s) => s.erp);
-  const { data, isLoading, refetch, isRefetching, error } = useErpHome();
+  // Karta filtrlari (Tushum: bugun / hafta / oy / yil) — server hisoblaydi, ilova faqat parametrni yuboradi
+  const [params, setParams] = useState<Record<string, string>>({});
+  const { data, isLoading, refetch, isRefetching, error, isPlaceholderData } = useErpHome(params);
+  const [calOpen, setCalOpen] = useState(false);
 
   if (isLoading) return <Center><ActivityIndicator color={c.brand} /></Center>;
   if (error || !data) return <Center><EmptyState title="Ma'lumot kelmadi" hint="Internetni tekshirib, pastga torting" /></Center>;
 
   const [hero, ...tiles] = data.cards;
+  // Filtrli karta (direktorda — Tushum): filtr qatori ekranning eng tepasida
+  const filtered = data.cards.find((x) => x.filters?.length && x.filterParam);
+  const setFilter = (key: string) => {
+    if (!filtered?.filterParam) return;
+    const p = filtered.filterParam;
+    setCalOpen(false);
+    setParams((prev) => { const n = { ...prev, [p]: key }; delete n.from; delete n.to; return n; });
+  };
+  const applyRange = (from: string, to: string) => {
+    if (!filtered?.filterParam) return;
+    setCalOpen(false);
+    setParams((prev) => ({ ...prev, [filtered.filterParam!]: 'custom', from, to }));
+  };
   const role = data.role;
   const module = roleModule(role);
   /** Bo'lim qatorlari — ro'yxat kaliti o'z moduliga ega bo'lsa o'shaniki, bo'lmasa rolniki. */
@@ -96,8 +116,20 @@ export function ErpHome() {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
       >
+        {filtered ? (
+          <View style={{ paddingTop: space.lg, gap: space.md }}>
+            <View style={{ paddingHorizontal: space.pageX }}>
+              <CardFilters card={filtered} onFilter={setFilter} onCalendar={() => setCalOpen((v) => !v)} calendarOpen={calOpen} />
+            </View>
+            {calOpen ? (
+              <View style={{ paddingHorizontal: space.pageX }}>
+                <RangeCalendar from={filtered.range?.from} to={filtered.range?.to} onApply={applyRange} onClose={() => setCalOpen(false)} />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         <View style={{ paddingHorizontal: space.pageX, paddingTop: space.lg, gap: space.md }}>
-          {hero ? <HeroCard card={hero} note={erp ? `Insof ERP · ${erp.login}` : undefined} module={module} /> : null}
+          {hero ? <HeroCard card={hero} note={erp ? `Insof ERP · ${erp.login}` : undefined} module={module} busy={isPlaceholderData} /> : null}
           {tiles.length ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
               {tiles.map((t, i) => <StatTile key={t.key} card={t} index={i} module={module} />)}
@@ -117,7 +149,10 @@ export function ErpHome() {
               action={s.target && s.rows.length ? 'Barchasi' : undefined}
               onAction={() => s.target && router.push(`/erp/list/${s.target}` as never)}
             />
-            {s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : s.rows.map((r, i) => (
+            {/* Diagrammali bo'lim (Direktor nazorati, Dinamika) — qatorlar o'rniga grafik va raqamlar */}
+            {s.chart?.kind === 'progress' ? <ProgressChart chart={s.chart} onOpen={(k) => router.push(`/erp/list/${k}` as never)} />
+              : s.chart?.kind === 'columns' ? <ColumnsChart chart={s.chart} />
+              : s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : s.rows.map((r, i) => (
               <ListRow
                 key={r.id}
                 row={r}
@@ -286,6 +321,9 @@ export function ErpMenu() {
   const cfg = erp ? erpRoleConfig(erp.role) : null;
   const module = roleModule(erp?.role ?? 'DIRECTOR');
   const [hasPin, setHasPin] = React.useState(false);
+  // "Bo'limlar" ro'yxati standart yig'iq — ochiq/yopiqligi eslab qolinadi
+  const [sectionsOpen, setSectionsOpenRaw] = useState(() => kv.getBoolean('erp.menu.sectionsOpen') ?? false);
+  const setSectionsOpen = (f: (v: boolean) => boolean) => setSectionsOpenRaw((v) => { const n = f(v); kv.set('erp.menu.sectionsOpen', n); return n; });
   React.useEffect(() => { void pinStore.has().then(setHasPin); }, []);
   // Bo'limlar ro'yxati — bosh ekrandagi "Tezkor amallar" bilan bir manba (`/api/mobile/home`):
   // kompyuterdagi ERP menyusida ko'ringan har bir bo'lim shu yerda ham turadi.
@@ -338,7 +376,16 @@ export function ErpMenu() {
 
       {lists.length || forms.length ? (
         <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-          <SectionHead title="Bo'limlar" />
+          {/* Bo'limlar — sarlavhadagi strelka bosilsa ochiladi, yana bosilsa yig'iladi */}
+          <Pressable
+            onPress={() => setSectionsOpen((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: sectionsOpen }}
+            accessibilityLabel={sectionsOpen ? "Bo'limlarni yashirish" : "Bo'limlarni ko'rsatish"} hitSlop={space.xs}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: size.touch, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Txt v="titleSm">{`Bo'limlar · ${lists.length + forms.length}`}</Txt>
+            <Icon name={sectionsOpen ? 'chevron-up' : 'chevron-down'} tone="brand" size={size.iconLg} />
+          </Pressable>
+          {sectionsOpen ? (
           <Card style={{ paddingVertical: 0 }}>
             {forms.map((q, i) => (
               <ListItem
@@ -357,6 +404,7 @@ export function ErpMenu() {
               />
             ))}
           </Card>
+          ) : null}
         </Appear>
       ) : null}
 

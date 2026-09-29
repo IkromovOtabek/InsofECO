@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { Badge, Button, Card, IconTile, ListItem, Txt } from '@/design/primitives';
+import { Badge, Button, Card, ListItem, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
+import { SuccessCheck } from '@/design/success';
 import { PIN_LEN, pinStore } from '@/core/pin';
 import { useSession } from '@/core/session';
 import { AuthScreen, PinDots, PinKeypad, PrimaryButton } from '@/features/auth/ui';
+import { dialog } from '@/design/ui';
 
 /**
  * PIN kod — tez kirish va xavfsizlik.
@@ -67,7 +69,7 @@ export default function PinScreen() {
       return;
     }
     if (r.wiped) {
-      Alert.alert('PIN o\'chirildi', 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
+      dialog('PIN o\'chirildi', 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
         { text: 'Kirish', onPress: () => void signOut() },
       ]);
       return;
@@ -81,7 +83,7 @@ export default function PinScreen() {
     return (
       <AuthScreen back={false}>
         <Appear delay={60} style={{ alignItems: 'center', marginTop: space.x12 + space.xxl }}>
-          <IconTile icon="check" tone="success" size={size.driverTouch} />
+          <SuccessCheck size={size.driverTouch * 2} />
           <Txt v="titleLg" align="center" style={{ marginTop: space.xl }}>PIN saqlandi</Txt>
           <Txt v="bodySm" color="muted" align="center" style={{ marginTop: space.sm }}>
             Keyingi safar ilovani ochganda shu {PIN_LEN} xonali kod so&apos;raladi.

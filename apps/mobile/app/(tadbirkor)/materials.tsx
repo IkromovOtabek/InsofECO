@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { Badge, Button, Card, EmptyState, Gap, ProgressBar, Screen, StatusChip, Txt, fmtSum, fmtUnit } from '@/design/primitives';
-import { Icon, Tabs, toast } from '@/design/ui';
+import { dialog, Icon, Tabs, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useAction, useDrivers, useMaterialRequests, useMaterials } from '@/features/eco/api';
@@ -18,7 +18,7 @@ export default function Materials() {
 
   const onApprove = (id: string) => {
     const free = (drivers.data ?? []).filter((d) => !d.currentShipment);
-    Alert.alert('Haydovchi biriktirish', 'Yuk kimga beriladi?', [
+    dialog('Haydovchi biriktirish', 'Yuk kimga beriladi?', [
       ...free.slice(0, 3).map((d) => ({ text: `${d.fullName} (${d.vehicle?.plateNumber ?? '—'})`, onPress: () => approve.mutate({ id, driverUserId: d.userId, vehicleId: d.vehicle?.id }, { onError: (e) => toast.error(e.message, 'Xato') }) })),
       { text: 'Keyinroq (ochiq yuk)', onPress: () => approve.mutate({ id }, { onError: (e) => toast.error(e.message, 'Xato') }) },
       { text: 'Bekor', style: 'cancel' },

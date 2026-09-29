@@ -30,6 +30,9 @@ interface SessionState {
   signOut: () => Promise<void>;
 }
 
+/** signOut ichidan yana signOut chaqirilsa (refresh xatosi) — ikkinchisi darhol qaytadi. */
+let signingOut = false;
+
 const ACTIVE_KEY = 'session.activeMembership';
 const KIND_KEY = 'session.kind';
 const ERP_USER_KEY = 'session.erpUser';
@@ -94,15 +97,25 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   async signOut() {
-    // Tokenlar o'chishidan OLDIN: shu telefonga endi xabar yuborilmasin, aks holda
-    // ishdan ketgan xodimning ekranida zavod xabarlari chiqib turardi.
-    await unregisterPush(get().kind === 'erp' ? 'erp' : 'eco');
-    await Promise.all([secure.del(KEYS.access), secure.del(KEYS.refresh), secure.del(KEYS.erpAccess), secure.del(KEYS.erpRefresh)]);
-    kv.delete('session.user');
-    kv.delete(ACTIVE_KEY);
-    kv.delete(KIND_KEY);
-    kv.delete(ERP_USER_KEY);
-    set({ status: 'anon', kind: null, user: null, active: null, erp: null });
+    // Qayta kirish qulfi: push'ni o'chirish so'rovi 401 olsa refresh ishlaydi, refresh
+    // muvaffaqiyatsiz bo'lsa yana signOut() chaqiriladi — qulfsiz ikkalasi bir-birini
+    // kutib qolardi va "Chiqish" tugmasi hech narsa qilmasdi.
+    if (signingOut) return;
+    signingOut = true;
+    try {
+      // Tokenlar o'chishidan OLDIN: shu telefonga endi xabar yuborilmasin, aks holda
+      // ishdan ketgan xodimning ekranida zavod xabarlari chiqib turardi. Server javob
+      // bermasa ham chiqish kutib qolmaydi (3 s).
+      await Promise.race([unregisterPush(get().kind === 'erp' ? 'erp' : 'eco'), new Promise<void>((r) => setTimeout(r, 3000))]);
+      await Promise.all([secure.del(KEYS.access), secure.del(KEYS.refresh), secure.del(KEYS.erpAccess), secure.del(KEYS.erpRefresh)]);
+      kv.delete('session.user');
+      kv.delete(ACTIVE_KEY);
+      kv.delete(KIND_KEY);
+      kv.delete(ERP_USER_KEY);
+      set({ status: 'anon', kind: null, user: null, active: null, erp: null });
+    } finally {
+      signingOut = false;
+    }
   },
 }));
 

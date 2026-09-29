@@ -4,16 +4,17 @@
  */
 import React, { useEffect, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
+import { StatusMark, SuccessCheck } from './success';
 import { DUR, EASE_STATE } from './motion';
 import { Palette, Tone, duration, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
-import { Badge, Button, IconButton, StatusDot, Txt, fmtSum } from './primitives';
+import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
 export type { IconName } from './icons';
@@ -89,70 +90,182 @@ export function Table<T>({ columns, rows, keyOf, onRowPress, empty, minWidth, st
   return minWidth ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={style}>{inner}</ScrollView> : <View style={style}>{inner}</View>;
 }
 
-// ───────────────────────── Modal / Sheet ─────────────────────────
+// ───────────────────────── Modal / Sheet / Dialog ─────────────────────────
+//
+// Barcha oynalar bitta uslubda (Dribbble "Success modal" asosida): chegara chiziqlarisiz katta
+// yumaloq karta, tepada holat belgisi, markazda sarlavha, pastda to'liq enli katta tugmalar.
+//
+// MUHIM: faqat fon (parda) animatsiyalanadi. Tugmasi bor karta/varaq — oddiy `View`: Fabric'da
+// Reanimated uslubli konteyner ichidagi `Pressable` bosilmay qolardi yoki bosish fonga o'tib ketardi.
 
-/** Parda + ichki qatlam: holat o'zgarishi 200 ms, faqat opacity + transform. */
-function useOverlay(open: boolean, onClose: () => void) {
-  const reduce = useReducedMotion();
-  const p = useSharedValue(reduce ? 1 : 0);
-  useEffect(() => { p.value = reduce ? (open ? 1 : 0) : withTiming(open ? 1 : 0, { duration: DUR.state, easing: EASE_STATE }); }, [open, p, reduce]);
+/** Apparat "orqaga" tugmasi (Android) oynani yopadi. */
+function useBackClose(open: boolean, onClose: () => void) {
   useEffect(() => {
     if (!open) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { onClose(); return true; });
     return () => sub.remove();
   }, [open, onClose]);
-  return p;
+}
+
+/** Qoraytirilgan fon — ochilganda 200 ms da paydo bo'ladi, bosilsa `onPress`. */
+function Scrim({ onPress }: { onPress?: () => void }) {
+  const { c } = useTheme();
+  const reduce = useReducedMotion();
+  const p = useSharedValue(reduce ? 1 : 0);
+  useEffect(() => { if (!reduce) p.value = withTiming(1, { duration: DUR.state, easing: EASE_STATE }); }, [p, reduce]);
+  const s = useAnimatedStyle(() => ({ opacity: p.value }));
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, s]}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onPress} disabled={!onPress} accessibilityLabel={i18n.t('ui.close')} />
+    </Animated.View>
+  );
+}
+
+/** Markazdagi karta ramkasi: fon + xavfsiz hudud ichida, uzun bo'lsa ichi aylanadi. */
+function DialogFrame({ onDismiss, children }: { onDismiss?: () => void; children: React.ReactNode }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <Scrim onPress={onDismiss} />
+      <KeyboardAvoidingView
+        pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[StyleSheet.absoluteFill, { justifyContent: 'center', paddingHorizontal: space.lg, paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }]}
+      >
+        <View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl * 2, width: '100%', maxWidth: 420, maxHeight: '100%', alignSelf: 'center', overflow: 'hidden' }, shadow.pop]}>
+          <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.xxl, paddingTop: space.xxl + space.xs }}>
+            {children}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+/** Sarlavha bloki: holat belgisi (ixtiyoriy) + markazda sarlavha + izoh. */
+function DialogHead({ tone, icon, title, message }: { tone?: Tone; icon?: IconName; title: string; message?: string }) {
+  return (
+    <View style={{ alignItems: 'center' }}>
+      {tone ? (tone === 'success' && !icon ? <SuccessCheck size={104} /> : <StatusMark tone={tone} icon={icon} size={88} />) : null}
+      <Txt v="titleLg" align="center" style={{ marginTop: tone ? space.lg : 0 }}>{title}</Txt>
+      {message ? <Txt v="body" color="muted" align="center" style={{ marginTop: space.sm }}>{message}</Txt> : null}
+    </View>
+  );
 }
 
 /** Pastdan chiqadigan varaq (mobil). Sarlavha doim ko'rinadi, ichi aylanadi, pastda footer. */
 export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%' }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; maxHeight?: `${number}%` }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const p = useOverlay(open, onClose);
-  const scrim = useAnimatedStyle(() => ({ opacity: p.value }));
-  const panel = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - p.value) * 40 }], opacity: p.value }));
+  useBackClose(open, onClose);
   if (!open) return null;
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, scrim]}><Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={i18n.t('ui.close')} /></Animated.View>
-      <Animated.View style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: insets.bottom + space.lg, maxHeight, borderTopWidth: size.hairline, borderColor: c.borderDefault }, shadow.pop, panel]}>
-        <View style={{ alignSelf: 'center', width: space.x10, height: space.xs, borderRadius: radius.pill, backgroundColor: c.borderStrong, marginTop: space.sm }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xl, paddingRight: space.sm, paddingTop: space.sm, paddingBottom: space.xs }}>
-          <Txt v="titleMd" style={{ flex: 1 }} numberOfLines={1}>{title}</Txt>
-          <IconButton icon="x" label={i18n.t('ui.close')} onPress={onClose} />
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <Scrim onPress={onClose} />
+      <KeyboardAvoidingView pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
+        <View accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl * 2, borderTopRightRadius: radius.xl * 2, paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
+          <View style={{ alignSelf: 'center', width: space.x10, height: space.xs + 1, borderRadius: radius.pill, backgroundColor: c.bgMuted, marginTop: space.md }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xxl, paddingRight: space.lg, paddingTop: space.md, paddingBottom: space.sm }}>
+            <Txt v="titleLg" style={{ flex: 1 }} numberOfLines={2}>{title}</Txt>
+            <IconButton icon="x" label={i18n.t('ui.close')} onPress={onClose} variant="secondary" size={size.touch - space.xs} />
+          </View>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: space.xxl, paddingVertical: space.sm }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          {footer ? <View style={{ paddingHorizontal: space.xxl, paddingTop: space.md }}>{footer}</View> : null}
         </View>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingVertical: space.sm }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
-        {footer ? <View style={{ paddingHorizontal: space.xl, paddingTop: space.md, borderTopWidth: size.hairline, borderTopColor: c.borderSubtle }}>{footer}</View> : null}
-      </Animated.View>
-    </KeyboardAvoidingView>
-  );
-}
-
-/** Markazdagi oyna — tasdiq va qisqa forma. */
-export function Modal({ open, onClose, title, children, actions }: { open: boolean; onClose: () => void; title: string; children?: React.ReactNode; actions?: React.ReactNode }) {
-  const { c } = useTheme();
-  const p = useOverlay(open, onClose);
-  const scrim = useAnimatedStyle(() => ({ opacity: p.value }));
-  const panel = useAnimatedStyle(() => ({ transform: [{ scale: 0.96 + p.value * 0.04 }], opacity: p.value }));
-  if (!open) return null;
-  return (
-    <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', padding: space.xxl }]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, scrim]}><Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={i18n.t('ui.close')} /></Animated.View>
-      <Animated.View accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl, padding: space.xl, borderWidth: size.hairline, borderColor: c.borderDefault, gap: space.lg }, shadow.pop, panel]}>
-        <Txt v="titleMd">{title}</Txt>
-        {children}
-        {actions ? <View style={{ flexDirection: 'row', gap: space.sm, justifyContent: 'flex-end' }}>{actions}</View> : null}
-      </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-/** Tasdiq oynasi — matn + Bekor / Tasdiq. */
+/**
+ * Markazdagi oyna — tasdiq va qisqa forma. `tone`/`icon` berilsa tepada holat belgisi chiqadi.
+ * `actions` — tugmalar ustunda, to'liq enli (asosiy — tepada, "Bekor" — pastda).
+ */
+export function Modal({ open, onClose, title, message, tone, icon, children, actions }: { open: boolean; onClose: () => void; title?: string; message?: string; tone?: Tone; icon?: IconName; children?: React.ReactNode; actions?: React.ReactNode }) {
+  useBackClose(open, onClose);
+  if (!open) return null;
+  return (
+    <DialogFrame onDismiss={onClose}>
+      {title ? <DialogHead tone={tone} icon={icon} title={title} message={message} /> : null}
+      {children ? <View style={{ marginTop: title ? space.lg : 0, gap: space.lg }}>{children}</View> : null}
+      {actions ? <View style={{ marginTop: space.xxl, gap: space.sm }}>{actions}</View> : null}
+    </DialogFrame>
+  );
+}
+
+/** Tasdiq oynasi — belgi + matn + katta Tasdiq / Bekor. */
 export function Confirm({ open, onClose, onConfirm, title, message, confirmLabel = i18n.t('ui.confirm'), danger, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; title: string; message?: string; confirmLabel?: string; danger?: boolean; loading?: boolean }) {
   return (
-    <Modal open={open} onClose={onClose} title={title} actions={<><Button title={i18n.t('ui.cancel')} variant="ghost" full={false} onPress={onClose} /><Button title={confirmLabel} variant={danger ? 'danger' : 'primary'} full={false} loading={loading} onPress={onConfirm} /></>}>
-      {message ? <Txt v="body">{message}</Txt> : null}
-    </Modal>
+    <Modal
+      open={open} onClose={onClose} title={title} message={message}
+      tone={danger ? 'danger' : 'brand'} icon={danger ? 'triangle-alert' : 'circle-question-mark'}
+      actions={<>
+        <Button title={confirmLabel} size="lg" variant={danger ? 'danger' : 'primary'} loading={loading} onPress={onConfirm} />
+        <Button title={i18n.t('ui.cancel')} size="lg" variant="ghost" onPress={onClose} />
+      </>}
+    />
+  );
+}
+
+// ── dialog() — `Alert.alert` o'rnini bosadi ──
+// Tizim oynasi o'rniga ilovaning o'z oynasi: dizayn bir xil, Fabric'da ko'rinmay qolish muammosi yo'q.
+// Imzo `Alert.alert` bilan bir xil — almashtirish uchun faqat nomi o'zgaradi.
+
+export interface DialogButton { text?: string; onPress?: () => void; style?: 'default' | 'cancel' | 'destructive' }
+export interface DialogOptions { cancelable?: boolean; onDismiss?: () => void; tone?: Tone; icon?: IconName }
+interface DialogItem { id: number; title: string; message?: string; buttons: DialogButton[]; opts: DialogOptions }
+let dialogSeq = 0;
+const useDialogStore = create<{ queue: DialogItem[]; push: (d: Omit<DialogItem, 'id'>) => void; pop: (id: number) => void }>((set) => ({
+  queue: [],
+  push: (d) => set((s) => ({ queue: [...s.queue, { ...d, id: ++dialogSeq }] })),
+  pop: (id) => set((s) => ({ queue: s.queue.filter((q) => q.id !== id) })),
+}));
+
+/** `dialog('Saqlandi', 'Parol o\'zgartirildi', [{ text: 'OK', onPress }])` — `Alert.alert` bilan bir xil. */
+export function dialog(title: string, message?: string, buttons?: DialogButton[], opts: DialogOptions = {}) {
+  useDialogStore.getState().push({ title, message, buttons: buttons?.length ? buttons : [{ text: i18n.t('ui.close') }], opts });
+}
+
+/** Sarlavha/tugmalarga qarab belgi: xavfli amal → qizil, "Bajarildi" → ptichka, ogohlantirish → sariq. */
+function autoTone(d: DialogItem): { tone: Tone; icon?: IconName } {
+  if (d.opts.tone) return { tone: d.opts.tone, icon: d.opts.icon };
+  if (d.buttons.some((b) => b.style === 'destructive')) return { tone: 'danger', icon: 'triangle-alert' };
+  const t = d.title.toLowerCase();
+  if (/bajarildi|saqlandi|tayyor|yuborildi|qabul qilindi|muvaffaq/.test(t)) return { tone: 'success' };
+  if (/diqqat|xato|topilmadi|o'chirildi|muammo|e'tiroz|bajarilmadi/.test(t)) return { tone: 'warning', icon: 'triangle-alert' };
+  return { tone: 'brand', icon: d.opts.icon ?? (d.buttons.length > 1 ? 'circle-question-mark' : 'info') };
+}
+
+/** Ildiz maketiga bir marta qo'yiladi (PIN qulfidan keyin — undagi oynalar ham ustida chiqsin). */
+export function DialogHost() {
+  const d = useDialogStore((s) => s.queue[0]);
+  const pop = useDialogStore((s) => s.pop);
+  const run = (b?: DialogButton) => { if (!d) return; pop(d.id); b?.onPress?.(); };
+  const dismiss = () => {
+    if (!d || d.opts.cancelable === false) return;
+    const cancel = d.buttons.find((b) => b.style === 'cancel') ?? (d.buttons.length === 1 ? d.buttons[0] : undefined);
+    if (cancel) run(cancel); else { pop(d.id); d.opts.onDismiss?.(); }
+  };
+  useBackClose(!!d, dismiss);
+  if (!d) return null;
+  const { tone, icon } = autoTone(d);
+  const main = d.buttons.filter((b) => b.style !== 'cancel');
+  const cancel = d.buttons.filter((b) => b.style === 'cancel');
+  const many = main.length > 2;
+  return (
+    <DialogFrame key={d.id} onDismiss={dismiss}>
+      <DialogHead tone={tone} icon={icon} title={d.title} message={d.message} />
+      <View style={{ marginTop: space.xxl, gap: space.sm }}>
+        {main.map((b, i) => (
+          <Button
+            key={`${i}-${b.text}`} title={b.text ?? 'OK'} size="lg"
+            variant={b.style === 'destructive' ? 'danger' : many || i > 0 ? 'secondary' : 'primary'}
+            onPress={() => run(b)}
+          />
+        ))}
+        {cancel.map((b, i) => <Button key={`c${i}`} title={b.text ?? i18n.t('ui.cancel')} size="lg" variant="ghost" onPress={() => run(b)} />)}
+      </View>
+    </DialogFrame>
   );
 }
 
@@ -189,8 +302,8 @@ function ToastCard({ item }: { item: ToastItem }) {
   const icon = ICON[item.tone];
   return (
     <Animated.View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderWidth: size.hairline, borderColor: c.borderDefault, padding: space.md, paddingRight: space.xs }, shadow.pop, s]}>
-      <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.md, backgroundColor: item.tone === 'neutral' ? c.bgMuted : toneColors(c, item.tone).bg, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} color={item.tone === 'neutral' ? c.textBody : ink} />
+      <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.md, backgroundColor: item.tone === 'neutral' ? c.bgMuted : item.tone === 'success' ? 'transparent' : toneColors(c, item.tone).bg, alignItems: 'center', justifyContent: 'center' }}>
+        {item.tone === 'success' ? <SuccessCheck size={size.iconTileSm} /> : <Icon name={icon} color={item.tone === 'neutral' ? c.textBody : ink} />}
       </View>
       <View style={{ flex: 1 }}>
         {item.title ? <Txt v="bodyStrong" numberOfLines={1}>{item.title}</Txt> : null}
@@ -223,7 +336,7 @@ const useResultStore = create<ResultState & { show: (s: Omit<ResultState, 'open'
   close: () => { const { onDone } = get(); set((s) => ({ ...s, open: false })); onDone?.(); },
 }));
 /**
- * Amal yakunlangach o'rtada chiqadigan katta, rangli natija oynasi — muvaffaqiyat yoki xato.
+ * Amal yakunlangach o'rtada chiqadigan katta natija oynasi — muvaffaqiyat yoki xato. O'zi yopiladi.
  * Ekran davomida navigatsiya qilishi kerak bo'lsa (masalan yangi kartochkani ochish), buni
  * `onDone` orqali qiladi — oyna yopilgach chaqiriladi, foydalanuvchi natijani o'qib ulguradi.
  * `result.success('Ochildi', 'Z-2026-00027')`, `result.error('Bajarilmadi', xabar)`.
@@ -237,44 +350,104 @@ export const result = {
 export function ResultHost() {
   const { open, tone, title, subtitle } = useResultStore();
   const close = useResultStore((s) => s.close);
-  const { c } = useTheme();
-  const reduce = useReducedMotion();
-  const p = useSharedValue(0);
-  const pop = useSharedValue(0.5);
   useEffect(() => {
     if (!open) return;
-    p.value = reduce ? 1 : withTiming(1, { duration: DUR.state, easing: EASE_STATE });
-    pop.value = reduce ? 1 : withSpring(1, { damping: 9, stiffness: 160 });
-    const ms = tone === 'danger' ? 2600 : 1800;
-    const t = setTimeout(close, ms);
+    const t = setTimeout(close, tone === 'danger' ? 2600 : 1800);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-  const scrim = useAnimatedStyle(() => ({ opacity: p.value }));
-  const card = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ scale: 0.94 + p.value * 0.06 }] }));
-  const iconPop = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  }, [open, tone, close]);
+  useBackClose(open, close);
   if (!open) return null;
-  const { ink, bg } = toneColors(c, tone);
-  const icon: IconName = tone === 'danger' ? 'circle-x' : 'circle-check';
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, scrim]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={i18n.t('ui.close')} />
-      </Animated.View>
-      <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', padding: space.xxl }]}>
-        <Animated.View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ alignItems: 'center', gap: space.lg, minWidth: 240, maxWidth: 320, backgroundColor: c.bgSurface, borderRadius: radius.xl, paddingVertical: space.xxl, paddingHorizontal: space.xl, borderWidth: size.hairline, borderColor: c.borderDefault }, shadow.pop, card]}>
-          <View style={{ width: 96, height: 96, borderRadius: 96, borderWidth: 1, borderColor: ink, alignItems: 'center', justifyContent: 'center' }}>
-            <Animated.View style={[{ width: 64, height: 64, borderRadius: radius.lg, backgroundColor: bg, borderWidth: 2, borderColor: ink, alignItems: 'center', justifyContent: 'center' }, iconPop]}>
-              <Icon name={icon} size={32} color={ink} strokeWidth={2} />
-            </Animated.View>
-          </View>
-          <View style={{ gap: space.xs }}>
-            <Txt v="titleLg" align="center">{title}</Txt>
-            {subtitle ? <Txt v="body" color="muted" align="center">{subtitle}</Txt> : null}
-          </View>
-        </Animated.View>
-      </View>
+    <DialogFrame onDismiss={close}>
+      <DialogHead tone={tone} title={title} message={subtitle} />
+    </DialogFrame>
+  );
+}
+
+// ───────────────────────── Chek oynasi ─────────────────────────
+
+/** Server `receipt` maydoni bilan bir xil shakl (`@/core/erp` → `Receipt`). */
+export interface ReceiptData {
+  headline: string;
+  caption?: string;
+  status: { label: string; tone: 'success' | 'warning'; at: string };
+  rows: { label: string; value: string; copy?: boolean }[];
+}
+const useReceiptStore = create<{ data: ReceiptData | null; onDone?: () => void; show: (d: ReceiptData, onDone?: () => void) => void; close: () => void }>((set, get) => ({
+  data: null,
+  show: (data, onDone) => set({ data, onDone }),
+  close: () => { const { onDone } = get(); set({ data: null, onDone: undefined }); onDone?.(); },
+}));
+/**
+ * Muhim amal natijasi — "chek" ko'rinishida: katta summa, holat plashkasi, asosiy qatorlar,
+ * raqamni nusxalash va "Yopish". O'zi yopilmaydi — foydalanuvchi ma'lumotni o'qib chiqsin.
+ * `receipt.show(r.receipt)`.
+ */
+export const receipt = { show: (d: ReceiptData, onDone?: () => void) => useReceiptStore.getState().show(d, onDone) };
+
+/**
+ * `expo-clipboard` native modul — u qo'shilishidan oldingi build'da yo'q. Fayl boshida import qilinsa
+ * eski ilova ochilishdayoq yiqiladi, shuning uchun faqat bosilganda yuklanadi.
+ */
+async function copyText(text: string) {
+  try {
+    const Clipboard: typeof import('expo-clipboard') = require('expo-clipboard');
+    await Clipboard.setStringAsync(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+function ReceiptRow({ label, value, copy }: ReceiptData['rows'][number]) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { if (!copied) return; const t = setTimeout(() => setCopied(false), 1500); return () => clearTimeout(t); }, [copied]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.touch }}>
+      <Txt v="body" color="muted" style={{ flexShrink: 0 }}>{label}</Txt>
+      <Txt v="bodyStrong" align="right" numberOfLines={2} style={{ flex: 1 }}>{value}</Txt>
+      {copy ? (
+        <IconButton
+          icon={copied ? 'check' : 'copy'} tone={copied ? 'success' : 'body'} variant="secondary" size={size.touch - space.xs}
+          label={copied ? 'Nusxa olindi' : `${label}ni nusxalash`}
+          onPress={() => { void copyText(value).then(setCopied); }}
+        />
+      ) : null}
     </View>
+  );
+}
+
+/** Ildiz maketiga `ResultHost` bilan yonma-yon qo'yiladi. O'zi yopilmaydi. */
+export function ReceiptHost() {
+  const { data, close } = useReceiptStore();
+  const { c } = useTheme();
+  useBackClose(!!data, close);
+  if (!data) return null;
+  const ok = data.status.tone === 'success';
+  const { ink, solid } = toneColors(c, data.status.tone);
+  const at = new Date(data.status.at);
+  return (
+    <DialogFrame onDismiss={close}>
+      <View style={{ alignItems: 'center' }}>
+        {ok ? <SuccessCheck size={112} /> : <StatusMark tone="warning" size={96} />}
+        <Txt v="metricHero" align="center" numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.sm }}>{data.headline}</Txt>
+        {data.caption ? <Txt v="body" color="muted" align="center" style={{ marginTop: space.xs }}>{data.caption}</Txt> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, paddingVertical: space.sm, paddingLeft: space.sm, paddingRight: space.md, borderRadius: radius.pill, backgroundColor: c.bgMuted }}>
+          <View style={{ width: size.iconTileSm - space.sm, height: size.iconTileSm - space.sm, borderRadius: radius.pill, backgroundColor: solid, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name={ok ? 'check' : 'triangle-alert'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={3} />
+          </View>
+          <Txt v="bodyStrong" style={{ color: ink }}>{data.status.label}</Txt>
+          <Txt v="body" color="faint">·</Txt>
+          <Txt v="body" color="muted">{`${fmtDate(at)}, ${hhmm(at)}`}</Txt>
+        </View>
+      </View>
+      <View style={{ marginTop: space.xl, marginBottom: space.xxl, gap: space.xs }}>
+        {data.rows.map((r) => <ReceiptRow key={r.label} {...r} />)}
+      </View>
+      <Button title="Yopish" size="lg" onPress={close} />
+    </DialogFrame>
   );
 }
 

@@ -52,10 +52,10 @@ export default function ShopContact() {
             <Txt v="titleMd">Bog'lanish</Txt>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {company?.phone ? (
-                <ListItem icon="phone" module="brand" title="Sotuv bo'limi" subtitle={company.phone} chevron onPress={() => void Linking.openURL(`tel:${company.phone}`)} last={!company.address} />
+                <ListItem style={{ paddingHorizontal: space.card }} icon="phone" module="brand" title="Sotuv bo'limi" subtitle={company.phone} chevron onPress={() => void Linking.openURL(`tel:${company.phone}`)} last={!company.address} />
               ) : null}
               {company?.address ? (
-                <ListItem icon="map-pin" module="brand" title="Zavod manzili" subtitle={company.address} chevron onPress={() => void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(company.address ?? '')}`)} last />
+                <ListItem style={{ paddingHorizontal: space.card }} icon="map-pin" module="brand" title="Zavod manzili" subtitle={company.address} chevron onPress={() => void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(company.address ?? '')}`)} last />
               ) : null}
               {!company?.phone && !company?.address ? <View style={{ padding: space.card }}><Txt v="bodySm" color="muted">Rekvizitlar yuklanmoqda…</Txt></View> : null}
             </Card>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { IconButton, Input } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
@@ -9,6 +8,7 @@ import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { AuthScreen, ErrorBox, InfoCard, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
+import { dialog } from '@/design/ui';
 
 /**
  * Tizimga kirgan holda parolni almashtirish (Profil → Xavfsizlik).
@@ -55,7 +55,7 @@ export default function ChangePassword() {
     setLoading(true);
     try {
       await authApi.changePassword(current, next);
-      Alert.alert('Saqlandi', 'Parol o\'zgartirildi. Boshqa qurilmalardagi seanslar yopildi.', [
+      dialog('Saqlandi', 'Parol o\'zgartirildi. Boshqa qurilmalardagi seanslar yopildi.', [
         { text: 'Yopish', onPress: () => router.back() },
       ]);
     } catch (err) {

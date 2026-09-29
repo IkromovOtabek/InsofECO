@@ -16,7 +16,7 @@ import { LaunchOverlay } from '@/components/launch';
 import { PinLock } from '@/components/pin-lock';
 import { useFonts } from 'expo-font';
 import { APP_FONTS } from '@/design/fonts';
-import { ResultHost, ToastHost } from '@/design/ui';
+import { DialogHost, ReceiptHost, ResultHost, ToastHost } from '@/design/ui';
 import { stackOptions } from '@/design/nav';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
@@ -47,14 +47,16 @@ function Gate() {
     // Sovuq start (`index` ekrani, guruh yo'q) — kirgan foydalanuvchi ham do'kon bilan ochiladi;
     // o'z bo'limiga vitrinadagi "Kabinet" tugmasi olib boradi. Hisob to'liq bo'lmasa
     // (ERP xodimi ma'lumoti yo'q / ECO rol tanlanmagan) — pastdagi qoidalar ishlaydi.
-    if (group === undefined && (kind === 'erp' ? !!erp : !!active)) { router.replace('/(shop)'); return; }
+    // Zavod xodimi (ERP login) esa do'konni ko'rmaydi — to'g'ridan-to'g'ri o'z bo'limiga.
+    if (group === undefined && kind !== 'erp' && !!active) { router.replace('/(shop)'); return; }
 
     if (kind === 'erp') {
       if (!erp) { router.replace('/(auth)/login'); return; }
       const target = erpRoleConfig(erp.role).group;
       // `erp/<kartochka>` va haydovchi marshruti (`yolda/<reys>`) — barcha bo'limlar uchun
-      // umumiy ekranlar, guruhdan tashqarida turadi va bu yerda qaytarilmasligi kerak
-      if (group !== target && group !== 'erp' && group !== 'yolda' && group !== '(shop)') router.replace(`/${target}` as never);
+      // umumiy ekranlar, guruhdan tashqarida turadi va bu yerda qaytarilmasligi kerak.
+      // Do'kon (`(shop)`) xodimlarga yopiq — u mijozlar uchun.
+      if (group !== target && group !== 'erp' && group !== 'yolda') router.replace(`/${target}` as never);
       return;
     }
 
@@ -178,6 +180,8 @@ export default function RootLayout() {
           <PinLock />
           <ToastHost />
           <ResultHost />
+          <ReceiptHost />
+          <DialogHost />
           <LaunchOverlay />
         </ThemeProvider>
       </PersistQueryClientProvider>

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Alert, FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, ListItem, Screen, Txt } from '@/design/primitives';
-import { Avatar, fmtRel, toast } from '@/design/ui';
+import { dialog, Avatar, fmtRel, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useAction, useContacts, useConversations } from '@/features/eco/api';
 
@@ -12,7 +12,7 @@ export function MessagesList() {
   const create = useAction<{ participantUserIds: string[] }, { id: string }>((body) => ({ path: '/conversations', body: { type: 'DIRECT', ...body } }), ['conversations']);
   const start = () => {
     const list = (contacts.data ?? []).slice(0, 6);
-    Alert.alert('Yangi suhbat', 'Kim bilan?', [...list.map((x) => ({ text: `${x.user.fullName ?? x.user.phone} · ${x.role}`, onPress: () => create.mutate({ participantUserIds: [x.user.id] }, { onSuccess: (cv) => router.push(`/chat/${cv.id}`), onError: (e) => toast.error(e.message, 'Xato') }) })), { text: 'Bekor', style: 'cancel' }]);
+    dialog('Yangi suhbat', 'Kim bilan?', [...list.map((x) => ({ text: `${x.user.fullName ?? x.user.phone} · ${x.role}`, onPress: () => create.mutate({ participantUserIds: [x.user.id] }, { onSuccess: (cv) => router.push(`/chat/${cv.id}`), onError: (e) => toast.error(e.message, 'Xato') }) })), { text: 'Bekor', style: 'cancel' }]);
   };
   return (
     <Screen padded={false}>

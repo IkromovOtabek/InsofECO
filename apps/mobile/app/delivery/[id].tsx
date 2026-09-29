@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
@@ -8,7 +8,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { config } from '@/core/config';
 import { DRIVER_PRIMARY_NEXT, DeliveryStatus } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Row, Screen, StatusChip, Txt, fmtM3, fmtTime, STATUS_LABEL } from '@/design/primitives';
-import { toast } from '@/design/ui';
+import { dialog, toast } from '@/design/ui';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { requestAcceptOtp, useDelivery, useDispute, useDriverTransition, useSignDelivery } from '@/features/deliveries/api';
@@ -128,11 +128,11 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
       <Gap />
       <Row style={{ gap: space.md }}>
         <Button title={t('driver.navigate')} variant="secondary" icon="navigation" style={{ flex: 1 }} onPress={navigate} />
-        <Button title={t('driver.call')} variant="secondary" icon="phone" style={{ flex: 1 }} onPress={() => Alert.alert('Qo\'ng\'iroq', 'Mijoz raqami tashkilot orqali olinadi (keyingi versiya)')} />
+        <Button title={t('driver.call')} variant="secondary" icon="phone" style={{ flex: 1 }} onPress={() => dialog('Qo\'ng\'iroq', 'Mijoz raqami tashkilot orqali olinadi (keyingi versiya)')} />
       </Row>
       <Gap />
       {['EN_ROUTE', 'ARRIVED'].includes(d.status) ? (
-        <Button title={t('driver.problem')} variant="danger" size="md" icon="triangle-alert" onPress={() => Alert.alert('Muammo', 'Sababni tanlang', [
+        <Button title={t('driver.problem')} variant="danger" size="md" icon="triangle-alert" onPress={() => dialog('Muammo', 'Sababni tanlang', [
           { text: 'Nosozlik', onPress: () => tr.mutate({ to: 'FAILED', note: 'Nosozlik' }) },
           { text: 'Yo\'l yopiq', onPress: () => tr.mutate({ to: 'FAILED', note: 'Yo\'l yopiq' }) },
           { text: 'Bekor', style: 'cancel' },
@@ -166,7 +166,7 @@ function ClientPanel({ d, canSign }: { d: NonNullable<ReturnType<typeof useDeliv
       {/* MVP: imzo — tasdiq tugmasi; keyingi bosqich: react-native-signature-canvas → S3 presign */}
       <Button title="Imzolash va qabul qilish" size="xl" icon="pencil" loading={sign.isPending} onPress={() => sign.mutate({ signatureKey: `signature/${d.id}/tap.png`, acceptedM3: Number(accepted) }, { onError: err })} />
       <Gap />
-      <Button title="E'tiroz bildirish" variant="ghost" icon="circle-alert" onPress={() => Alert.alert('E\'tiroz sababi', undefined, [
+      <Button title="E'tiroz bildirish" variant="ghost" icon="circle-alert" onPress={() => dialog('E\'tiroz sababi', undefined, [
         { text: 'Hajm kam', onPress: () => dispute.mutate({ reason: 'VOLUME' }) },
         { text: 'Sifat', onPress: () => dispute.mutate({ reason: 'QUALITY' }) },
         { text: 'Kech keldi', onPress: () => dispute.mutate({ reason: 'LATE' }) },

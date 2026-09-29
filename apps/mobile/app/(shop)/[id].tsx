@@ -9,6 +9,7 @@ import { radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { photoUrl, useShopCatalog, useShopOrder } from '@/features/shop/api';
+import { PHOTO_RATIO, SellerChip } from '@/features/shop/ui';
 
 /**
  * Mahsulot kartochkasi + buyurtma formasi. Mehmon ham buyurtma bera oladi — ism va telefon
@@ -60,7 +61,7 @@ export default function ShopProduct() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space.xxxl }} keyboardShouldPersistTaps="handled">
-        <View style={{ aspectRatio: 4 / 3, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ aspectRatio: PHOTO_RATIO, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
           {uri ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" accessibilityIgnoresInvertColors /> : <IconTile icon="package" module="brand" size={size.avatarLg + space.lg} />}
           {item.badge ? <Badge label={item.badge} tone="brand" icon={null} style={{ position: 'absolute', top: space.md, left: space.pageX }} /> : null}
         </View>
@@ -69,6 +70,8 @@ export default function ShopProduct() {
           <View>
             <Txt v="caption">{[item.group, item.code, item.strengthClass].filter(Boolean).join(' · ')}</Txt>
             <Txt v="titleLg">{item.name}</Txt>
+            {/* Kimniki — bosilsa zavod profili */}
+            <SellerChip name={q.data?.seller?.name ?? q.data?.company.name ?? ''} onPress={() => router.push('/(shop)/zavod' as never)} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.xs }}>
             <Txt v="metric" color="brand">{fmtNum(item.price)}</Txt>

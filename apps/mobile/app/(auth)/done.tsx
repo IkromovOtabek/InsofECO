@@ -1,9 +1,10 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Card, IconTile, Row, Txt } from '@/design/primitives';
+import { Card, Row, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { Appear } from '@/design/motion';
+import { SuccessCheck } from '@/design/success';
 import { useSession } from '@/core/session';
 import { AuthScreen, GhostButton, InfoCard, PrimaryButton, Steps } from '@/features/auth/ui';
 
@@ -25,7 +26,7 @@ export default function Done() {
       <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={2} />
 
       <Appear delay={80} style={{ alignItems: 'center', marginTop: space.x10 }}>
-        <IconTile icon="check" tone="success" size={size.driverTouch} />
+        <SuccessCheck size={size.driverTouch * 2} />
         <Txt v="titleLg" align="center" style={{ marginTop: space.xl }}>Hammasi tayyor</Txt>
         <Txt v="bodySm" color="muted" align="center" style={{ marginTop: space.sm }}>
           Hisobingiz tasdiqlandi. Endi rolingizga tegishli bo&apos;limlar ochiq.

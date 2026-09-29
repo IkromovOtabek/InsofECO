@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { Badge, EmptyState, Gap, Panel, Screen, StatusChip, Txt, fmtDate } from '@/design/primitives';
-import { Icon, IconName, toast } from '@/design/ui';
+import { dialog, Icon, IconName, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { Tone, size, space } from '@/design/tokens';
 import { useAction, useMyTasks } from '@/features/eco/api';
@@ -33,7 +33,7 @@ export default function Tasks() {
                 return (
                   <Pressable
                     key={t.id} accessibilityRole="button" accessibilityLabel={t.title} accessibilityState={{ checked: done }} disabled={done} android_ripple={{ color: c.bgMuted }}
-                    onPress={() => Alert.alert(t.title, t.description ?? 'Holatni o\'zgartirish', [{ text: t.status === 'TODO' ? 'Boshlash' : 'Tekshiruvga topshirish', onPress: () => upd.mutate({ id: t.id, status: next(t.status) }, { onError: (e) => toast.error(e.message, 'Xato') }) }, { text: 'Bekor', style: 'cancel' }])}
+                    onPress={() => dialog(t.title, t.description ?? 'Holatni o\'zgartirish', [{ text: t.status === 'TODO' ? 'Boshlash' : 'Tekshiruvga topshirish', onPress: () => upd.mutate({ id: t.id, status: next(t.status) }, { onError: (e) => toast.error(e.message, 'Xato') }) }, { text: 'Bekor', style: 'cancel' }])}
                     style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.row, paddingVertical: space.md, borderBottomWidth: i === list.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }, pressed && { backgroundColor: c.bgMuted }]}
                   >
                     <Icon name={st.icon} size={size.iconLg} tone={st.tone === 'neutral' ? 'muted' : st.tone} />

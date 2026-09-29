@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
-import { result, toast, type IconName } from '@/design/ui';
+import { dialog, receipt, result, toast, type IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space, toneColors } from '@/design/tokens';
 import type { ErpAction } from '@/core/erp';
@@ -84,13 +84,16 @@ export default function ErpDetail() {
       // "obyektga yetib keldimi?" degan qoidani oxirgi saqlangan nuqta bo'yicha tekshiradi.
       if (a.effect?.track === 'stop') await flushErpGps();
       // `local` amal serverga bormaydi — u faqat ilova ichidagi ish (marshrutni ochish)
-      const message = a.local ? null : (await run.mutateAsync({ action: a.id, id: id!, payload })).message;
+      const res = a.local ? null : await run.mutateAsync({ action: a.id, id: id!, payload });
+      const message = res?.message ?? null;
       setForm(null);
       const note = await applyEffect(a);
       // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
-      if (message && note) Alert.alert('Bajarildi', `${message}\n\n${note}`);
+      if (message && note) dialog('Bajarildi', `${message}\n\n${note}`);
+      // Muhim amal (zayavka qabul qilindi) — server chek yuborsa, katta chek oynasi
+      else if (res?.receipt) receipt.show(res.receipt);
       else if (message) result.success('Bajarildi', message);
-      else if (note) Alert.alert('Diqqat', note);
+      else if (note) dialog('Diqqat', note);
     } catch (e) {
       const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
       if (form) setFormError(msg); else result.error('Bajarilmadi', msg);
@@ -113,7 +116,7 @@ export default function ErpDetail() {
     // Yopiq tugma bosilsa sababini aytamiz va qulfni ochishga urinib ko'ramiz —
     // xabarni o'qib, hech narsa qila olmay qolish eng yomoni
     if (a.disabled) {
-      Alert.alert(a.label, a.hint ?? 'Hozir bajarib bo\'lmaydi', [
+      dialog(a.label, a.hint ?? 'Hozir bajarib bo\'lmaydi', [
         { text: 'Yopish', style: 'cancel' },
         { text: 'Qayta tekshirish', onPress: () => void recheck() },
       ]);
@@ -121,7 +124,7 @@ export default function ErpDetail() {
     }
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
-      Alert.alert(a.label, a.confirm, [
+      dialog(a.label, a.confirm, [
         { text: 'Bekor', style: 'cancel' },
         { text: a.label, style: a.tone === 'danger' ? 'destructive' : 'default', onPress: () => void execute(a) },
       ]);

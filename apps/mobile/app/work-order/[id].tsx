@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, Gap, IconTile, Input, ListItem, Panel, ProgressBar, Screen, StatusChip, Txt, fmtDateFull, fmtSum } from '@/design/primitives';
-import { Avatar, Stars, StatusLine, daysLeft, toast } from '@/design/ui';
+import { dialog, Avatar, Stars, StatusLine, daysLeft, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useWorkOrder, useWorkers } from '@/features/eco/api';
@@ -79,7 +79,7 @@ export default function WorkOrderScreen() {
 
         <Gap h={space.xl} />
         {/* ───── Harakatlar ───── */}
-        {isTadbirkor && o.status === 'NEW' ? <><Button title="Buyurtmani qabul qilish" icon="check" loading={accept.isPending} onPress={() => accept.mutate(undefined, { onError: err })} /><Gap h={space.sm} /><Button title="Bekor qilish" variant="ghost" size="md" onPress={() => Alert.alert('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: 'Yo\'q', style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }])} /></> : null}
+        {isTadbirkor && o.status === 'NEW' ? <><Button title="Buyurtmani qabul qilish" icon="check" loading={accept.isPending} onPress={() => accept.mutate(undefined, { onError: err })} /><Gap h={space.sm} /><Button title="Bekor qilish" variant="ghost" size="md" onPress={() => dialog('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: 'Yo\'q', style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }])} /></> : null}
         {isTadbirkor && o.status === 'ACCEPTED' ? (
           <Card>
             <Txt v="titleSm">Quruvchi biriktirish</Txt><Txt v="caption">Bo'sh qolsa — ochiq buyurtma, quruvchilar o'zi oladi</Txt><Gap h={space.sm} />
@@ -91,7 +91,7 @@ export default function WorkOrderScreen() {
         {isWorker && o.status === 'IN_PROGRESS' ? (
           <Card>
             <Txt v="titleSm">Ish tugadi</Txt><Gap h={space.sm} />
-            <Button title="Foto yuklash" icon="camera" variant="secondary" size="md" onPress={() => Alert.alert('Foto', 'Kamera — presigned S3 (keyingi versiya). Demo foto biriktiriladi.')} /><Gap h={space.sm} />
+            <Button title="Foto yuklash" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — presigned S3 (keyingi versiya). Demo foto biriktiriladi.')} /><Gap h={space.sm} />
             <Input value={comment} onChangeText={setComment} placeholder="Izoh" />
             <Button title="Ishni topshirish" size="xl" icon="check-check" loading={submit.isPending} onPress={() => submit.mutate(undefined, { onError: err })} />
           </Card>
@@ -102,7 +102,7 @@ export default function WorkOrderScreen() {
             <Input value={comment} onChangeText={setComment} placeholder="Izoh (ixtiyoriy)" />
             <View style={{ flexDirection: 'row', gap: space.md }}>
               <Button title="Qayta ishlash" variant="ghost" size="md" icon="refresh-cw" style={{ flex: 1 }} onPress={() => review.mutate({ approve: false }, { onError: err })} />
-              <Button title="Qabul qilish va baholash" size="md" icon="star" style={{ flex: 2 }} loading={review.isPending} onPress={() => Alert.alert('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: 'Bekor', style: 'cancel' as const }])} />
+              <Button title="Qabul qilish va baholash" size="md" icon="star" style={{ flex: 2 }} loading={review.isPending} onPress={() => dialog('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: 'Bekor', style: 'cancel' as const }])} />
             </View>
           </Card>
         ) : null}

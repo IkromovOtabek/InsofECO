@@ -15,12 +15,26 @@ export interface ErpUser { id: string; login: string; fullName: string; role: Er
 export interface ErpTokens { accessToken: string; refreshToken: string }
 
 export type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info';
-export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string }
+
+/** Muhim amal cheki (masalan zayavka qabul qilindi) — server tayyorlaydi, ilova katta modalda chizadi. */
+export interface Receipt {
+  headline: string;
+  caption?: string;
+  status: { label: string; tone: 'success' | 'warning'; at: string };
+  rows: { label: string; value: string; copy?: boolean }[];
+}
+/** Karta filtri (davr) — bosilganda bosh sahifa `?<filterParam>=<key>` bilan qayta so'raladi. */
+export interface ErpCardFilter { key: string; label: string; active: boolean }
+export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string; filterParam?: string; filters?: ErpCardFilter[]; /** Kalendardan tanlangan oraliq (YYYY-MM-DD) */ range?: { from: string; to: string } | null }
 /** `open` — bosilganda ochiladigan ro'yxat (bo'limda `target` bo'lmaganda, masalan direktorning "Bugun nima qilish kerak"i). */
 export interface ErpRow { id: string; title: string; subtitle?: string; right?: string; status?: string; tone?: Tone; open?: string }
 /** `target` — qator bosilganda ochiladigan kartochka turi; bo'lmasa qator bosilmaydi.
  * `icon` — `target` yo'q bo'limlar uchun ma'noli belgi (server beradi; bo'lmasa doira). */
-export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string }
+/** Bo'lim diagrammasi — server beradi (`lib/mobile/home.ts` SectionChart). */
+export type ErpSectionChart =
+  | { kind: 'progress'; items: { label: string; pct: number | null; fact: string; plan: string | null; tone: Tone; invert?: boolean; open?: string }[] }
+  | { kind: 'columns'; series: { key: string; label: string; tone: Tone }[]; groups: { label: string; values: number[]; texts: string[] }[] };
+export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string; chart?: ErpSectionChart }
 export interface ErpField { label: string; value: string; tone?: Tone }
 export interface ErpFormOption { value: string; label: string; extra?: Record<string, string> }
 export interface ErpFormField {
@@ -181,7 +195,7 @@ export const erpAuth = {
   login: (login: string, password: string) =>
     erpApi<ErpTokens & { user: ErpUser }>('/auth/login', { method: 'POST', body: { login, password }, auth: false }),
   me: () => erpApi<ErpUser>('/me'),
-  home: () => erpApi<ErpHomeData>('/home'),
+  home: (params?: Record<string, string>) => erpApi<ErpHomeData>('/home', { query: params }),
   list: (key: string, q?: string, filter?: string) => erpApi<ErpListData>('/list', { query: { key, q, filter } }),
   detail: (key: string, id: string) => erpApi<ErpDetailData>('/detail', { query: { key, id } }),
   /**
@@ -194,7 +208,7 @@ export const erpAuth = {
     }),
   /** Kartochkadagi tugma — veb ERP'dagi bilan bir xil amal (audit ham yoziladi). */
   action: (action: string, id: string, payload?: Record<string, unknown>) =>
-    erpApi<{ ok: true; message: string }>('/action', { method: 'POST', body: { action, id, payload } }),
+    erpApi<{ ok: true; message: string; receipt?: Receipt }>('/action', { method: 'POST', body: { action, id, payload } }),
   /** Bildirishnomalar ro'yxati va o'qilmaganlar soni. */
   notifications: () => erpApi<{ unread: number; rows: ErpNotification[] }>('/notifications'),
   /** O'qilgan deb belgilash. `ids` berilmasa — hammasi (ro'yxat ochilganda). */

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconTile, Txt } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
@@ -8,6 +8,7 @@ import { Appear } from '@/design/motion';
 import { PIN_LEN, pinStore } from '@/core/pin';
 import { useSession } from '@/core/session';
 import { PinDots, PinKeypad, TextLink } from '@/features/auth/ui';
+import { dialog } from '@/design/ui';
 
 /**
  * PIN qulfi — ilova ochilganda hisob ustida turadi.
@@ -33,7 +34,7 @@ export function PinLock() {
     setPin('');
     if (r.ok) { setLocked(false); return; }
     if (r.wiped) {
-      Alert.alert("PIN o'chirildi", 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
+      dialog("PIN o'chirildi", 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
         { text: 'Kirish', onPress: () => { setLocked(false); void signOut(); } },
       ]);
       return;

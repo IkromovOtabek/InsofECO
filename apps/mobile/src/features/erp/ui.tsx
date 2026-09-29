@@ -38,11 +38,37 @@ export function FilterChips({ filters, onPick }: { filters: ErpListFilter[]; onP
 }
 
 /** Bosh ko'rsatkich — metric-hero KPI kartasi (sahifada bitta). */
-export function HeroCard({ card, note, module: m = 'brand' }: { card: ErpCard; note?: string; module?: ModuleTone }) {
+export function HeroCard({ card, note, module: m = 'brand', busy }: { card: ErpCard; note?: string; module?: ModuleTone; busy?: boolean }) {
   return (
     <Appear>
-      <KPICard hero label={card.label} value={card.value} caption={card.hint ? `${card.hint}${note ? ` · ${note}` : ''}` : note} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' ? card.tone : undefined} />
+      <KPICard hero label={card.label} value={busy ? '…' : card.value} caption={card.hint ? `${card.hint}${note ? ` · ${note}` : ''}` : note} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' ? card.tone : undefined} />
     </Appear>
+  );
+}
+
+/**
+ * Davr filtri (Bugun · Hafta · Oy · Yil · Kalendar) — bosh ekranning eng tepasida, gorizontal.
+ * "Kalendar" bosilsa oraliq tanlash paneli ochiladi; tanlangan oraliq tugma yozuvida ko'rinadi.
+ */
+export function CardFilters({ card, onFilter, onCalendar, calendarOpen }: { card: ErpCard; onFilter: (key: string) => void; onCalendar: () => void; calendarOpen: boolean }) {
+  const { c } = useTheme();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }} accessibilityRole="tablist">
+      {card.filters!.map((f) => {
+        const isCal = f.key === 'custom';
+        const on = f.active || (isCal && calendarOpen);
+        return (
+          <Pressable
+            key={f.key} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${card.label}: ${f.label}`}
+            onPress={() => (isCal ? onCalendar() : !f.active && onFilter(f.key))}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: size.touch - space.sm, paddingHorizontal: space.lg, borderRadius: radius.pill, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderDefault, backgroundColor: on ? c.brand : c.bgSurface, opacity: pressed ? 0.7 : 1 })}
+          >
+            {isCal ? <Icon name="calendar-days" size={size.iconSm} color={on ? c.textOnBrand : c.textBody} /> : null}
+            <Txt v="bodyStrong" style={{ color: on ? c.textOnBrand : c.textBody }}>{f.label}</Txt>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
@@ -119,4 +145,5 @@ export const ROW_ICON: Record<string, IconName> = {
   trips: 'truck', drivers: 'id-card',
   stock: 'layers', snabjeniye: 'shopping-cart', supply: 'clipboard-list', receipts: 'download', suppliers: 'store',
   cashflow: 'arrow-up-down', payments: 'banknote', employees: 'user',
+  approvals: 'circle-check', activity: 'activity',
 };
