@@ -38,10 +38,14 @@ export function FilterChips({ filters, onPick }: { filters: ErpListFilter[]; onP
 }
 
 /** Bosh ko'rsatkich — metric-hero KPI kartasi (sahifada bitta). */
-export function HeroCard({ card, note, module: m = 'brand', busy }: { card: ErpCard; note?: string; module?: ModuleTone; busy?: boolean }) {
+/** Karta bosilganda qayerga borishi — server `open` beradi (batafsil kartochka yoki ro'yxat). */
+export const cardHref = (card: ErpCard) => (card.open ? (card.open.id ? `/erp/${card.open.key}/${card.open.id}` : `/erp/list/${card.open.key}`) : null);
+
+export function HeroCard({ card, note, module: m = 'brand', busy, onOpen }: { card: ErpCard; note?: string; module?: ModuleTone; busy?: boolean; onOpen?: (href: string) => void }) {
+  const href = cardHref(card);
   return (
     <Appear>
-      <KPICard hero label={card.label} value={busy ? '…' : card.value} caption={card.hint ? `${card.hint}${note ? ` · ${note}` : ''}` : note} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' ? card.tone : undefined} />
+      <KPICard hero label={card.label} value={busy ? '…' : card.value} caption={card.hint ? `${card.hint}${note ? ` · ${note}` : ''}` : note} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' ? card.tone : undefined} onPress={href && onOpen ? () => onOpen(href) : undefined} />
     </Appear>
   );
 }
@@ -73,10 +77,11 @@ export function CardFilters({ card, onFilter, onCalendar, calendarOpen }: { card
 }
 
 /** Kichik ko'rsatkich kartochkasi — yonma-yon ikkitadan. */
-export function StatTile({ card, index, module: m = 'brand' }: { card: ErpCard; index: number; module?: ModuleTone }) {
+export function StatTile({ card, index, module: m = 'brand', onOpen }: { card: ErpCard; index: number; module?: ModuleTone; onOpen?: (href: string) => void }) {
+  const href = cardHref(card);
   return (
     <Appear delay={stagger(index)} style={{ flexGrow: 0, flexBasis: '48%' }}>
-      <KPICard label={card.label} value={card.value} caption={card.hint} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' || card.tone === 'success' ? card.tone : undefined} />
+      <KPICard label={card.label} value={card.value} caption={card.hint} icon={card.icon ?? 'activity'} module={m} tone={card.tone === 'danger' || card.tone === 'warning' || card.tone === 'success' ? card.tone : undefined} onPress={href && onOpen ? () => onOpen(href) : undefined} />
     </Appear>
   );
 }
@@ -141,7 +146,8 @@ export function SectionHead({ title, action, onAction, style }: { title: string;
 /** Ro'yxat kaliti → qator ikoni. */
 export const ROW_ICON: Record<string, IconName> = {
   orders: 'file-text', sales: 'trending-up', customers: 'users', leads: 'inbox', invoices: 'receipt',
-  production: 'package', recipes: 'droplets', tasks: 'square-check', brigades: 'hard-hat',
+  production: 'package', recipes: 'droplets', tasks: 'square-check', brigades: 'hard-hat', 'prod-report': 'file-text', 'sex-emp': 'user',
+  'brig-issues': 'triangle-alert', 'brig-issue': 'triangle-alert', 'brig-shifts': 'clipboard-check', 'brig-shift': 'clipboard-check',
   trips: 'truck', drivers: 'id-card',
   stock: 'layers', snabjeniye: 'shopping-cart', supply: 'clipboard-list', receipts: 'download', suppliers: 'store',
   cashflow: 'arrow-up-down', payments: 'banknote', employees: 'user',

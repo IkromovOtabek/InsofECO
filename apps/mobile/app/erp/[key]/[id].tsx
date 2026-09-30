@@ -41,6 +41,19 @@ const ACTION_ICON: Record<string, IconName> = {
   'trip.close': 'circle-check',
   'trip.resolve': 'circle-check',
   'invoice.pay': 'banknote',
+  // Sex: davomat va kunlik hisobot
+  'att.present': 'user-check',
+  'att.checkout': 'log-out',
+  'att.absent': 'user-x',
+  'att.status': 'clock',
+  'att.all': 'users',
+  'att.form': 'user-check',
+  'report.submit': 'clipboard-check',
+  'sex.assign': 'hard-hat',
+  // Brigadir: smena, ish bosqichlari, muammo va brak
+  'shift.open': 'log-in', 'shift.close': 'clipboard-check', 'shift.defect': 'circle-x', 'task.defect': 'circle-x',
+  'task.start': 'hammer', 'task.finish': 'circle-check',
+  'issue.equipment': 'wrench', 'issue.material': 'package', 'issue.staff': 'user-plus', 'issue.other': 'triangle-alert', 'issue.resolve': 'circle-check',
 };
 
 export default function ErpDetail() {

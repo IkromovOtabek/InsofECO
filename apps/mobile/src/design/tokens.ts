@@ -292,23 +292,24 @@ export const ECO_ROLE_NAME: Record<RoleKey, { name: string; tagline: string }> =
   HAYDOVCHI: { name: 'Kabina', tagline: 'Bitta yuk, bitta tugma' },
 };
 
-export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
+export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER';
 export const ERP_ROLE_NAME: Record<ErpRoleKey, string> = {
   DIRECTOR: 'Direktor', SALES: 'Sotuv', PRODUCTION: 'Ishlab chiqarish', SUPERVISOR: 'Ish boshqaruvchi',
   LOGISTICS: 'Logistika', WAREHOUSE: 'Sklad', PROCUREMENT: 'Snabjeniye', ACCOUNTING: 'Buxgalteriya',
-  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir',
+  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', MECHANIC: 'Mexanik', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir',
 };
 
 /** Rol → modul toni (ikonka plitkasi). Boshqa rollar brend tonida. */
 export const ERP_ROLE_MODULE: Partial<Record<ErpRoleKey, ModuleTone>> = {
   PRODUCTION: 'production', BRIGADIER: 'production', SUPERVISOR: 'production',
-  LOGISTICS: 'logistics', DRIVER: 'logistics',
+  LOGISTICS: 'logistics', DRIVER: 'logistics', MECHANIC: 'logistics',
   WAREHOUSE: 'warehouse', PROCUREMENT: 'warehouse',
 };
 
 /** Ro'yxat kaliti → modul toni. */
 export const LIST_MODULE: Record<string, ModuleTone> = {
   production: 'production', tasks: 'production', brigades: 'production', recipes: 'production',
+  'brig-issues': 'production', 'brig-shifts': 'production',
   trips: 'logistics', drivers: 'logistics',
   stock: 'warehouse', receipts: 'warehouse', supply: 'warehouse', snabjeniye: 'warehouse', suppliers: 'warehouse',
 };

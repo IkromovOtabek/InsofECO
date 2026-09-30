@@ -10,7 +10,7 @@ import { useSession } from './session';
  * ECO klientidan (`core/api.ts`) ajratilgan: boshqa server, boshqa token, X-Org-Id yo'q.
  * Tokenlar SecureStore'da alohida kalitlarda turadi — ikki tizim bir-birini bosib ketmaydi.
  */
-export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'DRIVER' | 'BRIGADIER';
+export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER';
 export interface ErpUser { id: string; login: string; fullName: string; role: ErpRole; roleLabel: string }
 export interface ErpTokens { accessToken: string; refreshToken: string }
 
@@ -25,7 +25,9 @@ export interface Receipt {
 }
 /** Karta filtri (davr) — bosilganda bosh sahifa `?<filterParam>=<key>` bilan qayta so'raladi. */
 export interface ErpCardFilter { key: string; label: string; active: boolean }
-export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string; filterParam?: string; filters?: ErpCardFilter[]; /** Kalendardan tanlangan oraliq (YYYY-MM-DD) */ range?: { from: string; to: string } | null }
+export interface ErpCard { key: string; label: string; value: string; hint?: string; tone?: Tone; icon?: string; filterParam?: string; filters?: ErpCardFilter[]; /** Kalendardan tanlangan oraliq (YYYY-MM-DD) */ range?: { from: string; to: string } | null;
+  /** Bosilganda: `id` bilan — batafsil kartochka (`/erp/<key>/<id>`), `id` siz — ro'yxat (`/erp/list/<key>`). */
+  open?: { key: string; id?: string } }
 /** `open` — bosilganda ochiladigan ro'yxat (bo'limda `target` bo'lmaganda, masalan direktorning "Bugun nima qilish kerak"i). */
 export interface ErpRow { id: string; title: string; subtitle?: string; right?: string; status?: string; tone?: Tone; open?: string }
 /** `target` — qator bosilganda ochiladigan kartochka turi; bo'lmasa qator bosilmaydi.
@@ -44,7 +46,8 @@ export interface ErpFormOption { value: string; label: string; extra?: Record<st
 export interface ErpFormField {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'date' | 'time' | 'select' | 'switch' | 'items';
+  /** `photo` — kamera/galereya; qiymati `data:image/jpeg;base64,...` bo'lib serverga ketadi. */
+  type: 'text' | 'number' | 'date' | 'time' | 'select' | 'switch' | 'items' | 'photo';
   required?: boolean;
   placeholder?: string;
   value?: string;

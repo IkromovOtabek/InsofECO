@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Image, Pressable, ScrollView, Switch, View } from 'react-native';
+import { requireOptionalNativeModule } from 'expo';
+import type * as ImagePickerNS from 'expo-image-picker';
 import { Button, Card, IconButton, Input, Label, Select, Txt, type SelectOption } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
@@ -10,7 +12,7 @@ import type { ErpDayCell, ErpFormField, ErpFormOption } from '@/core/erp';
  *
  * Bitta joyda: kartochkadagi amal oynasi ham (masalan "To'lov qabul qilish"),
  * "Yangi zayavka / Yangi reys" ekrani ham shu komponentlarni ishlatadi.
- * Maydon turlari: text, number, date, time, select, switch, items (takrorlanuvchi qatorlar).
+ * Maydon turlari: text, number, date, time, select, switch, items (takrorlanuvchi qatorlar), photo (kamera/galereya).
  */
 export type Values = Record<string, string | ItemRow[]>;
 export type ItemRow = Record<string, string>;
@@ -110,6 +112,7 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
       case 'date': return <DateInput field={field} value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
+      case 'photo': return <PhotoInput value={value} onChange={(v) => onChange(field.name, v)} />;
       default: return null;
     }
   };
@@ -119,6 +122,47 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
       {field.type === 'switch' ? null : <Label required={field.required}>{field.label}</Label>}
       {body()}
       {field.hint ? <Txt v="caption" style={{ marginTop: space.xs }}>{field.hint}</Txt> : null}
+    </View>
+  );
+}
+
+// ───────────────────────── Surat (hujjat, nakladnoy) ─────────────────────────
+
+/**
+ * expo-image-picker native moduli eski dev build'da bo'lmasligi mumkin — to'g'ridan-to'g'ri import
+ * ilovani yiqitadi. Shuning uchun faqat modul bor bo'lsa yuklanadi; bo'lmasa izoh ko'rsatiladi.
+ */
+const ImagePicker: typeof ImagePickerNS | null = requireOptionalNativeModule('ExponentImagePicker')
+  ? (require('expo-image-picker') as typeof ImagePickerNS)
+  : null;
+const PHOTO_OPTS: ImagePickerNS.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.5, base64: true };
+
+/** Qiymat — `data:<mime>;base64,...` satri: forma boshqa maydonlar bilan birga JSON bo'lib ketadi. */
+function PhotoInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { c } = useTheme();
+  if (!ImagePicker) return <Txt v="caption">Bu ilova versiyasida kamera yo'q — hujjatni vebdan biriktiring.</Txt>;
+  const picker = ImagePicker;
+  const pick = async (camera: boolean) => {
+    if (camera) {
+      const perm = await picker.requestCameraPermissionsAsync();
+      if (!perm.granted) return;
+    }
+    const r = camera ? await picker.launchCameraAsync(PHOTO_OPTS) : await picker.launchImageLibraryAsync(PHOTO_OPTS);
+    const a = r.canceled ? null : r.assets[0];
+    if (a?.base64) onChange(`data:${a.mimeType ?? 'image/jpeg'};base64,${a.base64}`);
+  };
+  return (
+    <View style={{ gap: space.sm }}>
+      {value ? (
+        <View style={{ borderRadius: radius.md, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
+          <Image source={{ uri: value }} style={{ width: '100%', aspectRatio: 4 / 3 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+        </View>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}><Button title="Kamera" variant="secondary" icon="camera" onPress={() => void pick(true)} /></View>
+        <View style={{ flex: 1 }}><Button title="Galereya" variant="secondary" icon="image" onPress={() => void pick(false)} /></View>
+      </View>
+      {value ? <Button title="Olib tashlash" variant="ghost" onPress={() => onChange('')} /> : null}
     </View>
   );
 }

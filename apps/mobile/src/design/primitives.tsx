@@ -307,6 +307,10 @@ export const STATUS_TONE: Record<string, Tone> = {
   DELIVERED: 'success', COMPLETED: 'success', DONE: 'success', PAID: 'success', CLOSED: 'success', Faol: 'success',
   DISPUTED: 'warning', REVIEW: 'warning', PENDING: 'warning', DELAYED: 'warning', OPEN: 'warning', PARTIAL: 'warning',
   REJECTED: 'danger', FAILED: 'danger', CANCELLED: 'danger', DECLINED: 'danger', BLOCKED: 'danger', Kam: 'danger', Nofaol: 'danger',
+  // Brigadir: topshiriq bosqichlari, smena va muammo holati (server o'zbekcha nom yuboradi — `lib/brigade-shift.ts`)
+  'Brigadaga berildi': 'info', Jarayonda: 'brand', 'Qisman bajarildi': 'warning', Bajarildi: 'success', 'Bekor qilindi': 'danger',
+  'Material yetishmaydi': 'danger', "Uskuna to'xtagan": 'danger', 'Sifat nazoratida': 'warning',
+  Ochiq: 'warning', Ochilmagan: 'neutral', Yopilgan: 'success', 'Hal qilindi': 'success', "To'xtagan": 'danger', Ishlayapti: 'success', 'Yangi hisobot': 'brand',
 };
 export const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Qoralama', SUBMITTED: 'Yuborilgan', CONFIRMED: 'Tasdiqlangan', SCHEDULED: 'Rejalashtirilgan', IN_PROGRESS: 'Jarayonda',

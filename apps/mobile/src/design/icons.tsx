@@ -100,6 +100,9 @@ import User from 'lucide-react-native/dist/esm/icons/user.mjs';
 import UserPlus from 'lucide-react-native/dist/esm/icons/user-plus.mjs';
 import UserMinus from 'lucide-react-native/dist/esm/icons/user-minus.mjs';
 import UserX from 'lucide-react-native/dist/esm/icons/user-x.mjs';
+import UserCheck from 'lucide-react-native/dist/esm/icons/user-check.mjs';
+import Target from 'lucide-react-native/dist/esm/icons/target.mjs';
+import ClipboardCheck from 'lucide-react-native/dist/esm/icons/clipboard-check.mjs';
 import CircleUser from 'lucide-react-native/dist/esm/icons/circle-user.mjs';
 import Smartphone from 'lucide-react-native/dist/esm/icons/smartphone.mjs';
 import Tag from 'lucide-react-native/dist/esm/icons/tag.mjs';
@@ -159,7 +162,7 @@ export const ICONS = {
   hourglass: Hourglass, 'id-card': IdCard, info: Info, 'grid-3x3': Grid3x3, languages: Languages, layers: Layers, list: List,
   'map-pin': MapPin, 'map-pinned': MapPinned, locate: Locate, 'locate-fixed': LocateFixed, lock: Lock, 'lock-open': LockOpen,
   'log-in': LogIn, 'log-out': LogOut, mail: Mail, map: Map, menu: Menu, navigation: Navigation, compass: Compass, route: Route, ban: Ban,
-  bell: Bell, 'bell-ring': BellRing, users: Users, user: User, 'user-plus': UserPlus, 'user-minus': UserMinus, 'user-x': UserX, 'circle-user': CircleUser,
+  bell: Bell, 'bell-ring': BellRing, users: Users, user: User, 'user-plus': UserPlus, 'user-minus': UserMinus, 'user-x': UserX, 'user-check': UserCheck, target: Target, 'clipboard-check': ClipboardCheck, 'circle-user': CircleUser,
   smartphone: Smartphone, tag: Tag, receipt: Receipt, 'refresh-cw': RefreshCw, scale: Scale, 'scan-line': ScanLine, search: Search,
   'shield-check': ShieldCheck, gauge: Gauge, star: Star, 'star-half': StarHalf, store: Store, 'arrow-left-right': ArrowLeftRight,
   'arrow-up-down': ArrowUpDown, clock: Clock, history: ClockArrowLeft, trash: Trash, 'trending-down': TrendingDown, 'trending-up': TrendingUp,

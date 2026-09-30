@@ -130,10 +130,10 @@ export function ErpHome() {
           </View>
         ) : null}
         <View style={{ paddingHorizontal: space.pageX, paddingTop: space.lg, gap: space.md }}>
-          {hero ? <HeroCard card={hero} note={erp ? `Insof ERP · ${erp.login}` : undefined} module={module} busy={isPlaceholderData} /> : null}
+          {hero ? <HeroCard card={hero} note={erp ? `Insof ERP · ${erp.login}` : undefined} module={module} busy={isPlaceholderData} onOpen={(h) => router.push(h as never)} /> : null}
           {tiles.length ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
-              {tiles.map((t, i) => <StatTile key={t.key} card={t} index={i} module={module} />)}
+              {tiles.map((t, i) => <StatTile key={t.key} card={t} index={i} module={module} onOpen={(h) => router.push(h as never)} />)}
             </View>
           ) : null}
         </View>
