@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Linking, Platform, ScrollView, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { config } from '@/core/config';
@@ -12,6 +12,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '@/design/theme';
 import { useAction, useShipment } from '@/features/eco/api';
 import { useSession } from '@/core/session';
+import { Loader } from '@/design/loader';
 
 const FLOW = ['NEW', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'DELIVERED', 'CONFIRMED'];
 const LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', LOADING: 'Yuklanmoqda', EN_ROUTE: "Yo'lda", DELIVERED: 'Yetkazildi', CONFIRMED: 'Qabul qilindi (tasdiq)' };
@@ -31,7 +32,7 @@ export default function ShipmentScreen() {
   if (!s) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Yuk yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Yuk yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }

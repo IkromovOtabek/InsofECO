@@ -3,6 +3,10 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { api, deviceId } from '@/core/api';
 import { Profile } from '@/core/session';
+import { config } from '@/core/config';
+
+/** Serverdagi `/v1/avatars/<fayl>` → to'liq manzil (`<Image>` uchun). */
+export const avatarUri = (path?: string | null) => (path ? `${config.apiUrl}${path}` : null);
 
 function deviceInfo() {
   return { deviceId: deviceId(), platform: Platform.OS as 'ios' | 'android', model: Device.modelName ?? undefined, appVersion: Constants.expoConfig?.version };
@@ -34,6 +38,14 @@ export const authApi = {
     api<{ ok: true }>('/auth/password/change', { method: 'POST', body: { current, next } }),
   plants: () => api<{ id: string; name: string; address?: string | null }[]>('/organizations/plants', { auth: false }),
   me: () => api<Profile>('/me'),
+  /** Profil rasmi — ro'yxatdan o'tgach (sessiya bilan) yuboriladi. `uri` — image-picker fayli. */
+  uploadAvatar: (uri: string, mimeType = 'image/jpeg') => {
+    const fd = new FormData();
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    // RN FormData fayl uchun { uri, name, type } obyektini qabul qiladi
+    fd.append('photo', { uri, name: `avatar.${ext}`, type: mimeType } as unknown as Blob);
+    return api<Profile>('/me/avatar', { method: 'PUT', body: fd });
+  },
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
   /** Hisobni o'chirish (do'kon talabi). Mijoz — darhol `deleted`; zavod haydovchisi — `requested` (direktor tasdiqlaydi). */
   deleteAccount: () => api<{ status: 'deleted' | 'requested' }>('/me', { method: 'DELETE' }),

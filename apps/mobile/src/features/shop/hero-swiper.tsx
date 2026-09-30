@@ -87,7 +87,7 @@ export function HeroSwiper({ banners, phone, onCatalog, onProduct }: { banners: 
           <Txt v="titleSm">Buyurtma 3 qadamda</Txt>
           {[
             ['1', 'Mahsulotni tanlang', 'katalogdan'],
-            ['2', 'Hajm va telefon', 'ro\'yxatdan o\'tish shart emas'],
+            ['2', 'Kiring va hajmni yozing', 'kalkulyator yordam beradi'],
             ['3', 'Biz qo\'ng\'iroq qilamiz', 'narx va yetkazishni kelishamiz'],
           ].map(([n, t, sub]) => (
             <View key={n} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,28 +10,39 @@ import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { photoUrl, useShopCatalog, useShopOrder } from '@/features/shop/api';
 import { PHOTO_RATIO, SellerChip } from '@/features/shop/ui';
+import { afterLogin } from '@/features/shop/after-login';
 
 /**
- * Mahsulot kartochkasi + buyurtma formasi. Mehmon ham buyurtma bera oladi — ism va telefon
- * so'raladi; kirgan mijozniki sessiyadan to'ldiriladi. Buyurtma ERP'ga ariza bo'lib tushadi,
- * sotuv bo'limi qo'ng'iroq qiladi.
+ * Mahsulot kartochkasi + buyurtma formasi. Buyurtma faqat kirgan foydalanuvchidan: mehmon
+ * "Buyurtma berish" ni bossa login ochiladi, kirgach (yoki ro'yxatdan o'tgach) shu sahifaga
+ * qaytadi — kiritgan hajmi, manzili saqlanib qoladi. Ism/telefon sessiyadan to'ldiriladi.
+ * Buyurtma ERP'ga ariza bo'lib tushadi, sotuv bo'limi qo'ng'iroq qiladi.
  */
 export default function ShopProduct() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `qty` — kalkulyatordan kelsa hajm tayyor to'ldiriladi
+  const { id, qty: qtyParam } = useLocalSearchParams<{ id: string; qty?: string }>();
   const router = useRouter();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const q = useShopCatalog();
   const item = q.data?.items.find((i) => i.id === id);
   const user = useSession((s) => s.user);
+  const authed = useSession((s) => s.status === 'authed');
   const order = useShopOrder();
 
-  const [qty, setQty] = useState(() => String(item?.minQty ?? 1));
+  const [qty, setQty] = useState(() => qtyParam ?? String(item?.minQty ?? 1));
   const [name, setName] = useState(user?.fullName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Login'dan qaytganda sahifa o'sha-o'sha (qayta ochilmaydi) — ism/telefonni shu yerda to'ldiramiz
+  useEffect(() => {
+    if (!user) return;
+    setName((v) => v || (user.fullName ?? ''));
+    setPhone((v) => v || user.phone);
+  }, [user]);
 
   if (q.isLoading) return null;
   if (!item) return <EmptyState icon="package" title="Mahsulot topilmadi" hint="Do'kondan olib tashlangan bo'lishi mumkin" action="Do'konga qaytish" onAction={() => router.back()} />;
@@ -41,6 +52,11 @@ export default function ShopProduct() {
   const uri = photoUrl(item.photo);
 
   const submit = () => {
+    if (!authed) {
+      afterLogin.set(`/(shop)/${item.id}`);
+      router.push('/(auth)/login');
+      return;
+    }
     const e: Record<string, string> = {};
     if (!Number.isFinite(n) || n <= 0) e.qty = 'Hajmni kiriting';
     else if (item.minQty && n < item.minQty) e.qty = `Eng kam buyurtma: ${fmtNum(item.minQty)} ${item.unitLabel}`;
@@ -83,8 +99,12 @@ export default function ShopProduct() {
           <Card style={{ marginTop: space.sm, borderRadius: radius.card }}>
             <Txt v="titleSm" style={{ marginBottom: space.md }}>Buyurtma berish</Txt>
             <Input label={`Hajm, ${item.unitLabel}`} required value={qty} onChangeText={setQty} keyboardType="decimal-pad" mono error={errors.qty} />
-            <Input label="Ismingiz" required value={name} onChangeText={setName} placeholder="Ism familiya" left="user" error={errors.name} autoCapitalize="words" />
-            <Input label="Telefon" required value={phone} onChangeText={setPhone} placeholder="90 123 45 67" keyboardType="phone-pad" left="phone" mono error={errors.phone} hint="Sotuv bo'limi shu raqamga qo'ng'iroq qiladi" />
+            {authed ? (
+              <>
+                <Input label="Ismingiz" required value={name} onChangeText={setName} placeholder="Ism familiya" left="user" error={errors.name} autoCapitalize="words" />
+                <Input label="Telefon" required value={phone} onChangeText={setPhone} placeholder="90 123 45 67" keyboardType="phone-pad" left="phone" mono error={errors.phone} hint="Sotuv bo'limi shu raqamga qo'ng'iroq qiladi" />
+              </>
+            ) : null}
             <Input label="Obyekt manzili" value={address} onChangeText={setAddress} placeholder="Shahar, ko'cha, mo'ljal" left="map-pin" />
             <Input label="Izoh" value={note} onChangeText={setNote} placeholder="Qachon kerak, nasos kerakmi…" multiline numberOfLines={3} style={{ minHeight: size.input + space.xxl, paddingTop: space.sm }} />
             <Divider style={{ marginBottom: space.md }} />
@@ -92,7 +112,8 @@ export default function ShopProduct() {
               <Txt v="bodySm" color="muted">Taxminiy summa</Txt>
               <Txt v="titleMd">{total ? `${fmtNum(total)} so'm` : '—'}</Txt>
             </View>
-            <Button title="Buyurtma berish" size="lg" icon="shopping-cart" loading={order.isPending} onPress={submit} />
+            {authed ? null : <Callout tone="info" style={{ marginBottom: space.md }}>Buyurtma berish uchun hisobingizga kiring yoki ro&apos;yxatdan o&apos;ting — bir daqiqa oladi</Callout>}
+            <Button title="Buyurtma berish" size="lg" icon={authed ? 'shopping-cart' : 'log-in'} loading={order.isPending} onPress={submit} />
             <Gap h={space.sm} />
             <Txt v="caption" align="center">Narx taxminiy — yetkazish va hajmga qarab sotuv bo'limi aniqlaydi</Txt>
           </Card>

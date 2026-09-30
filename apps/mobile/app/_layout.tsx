@@ -20,6 +20,7 @@ import { DialogHost, ReceiptHost, ResultHost, ToastHost } from '@/design/ui';
 import { stackOptions } from '@/design/nav';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
+import { afterLogin } from '@/features/shop/after-login';
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }) });
 
@@ -48,9 +49,10 @@ function Gate() {
     // o'z bo'limiga vitrinadagi "Kabinet" tugmasi olib boradi. Hisob to'liq bo'lmasa
     // (ERP xodimi ma'lumoti yo'q / ECO rol tanlanmagan) — pastdagi qoidalar ishlaydi.
     // Zavod xodimi (ERP login) esa do'konni ko'rmaydi — to'g'ridan-to'g'ri o'z bo'limiga.
-    if (group === undefined && kind !== 'erp' && !!active) { router.replace('/(shop)'); return; }
+    if (group === undefined && kind !== 'erp' && !!active) { router.dismissTo((afterLogin.take() ?? '/(shop)') as never); return; }
 
     if (kind === 'erp') {
+      afterLogin.clear(); // do'kon xodimlarga yopiq — mahsulotga qaytarilmaydi
       if (!erp) { router.replace('/(auth)/login'); return; }
       const target = erpRoleConfig(erp.role).group;
       // `erp/<kartochka>` va haydovchi marshruti (`yolda/<reys>`) — barcha bo'limlar uchun
@@ -61,6 +63,9 @@ function Gate() {
     }
 
     if (!active) { if (group !== '(auth)' || segs[1] !== 'select-role') router.replace('/(auth)/select-role'); return; }
+    // Mehmon mahsulotda "Buyurtma berish" ni bosib kirgan — rol bo'limiga emas, o'sha mahsulotga qaytadi
+    // Ro'yxat ekrani o'zi qaytaradi (avval rasmni yuklab olishi kerak) — bu yerda kutamiz.
+    if (group === '(auth)' && afterLogin.has()) { if (segs[1] !== 'register') router.dismissTo(afterLogin.take() as never); return; }
     const target = ROLE_GROUP[active.role];
     // `(shop)` — do'kon kirgan foydalanuvchiga ham ochiq (menyudan)
     const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker', '(shop)'].includes(group ?? '');

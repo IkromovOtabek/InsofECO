@@ -47,7 +47,7 @@ export function LoginPrompt() {
   return (
     <Modal open={open} onClose={close}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-        <View style={{ width: size.iconTile + space.sm, height: size.iconTile + space.sm, borderRadius: radius.lg, backgroundColor: c.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size.iconTile + space.sm, height: size.iconTile + space.sm, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="user" size={size.iconLg} color={c.brandInk} />
         </View>
         <View style={{ flex: 1, gap: space.xs, paddingTop: space.xs }}>

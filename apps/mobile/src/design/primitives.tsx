@@ -178,7 +178,6 @@ export function IconButton({ icon, label, onPress, tone = 'body', variant = 'gho
       android_ripple={{ color: c.bgMuted, borderless: variant === 'ghost' }}
       style={({ pressed }) => [
         { width: s, height: s, borderRadius: variant === 'ghost' ? radius.pill : radius.md, alignItems: 'center', justifyContent: 'center' },
-        variant === 'secondary' && { backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault },
         active && { backgroundColor: c.brandSoft, borderWidth: size.hairline, borderColor: c.brand },
         pressed && { backgroundColor: c.bgMuted },
         disabled && { opacity: 0.5 },
@@ -354,12 +353,12 @@ export function StatusDot({ tone = 'neutral', label, style }: { tone?: Tone; lab
 
 // ───────────────────────── Ro'yxat qatori ─────────────────────────
 
-/** Ikonka plitkasi — 40×40 (yoki 32), radius 12, modul/ton foni. */
+/** Ikonka plitkasi — 40×40 (yoki 32) joy, fonsiz: faqat modul/ton rangidagi ikonka. */
 export function IconTile({ icon, module: m = 'brand', tone, size: s = size.iconTile, style }: { icon: IconName | string; module?: ModuleTone; tone?: Tone; size?: number; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   const col = tone ? toneColors(c, tone) : moduleColors(c, m);
   return (
-    <View style={[{ width: s, height: s, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: col.bg, alignItems: 'center', justifyContent: 'center' }, style]}>
+    <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, style]}>
       <Icon name={icon} size={s >= size.avatarLg ? size.iconXl : s >= size.iconTile ? size.iconMd : size.iconSm} color={col.ink} />
     </View>
   );

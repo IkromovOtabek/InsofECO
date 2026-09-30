@@ -16,3 +16,6 @@ apps/mobile/android/
 # Play Console xizmat hisobi kaliti (eas submit) — hech qachon commit qilinmaydi
 apps/mobile/google-play-service-account.json
 apps/mobile/google-services.json
+
+# Foydalanuvchi yuklagan fayllar (profil rasmlari)
+apps/api/uploads/

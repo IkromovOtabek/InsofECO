@@ -84,6 +84,7 @@ import Locate from 'lucide-react-native/dist/esm/icons/locate.mjs';
 import LocateFixed from 'lucide-react-native/dist/esm/icons/locate-fixed.mjs';
 import Lock from 'lucide-react-native/dist/esm/icons/lock.mjs';
 import LockOpen from 'lucide-react-native/dist/esm/icons/lock-open.mjs';
+import LogIn from 'lucide-react-native/dist/esm/icons/log-in.mjs';
 import LogOut from 'lucide-react-native/dist/esm/icons/log-out.mjs';
 import Mail from 'lucide-react-native/dist/esm/icons/mail.mjs';
 import Map from 'lucide-react-native/dist/esm/icons/map.mjs';
@@ -157,7 +158,7 @@ export const ICONS = {
   'layout-grid': LayoutGrid, hammer: Hammer, 'hard-hat': HardHat, 'circle-question-mark': CircleQuestionMark, house: House,
   hourglass: Hourglass, 'id-card': IdCard, info: Info, 'grid-3x3': Grid3x3, languages: Languages, layers: Layers, list: List,
   'map-pin': MapPin, 'map-pinned': MapPinned, locate: Locate, 'locate-fixed': LocateFixed, lock: Lock, 'lock-open': LockOpen,
-  'log-out': LogOut, mail: Mail, map: Map, menu: Menu, navigation: Navigation, compass: Compass, route: Route, ban: Ban,
+  'log-in': LogIn, 'log-out': LogOut, mail: Mail, map: Map, menu: Menu, navigation: Navigation, compass: Compass, route: Route, ban: Ban,
   bell: Bell, 'bell-ring': BellRing, users: Users, user: User, 'user-plus': UserPlus, 'user-minus': UserMinus, 'user-x': UserX, 'circle-user': CircleUser,
   smartphone: Smartphone, tag: Tag, receipt: Receipt, 'refresh-cw': RefreshCw, scale: Scale, 'scan-line': ScanLine, search: Search,
   'shield-check': ShieldCheck, gauge: Gauge, star: Star, 'star-half': StarHalf, store: Store, 'arrow-left-right': ArrowLeftRight,

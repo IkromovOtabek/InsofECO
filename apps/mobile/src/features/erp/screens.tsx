@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, EmptyState, Gap, IconButton, IconTile, Input, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
+import { Badge, Button, Card, EmptyState, Gap, IconButton, IconTile, Input, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
 import { Avatar, Confirm, tabIcon, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom } from '@/design/tokens';
@@ -11,16 +11,17 @@ import { Appear, stagger } from '@/design/motion';
 import { useSession } from '@/core/session';
 import MapView, { Marker } from 'react-native-maps';
 import { config } from '@/core/config';
-import { erpAuth, type ErpLiveTruck, type ErpRole } from '@/core/erp';
+import { erpAuth, type ErpFleetTruck, type ErpLiveTruck, type ErpRole } from '@/core/erp';
 import { erpRoleConfig } from './roles';
 import { useErpHome, useErpList, useErpNotifications } from './api';
 import { CardFilters, FilterChips, HeroCard, ListRow, ROW_ICON, SectionHead, StatTile, listModule } from './ui';
 import { RangeCalendar } from './range-calendar';
-import { ColumnsChart, ProgressChart } from './charts';
+import { BarsChart, ColumnsChart, DonutChart, ProgressChart } from './charts';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import { Icon } from '@/design/icons';
 import { setBadge } from '@/core/push';
+import { Loader } from '@/design/loader';
 
 /**
  * ERP bo'limlarining ekranlari — Insof ERP dizayn tizimi ustida.
@@ -72,7 +73,7 @@ export function ErpHome() {
   const { data, isLoading, refetch, isRefetching, error, isPlaceholderData } = useErpHome(params);
   const [calOpen, setCalOpen] = useState(false);
 
-  if (isLoading) return <Center><ActivityIndicator color={c.brand} /></Center>;
+  if (isLoading) return <Loader fill />;
   if (error || !data) return <Center><EmptyState title="Ma'lumot kelmadi" hint="Internetni tekshirib, pastga torting" /></Center>;
 
   const [hero, ...tiles] = data.cards;
@@ -140,7 +141,9 @@ export function ErpHome() {
         {/* "Tezkor amallar" bosh ekrandan olib tashlandi — bo'limlar endi faqat Profil
             tabidagi "Bo'limlar" ro'yxatida turadi, bosh ekran esa faqat ko'rsatkichlarga bag'ishlangan. */}
 
-        {data.live?.length ? <LiveTrucks trucks={data.live} /> : null}
+        {/* Logistika: faol reyslar xaritada + mashinalar ro'yxati (qator bosilsa xarita shu mashinaga boradi).
+            Boshqa rollar: faqat GPS'i bor mashinalar — kichik xarita. */}
+        {data.fleet ? <FleetMap fleet={data.fleet} /> : data.live?.length ? <LiveTrucks trucks={data.live} /> : null}
 
         {data.sections.map((s) => (
           <View key={s.title} style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
@@ -149,9 +152,11 @@ export function ErpHome() {
               action={s.target && s.rows.length ? 'Barchasi' : undefined}
               onAction={() => s.target && router.push(`/erp/list/${s.target}` as never)}
             />
-            {/* Diagrammali bo'lim (Direktor nazorati, Dinamika) — qatorlar o'rniga grafik va raqamlar */}
+            {/* Diagrammali bo'lim (plan/fakt, oylar, davr savatlari, ulushlar) — qatorlar o'rniga grafik va raqamlar */}
             {s.chart?.kind === 'progress' ? <ProgressChart chart={s.chart} onOpen={(k) => router.push(`/erp/list/${k}` as never)} />
               : s.chart?.kind === 'columns' ? <ColumnsChart chart={s.chart} />
+              : s.chart?.kind === 'bars' ? <BarsChart chart={s.chart} />
+              : s.chart?.kind === 'donut' ? <DonutChart chart={s.chart} />
               : s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : s.rows.map((r, i) => (
               <ListRow
                 key={r.id}
@@ -265,6 +270,158 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
   );
 }
 
+// ───────────────────────── Logistika: faol reyslar xaritasi ─────────────────────────
+
+const FLEET_MAP_HEIGHT = 300;
+/** Tanlangan mashinaga yaqinlashish masshtabi (~1 km) */
+const FOCUS_DELTA = 0.012;
+
+/** "12 daq oldin" — GPS nuqtasining yoshi. */
+function agoLabel(iso: string) {
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  if (m < 1) return 'hozir';
+  if (m < 60) return `${m} daq oldin`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h} soat oldin` : `${Math.floor(h / 24)} kun oldin`;
+}
+
+/**
+ * Logistika bosh ekrani: faol reyslar xaritada, ostida reysdagi mashinalar ro'yxati.
+ * Qator bosilsa xarita o'sha mashinaga yaqinlashadi va belgisi ajratiladi; yana bosilsa
+ * hamma mashina qaytadan ko'rinadi. GPS'siz reys ro'yxatda turadi ("GPS yo'q"), xaritada emas.
+ * Ro'yxat ERP'dan keladi (`/api/mobile/home` → `fleet`, 30 s da bir yangilanadi).
+ * Vebdagi logistika panelidagi blokning aynan o'zi — telefonda "o'ng tomon" pastga tushadi.
+ */
+function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
+  const { c } = useTheme();
+  const router = useRouter();
+  const mapRef = useRef<MapView | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const located = fleet.filter((t): t is ErpFleetTruck & { gps: NonNullable<ErpFleetTruck['gps']> } => !!t.gps);
+  const coords = located.map((t) => ({ latitude: t.gps.lat, longitude: t.gps.lng }));
+
+  const region = coords.length
+    ? {
+      latitude: (Math.min(...coords.map((p) => p.latitude)) + Math.max(...coords.map((p) => p.latitude))) / 2,
+      longitude: (Math.min(...coords.map((p) => p.longitude)) + Math.max(...coords.map((p) => p.longitude))) / 2,
+      latitudeDelta: Math.max(0.04, (Math.max(...coords.map((p) => p.latitude)) - Math.min(...coords.map((p) => p.latitude))) * 1.6),
+      longitudeDelta: Math.max(0.04, (Math.max(...coords.map((p) => p.longitude)) - Math.min(...coords.map((p) => p.longitude))) * 1.6),
+    }
+    : null;
+
+  const showAll = () => {
+    if (coords.length > 1) mapRef.current?.fitToCoordinates(coords, { edgePadding: { top: 48, right: 48, bottom: 48, left: 48 }, animated: true });
+    else if (coords[0]) mapRef.current?.animateToRegion({ latitude: coords[0].latitude, longitude: coords[0].longitude, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 400);
+  };
+
+  const pick = (t: ErpFleetTruck) => {
+    if (selected === t.ref) { setSelected(null); showAll(); return; }
+    setSelected(t.ref);
+    if (!t.gps) { toast.show(`${t.plate}: GPS yo'q — xaritada ko'rsatib bo'lmaydi`, 'warning'); return; }
+    if (!config.mapsEnabled) { toast.show('Bu qurilmada xarita yo\'q', 'warning'); return; }
+    mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500);
+  };
+
+  const sel = selected ? fleet.find((t) => t.ref === selected) : null;
+
+  return (
+    <View style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
+      <SectionHead
+        title={`Faol reyslar · ${fleet.length} ta`}
+        action={fleet.length ? 'Barchasi' : undefined}
+        onAction={() => router.push('/erp/list/trips' as never)}
+      />
+      {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda ro'yxat qoladi (`core/config.ts`). */}
+      {config.mapsEnabled && region ? (
+        <View style={{ height: FLEET_MAP_HEIGHT, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault, marginBottom: space.sm }}>
+          <MapView
+            ref={(r) => { mapRef.current = r; }}
+            style={{ flex: 1 }}
+            initialRegion={region}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            toolbarEnabled={false}
+            onPress={() => { if (selected) { setSelected(null); showAll(); } }}
+          >
+            {located.map((t) => {
+              const active = selected === t.ref;
+              return (
+                <Marker
+                  key={t.ref}
+                  coordinate={{ latitude: t.gps.lat, longitude: t.gps.lng }}
+                  title={`${t.plate} · ${t.driver}`}
+                  description={`${t.customer} · ${t.phase}${t.gps.etaMin != null ? ` · ~${t.gps.etaMin} daq` : ''}`}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  onPress={() => { setSelected(t.ref); mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500); }}
+                  zIndex={active ? 2 : 1}
+                >
+                  {/* Davlat raqami yozilgan plitka — vebdagi belgining o'zi; tanlangani brend rangda */}
+                  <View style={{ paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: active ? c.brand : c.textStrong, borderWidth: size.ring, borderColor: c.bgSurface }}>
+                    <Txt v="overline" style={{ color: active ? c.textOnBrand : c.bgSurface }} numberOfLines={1}>{t.plate}</Txt>
+                  </View>
+                </Marker>
+              );
+            })}
+          </MapView>
+          {/* Hamma mashinani qaytadan ko'rsatish — tanlov bor yoki xarita surilgan bo'lsa */}
+          <View style={{ position: 'absolute', right: space.sm, bottom: space.sm }}>
+            <IconButton icon="locate-fixed" label="Hamma mashinani ko'rsatish" variant="secondary" onPress={() => { setSelected(null); showAll(); }} />
+          </View>
+        </View>
+      ) : (
+        <Card style={{ marginBottom: space.sm, paddingVertical: space.xl, alignItems: 'center' }}>
+          <Txt v="bodySm" color="muted" align="center">
+            {fleet.length === 0 ? 'Faol reys yo\'q' : config.mapsEnabled ? 'Hozircha birorta haydovchidan GPS kelmayapti — haydovchi yo\'lga chiqsa mashina shu yerda ko\'rinadi' : 'Bu qurilmada xarita yo\'q — ro\'yxat pastda'}
+          </Txt>
+        </Card>
+      )}
+
+      {fleet.length ? (
+        <Card style={{ paddingVertical: 0 }}>
+          {fleet.map((t, i) => {
+            const active = selected === t.ref;
+            const gps = t.gps;
+            const line2 = [
+              t.phase,
+              t.plannedAt ? `reja ${t.plannedAt}` : null,
+              t.delay,
+              gps ? `GPS ${agoLabel(gps.at)}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}${gps.km != null ? ` · ${fmtUnit(gps.km, 'km')}` : ''}` : 'GPS yo\'q',
+            ].filter(Boolean).join(' · ');
+            return (
+              <ListItem
+                key={t.tripId}
+                icon="truck"
+                module="logistics"
+                tone={t.openIssues ? 'danger' : undefined}
+                title={`${t.plate} · ${t.driver}`}
+                subtitle={`${t.customer} · ${t.address}\n${line2}`}
+                subtitleLines={2}
+                last={i === fleet.length - 1}
+                onPress={() => pick(t)}
+                chevron={false}
+                style={active ? { backgroundColor: c.bgMuted } : undefined}
+                right={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, flexShrink: 0 }}>
+                    <Badge label={t.delay && t.delayTone ? t.delay : gps ? 'GPS' : 'GPS yo\'q'} tone={t.delayTone ?? (gps ? 'success' : 'neutral')} icon={null} />
+                    <IconButton icon="chevron-right" label={`${t.ref} kartochkasi`} tone="muted" onPress={() => router.push(`/erp/trips/${t.tripId}` as never)} />
+                  </View>
+                }
+              />
+            );
+          })}
+        </Card>
+      ) : null}
+
+      {sel ? (
+        <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>
+          {sel.gps ? `Xaritada: ${sel.plate} · ${sel.ref}` : `${sel.plate} — GPS yo'q${sel.driverPhone ? ` · ${sel.driverPhone}` : ''}`}
+        </Txt>
+      ) : null}
+    </View>
+  );
+}
+
 // ───────────────────────── Ishchi ro'yxat ─────────────────────────
 
 export function ErpList({ listKey }: { listKey: string }) {
@@ -302,7 +459,7 @@ export function ErpList({ listKey }: { listKey: string }) {
         </>
       ) : null}
       <Gap h={space.lg} />
-      {isLoading ? <ActivityIndicator color={c.brand} />
+      {isLoading ? <Loader />
         : error ? <EmptyState title="Ma'lumot kelmadi" hint="Pastga torting" />
         : !data || data.rows.length === 0 ? <EmptyState title="Hech narsa topilmadi" hint={q ? 'Boshqa so\'z bilan qidiring' : active ? `"${active.label}" bo\'yicha hujjat yo\'q` : undefined} />
         : data.rows.map((r, i) => (

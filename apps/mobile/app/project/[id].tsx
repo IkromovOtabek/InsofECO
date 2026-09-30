@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EXPENSE_LABEL, SPECIALTY_LABEL } from '@insof/shared';
 import { Badge, Button, EmptyState, Gap, KPICard, ListItem, Panel, ProgressBar, Screen, StatusChip, Txt, fmtDate, fmtDateFull, fmtSum } from '@/design/primitives';
@@ -8,6 +8,7 @@ import { space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useProject } from '@/features/eco/api';
 import { useSession } from '@/core/session';
+import { Loader } from '@/design/loader';
 
 const TABS = [{ key: 'overview', label: 'Umumiy' }, { key: 'tasks', label: 'Vazifalar' }, { key: 'team', label: 'Quruvchilar' }, { key: 'materials', label: 'Materiallar' }, { key: 'transport', label: 'Transport' }, { key: 'finance', label: 'Moliya' }, { key: 'docs', label: 'Hujjatlar' }] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -26,7 +27,7 @@ export default function ProjectScreen() {
   if (!p) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Loyiha yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Loyiha yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }

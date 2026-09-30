@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, EmptyState, Gap, Txt } from '@/design/primitives';
@@ -9,6 +9,7 @@ import { size, space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
 import { FieldInput, firstMissing, initialValues, toPayload, visibleFields, type ItemRow, type Values } from '@/features/erp/form';
+import { Loader } from '@/design/loader';
 
 /**
  * Yangi hujjat (zayavka / reys). Forma tavsifi serverdan keladi — tanlov ro'yxatlari
@@ -56,7 +57,7 @@ export default function ErpNew() {
     }
   };
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
+  if (isLoading) return <Loader fill />;
   if (error || !data) return <EmptyState title="Forma ochilmadi" hint={error instanceof ApiException ? error.message : 'Internetni tekshiring'} />;
 
   return (

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card, EmptyState, IconTile, StatusDot, Txt } from '@/design/primitives';
 import { Icon, IconName, fmtRel } from '@/design/ui';
@@ -8,6 +8,7 @@ import { space } from '@/design/tokens';
 import { PressScale } from '@/design/motion';
 import { setBadge } from '@/core/push';
 import { useErpNotifications, useErpReadNotifications } from '@/features/erp/api';
+import { Loader } from '@/design/loader';
 
 /**
  * Insof ERP bildirishnomalari.
@@ -49,7 +50,7 @@ export default function ErpNotifications() {
     // `read` har renderda yangi obyekt — faqat o'qilmaganlar soniga qarab ishlaydi
   }, [data?.unread]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
+  if (isLoading) return <Loader fill />;
 
   return (
     <FlatList

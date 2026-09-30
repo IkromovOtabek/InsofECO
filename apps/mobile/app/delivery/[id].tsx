@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, ScrollView, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
@@ -15,6 +15,7 @@ import { requestAcceptOtp, useDelivery, useDispute, useDriverTransition, useSign
 import { useLivePosition } from '@/features/tracking/useLivePosition';
 import { startTracking, stopTracking } from '@/core/location';
 import { useSession } from '@/core/session';
+import { Loader } from '@/design/loader';
 
 /**
  * Umumiy reys ekrani. Rolga qarab pastki qism:
@@ -36,7 +37,7 @@ export default function DeliveryScreen() {
   if (!d) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Reys yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Reys yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }

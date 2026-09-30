@@ -35,6 +35,24 @@ export const chart = {
   4: '#be185d',
 } as const;
 
+/**
+ * Ochilish sahnasi (izometrik qurilish maydoni) — faqat `components/launch-scene.tsx`.
+ * Oq fonda turadi (native splash ham oq), shuning uchun mavzuga bog'liq emas.
+ * Yuzalar: top — yorug', left — o'rta, right — soya (yorug'lik chap-yuqoridan).
+ */
+export const illus = {
+  ground: { top: '#eef1f6', left: '#dde2ea', right: '#c9d0db', grid: '#e1e6ee' },
+  concrete: { top: '#f6f7fb', left: '#dfe3ed', right: '#bfc6d6', slab: '#ffffff', window: '#8f9bb3', windowDark: '#7483a0' },
+  crane: { top: '#fbbf24', left: '#f59e0b', right: '#d97706', lattice: '#b45309' },
+  digger: { top: '#fb923c', left: '#f97316', right: '#c2410c' },
+  metal: { top: '#64748b', left: '#475569', right: '#334155', track: '#1e293b' },
+  glass: '#9bd4f5',
+  rope: '#9aa9bd',
+  fence: { post: '#3b82f6', mesh: '#93c5fd' },
+  sand: { top: '#e3c193', shade: '#c39d6c' },
+  person: { skin: '#f2c29b', pants: '#1e3a8a', vest: '#f59e0b', vestAlt: '#22c55e', helmet: '#fde047' },
+} as const;
+
 export const palette = {
   light: {
     bgApp: '#f5f6f8',

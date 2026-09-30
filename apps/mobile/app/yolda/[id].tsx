@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, InteractionManager, View } from 'react-native';
+import { InteractionManager, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
@@ -17,6 +17,7 @@ import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters
 import { useErpAction, useErpTripRoute } from '@/features/erp/api';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import type { ErpAction } from '@/core/erp';
+import { Loader } from '@/design/loader';
 
 /**
  * Haydovchi marshruti — "Yo'lga chiqdim" bosilgandan keyin ochiladigan ekran.
@@ -289,7 +290,7 @@ export default function TripRoute() {
     setForm(deliverAction);
   }, [near, nearHint, deliverAction]);
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
+  if (isLoading) return <Loader fill />;
   if (error || !data) return <EmptyState title="Marshrut ochilmadi" hint="Internetni tekshiring" />;
 
   const region = {

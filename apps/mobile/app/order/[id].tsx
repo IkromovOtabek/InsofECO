@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OrderStatus } from '@insof/shared';
 import { Button, Card, Divider, EmptyState, Gap, ListItem, Panel, Row, Screen, StatusChip, Txt, fmtDate, fmtM3, fmtSum, fmtTime } from '@/design/primitives';
@@ -10,6 +10,7 @@ import { useOrder, useOrderAction } from '@/features/orders/api';
 import { usePlan } from '@/features/dispatch/api';
 import { useSession } from '@/core/session';
 import { DeliveryStatus } from '@insof/shared';
+import { Loader } from '@/design/loader';
 
 /** Umumiy buyurtma ekrani: Tadbirkor — tasdiqlash/rad/rejalashtirish; Quruvchi — kuzatish/bekor. */
 export default function OrderScreen() {
@@ -25,7 +26,7 @@ export default function OrderScreen() {
   if (!o) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Buyurtma yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Buyurtma yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }

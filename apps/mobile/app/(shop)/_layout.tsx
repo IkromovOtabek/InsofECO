@@ -19,6 +19,7 @@ export default function ShopLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="[id]" options={{ title: 'Mahsulot' }} />
         <Stack.Screen name="zavod" options={{ title: 'Sotuvchi' }} />
+        <Stack.Screen name="kalkulyator" options={{ title: 'Beton kalkulyatori' }} />
       </Stack>
       <LoginPrompt />
     </View>

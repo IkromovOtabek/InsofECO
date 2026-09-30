@@ -29,6 +29,10 @@ export interface ShopSeller {
   id: string; name: string; legalName: string | null; about: string | null; address: string | null;
   phone: string | null; phone2: string | null; email: string | null; workingHours: string | null;
   foundedYear: number | null; location: { lat: number; lng: number } | null;
+  /** Qabul soatlari (Toshkent vaqti) va bugun yetkazish chegarasi — ERP Sozlamalar. Eski ERP'da yo'q. */
+  hours?: { open: number; close: number; sunday: boolean; sameDayCutoff: number };
+  /** `https://t.me/...` — bo'lmasa tugma ko'rinmaydi */
+  telegram?: string | null;
 }
 /** Bosh sahifa swiper'idagi reklama (ERP → E-commerce → Reklama). */
 export interface ShopBanner { id: string; title: string; subtitle: string | null; image: string | null; productId: string | null; buttonText: string | null }

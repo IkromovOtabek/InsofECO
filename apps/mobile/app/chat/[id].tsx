@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { EmptyState, IconButton, Input, Screen, Txt } from '@/design/primitives';
 import { fmtRel } from '@/design/ui';
@@ -7,6 +7,7 @@ import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useMessages } from '@/features/eco/api';
 import { useSession } from '@/core/session';
+import { Loader } from '@/design/loader';
 
 /** Chat — pufakchalar, 4 s polling (WS keyingi bosqich). Mening xabarim brend fonida, boshqaniki oq kartada. */
 export default function ChatScreen() {
@@ -23,7 +24,7 @@ export default function ChatScreen() {
     <Screen padded={false}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
         <FlatList ref={list} data={q.data ?? []} keyExtractor={(m) => m.id} contentContainerStyle={{ padding: space.lg, gap: space.sm, flexGrow: 1 }}
-          ListEmptyComponent={q.isLoading ? <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} /> : <EmptyState icon="message-circle" title="Hali xabar yo'q" hint="Birinchi xabarni yozing — suhbatdosh darhol ko'radi" />}
+          ListEmptyComponent={q.isLoading ? <Loader style={{ marginTop: space.xxxl }} /> : <EmptyState icon="message-circle" title="Hali xabar yo'q" hint="Birinchi xabarni yozing — suhbatdosh darhol ko'radi" />}
           renderItem={({ item: m, index }) => {
             const mine = m.sender.id === me; const prev = q.data?.[index - 1]; const showName = !mine && prev?.sender.id !== m.sender.id;
             return (

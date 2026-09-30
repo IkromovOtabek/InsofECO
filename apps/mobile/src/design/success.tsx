@@ -61,7 +61,12 @@ export function StatusMark({ tone, size = 96, icon }: { tone: Tone; size?: numbe
   );
 }
 
-/** Muvaffaqiyat ptichkasi. `size` — kvadrat tomoni (pt). Harakat kamaytirilgan bo'lsa oxirgi kadr statik. */
+/**
+ * Muvaffaqiyat ptichkasi. `size` — kvadrat tomoni (pt). Harakat kamaytirilgan bo'lsa oxirgi kadr statik.
+ * Har paydo bo'lganda animatsiya BOSHIDAN o'ynaydi: chaqiruvchi har ko'rsatishda yangi `key` beradi,
+ * ya'ni native ko'rinish qaytadan yaratiladi va `autoPlay` birinchi kadrdan boshlaydi.
+ * (Mount'da `ref.play()` ishonchsiz — native ko'rinish hali tayyor bo'lmay, ptichka bo'sh qolardi.)
+ */
 export function SuccessCheck({ size = 96, style }: { size?: number; style?: StyleProp<ViewStyle> }) {
   const reduce = useReducedMotion();
   if (!hasLottie) return <View style={style}><StatusMark tone="success" size={size} /></View>;

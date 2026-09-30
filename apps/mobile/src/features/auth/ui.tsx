@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInputProps, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, TextInputProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, IconButton, Input, Txt } from '@/design/primitives';
@@ -9,6 +9,10 @@ import { useTheme } from '@/design/theme';
 import { Tone, radius, size, space, toneColors } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import i18n from '@/core/i18n';
+import { config } from '@/core/config';
+
+const LOGO = require('../../../assets/logo.png') as number;
+const LOGO_RATIO = 970 / 210;
 
 /**
  * Autentifikatsiya ekranlarining umumiy bo'laklari — umumiy dizayn tizimida (yorug'/qorong'i
@@ -24,11 +28,43 @@ export function AuthScreen({ children, back = true, onBack, footer }: { children
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: space.xxl, paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xl, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          {back ? <Appear from={8}><IconButton icon="arrow-left" label={i18n.t('ui.back')} variant="secondary" tone="strong" onPress={() => (onBack ? onBack() : router.back())} /></Appear> : null}
+          {back ? <Appear from={8}><IconButton icon="arrow-left" label={i18n.t('ui.back')} tone="strong" style={{ marginLeft: -space.md }} onPress={() => (onBack ? onBack() : router.back())} /></Appear> : null}
           {children}
           {footer ? <View style={{ marginTop: 'auto', paddingTop: space.xl, borderTopWidth: size.hairline, borderTopColor: c.borderSubtle }}>{footer}</View> : null}
         </ScrollView>
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+/** Brend logotipi (Insof JBI) — kirish ekrani tepasida. */
+export function AuthLogo({ height = 64 }: { height?: number }) {
+  return (
+    <Appear delay={40} style={{ marginTop: space.xxl, alignItems: 'center' }}>
+      <Image source={LOGO} style={{ height, width: height * LOGO_RATIO }} resizeMode="contain" accessibilityLabel="Insof JBI — temir beton mahsulotlari" />
+    </Appear>
+  );
+}
+
+/** Maxfiylik siyosatiga rozilik — belgilanmaguncha ro'yxatdan o'tib bo'lmaydi. Havola saytdagi /maxfiylik sahifasini ochadi. */
+export function ConsentCheck({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingVertical: space.sm }}>
+      <Pressable
+        onPress={() => onChange(!value)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: value }}
+        accessibilityLabel="Maxfiylik siyosati va foydalanish shartlariga roziman"
+        hitSlop={space.md}
+        style={{ width: size.iconMd, height: size.iconMd, borderRadius: radius.xs, borderWidth: size.ring, borderColor: value ? c.brand : c.borderStrong, backgroundColor: value ? c.brand : c.bgSurface, alignItems: 'center', justifyContent: 'center' }}
+      >
+        {value ? <Icon name="check" size={size.iconSm - 2} tone="onBrand" strokeWidth={2.5} /> : null}
+      </Pressable>
+      <Txt v="bodySm" style={{ flex: 1 }} onPress={() => onChange(!value)}>
+        <Txt v="bodySm" color="brand" onPress={() => void Linking.openURL(`${config.erpUrl}/maxfiylik`)} accessibilityRole="link">Maxfiylik siyosati</Txt>
+        {' '}va foydalanish shartlari bilan tanishdim va roziman
+      </Txt>
     </View>
   );
 }
@@ -94,6 +130,25 @@ export function strengthOf(p: string) {
   if (/\d/.test(p)) s++;
   if (/[^A-Za-z0-9]/.test(p)) s++;
   return s;
+}
+
+/**
+ * Ishonchli parol: 14 belgi, katta/kichik harf, raqam va belgi — har biridan kamida bittadan.
+ * Chalkash belgilar (0/O, 1/l/I) yo'q — qo'lda qayta yozish oson bo'lsin.
+ * `crypto.getRandomValues` bo'lsa o'shandan, bo'lmasa Math.random'dan.
+ */
+export function generatePassword(length = 14) {
+  const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%&*?-_'];
+  const all = sets.join('');
+  const rnd = (n: number) => {
+    const g = globalThis.crypto as Crypto | undefined;
+    if (g?.getRandomValues) { const a = new Uint32Array(1); g.getRandomValues(a); return (a[0] ?? 0) % n; }
+    return Math.floor(Math.random() * n);
+  };
+  const chars = sets.map((set) => set.charAt(rnd(set.length)));
+  while (chars.length < length) chars.push(all.charAt(rnd(all.length)));
+  for (let i = chars.length - 1; i > 0; i--) { const j = rnd(i + 1); const t = chars[i]!; chars[i] = chars[j]!; chars[j] = t; }
+  return chars.join('');
 }
 
 /** Parol kuchi — to'rtta chiziq va baho (rang + so'z). */

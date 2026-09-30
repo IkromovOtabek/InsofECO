@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { BackHandler, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
-import { IconButton, IconTile, Input, Txt } from '@/design/primitives';
+import { IconButton, Input, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
@@ -10,8 +10,9 @@ import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { useTelegramLogin } from '@/features/auth/telegram';
-import { AuthScreen, Divider, ErrorBox, FooterLink, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
+import { AuthLogo, AuthScreen, Divider, ErrorBox, FooterLink, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 import { SocialLogin } from '@/features/auth/social';
+import { afterLogin } from '@/features/shop/after-login';
 
 /**
  * Kirish oynasi.
@@ -53,7 +54,8 @@ export default function Login() {
    * `replace` bilan ochiladi (ro'yxat, SMS, parolni tiklash ekranlaridan) va tarix bo'sh
    * bo'ladi. `dismissTo` do'kon tarixda bo'lsa unga qaytadi, bo'lmasa uni o'rniga qo'yadi.
    */
-  const toShop = useCallback(() => router.dismissTo('/(shop)'), [router]);
+  // Mahsulotdan "Buyurtma berish" orqali kelgan bo'lsa — o'sha mahsulotga qaytadi
+  const toShop = useCallback(() => router.dismissTo((afterLogin.take() ?? '/(shop)') as never), [router]);
   // Android'dagi tizim "orqaga" tugmasi ham ilovani yopmasin — do'konga qaytarsin
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { toShop(); return true; });
@@ -89,13 +91,7 @@ export default function Login() {
 
   return (
     <AuthScreen onBack={toShop} footer={<FooterLink text="Xodimlar ERP logini bilan kiradi" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
-      <Appear delay={40} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xxl }}>
-        <IconTile icon="layers" module="brand" />
-        <View>
-          <Txt v="titleSm">Insof ECO</Txt>
-          <Txt v="caption">Insof beton zavodi</Txt>
-        </View>
-      </Appear>
+      <AuthLogo />
 
       <Title display hint="Har bir bo'lim o'z login va paroli bilan kiradi. Ruxsatlar rolga qarab ochiladi.">Tizimga kirish</Title>
 

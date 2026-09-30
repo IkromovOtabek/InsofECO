@@ -10,13 +10,15 @@ import { Appear } from '@/design/motion';
 import { useShopCatalog } from '@/features/shop/api';
 import { ProductCard, ShopHeader } from '@/features/shop/ui';
 import { HeroSwiper } from '@/features/shop/hero-swiper';
+import { CalcPromo, TodayCard } from '@/features/shop/home-blocks';
 
 const CARD_W = 168;
 
 /**
  * Bosh sahifa — mehmon ilovani ochganda ko'radigan birinchi ekran. Tepada swiper: asosiy
  * taklif, reklama (ERP → E-commerce → Reklama), "Buyurtma 3 qadamda" va "Nega Insof JBI"
- * rasmlari. Pastda mahsulotlar va qo'ng'iroq so'rovi. Hisob — Profil tabida.
+ * rasmlari. Keyin "Bugungi holat" (ochiqmi, bugun yetkazamizmi, qo'ng'iroq/Telegram),
+ * beton kalkulyatori, mahsulotlar va qo'ng'iroq so'rovi. Hisob — Profil tabida.
  */
 export default function ShopHome() {
   const router = useRouter();
@@ -40,6 +42,14 @@ export default function ShopHome() {
       >
         <Appear delay={40}>
           <HeroSwiper banners={q.data?.banners ?? []} phone={phone} onCatalog={toCatalog} onProduct={toProduct} />
+        </Appear>
+
+        <Appear delay={80}>
+          <TodayCard seller={q.data?.seller} phone={phone} />
+        </Appear>
+
+        <Appear delay={120}>
+          <CalcPromo onPress={() => router.push('/(shop)/kalkulyator' as never)} />
         </Appear>
 
         {/* Mahsulotlar — gorizontal, "Barchasi" katalogga */}

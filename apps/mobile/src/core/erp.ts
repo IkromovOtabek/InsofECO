@@ -33,7 +33,11 @@ export interface ErpRow { id: string; title: string; subtitle?: string; right?: 
 /** Bo'lim diagrammasi — server beradi (`lib/mobile/home.ts` SectionChart). */
 export type ErpSectionChart =
   | { kind: 'progress'; items: { label: string; pct: number | null; fact: string; plan: string | null; tone: Tone; invert?: boolean; open?: string }[] }
-  | { kind: 'columns'; series: { key: string; label: string; tone: Tone }[]; groups: { label: string; values: number[]; texts: string[] }[] };
+  | { kind: 'columns'; series: { key: string; label: string; tone: Tone }[]; groups: { label: string; values: number[]; texts: string[] }[] }
+  /** Davr savatlari (soat / kun / hafta / oy) bo'yicha ustunlar — rol dashboardi (`lib/mobile/dashboard.ts`). */
+  | { kind: 'bars'; series: { key: string; label: string }[]; points: { label: string; values: number[]; texts: string[] }[]; total?: string }
+  /** Ulushlar halqasi — eng katta 4 ta + "Boshqa", markazda jami. */
+  | { kind: 'donut'; items: { label: string; value: number; text: string }[]; total: string; totalLabel?: string };
 export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string; chart?: ErpSectionChart }
 export interface ErpField { label: string; value: string; tone?: Tone }
 export interface ErpFormOption { value: string; label: string; extra?: Record<string, string> }
@@ -133,7 +137,27 @@ export interface ErpLiveTruck {
   km: number;
   etaMin: number | null;
 }
-export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: string; list: { key: string; title: string }; create: { key: string; label: string } | null; quick: ErpQuick[]; cards: ErpCard[]; sections: ErpSection[]; live?: ErpLiveTruck[] }
+/**
+ * Logistika xaritasidagi reys — barcha faol reyslar, GPS'i yo'qlari ham (`gps: null`).
+ * Server tayyor matn beradi (bosqich, kechikish, reja soati); ilova faqat chizadi.
+ */
+export interface ErpFleetTruck {
+  tripId: string;
+  ref: string;
+  plate: string;
+  driver: string;
+  driverPhone: string | null;
+  customer: string;
+  address: string;
+  phase: string;
+  tone: 'brand' | 'success' | 'warning' | 'danger' | 'info';
+  plannedAt: string | null;
+  delay: string | null;
+  delayTone: 'brand' | 'success' | 'warning' | 'danger' | 'info' | null;
+  openIssues: number;
+  gps: { lat: number; lng: number; at: string; etaMin: number | null; km: number | null } | null;
+}
+export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: string; list: { key: string; title: string }; create: { key: string; label: string } | null; quick: ErpQuick[]; cards: ErpCard[]; sections: ErpSection[]; live?: ErpLiveTruck[]; fleet?: ErpFleetTruck[] }
 /** Ro'yxat ustidagi filtr chipi — serverdan keladi (masalan ishlab chiqarish "Zayavkalar"i). */
 export interface ErpListFilter { key: string; label: string; count: number; active: boolean }
 export interface ErpListData { key: string; title: string; rows: ErpRow[]; filters?: ErpListFilter[] }

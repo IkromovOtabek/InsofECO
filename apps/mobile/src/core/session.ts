@@ -5,7 +5,7 @@ import type { ErpUser } from './erp';
 import { unregisterPush } from './push';
 
 export interface Membership { role: Role; isActive: boolean; organization: { id: string; name: string; type: 'PLANT' | 'CONTRACTOR' } }
-export interface Profile { id: string; phone: string; fullName: string | null; locale: string; memberships: Membership[]; /** Haydovchi hisobni o'chirishni so'ragan — direktor tasdig'i kutilmoqda */ deleteRequestedAt?: string | null }
+export interface Profile { id: string; phone: string; fullName: string | null; locale: string; /** `/v1/avatars/<fayl>` — `avatarUri()` bilan to'liq manzilga aylanadi */ avatarUrl?: string | null; memberships: Membership[]; /** Haydovchi hisobni o'chirishni so'ragan — direktor tasdig'i kutilmoqda */ deleteRequestedAt?: string | null }
 
 /**
  * Ilovada ikki xil hisob bor:

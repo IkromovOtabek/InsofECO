@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { RegisterSchema } from '@insof/shared';
-import { Card, IconTile, Input, Label, Select, Txt } from '@/design/primitives';
+import { Card, IconButton, IconTile, Input, Label, Select, Txt } from '@/design/primitives';
 import { Icon, IconName } from '@/design/icons';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -13,7 +13,10 @@ import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { useTelegramLogin } from '@/features/auth/telegram';
-import { AuthScreen, Divider, GhostButton, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title } from '@/features/auth/ui';
+import { PhotoPicker, PickedPhoto } from '@/features/auth/photo-picker';
+import { copyText, toast } from '@/design/ui';
+import { afterLogin } from '@/features/shop/after-login';
+import { AuthScreen, ConsentCheck, Divider, GhostButton, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title, generatePassword } from '@/features/auth/ui';
 
 /**
  * Ro'yxatdan o'tish — uch qadamli oqim.
@@ -42,7 +45,6 @@ function PhonePrefix() {
 
 export default function Register() {
   const router = useRouter();
-  const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
   // Parolsiz tez yo'l: raqam Telegram'da tasdiqlanadi, keyin rol tanlash ekranida «Mijoz sifatida davom etish»
   const tg = useTelegramLogin();
@@ -50,11 +52,13 @@ export default function Register() {
   const [fullName, setFullName] = useState('');
   const [local, setLocal] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [orgName, setOrgName] = useState('');
   const [orgType, setOrgType] = useState<'PLANT' | 'CONTRACTOR'>('PLANT');
-  const [agree, setAgree] = useState(true);
+  const [agree, setAgree] = useState(false);
   const [plants, setPlants] = useState<{ id: string; name: string; address?: string | null }[]>([]);
   const [plantOrgId, setPlantOrgId] = useState<string>();
+  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -62,9 +66,22 @@ export default function Register() {
 
   const phone = `+998${local.replace(/\D/g, '')}`;
 
+  // Ishonchli parol — ko'rinib turadi va darhol buferga olinadi (keyin menejerga yoki eslatmaga saqlasin)
+  const makePassword = async () => {
+    const p = generatePassword();
+    setPassword(p); setShowPw(true); setErrors((e) => ({ ...e, password: '' }));
+    if (await copyText(p)) toast.success('Parolni xavfsiz joyga saqlab qo\'ying', 'Parol nusxalandi');
+    else toast.warning('Nusxa olinmadi — parolni yozib oling', 'Parol yaratildi');
+  };
+  const copyPassword = async () => {
+    if (!password) return;
+    if (await copyText(password)) toast.success('Parol buferga olindi', 'Nusxalandi');
+    else toast.error('Nusxa olinmadi');
+  };
+
   const submit = async () => {
     if (!role) return;
-    if (!agree) return setErrors({ form: 'Davom etish uchun shartlarga rozilik bildiring' });
+    if (!agree) return setErrors({ form: "Davom etish uchun maxfiylik siyosatiga rozilik bildiring" });
     const raw = {
       fullName: fullName.trim(), phone, password, role,
       organization: role === 'TADBIRKOR' ? { name: orgName.trim(), type: orgType } : role === 'QURUVCHI' && orgName.trim() ? { name: orgName.trim(), type: 'CONTRACTOR' as const } : undefined,
@@ -82,10 +99,30 @@ export default function Register() {
       const { device: _d, ...input } = parsed.data; void _d;
       const r = await authApi.register(input);
       await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
+      // Rasm — hisob ochilgach, sessiya bilan. Yiqilsa ro'yxat bekor bo'lmaydi: keyin profildan qo'yiladi
+      if (photo) {
+        try { useSession.getState().setUser(await authApi.uploadAvatar(photo.uri, photo.mimeType)); }
+        catch { toast.error("Rasm yuklanmadi — keyinroq profildan qo'shishingiz mumkin", 'Rasm'); }
+      }
+      // Mahsulotdan buyurtma uchun kelgan — to'g'ri o'sha mahsulotga, buyurtmani yakunlasin
+      const back = afterLogin.take();
+      if (back) { toast.success("Ro'yxatdan o'tdingiz — endi buyurtma bera olasiz"); router.dismissTo(back as never); return; }
       router.replace('/(auth)/done');
     } catch (e) {
       setErrors({ form: e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring' });
     } finally { setLoading(false); }
+  };
+
+  // Rozilik bermaguncha ma'lumotlar formasiga o'tilmaydi — rol bosilsa sababi aytiladi
+  const CONSENT_MSG = "Davom etish uchun maxfiylik siyosatiga rozilik bildiring";
+  const pickRole = (key: RoleKey) => {
+    if (!agree) {
+      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      toast.warning("Avval pastdagi maxfiylik siyosatiga rozilik belgisini qo'ying", 'Rozilik kerak');
+      return setErrors({ form: CONSENT_MSG });
+    }
+    if (Platform.OS === 'ios') void Haptics.selectionAsync();
+    setRole(key);
   };
 
   // ── 1-ekran: kim sifatida ──
@@ -101,12 +138,13 @@ export default function Register() {
           {ROLES.map((r, i) => (
             <Appear key={r.key} delay={stagger(i, 60)}>
               <PressScale
-                onPress={() => { if (Platform.OS === 'ios') void Haptics.selectionAsync(); setRole(r.key); }}
+                onPress={() => pickRole(r.key)}
                 haptic={false}
                 accessibilityRole="button"
                 accessibilityLabel={`${r.title}. ${r.desc}`}
+                accessibilityHint={agree ? undefined : "Avval maxfiylik siyosatiga rozilik bildiring"}
               >
-                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, opacity: agree ? 1 : 0.55 }}>
                   <IconTile icon={r.icon} module="brand" />
                   <View style={{ flex: 1 }}>
                     <Txt v="bodyStrong">{r.title}</Txt>
@@ -120,10 +158,11 @@ export default function Register() {
         </View>
         <Appear delay={300}>
           <Divider />
+          <ConsentCheck value={agree} onChange={(v) => { setAgree(v); setErrors((e) => ({ ...e, form: '' })); }} />
           <GhostButton
             title={tg.waiting ? "Telegram'da raqamni ulashing…" : tg.starting ? 'Telegram ochilmoqda…' : "Telegram orqali ro'yxatdan o'tish"}
             icon="send"
-            onPress={() => void tg.start()}
+            onPress={() => (agree ? void tg.start() : setErrors({ form: "Davom etish uchun maxfiylik siyosatiga rozilik bildiring" }))}
           />
           {tg.waiting ? (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
@@ -131,7 +170,7 @@ export default function Register() {
               <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
             </View>
           ) : null}
-          <ErrorBox text={tg.error} />
+          <ErrorBox text={errors.form || tg.error} />
         </Appear>
       </AuthScreen>
     );
@@ -155,8 +194,12 @@ export default function Register() {
         <TextLink onPress={() => setRole(null)}>O&apos;zgartirish</TextLink>
       </Appear>
 
-      <Appear delay={110} style={{ marginTop: space.xxl }}>
-        <Input label="Ism va familiya" value={fullName} onChangeText={setFullName} placeholder="Rustam Yusupov" textContentType="name" autoComplete="name" error={errors.fullName} autoFocus />
+      <Appear delay={90} style={{ marginTop: space.xxl }}>
+        <PhotoPicker value={photo} onChange={setPhoto} />
+      </Appear>
+
+      <Appear delay={110}>
+        <Input label="Ism va familiya" value={fullName} onChangeText={setFullName} placeholder="Rustam Yusupov" textContentType="name" autoComplete="name" error={errors.fullName} />
       </Appear>
 
       <Appear delay={150}>
@@ -215,24 +258,38 @@ export default function Register() {
       ) : null}
 
       <Appear delay={230} style={{ marginTop: space.lg }}>
-        <Input label="Parol" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" placeholder="••••••••" mono error={errors.password} containerStyle={{ marginBottom: 0 }} />
+        <Input
+          label="Parol"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPw}
+          autoComplete="new-password"
+          placeholder="••••••••"
+          mono
+          error={errors.password}
+          containerStyle={{ marginBottom: 0 }}
+          right={(
+            <View style={{ flexDirection: 'row' }}>
+              {password ? <IconButton icon="copy" label="Parolni nusxalash" onPress={() => void copyPassword()} size={size.touch - space.sm} tone="muted" /> : null}
+              <IconButton icon={showPw ? 'eye-off' : 'eye'} label={showPw ? 'Parolni yashirish' : "Parolni ko'rsatish"} onPress={() => setShowPw((v) => !v)} size={size.touch - space.sm} tone="muted" />
+            </View>
+          )}
+        />
         <Strength password={password} />
+        <Pressable
+          onPress={() => void makePassword()}
+          accessibilityRole="button"
+          accessibilityLabel="Ishonchli parol yaratish va nusxalash"
+          hitSlop={space.xs}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: size.touch, alignSelf: 'flex-start' }}
+        >
+          <Icon name="sparkles" tone="brand" size={size.iconSm} />
+          <Txt v="label" color="brand">Ishonchli parol yaratish</Txt>
+        </Pressable>
       </Appear>
 
       <Appear delay={270} style={{ marginTop: space.lg }}>
-        <Pressable
-          onPress={() => setAgree((v) => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: agree }}
-          accessibilityLabel="Ommaviy oferta va maxfiylik siyosati shartlariga roziman"
-          hitSlop={space.sm}
-          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, minHeight: size.touch, paddingVertical: space.sm }}
-        >
-          <View style={{ width: size.iconMd, height: size.iconMd, borderRadius: radius.xs, borderWidth: size.ring, borderColor: agree ? c.brand : c.borderStrong, backgroundColor: agree ? c.brand : c.bgSurface, alignItems: 'center', justifyContent: 'center' }}>
-            {agree ? <Icon name="check" size={size.iconSm - 2} tone="onBrand" strokeWidth={2.5} /> : null}
-          </View>
-          <Txt v="bodySm" style={{ flex: 1 }}>Ommaviy oferta va maxfiylik siyosati shartlariga roziman</Txt>
-        </Pressable>
+        <ConsentCheck value={agree} onChange={(v) => { setAgree(v); setErrors((e) => ({ ...e, form: '' })); }} />
       </Appear>
 
       <ErrorBox text={errors.form} />

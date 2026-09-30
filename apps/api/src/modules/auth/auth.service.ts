@@ -8,6 +8,7 @@ import { ChangePasswordInput, LoginInput, OtpVerify, RegisterInput, ResetPasswor
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { OtpService } from './otp.service';
+import { avatarPath } from '../users/avatar';
 import { MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent } from '../organizations/organizations.events';
 
 const REFRESH_DAYS = Number(process.env.JWT_REFRESH_TTL_DAYS ?? 30);
@@ -223,6 +224,7 @@ export class AuthService {
       phone: user.phone,
       fullName: user.fullName,
       locale: user.locale,
+      avatarUrl: avatarPath(user.avatarKey),
       deleteRequestedAt: user.deleteRequestedAt,
       memberships: user.memberships.map((m) => ({ role: m.role, isActive: m.isActive, organization: m.organization })),
     };

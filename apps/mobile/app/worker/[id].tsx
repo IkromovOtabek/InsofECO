@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Linking, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { Button, Card, EmptyState, Gap, KPICard, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum } from '@/design/primitives';
@@ -7,6 +7,7 @@ import { Avatar, Stars, fmtShort } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useWorker } from '@/features/eco/api';
+import { Loader } from '@/design/loader';
 
 /** Quruvchi profili: mutaxassislik, tajriba, reyting, ish tarixi, ish haqi. */
 export default function WorkerScreen() {
@@ -17,7 +18,7 @@ export default function WorkerScreen() {
   if (!w) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Quruvchi topilmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <ActivityIndicator color={c.brand} style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Quruvchi topilmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }

@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { AuthContext } from '../../common/auth/decorators';
 import { DomainError } from '../../common/errors/domain.error';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { removeAvatar } from '../users/avatar';
 import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
 
 /**
@@ -89,9 +90,11 @@ export class AccountService {
   async anonymize(userId: string, byUserId: string | null) {
     const now = new Date();
     const removed: Membership[] = [];
+    let u0avatar: string | null = null;
     const user = await this.prisma.$transaction(async (tx) => {
       const u = await tx.user.findUniqueOrThrow({ where: { id: userId }, include: { memberships: { where: { isActive: true } } } });
       if (u.deletedAt) return u;
+      u0avatar = u.avatarKey;
       for (const m of u.memberships) removed.push(await tx.membership.update({ where: { id: m.id }, data: { isActive: false } }));
       // Faqat shu odamga tegishli tashkilot (masalan "<ism> (xususiy quruvchi)") nomida ism bor — uni ham yashiramiz
       for (const m of u.memberships) {
@@ -104,9 +107,11 @@ export class AccountService {
       await tx.driverProfile.updateMany({ where: { userId }, data: { isAvailable: false } });
       return tx.user.update({
         where: { id: userId },
-        data: { phone: `deleted:${userId}:${randomBytes(3).toString('hex')}`, fullName: null, passwordHash: null, deletedAt: now, deleteRequestedAt: null },
+        data: { phone: `deleted:${userId}:${randomBytes(3).toString('hex')}`, fullName: null, passwordHash: null, avatarKey: null, deletedAt: now, deleteRequestedAt: null },
       });
     });
+    // Yuz surati — shaxsiy ma'lumot, anonimlashtirishda diskdan ham o'chadi
+    await removeAvatar(u0avatar);
     for (const m of removed) {
       this.events.emit(ORG_EVENTS.membershipChanged, { organizationId: m.organizationId, membershipId: m.id, userId, role: m.role, isActive: false, reason: 'removed', byUserId } satisfies MembershipChangedEvent);
     }

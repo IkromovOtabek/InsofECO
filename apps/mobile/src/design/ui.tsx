@@ -3,7 +3,7 @@
  * grafiklar, HeaderBack. Native <Modal> Fabric'da ko'rinmaydi — Modal/Sheet daraxt ichida chiziladi.
  */
 import React, { useEffect, useState } from 'react';
-import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,8 +28,9 @@ export function HeaderBack() {
 /** Tab ikonkasi — Lucide; faol holatda chiziq qalinroq. */
 export const tabIcon = (name: IconName) => ({ color, focused }: { color: string; focused: boolean }) => <Icon name={name} size={size.iconLg} color={color} strokeWidth={focused ? 2 : 1.5} />;
 
-export function Avatar({ name, size: s = size.avatar, tone = 'neutral' }: { name?: string | null; size?: number; tone?: Tone }) {
+export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: { name?: string | null; /** Profil rasmi — bo'lsa bosh harflar o'rniga */ uri?: string | null; size?: number; tone?: Tone }) {
   const { c } = useTheme();
+  if (uri) return <Image source={{ uri }} accessibilityLabel={name ?? undefined} accessibilityIgnoresInvertColors style={{ width: s, height: s, borderRadius: radius.pill, backgroundColor: c.bgMuted }} />;
   const initials = (name ?? '?').split(' ').map((x) => x[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   const col = tone === 'neutral' ? { bg: c.bgMuted, ink: c.textBody } : toneColors(c, tone);
   return (
@@ -302,7 +303,7 @@ function ToastCard({ item }: { item: ToastItem }) {
   const icon = ICON[item.tone];
   return (
     <Animated.View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderWidth: size.hairline, borderColor: c.borderDefault, padding: space.md, paddingRight: space.xs }, shadow.pop, s]}>
-      <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.md, backgroundColor: item.tone === 'neutral' ? c.bgMuted : item.tone === 'success' ? 'transparent' : toneColors(c, item.tone).bg, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: size.iconTileSm, height: size.iconTileSm, alignItems: 'center', justifyContent: 'center' }}>
         {item.tone === 'success' ? <SuccessCheck size={size.iconTileSm} /> : <Icon name={icon} color={item.tone === 'neutral' ? c.textBody : ink} />}
       </View>
       <View style={{ flex: 1 }}>
@@ -329,10 +330,11 @@ export function ToastHost() {
 
 // ───────────────────────── Natija oynasi ─────────────────────────
 
-interface ResultState { open: boolean; tone: 'success' | 'danger'; title: string; subtitle?: string; onDone?: () => void }
-const useResultStore = create<ResultState & { show: (s: Omit<ResultState, 'open'>) => void; close: () => void }>((set, get) => ({
-  open: false, tone: 'success', title: '', subtitle: undefined, onDone: undefined,
-  show: (s) => set({ ...s, open: true }),
+interface ResultState { open: boolean; seq: number; tone: 'success' | 'danger'; title: string; subtitle?: string; onDone?: () => void }
+const useResultStore = create<ResultState & { show: (s: Omit<ResultState, 'open' | 'seq'>) => void; close: () => void }>((set, get) => ({
+  open: false, seq: 0, tone: 'success', title: '', subtitle: undefined, onDone: undefined,
+  // `seq` — har ko'rsatishda yangi: oyna ochiq turganda yana chaqirilsa ham ptichka boshidan o'ynaydi
+  show: (s) => set((st) => ({ ...s, open: true, seq: st.seq + 1 })),
   close: () => { const { onDone } = get(); set((s) => ({ ...s, open: false })); onDone?.(); },
 }));
 /**
@@ -348,17 +350,17 @@ export const result = {
 
 /** Ildiz maketiga `ToastHost` bilan yonma-yon qo'yiladi. */
 export function ResultHost() {
-  const { open, tone, title, subtitle } = useResultStore();
+  const { open, seq, tone, title, subtitle } = useResultStore();
   const close = useResultStore((s) => s.close);
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(close, tone === 'danger' ? 2600 : 1800);
     return () => clearTimeout(t);
-  }, [open, tone, close]);
+  }, [open, seq, tone, close]);
   useBackClose(open, close);
   if (!open) return null;
   return (
-    <DialogFrame onDismiss={close}>
+    <DialogFrame key={seq} onDismiss={close}>
       <DialogHead tone={tone} title={title} message={subtitle} />
     </DialogFrame>
   );
@@ -373,9 +375,9 @@ export interface ReceiptData {
   status: { label: string; tone: 'success' | 'warning'; at: string };
   rows: { label: string; value: string; copy?: boolean }[];
 }
-const useReceiptStore = create<{ data: ReceiptData | null; onDone?: () => void; show: (d: ReceiptData, onDone?: () => void) => void; close: () => void }>((set, get) => ({
-  data: null,
-  show: (data, onDone) => set({ data, onDone }),
+const useReceiptStore = create<{ data: ReceiptData | null; seq: number; onDone?: () => void; show: (d: ReceiptData, onDone?: () => void) => void; close: () => void }>((set, get) => ({
+  data: null, seq: 0,
+  show: (data, onDone) => set((st) => ({ data, onDone, seq: st.seq + 1 })),
   close: () => { const { onDone } = get(); set({ data: null, onDone: undefined }); onDone?.(); },
 }));
 /**
@@ -389,7 +391,7 @@ export const receipt = { show: (d: ReceiptData, onDone?: () => void) => useRecei
  * `expo-clipboard` native modul — u qo'shilishidan oldingi build'da yo'q. Fayl boshida import qilinsa
  * eski ilova ochilishdayoq yiqiladi, shuning uchun faqat bosilganda yuklanadi.
  */
-async function copyText(text: string) {
+export async function copyText(text: string) {
   try {
     const Clipboard: typeof import('expo-clipboard') = require('expo-clipboard');
     await Clipboard.setStringAsync(text);
@@ -421,7 +423,7 @@ function ReceiptRow({ label, value, copy }: ReceiptData['rows'][number]) {
 
 /** Ildiz maketiga `ResultHost` bilan yonma-yon qo'yiladi. O'zi yopilmaydi. */
 export function ReceiptHost() {
-  const { data, close } = useReceiptStore();
+  const { data, seq, close } = useReceiptStore();
   const { c } = useTheme();
   useBackClose(!!data, close);
   if (!data) return null;
@@ -429,7 +431,7 @@ export function ReceiptHost() {
   const { ink, solid } = toneColors(c, data.status.tone);
   const at = new Date(data.status.at);
   return (
-    <DialogFrame onDismiss={close}>
+    <DialogFrame key={seq} onDismiss={close}>
       <View style={{ alignItems: 'center' }}>
         {ok ? <SuccessCheck size={112} /> : <StatusMark tone="warning" size={96} />}
         <Txt v="metricHero" align="center" numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.sm }}>{data.headline}</Txt>

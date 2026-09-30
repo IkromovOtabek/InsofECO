@@ -12,8 +12,9 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   icon: './assets/icon.png',
-  // Brend ko'ki — logotip plitkasining rangi; ikonka, splash va bildirishnoma bittada
-  splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: '#0b1120' },
+  // Splash oq fonda asl logo bilan — JS ochilish ekrani (launch.tsx) ham oq, rang sakramaydi.
+  // Ikonka va bildirishnoma rangi o'zgarmagan.
+  splash: { image: './assets/splash-light.png', resizeMode: 'contain', backgroundColor: '#ffffff' },
   ios: {
     bundleIdentifier: 'uz.insofeco.app',
     supportsTablet: false,
@@ -47,6 +48,8 @@ const config: ExpoConfig = {
     ['expo-notifications', { color: '#f59e0b', sounds: ['./assets/bildirishnoma.wav'] }],
     // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
     './plugins/withKotlinVersion.js',
+    // Ro'yxatdan o'tishda profil rasmi — galereya va kamera ruxsat matnlari (native: qayta build kerak)
+    ['expo-image-picker', { photosPermission: "Profil rasmini tanlash uchun.", cameraPermission: "Profil rasmini olish, nakladnoy va yetkazish fotosi uchun." }],
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',

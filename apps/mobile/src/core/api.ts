@@ -34,12 +34,14 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const { method = 'GET', body, idempotencyKey, auth = true, query } = opts;
   const qs = query ? '?' + Object.entries(query).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&') : '';
   const doFetch = async (token: string | null) => {
-    const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json' };
+    // FormData (fayl yuklash) — content-type'ni fetch o'zi qo'yadi (boundary bilan)
+    const form = typeof FormData !== 'undefined' && body instanceof FormData;
+    const headers: Record<string, string> = form ? { accept: 'application/json' } : { 'content-type': 'application/json', accept: 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;
     const org = useSession.getState().active?.organization.id;
     if (org) headers['x-org-id'] = org;
     if (idempotencyKey) headers['idempotency-key'] = idempotencyKey;
-    return fetch(`${config.apiUrl}/v1${path}${qs}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    return fetch(`${config.apiUrl}/v1${path}${qs}`, { method, headers, body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body) });
   };
 
   let token = auth ? await secure.get(KEYS.access) : null;

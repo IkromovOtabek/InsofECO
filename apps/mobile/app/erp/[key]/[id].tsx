@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
 import { dialog, receipt, result, toast, type IconName } from '@/design/ui';
@@ -14,6 +14,7 @@ import { ActionSheet } from '@/features/erp/action-sheet';
 import { ListRow, ROW_ICON, SectionHead, listModule, statusLabel } from '@/features/erp/ui';
 import { SectionEmpty } from '@/features/erp/screens';
 import { Appear, stagger } from '@/design/motion';
+import { Loader } from '@/design/loader';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -133,7 +134,7 @@ export default function ErpDetail() {
     void execute(a);
   };
 
-  if (isLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={c.brand} /></View>;
+  if (isLoading) return <Loader fill />;
   if (error || !data) return <EmptyState title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta oching" />;
 
   return (
