@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
-import { dialog, receipt, result, toast, type IconName } from '@/design/ui';
+import { ReceiptBody, dialog, receipt, result, toast, type IconName } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space, toneColors } from '@/design/tokens';
 import type { ErpAction } from '@/core/erp';
@@ -156,29 +156,40 @@ export default function ErpDetail() {
         contentContainerStyle={{ padding: space.pageX, paddingBottom: space.x10 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
       >
-        <Appear>
-          <Card>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-              <View style={{ flex: 1 }}>
-                <Txt v="titleMd">{data.title}</Txt>
-                {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
-              </View>
-              {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
-            </View>
-          </Card>
-        </Appear>
-        <Gap h={space.md} />
+        {data.receipt ? (
+          /* Pul hujjati — sarlavha va maydonlar o'rniga chek: server nima bersa shu chiziladi */
+          <Appear>
+            <Card>
+              <ReceiptBody data={data.receipt} compact />
+            </Card>
+          </Appear>
+        ) : (
+          <>
+            <Appear>
+              <Card>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Txt v="titleMd">{data.title}</Txt>
+                    {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
+                  </View>
+                  {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
+                </View>
+              </Card>
+            </Appear>
+            <Gap h={space.md} />
 
-        <Appear delay={stagger(1)}>
-          <Card style={{ paddingVertical: 0 }}>
-            {data.fields.map((f, i) => (
-              <View key={f.label} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingVertical: space.md, borderBottomWidth: i === data.fields.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }}>
-                <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
-                <Txt v="bodyStrong" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
-              </View>
-            ))}
-          </Card>
-        </Appear>
+            <Appear delay={stagger(1)}>
+              <Card style={{ paddingVertical: 0 }}>
+                {data.fields.map((f, i) => (
+                  <View key={f.label} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingVertical: space.md, borderBottomWidth: i === data.fields.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }}>
+                    <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
+                    <Txt v="bodyStrong" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
+                  </View>
+                ))}
+              </Card>
+            </Appear>
+          </>
+        )}
 
         {data.sections.map((s, i) => (
           <Appear key={s.title} delay={stagger(i + 2)} style={{ marginTop: space.xxl }}>

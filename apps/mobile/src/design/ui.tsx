@@ -372,7 +372,7 @@ export function ResultHost() {
 export interface ReceiptData {
   headline: string;
   caption?: string;
-  status: { label: string; tone: 'success' | 'warning'; at: string };
+  status: { label: string; tone: 'success' | 'warning' | 'danger'; at: string };
   rows: { label: string; value: string; copy?: boolean }[];
 }
 const useReceiptStore = create<{ data: ReceiptData | null; seq: number; onDone?: () => void; show: (d: ReceiptData, onDone?: () => void) => void; close: () => void }>((set, get) => ({
@@ -421,33 +421,47 @@ function ReceiptRow({ label, value, copy }: ReceiptData['rows'][number]) {
   );
 }
 
-/** Ildiz maketiga `ResultHost` bilan yonma-yon qo'yiladi. O'zi yopilmaydi. */
-export function ReceiptHost() {
-  const { data, seq, close } = useReceiptStore();
+/**
+ * Chekning o'zi — modalda (`ReceiptHost`) ham, hujjat kartochkasida ham (`/erp/<key>/<id>`,
+ * server `receipt` bersa) bir xil chiziladi. Holat rangi: kirim yashil, kutilmoqda sariq, chiqim qizil.
+ */
+export function ReceiptBody({ data, compact }: { data: ReceiptData; compact?: boolean }) {
   const { c } = useTheme();
-  useBackClose(!!data, close);
-  if (!data) return null;
-  const ok = data.status.tone === 'success';
-  const { ink, solid } = toneColors(c, data.status.tone);
+  const tone = data.status.tone;
+  const ok = tone === 'success';
+  const { ink, solid } = toneColors(c, tone);
   const at = new Date(data.status.at);
   return (
-    <DialogFrame key={seq} onDismiss={close}>
+    <View>
       <View style={{ alignItems: 'center' }}>
-        {ok ? <SuccessCheck size={112} /> : <StatusMark tone="warning" size={96} />}
-        <Txt v="metricHero" align="center" numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.sm }}>{data.headline}</Txt>
+        {ok ? <SuccessCheck size={compact ? 84 : 112} /> : <StatusMark tone={tone} size={compact ? 72 : 96} icon={tone === 'danger' ? 'circle-arrow-up' : undefined} />}
+        <Txt v="metricHero" align="center" numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.sm, color: tone === 'danger' ? ink : c.textStrong }}>{data.headline}</Txt>
         {data.caption ? <Txt v="body" color="muted" align="center" style={{ marginTop: space.xs }}>{data.caption}</Txt> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, paddingVertical: space.sm, paddingLeft: space.sm, paddingRight: space.md, borderRadius: radius.pill, backgroundColor: c.bgMuted }}>
           <View style={{ width: size.iconTileSm - space.sm, height: size.iconTileSm - space.sm, borderRadius: radius.pill, backgroundColor: solid, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name={ok ? 'check' : 'triangle-alert'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={3} />
+            <Icon name={ok ? 'check' : tone === 'danger' ? 'circle-arrow-up' : 'triangle-alert'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={3} />
           </View>
           <Txt v="bodyStrong" style={{ color: ink }}>{data.status.label}</Txt>
           <Txt v="body" color="faint">·</Txt>
           <Txt v="body" color="muted">{`${fmtDate(at)}, ${hhmm(at)}`}</Txt>
         </View>
       </View>
-      <View style={{ marginTop: space.xl, marginBottom: space.xxl, gap: space.xs }}>
+      <View style={{ marginTop: space.xl, gap: space.xs }}>
         {data.rows.map((r) => <ReceiptRow key={r.label} {...r} />)}
       </View>
+    </View>
+  );
+}
+
+/** Ildiz maketiga `ResultHost` bilan yonma-yon qo'yiladi. O'zi yopilmaydi. */
+export function ReceiptHost() {
+  const { data, seq, close } = useReceiptStore();
+  useBackClose(!!data, close);
+  if (!data) return null;
+  return (
+    <DialogFrame key={seq} onDismiss={close}>
+      <ReceiptBody data={data} />
+      <View style={{ height: space.xxl }} />
       <Button title="Yopish" size="lg" onPress={close} />
     </DialogFrame>
   );

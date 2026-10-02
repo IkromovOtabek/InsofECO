@@ -20,7 +20,8 @@ export type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info';
 export interface Receipt {
   headline: string;
   caption?: string;
-  status: { label: string; tone: 'success' | 'warning'; at: string };
+  /** `danger` — pul chiqib ketgan hujjat (chiqim, xarid): qizil plashka. */
+  status: { label: string; tone: 'success' | 'warning' | 'danger'; at: string };
   rows: { label: string; value: string; copy?: boolean }[];
 }
 /** Karta filtri (davr) — bosilganda bosh sahifa `?<filterParam>=<key>` bilan qayta so'raladi. */
@@ -55,6 +56,9 @@ export interface ErpFormField {
   options?: ErpFormOption[];
   /** Boshqa maydon shu qiymatda bo'lsagina ko'rinadi. */
   showIf?: { field: string; equals: string };
+  /** `photo` uchun: old/orqa kamera va faqat jonli kadr (galereya yo'q) — yuz bilan davomat shunday. */
+  camera?: 'front' | 'back';
+  cameraOnly?: boolean;
   /** `items` turi uchun ustunlar. */
   columns?: ErpFormField[];
   /** `date` maydoni uchun — 10 kunlik kunlik yuklama (veb "ish tartibi" bilan bir xil hisob). */
@@ -113,7 +117,8 @@ export interface ErpTripRoute {
   /** "Yetkazdim" so'raydigan maydonlar — kartochkadagi bilan bitta ro'yxat (serverdan). */
   deliverForm: ErpFormField[];
 }
-export interface ErpDetailData { key: string; id: string; title: string; subtitle?: string; status?: string; fields: ErpField[]; sections: ErpSection[]; actions: ErpAction[] }
+/** `receipt` — pul hujjati (kirim-chiqim, to'lov, schyot, xarid): sarlavha va maydonlar o'rniga chek kartasi chiziladi. */
+export interface ErpDetailData { key: string; id: string; title: string; subtitle?: string; status?: string; fields: ErpField[]; sections: ErpSection[]; actions: ErpAction[]; receipt?: Receipt }
 /** Ilovadagi bildirishnoma. `link` — bosilganda ochiladigan kartochka. */
 export interface ErpNotification {
   id: string;

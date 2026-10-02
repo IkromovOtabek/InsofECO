@@ -19,6 +19,16 @@ const LOGO_RATIO = 970 / 210;
  * tizim sozlamasiga ergashadi). Kirish, ro'yxat, SMS kod, parol tiklash va PIN shu yerdan quriladi.
  */
 
+/** "+998" prefiksi — telefon maydoni yonida, input balandligida (fokus halqasi hisobga olingan). */
+export function PhonePrefix() {
+  const { c } = useTheme();
+  return (
+    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
+      <Txt v="body" mono color="muted">+998</Txt>
+    </View>
+  );
+}
+
 /** Sahifa qobig'i: bg-app, orqaga tugmasi, klaviatura ustida surilish, pastda footer. */
 export function AuthScreen({ children, back = true, onBack, footer }: { children: React.ReactNode; back?: boolean; onBack?: () => void; footer?: React.ReactNode }) {
   const { c } = useTheme();

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, View, ViewStyle } from 'react-native';
 import { Badge, IconTile, KPICard, Txt, statusLabel } from '@/design/primitives';
 import { Icon, IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { LIST_MODULE, ModuleTone, radius, shadow, size, space, textRoom, type } from '@/design/tokens';
+import { LIST_MODULE, ModuleTone, radius, shadow, size, space, textRoom, toneColors, type } from '@/design/tokens';
 import { Appear, PressScale, stagger } from '@/design/motion';
 import type { ErpCard, ErpListFilter, ErpRow } from '@/core/erp';
 
@@ -104,6 +104,8 @@ export function QuickTile({ label, icon, module: m = 'brand', onPress, index }: 
 /** Ro'yxat qatori (karta ko'rinishida) — ikonka plitkasi, sarlavha + izoh, o'ngda qiymat va holat nishoni. */
 export function ListRow({ row, icon, module: m = 'brand', onPress, index = 0 }: { row: ErpRow; icon: IconName | string; module?: ModuleTone; onPress?: () => void; index?: number }) {
   const { c } = useTheme();
+  // Pul qatori (+kirim / −chiqim) holat nishonisiz keladi — summa yirik, qalin va yashil/qizil bo'ladi
+  const money = !!row.right && !row.status && (row.tone === 'success' || row.tone === 'danger');
   const body = (
     <View style={[{ backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault, borderRadius: radius.card, paddingHorizontal: space.md, paddingVertical: space.md, minHeight: size.row + space.lg }, shadow.card]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -114,7 +116,9 @@ export function ListRow({ row, icon, module: m = 'brand', onPress, index = 0 }: 
         </View>
         {/* flexShrink: 0 — uzun nom o'ng ustunni siqib nishon harfini qirqmasin */}
         <View style={{ alignItems: 'flex-end', gap: space.xs, flexShrink: 0 }}>
-          {row.right ? <Txt v="bodySm" color="strong" numberOfLines={1} style={{ minWidth: textRoom(row.right, 13) }}>{row.right}</Txt> : null}
+          {row.right ? (
+            <Txt v={money ? 'titleSm' : 'bodySm'} color="strong" numberOfLines={1} style={[{ minWidth: textRoom(row.right, money ? 16 : 13) }, money ? { color: toneColors(c, row.tone).ink } : null]}>{row.right}</Txt>
+          ) : null}
           {row.status ? <Badge label={statusLabel(row.status)} tone={row.tone} /> : null}
         </View>
         {onPress ? <Icon name="chevron-right" tone="faint" /> : null}

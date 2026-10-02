@@ -42,8 +42,8 @@ export default function Forgot() {
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? "Raqam noto'g'ri");
     setLoading(true); setError(undefined); setForm(undefined);
     try {
-      await authApi.forgotPassword(parsed.data);
-      router.push({ pathname: '/(auth)/otp', params: { phone: parsed.data, mode: 'reset' } });
+      const r = await authApi.forgotPassword(parsed.data);
+      router.push({ pathname: '/(auth)/otp', params: { phone: parsed.data, mode: 'reset', via: r.channel } });
     } catch (e) {
       setForm(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');
     } finally { setLoading(false); }

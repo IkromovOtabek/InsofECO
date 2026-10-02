@@ -112,7 +112,7 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
       case 'date': return <DateInput field={field} value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
-      case 'photo': return <PhotoInput value={value} onChange={(v) => onChange(field.name, v)} />;
+      case 'photo': return <PhotoInput value={value} onChange={(v) => onChange(field.name, v)} camera={field.camera} cameraOnly={field.cameraOnly} />;
       default: return null;
     }
   };
@@ -138,16 +138,18 @@ const ImagePicker: typeof ImagePickerNS | null = requireOptionalNativeModule('Ex
 const PHOTO_OPTS: ImagePickerNS.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.5, base64: true };
 
 /** Qiymat — `data:<mime>;base64,...` satri: forma boshqa maydonlar bilan birga JSON bo'lib ketadi. */
-function PhotoInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PhotoInput({ value, onChange, camera, cameraOnly }: { value: string; onChange: (v: string) => void; camera?: 'front' | 'back'; cameraOnly?: boolean }) {
   const { c } = useTheme();
   if (!ImagePicker) return <Txt v="caption">Bu ilova versiyasida kamera yo'q — hujjatni vebdan biriktiring.</Txt>;
   const picker = ImagePicker;
-  const pick = async (camera: boolean) => {
-    if (camera) {
+  const pick = async (fromCamera: boolean) => {
+    if (fromCamera) {
       const perm = await picker.requestCameraPermissionsAsync();
       if (!perm.granted) return;
     }
-    const r = camera ? await picker.launchCameraAsync(PHOTO_OPTS) : await picker.launchImageLibraryAsync(PHOTO_OPTS);
+    // Yuz uchun old kamera; server kadrni kichraytiradi, shuning uchun sifat 0.5 yetadi
+    const opts: ImagePickerNS.ImagePickerOptions = camera ? { ...PHOTO_OPTS, cameraType: camera === 'front' ? picker.CameraType.front : picker.CameraType.back } : PHOTO_OPTS;
+    const r = fromCamera ? await picker.launchCameraAsync(opts) : await picker.launchImageLibraryAsync(opts);
     const a = r.canceled ? null : r.assets[0];
     if (a?.base64) onChange(`data:${a.mimeType ?? 'image/jpeg'};base64,${a.base64}`);
   };
@@ -155,12 +157,13 @@ function PhotoInput({ value, onChange }: { value: string; onChange: (v: string) 
     <View style={{ gap: space.sm }}>
       {value ? (
         <View style={{ borderRadius: radius.md, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
-          <Image source={{ uri: value }} style={{ width: '100%', aspectRatio: 4 / 3 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+          <Image source={{ uri: value }} style={{ width: '100%', aspectRatio: camera === 'front' ? 3 / 4 : 4 / 3 }} resizeMode="cover" accessibilityIgnoresInvertColors />
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <View style={{ flex: 1 }}><Button title="Kamera" variant="secondary" icon="camera" onPress={() => void pick(true)} /></View>
-        <View style={{ flex: 1 }}><Button title="Galereya" variant="secondary" icon="image" onPress={() => void pick(false)} /></View>
+        <View style={{ flex: 1 }}><Button title={cameraOnly ? (value ? 'Qayta olish' : 'Kamerani ochish') : 'Kamera'} variant="secondary" icon="camera" onPress={() => void pick(true)} /></View>
+        {/* Jonli kadr talab qilinsa (yuz) galereya yo'q — telefondagi eski surat bilan belgilab bo'lmasin */}
+        {cameraOnly ? null : <View style={{ flex: 1 }}><Button title="Galereya" variant="secondary" icon="image" onPress={() => void pick(false)} /></View>}
       </View>
       {value ? <Button title="Olib tashlash" variant="ghost" onPress={() => onChange('')} /> : null}
     </View>

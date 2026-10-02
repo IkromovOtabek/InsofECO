@@ -11,19 +11,19 @@ const D = size.avatarLg; // 56 — dumaloq tugma
 
 /**
  * Kirish usullari — faqat belgi, yozuvsiz (foydalanuvchi so'rovi): Telegram o'z ko'k rangida,
- * SMS yashil. Ekran o'quvchi uchun `accessibilityLabel` bor.
+ * SMS yashil (`onSms` berilmasa — masalan login allaqachon telefon rejimida — ko'rinmaydi). Ekran o'quvchi uchun `accessibilityLabel` bor.
  */
-export function SocialLogin({ onTelegram, onSms, telegramBusy }: { onTelegram: () => void; onSms: () => void; telegramBusy?: boolean }) {
+export function SocialLogin({ onTelegram, onSms, telegramBusy }: { onTelegram: () => void; onSms?: () => void; telegramBusy?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.xl }}>
       <Pressable accessibilityRole="button" accessibilityLabel="Telegram orqali kirish" onPress={onTelegram} hitSlop={8}
         style={({ pressed }) => ({ width: D, height: D, borderRadius: D / 2, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
         {telegramBusy ? <ActivityIndicator color={social.telegram} /> : <Svg width={D} height={D} viewBox="0 0 24 24"><Path d={TG_PATH} fill={social.telegram} /></Svg>}
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="SMS-kod orqali kirish" onPress={onSms} hitSlop={8}
+      {onSms ? <Pressable accessibilityRole="button" accessibilityLabel="SMS-kod orqali kirish" onPress={onSms} hitSlop={8}
         style={({ pressed }) => ({ width: D, height: D, borderRadius: D / 2, backgroundColor: social.sms, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
         <Icon name="message-circle" color={social.onSocial} size={size.iconXl} strokeWidth={2} />
-      </Pressable>
+      </Pressable> : null}
     </View>
   );
 }

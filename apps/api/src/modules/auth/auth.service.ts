@@ -129,7 +129,7 @@ export class AuthService {
   /** 1-qadam: raqamga kod yuborish. Raqam bor-yo'qligi oshkor qilinmaydi — javob bir xil. */
   async forgotPassword(phone: string, ip: string) {
     const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user) return { retryAfter: 60 }; // hisob yo'q — baribir "yubordik" deymiz
+    if (!user) return { retryAfter: 60, channel: this.otp.defaultChannel }; // hisob yo'q — baribir "yubordik" deymiz
     return this.otp.request(phone, ip);
   }
 

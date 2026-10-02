@@ -7,6 +7,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { LoggerModule } from 'nestjs-pino';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
+import { TelegramGatewayModule } from './infra/telegram-gateway/telegram-gateway.module';
 import { SmsModule } from './infra/sms/sms.module';
 import { PushModule } from './infra/push/push.module';
 import { StorageModule } from './infra/storage/storage.module';
@@ -51,6 +52,7 @@ import { HealthController } from './health.controller';
     PrismaModule,
     RedisModule,
     SmsModule,
+    TelegramGatewayModule,
     PushModule,
     StorageModule,
     AuthModule,

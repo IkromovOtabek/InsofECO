@@ -12,14 +12,18 @@ import { ApiException } from '@/core/api';
 import { AuthScreen, ErrorBox, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 
 /**
- * SMS tasdiqlash kodi — oltita alohida katak.
+ * Tasdiqlash kodi (Telegram Gateway yoki SMS — `via`) — oltita alohida katak.
  * `mode=reset` bo'lsa kod tekshirilgach yangi parol ekraniga o'tadi,
  * aks holda kod darhol tizimga kiritadi.
  */
 const LEN = 6;
 
 export default function OtpScreen() {
-  const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: string }>();
+  const params = useLocalSearchParams<{ phone: string; mode?: string; via?: string }>();
+  const { phone, mode } = params;
+  // Qayta yuborishda kanal o'zgarishi mumkin (Telegram ishlamay SMS'ga tushsa)
+  const [via, setVia] = useState(params.via === 'telegram' ? 'telegram' : 'sms');
+  const tg = via === 'telegram';
   const router = useRouter();
   const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
@@ -75,6 +79,7 @@ export default function OtpScreen() {
     try {
       const r = isReset ? await authApi.forgotPassword(phone) : await authApi.requestOtp(phone);
       setLeft(r.retryAfter ?? 60);
+      if (r.channel) setVia(r.channel);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Qayta yuborib bo\'lmadi');
     }
@@ -85,13 +90,15 @@ export default function OtpScreen() {
   return (
     <AuthScreen>
       <Appear delay={60} style={{ marginTop: space.xxl }}>
-        <IconTile icon="message-square" module="brand" size={size.iconTile + space.md} />
+        <IconTile icon={tg ? 'send' : 'message-square'} module="brand" size={size.iconTile + space.md} />
       </Appear>
 
       <Title>Tasdiqlash kodi</Title>
       <Appear delay={90} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm }}>
         <Txt v="bodySm" color="muted">
-          <Txt v="bodySm" mono color="strong">{phone}</Txt> raqamiga {LEN} xonali kod yubordik.
+          {tg
+            ? <>{LEN} xonali kodni <Txt v="bodySm" mono color="strong">{phone}</Txt> raqamidagi Telegram'ga («Verification Codes» chati) yubordik.</>
+            : <><Txt v="bodySm" mono color="strong">{phone}</Txt> raqamiga {LEN} xonali kod yubordik.</>}
         </Txt>
         <TextLink onPress={() => router.back()}>O&apos;zgartirish</TextLink>
       </Appear>
@@ -126,7 +133,7 @@ export default function OtpScreen() {
         <View style={{ marginTop: space.sm }}>
           {code.length === LEN
             ? <StatusLine icon="circle-check" tone="success" text="Kod to'liq kiritildi" />
-            : <StatusLine icon="message-square" text="Kodni kiriting — SMS kelganda o'zi to'ladi." />}
+            : <StatusLine icon={tg ? 'send' : 'message-square'} text={tg ? "Telegram'dagi kodni kiriting yoki nusxalab qo'ying." : "Kodni kiriting — SMS kelganda o'zi to'ladi."} />}
         </View>
       </Appear>
 
@@ -141,7 +148,7 @@ export default function OtpScreen() {
           <ListItem
             icon="clock"
             title={left > 0 ? 'Qayta yuborish' : 'Kodni qayta yuborish'}
-            subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : 'SMS kelmagan bo\'lsa bosing'}
+            subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : tg ? 'Telegram\'ga kelmagan bo\'lsa bosing' : 'SMS kelmagan bo\'lsa bosing'}
             onPress={left > 0 ? undefined : () => void resend()}
             right={left > 0 ? <Txt v="mono" color="strong">{mmss}</Txt> : null}
             last

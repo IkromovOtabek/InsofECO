@@ -2,23 +2,12 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
-import { Input, Label, Txt } from '@/design/primitives';
-import { radius, size, space } from '@/design/tokens';
-import { useTheme } from '@/design/theme';
+import { Input, Label } from '@/design/primitives';
+import { space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { ApiException } from '@/core/api';
-import { AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PrimaryButton, Title } from '@/features/auth/ui';
-
-/** "+998" prefiksi — input balandligida, fokus halqasi hisobga olingan. */
-function PhonePrefix() {
-  const { c } = useTheme();
-  return (
-    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
-      <Txt v="body" mono color="muted">+998</Txt>
-    </View>
-  );
-}
+import { AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PhonePrefix, PrimaryButton, Title } from '@/features/auth/ui';
 
 /** Telefon orqali kirish — raqamga 6 xonali kod yuboriladi. */
 export default function PhoneScreen() {
@@ -35,8 +24,8 @@ export default function PhoneScreen() {
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? "Raqam noto'g'ri");
     setLoading(true); setError(undefined); setForm(undefined);
     try {
-      await authApi.requestOtp(parsed.data);
-      router.push({ pathname: '/(auth)/otp', params: { phone: parsed.data } });
+      const r = await authApi.requestOtp(parsed.data);
+      router.push({ pathname: '/(auth)/otp', params: { phone: parsed.data, via: r.channel } });
     } catch (e) {
       setForm(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');
     } finally { setLoading(false); }
@@ -44,7 +33,7 @@ export default function PhoneScreen() {
 
   return (
     <AuthScreen footer={<FooterLink text="Hisobingiz yo'qmi?" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
-      <Title hint="Raqamingizni kiriting — tasdiqlash uchun 6 xonali kod yuboramiz.">Telefon raqamingiz</Title>
+      <Title hint="Raqamingizni kiriting — tasdiqlash uchun 6 xonali kod Telegram'ga (bo'lmasa SMS) yuboramiz.">Telefon raqamingiz</Title>
 
       <Appear delay={130} style={{ marginTop: space.xxl }}>
         <Label>Telefon raqam</Label>
