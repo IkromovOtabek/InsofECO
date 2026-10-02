@@ -41,15 +41,17 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-secure-store',
+    // Face ID ishlatilmaydi — plugin qo'shadigan inglizcha NSFaceIDUsageDescription'ni olib tashlaymiz
+    ['expo-secure-store', { faceIDPermission: false }],
     ['expo-location', { isAndroidBackgroundLocationEnabled: true, isAndroidForegroundServiceEnabled: true }],
     // `sounds` — ovoz fayli native to'plamga qo'shiladi: iOS bundle'ga, Android `res/raw` ga.
     // Shuning uchun ovoz o'zgarsa ilovani qayta chiqarish kerak (OTA yetarli emas).
     ['expo-notifications', { color: '#f59e0b', sounds: ['./assets/bildirishnoma.wav'] }],
     // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
     './plugins/withKotlinVersion.js',
-    // Ro'yxatdan o'tishda profil rasmi — galereya va kamera ruxsat matnlari (native: qayta build kerak)
-    ['expo-image-picker', { photosPermission: "Profil rasmini tanlash uchun.", cameraPermission: "Profil rasmini olish, nakladnoy va yetkazish fotosi uchun." }],
+    // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
+    // Apple review matn haqiqiy ishlatilishga mos bo'lishini tekshiradi — yangi foto holati qo'shilsa shu yerga ham yozing.
+    ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: "Profil rasmi, nakladnoy va yetkazish fotosini olish hamda ishga kelganda davomat uchun selfi tushirish uchun." }],
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',

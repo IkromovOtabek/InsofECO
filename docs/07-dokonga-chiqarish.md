@@ -1,7 +1,8 @@
 # Insof ECO — App Store va Google Play'ga chiqarish yo'l xaritasi
 
-Yangilangan: 2026-09-28. Holat: EAS loyihasi tayyor, production env o'zgaruvchilari bor, OTA ulangan,
-`/maxfiylik` sahifasi ochiq. **Hali birorta EAS build qilinmagan.** Hisobni o'chirish funksiyasi yozilmoqda.
+Yangilangan: 2026-10-02. Holat: EAS loyihasi tayyor, production env o'zgaruvchilari bor, OTA ulangan,
+`/maxfiylik` sahifasi ochiq, hisobni o'chirish ilovada bor. Android `preview` APK buildlari chiqqan (1.0.0).
+**iOS build hali yo'q — Apple Developer hisobi ochilishi kutilmoqda** (pastda "iOS TestFlight" bo'limi).
 
 ## Muddat (real baho)
 
@@ -31,12 +32,49 @@ Xulosa: **xodimlar 1–2 kunda production'da ishlay oladi** (APK + TestFlight), 
 
 ## Kod tomonida qolgan ishlar
 
-- [ ] Hisobni ilova ichida o'chirish (Apple 5.1.1(v), Play siyosati) — yozilmoqda (AccountDeletionRequest).
-- [ ] `NSCameraUsageDescription` — kamera ishlatilmasa olib tashlash (review savol beradi).
+- [x] Hisobni ilova ichida o'chirish (Apple 5.1.1(v), Play siyosati) — Profil → "Hisobni o'chirish".
+- [x] Kamera/galereya ruxsat matnlari haqiqiy ishlatilishga mos: profil rasmi, nakladnoy, yetkazish fotosi, davomat selfisi.
 - [ ] Fon joylashuv uchun Play deklaratsiyasi + 30 s video (haydovchi reysi: "Yo'lga chiqdim" → xarita).
 - [ ] Skrinshotlar: iPhone 6.7" (1290×2796) va Android telefon, 4–6 ta: do'kon, mahsulot, haydovchi reysi, xarita, bildirishnoma.
-- [ ] `version` 0.2.0 → 1.0.0 (`app.config.ts`), runtimeVersion shunga bog'liq.
-- [ ] Production API sinovi: `https://api.insof-erp.uz` va `https://insof-erp.uz` ilova so'rovlariga javob berishi (`/v1/auth/login`, `/api/public/shop`).
+- [x] `version` 1.0.0 (`app.config.ts`), runtimeVersion shunga bog'liq.
+- [x] Production API sinovi (2026-10-02): `/v1/health` 200, `/v1/auth/login` 422 (validatsiya), `/api/public/shop` 200, `/maxfiylik` 200.
+- [ ] App Review uchun demo hisoblar production bazada (mijoz va `reviewer` xodim) — TestFlight tashqi sinovidan oldin.
+
+## iOS TestFlight — qadamma-qadam
+
+**1. Apple Developer Program (foydalanuvchi, 1–2 kun).** developer.apple.com/programs/enroll — Apple ID'da
+ikki bosqichli himoya yoqilgan bo'lishi shart, 99 $/yil.
+- *Shaxsiy (Individual)* — eng tez. Do'konda sotuvchi sifatida shaxsiy ism ko'rinadi.
+- *Tashkilot (Organization)* — do'konda "INSOF ..." ko'rinadi, lekin D-U-N-S raqami kerak (bepul, 5–30 kun).
+  Shaxsiy hisobni keyin tashkilotga o'tkazish mumkin (Apple Support orqali), shuning uchun TestFlight uchun
+  shaxsiydan boshlab, D-U-N-S ni parallel so'rash mumkin.
+
+**2. Birinchi iOS build (interaktiv, ~20–30 daqiqa).** Apple ID paroli va 2FA kodini foydalanuvchi o'zi kiritadi:
+```bash
+cd apps/mobile
+eas build -p ios --profile production
+```
+Savollarga javob: Apple hisobiga kirish — *Yes*; Distribution Certificate va Provisioning Profile yaratish — *Yes*
+(EAS saqlaydi); **Push Notifications key — *Yes*** (busiz iOS'ga push bormaydi). Bundle ID `uz.insofeco.app`
+Apple portalida avtomatik ro'yxatdan o'tadi, Push va Background Modes capability'lari ham.
+
+**3. TestFlight'ga yuborish.**
+```bash
+eas submit -p ios --latest
+```
+Birinchi marta App Store Connect'da "Insof ECO" ilova yozuvini yaratishni taklif qiladi — *Yes*. Nom band bo'lsa
+"Insof ECO — Beton" kabi boshqa nom so'raladi (do'kondagi nomni keyin o'zgartirsa bo'ladi). Yuborilgach
+`ascAppId` ni `eas.json` → `submit.production.ios` ga yozib qo'ying — keyingi submitlar savolsiz o'tadi.
+
+**4. App Store Connect → TestFlight.** Build 10–30 daqiqada "Processing" dan chiqadi. Eksport muvofiqligi
+savoli chiqmaydi (`usesNonExemptEncryption: false`).
+- *Ichki sinovchilar* (100 tagacha, App Store Connect foydalanuvchilari) — review'siz, darhol.
+- *Tashqi sinovchilar* (10 000 tagacha, ommaviy havola bilan) — Beta App Review (odatda 1 kun). Kerak:
+  sinov tavsifi, fikr-mulohaza emaili, demo hisob (pastdagi "Review uchun izohlar"), maxfiylik siyosati URL.
+
+**5. Keyingi relizlar.** JS o'zgarishi — `eas update --channel production` (TestFlight buildiga ham yetadi).
+Native o'zgarish — `eas build -p ios --profile production --auto-submit` (buildNumber o'zi oshadi).
+Ommaviy TestFlight havolasini ERP'dagi `ECO_APP_URL` ga qo'yish mumkin (taklif SMS'idagi havola).
 
 ## Do'kon ro'yxati matnlari (uz)
 
