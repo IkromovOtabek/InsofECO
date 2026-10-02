@@ -49,6 +49,15 @@ ikki bosqichli himoya yoqilgan bo'lishi shart, 99 $/yil.
   Shaxsiy hisobni keyin tashkilotga o'tkazish mumkin (Apple Support orqali), shuning uchun TestFlight uchun
   shaxsiydan boshlab, D-U-N-S ni parallel so'rash mumkin.
 
+**Qaror (2026-10-02): hozir Shaxsiy hisob → TestFlight; D-U-N-S parallel; kelgach o'sha hisobni tashkilotga o'tkazish.**
+- D-U-N-S: developer.apple.com/enroll/duns-lookup — bepul, yuridik nom ro'yxatdagidek lotincha.
+- O'tkazish: developer.apple.com/contact → Membership → "migrate account" so'rovi. Talab: so'rovchi tashkilot
+  asoschisi/hammuassisi bo'lishi; biznes hujjatlari so'ralishi mumkin.
+- ⚠️ **Alohida yangi tashkilot hisobi OCHMANG.** Ilovani boshqa hisobga ko'chirish (App Transfer) faqat App Store'da
+  kamida bitta versiyasi chiqqan ilova uchun ishlaydi — faqat TestFlight'dagi ilova ko'chmaydi va
+  `uz.insofeco.app` bundle ID shaxsiy hisobda qolib ketadi.
+- TestFlight buildi 90 kun yashaydi — D-U-N-S kechiksa, yangi build yuboriladi (OTA yangilanishlar ham yetadi).
+
 **2. Birinchi iOS build (interaktiv, ~20–30 daqiqa).** Apple ID paroli va 2FA kodini foydalanuvchi o'zi kiritadi:
 ```bash
 cd apps/mobile
