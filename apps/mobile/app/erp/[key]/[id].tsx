@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { Badge, Button, Card, EmptyState, Gap, Txt, statusTone } from '@/design/primitives';
-import { ReceiptBody, dialog, receipt, result, toast, type IconName } from '@/design/ui';
+import { Badge, Button, Card, EmptyState, IconTile, ListGroup, Txt, statusTone } from '@/design/primitives';
+import { ReceiptBody, Sheet, dialog, receipt, result, toast, type IconName } from '@/design/ui';
+import { StickyActionBar } from '@/design/blocks';
 import { useTheme } from '@/design/theme';
 import { size, space, toneColors } from '@/design/tokens';
 import type { ErpAction } from '@/core/erp';
@@ -11,10 +12,8 @@ import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
-import { ListRow, ROW_ICON, SectionHead, listModule, statusLabel } from '@/features/erp/ui';
-import { SectionEmpty } from '@/features/erp/screens';
+import { ListSkeleton, ROW_ICON, RowsGroup, SectionEmpty, SectionHead, listModule, statusLabel } from '@/features/erp/ui';
 import { Appear, stagger } from '@/design/motion';
-import { Loader } from '@/design/loader';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -65,6 +64,7 @@ export default function ErpDetail() {
   const run = useErpAction();
   const [form, setForm] = useState<ErpAction | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   React.useEffect(() => {
     if (data) nav.setOptions({ title: data.title });
@@ -147,11 +147,32 @@ export default function ErpDetail() {
     void execute(a);
   };
 
-  if (isLoading) return <Loader fill />;
-  if (error || !data) return <EmptyState title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta oching" />;
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bgApp, padding: space.pageX, gap: space.md }}>
+        <ListSkeleton rows={2} />
+        <ListSkeleton rows={6} />
+      </View>
+    );
+  }
+  if (error || !data) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bgApp, justifyContent: 'center' }}>
+        <EmptyState icon="cloud-off" title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void refetch()} />
+      </View>
+    );
+  }
+
+  /** Amal tugmasi varianti — server toni bo'yicha. */
+  const variantOf = (a: ErpAction) => (a.tone === 'danger' ? 'danger' : a.tone === 'success' ? 'success' : 'primary') as 'danger' | 'success' | 'primary';
+  // Birinchi amal — keyingi qadam (server tartibi): pastki panelda katta tugma. Ikkinchisi yonida,
+  // uchtadan ko'p bo'lsa qolganlari "Yana" varag'ida.
+  const [primary, ...others] = data.actions;
+  const secondary = others.length === 1 ? others[0] : undefined;
+  const sheetActions = others.length > 1 ? others : [];
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <ScrollView
         contentContainerStyle={{ padding: space.pageX, paddingBottom: space.x10 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
@@ -166,76 +187,87 @@ export default function ErpDetail() {
         ) : (
           <>
             <Appear>
-              <Card>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-                  <View style={{ flex: 1 }}>
-                    <Txt v="titleMd">{data.title}</Txt>
-                    {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
-                  </View>
-                  {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <IconTile icon={ROW_ICON[key!] ?? 'file-text'} module={listModule(key)} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Txt v="titleMd" numberOfLines={2}>{data.title}</Txt>
+                  {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
                 </View>
+                {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
               </Card>
             </Appear>
-            <Gap h={space.md} />
 
-            <Appear delay={stagger(1)}>
-              <Card style={{ paddingVertical: 0 }}>
-                {data.fields.map((f, i) => (
-                  <View key={f.label} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingVertical: space.md, borderBottomWidth: i === data.fields.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }}>
-                    <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
-                    <Txt v="bodyStrong" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
-                  </View>
-                ))}
-              </Card>
-            </Appear>
+            {data.fields.length ? (
+              <Appear delay={stagger(1)} style={{ marginTop: space.md }}>
+                <ListGroup>
+                  {data.fields.map((f, i) => (
+                    <View key={`${f.label}-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingHorizontal: space.card, paddingVertical: space.md, borderTopWidth: i ? size.hairline : 0, borderTopColor: c.borderSubtle }}>
+                      <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
+                      <Txt v="bodyStrong" align="right" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
+                    </View>
+                  ))}
+                </ListGroup>
+              </Appear>
+            ) : null}
           </>
         )}
 
         {data.sections.map((s, i) => (
           <Appear key={s.title} delay={stagger(i + 2)} style={{ marginTop: space.xxl }}>
-            <SectionHead title={s.title} />
-            {s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : s.rows.map((r, j) => (
-              <ListRow
-                key={r.id}
-                row={r}
-                index={j}
+            <SectionHead title={s.title} count={s.rows.length || undefined} />
+            {s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : (
+              <RowsGroup
+                rows={s.rows}
                 module={listModule(s.target)}
                 icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
-                onPress={s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined}
+                onRow={(r) => (s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined)}
               />
-            ))}
+            )}
           </Appear>
         ))}
-
-        {data.actions.length ? (
-          <Appear delay={stagger(data.sections.length + 2)} style={{ marginTop: space.xxl }}>
-            <SectionHead title="Amallar" />
-            <View style={{ gap: space.md }}>
-              {data.actions.map((a) => (
-                <View key={a.id}>
-                  {/* Yopiq tugma kulrang bo'ladi, lekin o'rnida qoladi: haydovchi keyingi qadam
-                      qaysi tugma ekanini ko'rib turadi, faqat hozir bosib bo'lmasligini biladi. */}
-                  <Button
-                    size="lg"
-                    title={a.label}
-                    icon={a.disabled ? 'lock' : ACTION_ICON[a.id] ?? 'arrow-right'}
-                    variant={a.tone === 'danger' ? 'danger' : a.tone === 'success' ? 'success' : a.tone === 'warning' ? 'secondary' : 'primary'}
-                    disabled={a.disabled || run.isPending}
-                    onPress={() => press(a)}
-                  />
-                  {a.disabled ? (
-                    <View style={{ alignItems: 'center', marginTop: space.xs }}>
-                      {a.hint ? <Txt v="caption" align="center">{a.hint}</Txt> : null}
-                      {/* Yopiq tugma bosilmaydi — qulfni ochishga urinish alohida havola orqali */}
-                      <Button variant="ghost" icon="refresh-cw" title="Qayta tekshirish" full={false} onPress={() => void recheck()} />
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </Appear>
-        ) : null}
       </ScrollView>
+
+      {/* Yopiq asosiy amal: sababi va qulfni ochishga urinish (joylashuvni qayta yuborish) — panel ustida */}
+      {primary?.disabled ? (
+        <View style={{ alignItems: 'center', paddingHorizontal: space.pageX, paddingTop: space.sm, gap: space.xs }}>
+          {primary.hint ? <Txt v="caption" align="center">{primary.hint}</Txt> : null}
+          <Button variant="ghost" icon="refresh-cw" title="Qayta tekshirish" full={false} onPress={() => void recheck()} />
+        </View>
+      ) : null}
+      {primary ? (
+        <StickyActionBar
+          primary={{
+            title: primary.label,
+            icon: ACTION_ICON[primary.id] ?? 'arrow-right',
+            variant: variantOf(primary),
+            disabled: primary.disabled,
+            disabledReason: primary.hint ?? "Hozir bajarib bo'lmaydi",
+            loading: run.isPending,
+            onPress: () => press(primary),
+          }}
+          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : ACTION_ICON[secondary.id], onPress: () => press(secondary) } : undefined}
+          more={sheetActions.length ? { label: 'Boshqa amallar', icon: 'ellipsis', onPress: () => setMoreOpen(true) } : undefined}
+        />
+      ) : null}
+
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Amallar">
+        <View style={{ gap: space.md }}>
+          {sheetActions.map((a) => (
+            <View key={a.id} style={{ gap: space.xs }}>
+              {/* Yopiq amal kulrang, lekin bosiladi — sababini aytadi va qayta tekshirishni taklif qiladi */}
+              <Button
+                size="lg"
+                title={a.label}
+                icon={a.disabled ? 'lock' : ACTION_ICON[a.id] ?? 'arrow-right'}
+                variant={a.disabled || a.tone === 'warning' ? 'secondary' : variantOf(a)}
+                disabled={run.isPending}
+                onPress={() => { setMoreOpen(false); press(a); }}
+              />
+              {a.disabled && a.hint ? <Txt v="caption" align="center">{a.hint}</Txt> : null}
+            </View>
+          ))}
+        </View>
+      </Sheet>
 
       {form ? (
         <ActionSheet

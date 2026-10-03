@@ -20,22 +20,28 @@ export interface ErpRoleConfig {
   ai?: boolean;
 }
 
+/** Oxirgi tab — profil va bo'limlar menyusi (spekdagi "Menyu"). */
+export const MENU_TAB = { title: 'Menyu', icon: 'menu' } as const;
+/** Direktorning AI tabi. */
+export const AI_TAB = { title: 'AI', icon: 'sparkles' } as const;
+
 export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
+  // Tab yorliqlari va ikonkalar — `docs/redesign/roles/<ROLE>.json` dagi `tabs` (mavjud ekranlarga mos keladiganlari)
   // Ikkinchi tab — direktor qarorini kutayotganlar (bloklangan zayavka, ta'minot tasdig'i/to'lovi); zayavkalar "Bo'limlar"da
-  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Bosh sahifa', homeIcon: 'gauge',   listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true },
-  SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',      homeIcon: 'trending-up',   listKey: 'orders',     workTitle: 'Zayavkalar', workIcon: 'file-text' },
-  PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',        homeIcon: 'factory',     listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' },
-  SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',     homeIcon: 'clipboard-list',     listKey: 'tasks',      workTitle: 'Topshiriqlar', workIcon: 'square-check' },
-  LOGISTICS:   { group: '(erp-logistics)',   label: 'Logistika',        homeTitle: 'Dispetcher', homeIcon: 'navigation', listKey: 'trips',  workTitle: 'Reyslar',    workIcon: 'truck' },
-  WAREHOUSE:   { group: '(erp-warehouse)',   label: 'Sklad',            homeTitle: 'Ombor',      homeIcon: 'warehouse', listKey: 'stock', workTitle: 'Xomashyo', workIcon: 'layers' },
-  PROCUREMENT: { group: '(erp-procurement)', label: 'Snabjeniye',       homeTitle: 'Xaridlar',   homeIcon: 'shopping-cart',          listKey: 'receipts',   workTitle: 'Kirimlar',   workIcon: 'download' },
-  ACCOUNTING:  { group: '(erp-accounting)',  label: 'Buxgalteriya',     homeTitle: 'Hisob',      homeIcon: 'calculator',    listKey: 'invoices',   workTitle: 'Schyotlar',  workIcon: 'receipt' },
-  FINANCE:     { group: '(erp-finance)',     label: 'Moliya',           homeTitle: 'Moliya',     homeIcon: 'chart-pie',     listKey: 'cashflow',   workTitle: 'Kirim-chiqim', workIcon: 'arrow-up-down' },
-  HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',    homeIcon: 'users',        listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'id-card' },
-  CASHIER:     { group: '(erp-cashier)',     label: 'Kassa / bank',     homeTitle: 'Kassa',      homeIcon: 'wallet',        listKey: 'payments',   workTitle: "To'lovlar",  workIcon: 'banknote' },
-  MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',    homeIcon: 'wrench',        listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'truck' },
-  DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',      homeIcon: 'calendar-days',         listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'truck' },
-  BRIGADIER:   { group: '(erp-brigadier)',   label: 'Brigadir',         homeTitle: 'Brigadam',   homeIcon: 'hard-hat',        listKey: 'tasks',      workTitle: 'Topshiriqlar', workIcon: 'square-check' },
+  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true },
+  SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'orders',     workTitle: 'Zayavka',    workIcon: 'file-text' },
+  PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',       homeIcon: 'house', listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' },
+  SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',    homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' },
+  LOGISTICS:   { group: '(erp-logistics)',   label: 'Logistika',        homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'truck' },
+  WAREHOUSE:   { group: '(erp-warehouse)',   label: 'Sklad',            homeTitle: 'Ombor',     homeIcon: 'house', listKey: 'stock',      workTitle: 'Xomashyo',   workIcon: 'layers' },
+  PROCUREMENT: { group: '(erp-procurement)', label: 'Snabjeniye',       homeTitle: 'Xaridlar',  homeIcon: 'house', listKey: 'receipts',   workTitle: 'Kirimlar',   workIcon: 'package' },
+  ACCOUNTING:  { group: '(erp-accounting)',  label: 'Buxgalteriya',     homeTitle: 'Hisob',     homeIcon: 'house', listKey: 'invoices',   workTitle: 'Schyotlar',  workIcon: 'receipt' },
+  FINANCE:     { group: '(erp-finance)',     label: 'Moliya',           homeTitle: 'Moliya',    homeIcon: 'house', listKey: 'cashflow',   workTitle: 'Oqim',       workIcon: 'trending-up' },
+  HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',   homeIcon: 'house', listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'users' },
+  CASHIER:     { group: '(erp-cashier)',     label: 'Kassa / bank',     homeTitle: 'Kassa',     homeIcon: 'house', listKey: 'payments',   workTitle: "To'lovlar",  workIcon: 'banknote' },
+  MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',   homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'route' },
+  DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'truck' },
+  BRIGADIER:   { group: '(erp-brigadier)',   label: 'Brigadir',         homeTitle: 'Brigadam',  homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' },
 };
 
 /**
