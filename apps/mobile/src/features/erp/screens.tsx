@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Button, Callout, Card, EmptyState, IconButton, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
+import { Button, Callout, Card, EmptyState, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
 import { Avatar, Confirm, fmtShort, tabIcon, toast } from '@/design/ui';
 import {
   ActionGrid, AttentionList, BarChartCard, BreakdownCard, ChipGroup, HBarList, HeroCard, KpiGrid, ListGroup, OfflineBanner, PageHeader,
@@ -14,16 +14,18 @@ import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom
 import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { Appear, PressScale, stagger, useHeaderRaise, useReducedMotion } from '@/design/motion';
 import { useSession } from '@/core/session';
-import { MapView, Marker, type MapHandle } from '@/core/map';
+import { MapView, Marker } from '@/core/map';
 import { config } from '@/core/config';
-import { erpAuth, type ErpCard, type ErpFleetTruck, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
+import { erpAuth, type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
 import { erpRoleConfig, type ErpTabSpec } from './roles';
 import { roleDashboard, type QuickSpec, type RoleDashboard } from './dashboards';
 import { useErpHome, useErpList, useErpNotifications } from './api';
-import { ErpRowItem, ROW_ICON, RowsGroup, SectionEmpty, cardHref, isZero, listModule, parseHint, splitValue, statusLabel } from './ui';
+import { ErpRowItem, ROW_ICON, RowsGroup, SectionEmpty, cardHref, idSeg, isZero, listModule, parseHint, splitValue, statusLabel } from './ui';
 import { RangeCalendar } from './range-calendar';
 import { ProgressChart } from './charts';
 import { ErpAiChat } from './ai-chat';
+import { DailyReportSheet } from './daily-report';
+import { FleetScreen } from './fleet';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
@@ -184,8 +186,22 @@ function barSeries(ch: Bars | Columns, pick: number[]) {
 const progressCaption = (it: Progress['items'][number]) =>
   `fakt ${it.fact}${it.plan != null ? ` · plan ${it.plan}` : ''}${it.pct != null && it.pct > 100 ? (it.invert ? ' · rejadan oshdi' : ' · rejadan ortiq') : ''}`;
 
-/** Bo'lim qatori bosilganda — kartochka (`target`) yoki ro'yxat (`open`). */
-const rowHref = (s: ErpSection, r: ErpRow) => (s.target ? `/erp/${s.target}/${r.id}` : r.open ? `/erp/list/${r.open}` : null);
+/**
+ * Bo'lim qatori bosilganda — kartochka (`target`) yoki ro'yxat (`open`). Qatorning o'z `open`i bo'lim
+ * `target`idan ustun (masalan "Bog'liq bo'lim" qatori). Id'da bo'shliq/apostrof bo'lishi mumkin
+ * (direktor muammosi `over-Ish haqi`) — shuning uchun kodlanadi.
+ */
+const rowHref = (s: ErpSection, r: ErpRow) => (r.open ? `/erp/list/${r.open}` : s.target ? `/erp/${s.target}/${idSeg(r.id)}` : null);
+
+/**
+ * Ro'yxat kaliti → kartochka kaliti, ro'yxat va kartochka nomi farq qilsa. "Muammolar" (`brig-issues`) va
+ * "Smena hisobotlari" (`brig-shifts`) qatorlari ilgari `/erp/brig-issues/<id>` ni ochardi — server bunday
+ * kartochkani bilmaydi ("Kartochka ochilmadi"); server ham endi xaritalaydi, eski server uchun bu yerda ham.
+ */
+const DETAIL_OF: Record<string, string> = { 'brig-issues': 'brig-issue', 'brig-shifts': 'brig-shift' };
+
+/** Jonli reyslar xaritasini kim ochadi (server `GET /api/mobile/fleet` ruxsati bilan bir xil). */
+const FLEET_ROLES: ErpRole[] = ['DIRECTOR', 'LOGISTICS', 'MECHANIC'];
 
 /** Ro'yxat bo'limlarida bosh sahifada ko'rinadigan qatorlar soni ("Barchasi" — qolgani). */
 const SECTION_ROWS = 6;
@@ -220,6 +236,7 @@ export function ErpHome() {
   const { data, isLoading, refetch, isRefetching, error, isPlaceholderData } = useErpHome(params);
   const [calOpen, setCalOpen] = useState(false);
   const [allAlerts, setAllAlerts] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const pending = useErpList(cfg.countList?.key ?? '');
   const unread = useErpNotifications().data?.unread ?? 0;
   useEffect(() => { setBadge(unread); }, [unread]);
@@ -316,6 +333,23 @@ export function ErpHome() {
     const quick = resolveQuick(cfg.quick, data, rcfg.group, !!rcfg.ai, module, go);
     if (quick.length) blocks.push(<ActionGrid key="qa" items={quick} />);
 
+    // ── Kuzatuv va hisobot: jonli reyslar xaritasi, kunlik Excel hisobot (direktor; xarita — mexanikka ham) ──
+    if (data.role === 'DIRECTOR' || data.role === 'MECHANIC') {
+      const onRoad = data.sections.find((x) => /^Yo'ldagi reyslar/.test(x.title))?.rows.length ?? data.live?.length ?? 0;
+      blocks.push(
+        <ListGroup key="track">
+          <ListItem
+            icon="map" module="logistics" title="Reyslar xaritada"
+            subtitle={onRoad ? `${onRoad} ta mashina yo'lda · jonli kuzatuv` : "Jonli kuzatuv: mashinalar, ETA, haydovchi"}
+            onPress={() => go('/erp/fleet')}
+          />
+          {data.role === 'DIRECTOR' ? (
+            <ListItem icon="download" module={module} title="Kunlik hisobot (Excel)" subtitle="Sotuv, ishlab chiqarish, reyslar, to'lovlar, muammolar" onPress={() => setReportOpen(true)} />
+          ) : null}
+        </ListGroup>,
+      );
+    }
+
     // ── E'tibor talab qiladi (bo'sh bo'lsa blok yo'q) ──
     const attention: AttentionItem[] = [];
     const pendingCount = pending.data?.rows.length ?? 0;
@@ -364,7 +398,11 @@ export function ErpHome() {
     // ── Reja (progress) ──
     if (model.progress) {
       const it = model.progress.item;
-      blocks.push(<ProgressCard key="pg" title={it.label} value={it.pct ?? 0} caption={progressCaption(it)} tone={it.tone} />);
+      // Server `open` bersa (direktor nazorati: tushum → zayavkalar, xarajat → kirim-chiqim) karta bosiladi
+      const card = <ProgressCard title={it.label} value={it.pct ?? 0} caption={progressCaption(it)} tone={it.tone} />;
+      blocks.push(it.open
+        ? <PressScale key="pg" onPress={() => go(`/erp/list/${it.open}`)} scale={0.985} accessibilityRole="button">{card}</PressScale>
+        : <View key="pg">{card}</View>);
     }
 
     // ── Taqsimot ──
@@ -383,11 +421,11 @@ export function ErpHome() {
       blocks.push(<KpiGrid key="more" items={model.more.map((k) => kpiOf(k, module, openCard(k)))} />);
     }
     for (const s of model.rest) {
-      for (const el of serverSection(s, (t) => (t && LIST_MODULE[t]) || module, go)) blocks.push(el);
+      for (const el of serverSection(s, (t) => (t && LIST_MODULE[t]) || module, go, FLEET_ROLES.includes(data.role) && s.target === 'trips' ? { label: 'Xaritada', href: '/erp/fleet' } : undefined)) blocks.push(el);
     }
 
     // Logistika xaritasi "Xarita" tabida; boshqa rollar: GPS'i bor mashinalar — kichik xarita (demo bloklaridan keyin)
-    if (!data.fleet && data.live?.length) tail = <LiveTrucks trucks={data.live} />;
+    if (!data.fleet && data.live?.length) tail = <LiveTrucks trucks={data.live} onMap={FLEET_ROLES.includes(data.role) ? () => go('/erp/fleet') : undefined} />;
   }
 
   return (
@@ -404,6 +442,7 @@ export function ErpHome() {
         </Reveal>
         {tail}
       </ScrollView>
+      {data?.role === 'DIRECTOR' ? <DailyReportSheet open={reportOpen} onClose={() => setReportOpen(false)} /> : null}
     </View>
   );
 }
@@ -412,7 +451,7 @@ export function ErpHome() {
  * Serverning qolgan bo'limi — demo bloklari: grafik kartasi, taqsimot yoki sarlavha + ListGroup qatorlari.
  * `Reveal` bolalari bo'lib ketma-ket kiradi (har biri alohida blok).
  */
-function serverSection(s: ErpSection, moduleOf: (target?: string) => ModuleTone, onGo: (href: string) => void): React.ReactNode[] {
+function serverSection(s: ErpSection, moduleOf: (target?: string) => ModuleTone, onGo: (href: string) => void, extra?: { label: string; href: string }): React.ReactNode[] {
   const ch = s.chart;
   const k = `s-${s.title}`;
   if (ch?.kind === 'bars' || ch?.kind === 'columns') {
@@ -428,8 +467,8 @@ function serverSection(s: ErpSection, moduleOf: (target?: string) => ModuleTone,
     <SectionHead
       key={`${k}-h`}
       title={s.title}
-      action={s.target && s.rows.length ? 'Barchasi' : undefined}
-      onAction={s.target ? () => onGo(`/erp/list/${s.target}`) : undefined}
+      action={extra && s.rows.length ? extra.label : s.target && s.rows.length && listable(s.target) ? 'Barchasi' : undefined}
+      onAction={extra && s.rows.length ? () => onGo(extra.href) : s.target && listable(s.target) ? () => onGo(`/erp/list/${s.target}`) : undefined}
     />,
     ch?.kind === 'progress'
       ? <ProgressChart key={k} chart={ch} onOpen={(key) => onGo(`/erp/list/${key}`)} />
@@ -444,6 +483,9 @@ function serverSection(s: ErpSection, moduleOf: (target?: string) => ModuleTone,
       ),
   ];
 }
+
+/** Kartochka turi ro'yxat sifatida ham ochiladimi (`problem`, `dash`, `sex` — faqat kartochka). */
+const listable = (target: string) => !['problem', 'dash', 'sex', 'rep', 'activity'].includes(target);
 
 /** Spekdagi tezkor amallar → mavjud manzillar. Rolga yopiq yoki ma'lumoti yo'q amal tushib qoladi. */
 function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasAi: boolean, module: ModuleTone, go: (h: string) => void): ActionItem[] {
@@ -489,7 +531,7 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
  * Ma'lumot ERP'dan keladi (`/api/mobile/home` → `live`), ruxsat ham o'sha yerda hal bo'ladi —
  * sotuvchiga faqat o'zi ochgan zayavkalarning mashinalari ko'rinadi.
  */
-function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
+function LiveTrucks({ trucks, onMap }: { trucks: ErpLiveTruck[]; onMap?: () => void }) {
   const { c } = useTheme();
   const router = useRouter();
 
@@ -504,7 +546,7 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
 
   return (
     <View style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
-      <SectionHead title={`Yo'lda · ${trucks.length} ta`} />
+      <SectionHead title={`Yo'lda · ${trucks.length} ta`} action={onMap ? 'Xaritada' : undefined} onAction={onMap} />
       {/* Xarita kalitisiz build'da pastdagi ro'yxat qoladi, ya'ni ma'lumot
           yo'qolmaydi, faqat ko'rinish soddalashadi (`core/config.ts`). */}
       {config.mapsEnabled && (
@@ -534,156 +576,6 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
           );
         })}
       </Card>
-    </View>
-  );
-}
-
-// ───────────────────────── Logistika: faol reyslar xaritasi ─────────────────────────
-
-const FLEET_MAP_HEIGHT = 300;
-/** Tanlangan mashinaga yaqinlashish masshtabi (~1 km) */
-const FOCUS_DELTA = 0.012;
-
-/** "12 daq oldin" — GPS nuqtasining yoshi. */
-function agoLabel(iso: string) {
-  const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
-  if (m < 1) return 'hozir';
-  if (m < 60) return `${m} daq oldin`;
-  const h = Math.floor(m / 60);
-  return h < 24 ? `${h} soat oldin` : `${Math.floor(h / 24)} kun oldin`;
-}
-
-/**
- * Logistika bosh ekrani: faol reyslar xaritada, ostida reysdagi mashinalar ro'yxati.
- * Qator bosilsa xarita o'sha mashinaga yaqinlashadi va belgisi ajratiladi; yana bosilsa
- * hamma mashina qaytadan ko'rinadi. GPS'siz reys ro'yxatda turadi ("GPS yo'q"), xaritada emas.
- * Ro'yxat ERP'dan keladi (`/api/mobile/home` → `fleet`, 30 s da bir yangilanadi).
- * Vebdagi logistika panelidagi blokning aynan o'zi — telefonda "o'ng tomon" pastga tushadi.
- */
-function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
-  const { c } = useTheme();
-  const router = useRouter();
-  const mapRef = useRef<MapHandle | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-
-  const located = fleet.filter((t): t is ErpFleetTruck & { gps: NonNullable<ErpFleetTruck['gps']> } => !!t.gps);
-  const coords = located.map((t) => ({ latitude: t.gps.lat, longitude: t.gps.lng }));
-
-  const region = coords.length
-    ? {
-      latitude: (Math.min(...coords.map((p) => p.latitude)) + Math.max(...coords.map((p) => p.latitude))) / 2,
-      longitude: (Math.min(...coords.map((p) => p.longitude)) + Math.max(...coords.map((p) => p.longitude))) / 2,
-      latitudeDelta: Math.max(0.04, (Math.max(...coords.map((p) => p.latitude)) - Math.min(...coords.map((p) => p.latitude))) * 1.6),
-      longitudeDelta: Math.max(0.04, (Math.max(...coords.map((p) => p.longitude)) - Math.min(...coords.map((p) => p.longitude))) * 1.6),
-    }
-    : null;
-
-  const showAll = () => {
-    if (coords.length > 1) mapRef.current?.fitToCoordinates(coords);
-    else if (coords[0]) mapRef.current?.animateToRegion({ latitude: coords[0].latitude, longitude: coords[0].longitude, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 400);
-  };
-
-  const pick = (t: ErpFleetTruck) => {
-    if (selected === t.ref) { setSelected(null); showAll(); return; }
-    setSelected(t.ref);
-    if (!t.gps) { toast.show(`${t.plate}: GPS yo'q — xaritada ko'rsatib bo'lmaydi`, 'warning'); return; }
-    if (!config.mapsEnabled) { toast.show('Bu qurilmada xarita yo\'q', 'warning'); return; }
-    mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500);
-  };
-
-  const sel = selected ? fleet.find((t) => t.ref === selected) : null;
-
-  return (
-    <View style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
-      <SectionHead
-        title={`Faol reyslar · ${fleet.length} ta`}
-        action={fleet.length ? 'Barchasi' : undefined}
-        onAction={() => router.push('/erp/list/trips' as never)}
-      />
-      {/* Xarita kalitisiz build'da ro'yxat qoladi (`core/config.ts`). */}
-      {config.mapsEnabled && region ? (
-        <View style={{ height: FLEET_MAP_HEIGHT, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault, marginBottom: space.sm }}>
-          <MapView
-            ref={(r) => { mapRef.current = r; }}
-            style={{ flex: 1 }}
-            initialRegion={region}
-            rotateEnabled={false}
-            pitchEnabled={false}
-            onPress={() => { if (selected) { setSelected(null); showAll(); } }}
-          >
-            {located.map((t) => {
-              const active = selected === t.ref;
-              return (
-                <Marker
-                  // MapKit plitkani rasmga aylantirib oladi va o'zgarishni sezmaydi — tanlov o'zgarsa qayta yaratiladi
-                  key={`${t.ref}:${active ? 1 : 0}`}
-                  coordinate={{ latitude: t.gps.lat, longitude: t.gps.lng }}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  onPress={() => { setSelected(t.ref); mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500); }}
-                  zIndex={active ? 2 : 1}
-                >
-                  {/* Davlat raqami yozilgan plitka — vebdagi belgining o'zi; tanlangani brend rangda */}
-                  <View style={{ paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: active ? c.brand : c.textStrong, borderWidth: size.ring, borderColor: c.bgSurface }}>
-                    <Txt v="overline" style={{ color: active ? c.textOnBrand : c.bgSurface }} numberOfLines={1}>{t.plate}</Txt>
-                  </View>
-                </Marker>
-              );
-            })}
-          </MapView>
-          {/* Hamma mashinani qaytadan ko'rsatish — tanlov bor yoki xarita surilgan bo'lsa */}
-          <View style={{ position: 'absolute', right: space.sm, bottom: space.sm }}>
-            <IconButton icon="locate-fixed" label="Hamma mashinani ko'rsatish" variant="secondary" onPress={() => { setSelected(null); showAll(); }} />
-          </View>
-        </View>
-      ) : (
-        <Card style={{ marginBottom: space.sm, paddingVertical: space.xl, alignItems: 'center' }}>
-          <Txt v="bodySm" color="muted" align="center">
-            {fleet.length === 0 ? 'Faol reys yo\'q' : config.mapsEnabled ? 'Hozircha birorta haydovchidan GPS kelmayapti — haydovchi yo\'lga chiqsa mashina shu yerda ko\'rinadi' : 'Bu qurilmada xarita yo\'q — ro\'yxat pastda'}
-          </Txt>
-        </Card>
-      )}
-
-      {fleet.length ? (
-        <Card style={{ paddingVertical: 0 }}>
-          {fleet.map((t, i) => {
-            const active = selected === t.ref;
-            const gps = t.gps;
-            const line2 = [
-              t.phase,
-              t.plannedAt ? `reja ${t.plannedAt}` : null,
-              t.delay,
-              gps ? `GPS ${agoLabel(gps.at)}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}${gps.km != null ? ` · ${fmtUnit(gps.km, 'km')}` : ''}` : 'GPS yo\'q',
-            ].filter(Boolean).join(' · ');
-            return (
-              <ListItem
-                key={t.tripId}
-                icon="truck"
-                module="logistics"
-                tone={t.openIssues ? 'danger' : undefined}
-                title={`${t.plate} · ${t.driver}`}
-                subtitle={`${t.customer} · ${t.address}\n${line2}`}
-                subtitleLines={2}
-                last={i === fleet.length - 1}
-                onPress={() => pick(t)}
-                chevron={false}
-                style={active ? { backgroundColor: c.bgMuted } : undefined}
-                right={
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, flexShrink: 0 }}>
-                    <Badge label={t.delay && t.delayTone ? t.delay : gps ? 'GPS' : 'GPS yo\'q'} tone={t.delayTone ?? (gps ? 'success' : 'neutral')} icon={null} />
-                    <IconButton icon="chevron-right" label={`${t.ref} kartochkasi`} tone="muted" onPress={() => router.push(`/erp/trips/${t.tripId}` as never)} />
-                  </View>
-                }
-              />
-            );
-          })}
-        </Card>
-      ) : null}
-
-      {sel ? (
-        <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>
-          {sel.gps ? `Xaritada: ${sel.plate} · ${sel.ref}` : `${sel.plate} — GPS yo'q${sel.driverPhone ? ` · ${sel.driverPhone}` : ''}`}
-        </Txt>
-      ) : null}
     </View>
   );
 }
@@ -782,7 +674,7 @@ export function ErpList({ listKey, title, onBack, fallback }: { listKey: string;
                 g.label ? <Txt key={`h${gi}`} v="overline" color="muted" style={{ marginBottom: -space.xs }}>{g.label}</Txt> : null,
                 <ListGroup key={`g${gi}`}>
                   {g.rows.map((r) => (
-                    <ErpRowItem key={r.id} row={r} icon={ROW_ICON[listKey] ?? 'circle'} module={module} onPress={() => router.push(`/erp/${listKey}/${r.id}` as never)} />
+                    <ErpRowItem key={r.id} row={r} icon={ROW_ICON[listKey] ?? 'circle'} module={module} onPress={() => router.push(`/erp/${DETAIL_OF[listKey] ?? listKey}/${idSeg(r.id)}` as never)} />
                   ))}
                 </ListGroup>,
               ])}
@@ -841,30 +733,12 @@ export function ErpSections({ title, embedded }: { title: string; embedded?: boo
 
 // ───────────────────────── Logistika: "Xarita" tabi ─────────────────────────
 
-/** Faol reyslar xaritasi va ro'yxati (bosh sahifadagi `fleet`; 30 s da yangilanadi). */
+/**
+ * Faol reyslar xaritasi — direktorning "Reyslar xaritada" ekrani bilan bitta komponent (`./fleet.tsx`):
+ * 12 s da yangilanadi, holat rangidagi belgilar, bosilganda pastdan reys oynasi, "hammasini ko'rsatish".
+ */
 function ErpMapTab({ title }: { title: string }) {
-  const { c } = useTheme();
-  const raise = useHeaderRaise();
-  const { data, isLoading, refetch, isRefetching } = useErpHome();
-  return (
-    <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <TabHeader title={title} raised={raise.raised} />
-      <ScrollView
-        onScroll={raise.onScroll}
-        scrollEventThrottle={raise.scrollEventThrottle}
-        contentContainerStyle={{ paddingBottom: space.xxxl }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
-      >
-        {isLoading ? <SkeletonList rows={4} style={{ marginHorizontal: space.pageX }} /> : (
-          <Appear>
-            {data?.fleet ? <FleetMap fleet={data.fleet} />
-              : data?.live?.length ? <LiveTrucks trucks={data.live} />
-              : <EmptyState icon="map" title="Yo'lda mashina yo'q" hint="Reys boshlanganda mashinalar shu yerda ko'rinadi" />}
-          </Appear>
-        )}
-      </ScrollView>
-    </View>
-  );
+  return <FleetScreen title={title} />;
 }
 
 // ───────────────────────── Haydovchi: "Yo'l" tabi ─────────────────────────
@@ -925,6 +799,9 @@ export function ErpMenu() {
   // Hisobni o'chirish (do'kon talabi): xodim hisobini direktor bergan — darhol o'chirilmaydi,
   // so'rov direktorga tushadi (Sozlamalar → Hisob so'rovlari), tasdiqlansa login yopiladi.
   const [delAsk, setDelAsk] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const isDirector = erp?.role === 'DIRECTOR';
+  const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
   const [delBusy, setDelBusy] = useState(false);
   const [delPending, setDelPending] = useState<boolean | null>(null);
   useEffect(() => { erpAuth.deletionStatus().then((r) => setDelPending(r.pending)).catch(() => setDelPending(false)); }, []);
@@ -982,6 +859,18 @@ export function ErpMenu() {
           </Appear>
         ) : null}
 
+        {canFleet ? (
+          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+            <SectionHead title="Kuzatuv va hisobot" />
+            <ListGroup>
+              <ListItem icon="map" module="logistics" title="Reyslar xaritada" subtitle="Jonli kuzatuv: mashina, haydovchi, ETA" onPress={() => router.push('/erp/fleet' as never)} />
+              {isDirector ? (
+                <ListItem icon="download" module={module} title="Kunlik hisobot (Excel)" subtitle="Kunni tanlang — fayl ulashiladi yoki ochiladi" onPress={() => setReportOpen(true)} />
+              ) : null}
+            </ListGroup>
+          </Appear>
+        ) : null}
+
         <Appear delay={stagger(3)} style={{ marginTop: space.xl }}>
           <SectionHead title="Ilova" />
           <ListGroup>
@@ -1033,6 +922,7 @@ export function ErpMenu() {
         confirmLabel="So'rov yuborish"
         message="Hisobingizni direktor bergan, shuning uchun so'rov unga boradi. Tasdiqlangach login yopiladi, ilova va kompyuterdagi seanslar tugaydi. Xodim kartangiz (HR) saqlanib qoladi."
       />
+      {isDirector ? <DailyReportSheet open={reportOpen} onClose={() => setReportOpen(false)} /> : null}
     </View>
   );
 }

@@ -1,6 +1,11 @@
 /** Insof ERP hooklari — mobil ilovadagi xodim bo'limlari uchun. */
 import { useMutation, keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { erpAuth, type ErpTripRoute } from '@/core/erp';
+import * as FileSystem from 'expo-file-system';
+import { erpApi, erpAuth, type ErpFleetTruck, type ErpTripRoute } from '@/core/erp';
+import { config } from '@/core/config';
+import { KEYS, secure } from '@/core/storage';
+import { ApiException } from '@/core/api';
+import type { ApiError } from '@insof/shared';
 
 /**
  * Bosh sahifa. `params` — karta filtrlari (masalan `{ revenue: 'week' }`). Filtrsiz chaqiruvlar
@@ -100,4 +105,84 @@ export function useErpAction() {
     mutationFn: (v: { action: string; id: string; payload?: Record<string, unknown> }) => erpAuth.action(v.action, v.id, v.payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['erp'] }),
   });
+}
+
+// ───────────────────────── Reyslar xaritasi (direktor, logistika, mexanik) ─────────────────────────
+
+/** Xaritadagi reys — `ErpFleetTruck` + yangi server maydonlari (eski server bermasa `undefined`). */
+export type ErpFleetItem = ErpFleetTruck & {
+  orderId?: string;
+  orderNo?: string;
+  status?: string;
+  qty?: string;
+  /** Obyekt nuqtasi — "Navigatorda ochish" uchun. */
+  dest?: { lat: number; lng: number } | null;
+};
+export interface ErpFleetData { at: string; trucks: ErpFleetItem[]; gpsError: string | null }
+
+/** Jonli xarita uchun yangilanish oralig'i — 12 s (talab: 10–15 s). */
+export const FLEET_POLL_MS = 12_000;
+
+/**
+ * Faol reyslar (`GET /api/mobile/fleet`). Server hali yangilanmagan bo'lsa (404) — bosh sahifadagi
+ * `fleet`/`live` dan yig'iladi: ekran baribir ishlaydi, faqat 30 s da yangilanadi.
+ */
+export const useErpFleet = (enabled = true) => {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ['erp', 'fleet'],
+    enabled,
+    refetchInterval: FLEET_POLL_MS,
+    refetchIntervalInBackground: false,
+    queryFn: async (): Promise<ErpFleetData> => {
+      try {
+        return await erpApi<ErpFleetData>('/fleet');
+      } catch (e) {
+        // Eski server: marshrut yo'q — 404 (Next HTML sahifasi JSON emas, shuning uchun SyntaxError ham)
+        const missing = (e instanceof ApiException && e.status === 404) || e instanceof SyntaxError;
+        if (!missing) throw e;
+        const home = await qc.fetchQuery({ queryKey: ['erp', 'home'], queryFn: () => erpAuth.home(), staleTime: 25_000 });
+        const trucks: ErpFleetItem[] = home.fleet ?? (home.live ?? []).map((t) => ({
+          // Reys id'si topilmagan (ECO) — kartochka ochilmaydi (`ref:` belgisi, `fleet.tsx`)
+          tripId: t.tripId ?? `ref:${t.ref}`, ref: t.ref, plate: t.plate, driver: t.driver, driverPhone: null, customer: t.customer, address: '',
+          phase: t.status, tone: 'brand', plannedAt: null, delay: null, delayTone: null, openIssues: 0,
+          gps: { lat: t.lat, lng: t.lng, at: new Date().toISOString(), etaMin: t.etaMin, km: t.km },
+        }));
+        return { at: new Date().toISOString(), trucks, gpsError: null };
+      }
+    },
+  });
+};
+
+// ───────────────────────── Kunlik hisobot (Excel) ─────────────────────────
+
+/** `YYYY-MM-DD` (mahalliy kun). */
+export const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Kunlik hisobotni yuklab oladi (`GET /api/mobile/report/daily?date=`) va kesh papkasidagi fayl manzilini qaytaradi.
+ * Token eskirgan bo'lsa avval `/me` orqali yangilanadi (umumiy `erpApi` 401 → refresh qiladi).
+ * Server xato qaytarsa (JSON `{code, message}`) — xabari bilan `ApiException`.
+ */
+export async function downloadDailyReport(date: string): Promise<string> {
+  await erpAuth.me();
+  const token = await secure.get(KEYS.erpAccess);
+  const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+  if (!dir) throw new Error("Qurilmada fayl saqlash joyi topilmadi");
+  const target = `${dir}kunlik-hisobot-${date}.xlsx`;
+  const res = await FileSystem.downloadAsync(`${config.erpUrl}/api/mobile/report/daily?date=${encodeURIComponent(date)}`, target, {
+    headers: { authorization: `Bearer ${token ?? ''}`, accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json' },
+  });
+  if (res.status !== 200) {
+    let message = res.status === 404 ? "Serverda kunlik hisobot hali yo'q — ERP yangilanishi kerak" : 'Hisobot yuklanmadi';
+    let code = 'REPORT_FAILED';
+    try {
+      const j = JSON.parse(await FileSystem.readAsStringAsync(res.uri)) as { code?: string; message?: string };
+      if (j.message && res.status !== 404) message = j.message;
+      if (j.code) code = j.code;
+    } catch { /* JSON emas */ }
+    await FileSystem.deleteAsync(res.uri, { idempotent: true }).catch(() => undefined);
+    throw new ApiException(res.status, { code, message } as ApiError);
+  }
+  return res.uri;
 }

@@ -468,8 +468,47 @@ function GrowBar({ x, base, h, bw, r, color, delay }: { x: number; base: number;
   return <AnimatedPath fill={color} animatedProps={props} />;
 }
 
-/** Demo `barsG` o'q formati: 1000 dan katta — "1.5k". */
-const fmtAxis = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : String(+v.toFixed(1)));
+/** Ixcham son: 1 decimal, keraksiz ".0" siz. */
+const trim1 = (v: number) => String(+v.toFixed(Math.abs(v) >= 100 ? 0 : 1));
+/**
+ * O'q formati — qisqa: 950, 1.5k, 12k, 1.5 mln, 2 mlrd. Ilgari "1500000" → "1500k" bo'lib
+ * chap chetga sig'mas va ustun yozuvlariga tegib ketardi.
+ */
+export const fmtAxis = (v: number) => {
+  if (!Number.isFinite(v)) return '0';
+  const a = Math.abs(v), sign = v < 0 ? '−' : '';
+  if (a >= 1e9) return `${sign}${trim1(a / 1e9)} mlrd`;
+  if (a >= 1e6) return `${sign}${trim1(a / 1e6)} mln`;
+  if (a >= 1e3) return `${sign}${trim1(a / 1e3)}k`;
+  return `${sign}${trim1(a)}`;
+};
+
+/**
+ * X yozuvi — sana bo'lsa qisqartiriladi: "2026-10-03" / "03.10.2026" → "03.10"; boshqa uzun matn — 6 belgi.
+ */
+export function shortAxisLabel(raw: string): string {
+  const t = String(raw ?? '').trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
+  if (m) return `${m[3]}.${m[2]}`;
+  m = /^(\d{1,2})\.(\d{1,2})\.\d{2,4}/.exec(t);
+  if (m) return `${m[1]!.padStart(2, '0')}.${m[2]!.padStart(2, '0')}`;
+  return t.length > 6 ? `${t.slice(0, 5)}…` : t;
+}
+
+/** Matn kengligi (SVG o'lchab bo'lmaydi) — Manrope raqam/harf o'rtacha eni ≈ 0.6 em. */
+const textW = (txt: string, fs: number) => txt.length * fs * 0.6;
+
+/**
+ * Har nechanchi x yozuvi ko'rsatiladi: yozuv eni + oraliq guruh eniga sig'masa — har 2-, 3-… (24 soat,
+ * 31 kun bitta qatorda ustma-ust tushmasin).
+ */
+export function axisStep(labels: string[], groupW: number, fs: number, gapPx: number): number {
+  if (!labels.length || groupW <= 0) return 1;
+  const need = Math.max(...labels.map((l) => textW(l, fs))) + gapPx;
+  return Math.max(1, Math.ceil(need / groupW));
+}
+
+const finite = (v: number) => (Number.isFinite(v) ? v : 0);
 
 /**
  * Ustunli grafik kartasi — demo `barsG`: sarlavha + birlik (`.sh`), 2 seriyada legenda, setka 0 / o'rta / maks
@@ -479,10 +518,10 @@ const fmtAxis = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 :
 export function BarChartCard({ title, unit, labels, series, height, format = fmtAxis, highlight, style }: {
   title: string;
   /** Birlik izohi (o'ngda): "mln so'm", "m³". */ unit?: string;
-  /** X o'qi yozuvlari (5 belgigacha). */ labels: string[];
+  /** X o'qi yozuvlari — sana bo'lsa "kk.oo" ga qisqaradi, ko'p bo'lsa har N-chisi ko'rsatiladi. */ labels: string[];
   /** 1–2 seriya; `data` uzunligi `labels` bilan teng. */ series: { name: string; data: number[] }[];
   /** Grafik balandligi, dp (standart — eniga mutanosib, 112/252). */ height?: number;
-  /** Y o'qi formati (standart demo: 1.5k). */ format?: (n: number) => string;
+  /** Y o'qi formati (standart: 950 / 1.5k / 1.5 mln / 2 mlrd). */ format?: (n: number) => string;
   /** Qalin x yozuvi (masalan bugun). */ highlight?: number;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -490,17 +529,27 @@ export function BarChartCard({ title, unit, labels, series, height, format = fmt
   const [w, onLayout] = useWidth();
   const shown = series.slice(0, 2);
   const n = labels.length;
-  const max = niceMax(Math.max(0, ...shown.flatMap((s) => s.data.slice(0, n))));
+  const short = labels.map(shortAxisLabel);
+  const max = niceMax(Math.max(0, ...shown.flatMap((s) => s.data.slice(0, n).map(finite))));
   const k = w / 252;
   const H = height ?? 112 * k;
-  const l = 28 * k, b = 16 * k, t = 6 * k, ch = H - b - t, base = t + ch;
-  const gwc = (252 - 28 - 4) / Math.max(1, n);
+  const fs = 8 * k;
+  // Y o'qi yozuvlari: 0 / o'rta / maks; balandlik yetmasa o'rtasi tushadi (ustma-ust tushmasin)
+  const b = 16 * k, t = 6 * k, ch = H - b - t, base = t + ch;
+  const ticks = ch >= fs * 3.6 ? [0, max / 2, max] : [0, max];
+  // Chap chet — eng uzun y yozuviga qarab (kamida demo 28), lekin enining uchdan biridan oshmaydi
+  const l = Math.min(w / 3, Math.max(28 * k, Math.max(...ticks.map((v) => textW(format(v), fs))) + 8 * k));
+  const plotW = Math.max(1, w - l - 4 * k);
+  const gw = plotW / Math.max(1, n);
+  const gwc = gw / Math.max(k, 0.0001);
   const ns = Math.max(1, shown.length);
   const bwc = Math.max(2, Math.min(10, (gwc - 6) / ns - 2));
-  const bw = bwc * k, gap = 2 * k, r = Math.min(4, bwc / 2) * k, gw = gwc * k;
-  const y = (v: number) => t + ch - (v / max) * ch;
-  const fs = 8 * k;
-  const summary = shown.map((s) => `${s.name}: ${s.data.map((v, i) => `${labels[i]} ${format(v)}`).join(', ')}`).join('; ');
+  const bw = bwc * k, gap = 2 * k, r = Math.min(4, bwc / 2) * k;
+  const y = (v: number) => t + ch - (finite(v) / max) * ch;
+  const step = axisStep(short, gw, fs, 4 * k);
+  /** Ko'rinadigan x yozuvlari: oxiridan (bugun / joriy oy) har `step`-chisi — oxirgisi doim ko'rinadi. */
+  const showLabel = (i: number) => (n - 1 - i) % step === 0;
+  const summary = shown.map((s) => `${s.name}: ${s.data.map((v, i) => `${labels[i]} ${format(finite(v))}`).join(', ')}`).join('; ');
   return (
     <Surface style={style} gap={space.sm}>
       <SectionHead title={title} unit={unit} />
@@ -508,21 +557,24 @@ export function BarChartCard({ title, unit, labels, series, height, format = fmt
       <View onLayout={onLayout} accessible accessibilityRole="image" accessibilityLabel={`${title}. ${summary}`} style={{ height: w ? H : 112 * ((390 - 72) / 252) }}>
         {w > 0 && n > 0 ? (
           <Svg width={w} height={H}>
-            {[0, max / 2, max].map((v) => (
+            {ticks.map((v) => (
               <React.Fragment key={v}>
                 <Line x1={l} x2={w - 2 * k} y1={y(v)} y2={y(v)} stroke={c.chartGrid} strokeWidth={1} strokeDasharray={v ? [2 * k, 3 * k] : undefined} />
                 <SvgText x={l - 5 * k} y={y(v) + 3 * k} fontSize={fs} fontFamily={FONT[500]} fill={c.textMuted} textAnchor="end">{format(v)}</SvgText>
               </React.Fragment>
             ))}
-            {labels.map((lab, i) => {
+            {short.map((lab, i) => {
               const gx = l + i * gw + (gw - (ns * bw + (ns - 1) * gap)) / 2;
+              const hl = highlight === i;
               return (
-                <React.Fragment key={`${lab}-${i}`}>
+                <React.Fragment key={`${labels[i]}-${i}`}>
                   {shown.map((s, si) => {
-                    const v = Math.max(0, s.data[i] ?? 0);
+                    const v = Math.max(0, finite(s.data[i] ?? 0));
                     return <GrowBar key={s.name} x={gx + si * (bw + gap)} base={base} h={base - y(v)} bw={bw} r={r} color={seriesColor(c, si)} delay={DUR.barDelay + i * DUR.barStep} />;
                   })}
-                  <SvgText x={l + i * gw + gw / 2} y={H - 4 * k} fontSize={fs} fontFamily={highlight === i ? FONT[700] : FONT[500]} fill={highlight === i ? c.textStrong : c.textMuted} textAnchor="middle">{String(lab).slice(0, 5)}</SvgText>
+                  {showLabel(i) ? (
+                    <SvgText x={Math.min(w - textW(lab, fs) / 2, Math.max(l + textW(lab, fs) / 2, l + i * gw + gw / 2))} y={H - 4 * k} fontSize={fs} fontFamily={hl ? FONT[700] : FONT[500]} fill={hl ? c.textStrong : c.textMuted} textAnchor="middle">{lab}</SvgText>
+                  ) : null}
                 </React.Fragment>
               );
             })}
@@ -542,26 +594,30 @@ function HBar({ pct, color, delay }: { pct: number; color: string; delay: number
 /**
  * Gorizontal ustunlar — demo `hbarsG`: qator = yorliq (108 dp) | 11 dp chiziq (chartTrack, chart1 to'ladi) | qalin qiymat.
  * Qatorlar oralig'i 10 dp; chiziqlar 1.1 s da to'ladi.
+ * Qiymat ustuni qisqa formatda (1.5 mln) va eni cheklangan — uzun raqam chiziqni siqib yo'q qilmaydi,
+ * yorliq bir qatorda "…" bilan qisqaradi. NaN / manfiy qiymat — 0.
  */
-export function HBarList({ title, unit, items, format = (n: number) => fmtNum(n), style }: {
+export function HBarList({ title, unit, items, format = fmtAxis, style }: {
   title: string; unit?: string;
   items: { label: string; value: number }[];
-  /** Qiymat formati (standart `fmtNum`). */ format?: (n: number) => string;
+  /** Qiymat formati (standart — qisqa: 1.5k / 1.5 mln). */ format?: (n: number) => string;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
-  const max = Math.max(1, ...items.map((i) => i.value));
+  const rows = items.map((i) => ({ label: i.label, value: Math.max(0, finite(i.value)) }));
+  const max = Math.max(1, ...rows.map((i) => i.value));
   return (
     <Surface style={style} gap={space.sm}>
       <SectionHead title={title} unit={unit} />
+      {rows.length === 0 ? <Txt v="bodySm" color="muted">Ma&apos;lumot yo&apos;q</Txt> : null}
       <View style={{ gap: space.sm + 2 }}>
-        {items.map((it, i) => (
+        {rows.map((it, i) => (
           <View key={`${it.label}-${i}`} accessible accessibilityLabel={`${it.label}: ${format(it.value)}${unit ? ` ${unit}` : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.tight }}>
-            <Txt v="chartRow" numberOfLines={1} style={{ width: Math.round(px(78)) }}>{it.label}</Txt>
-            <View style={{ flex: 1, height: size.hbar, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }}>
-              <HBar pct={(Math.max(0, it.value) / max) * 100} color={c.chart1} delay={DUR.fillDelay - 50 + i * 40} />
+            <Txt v="chartRow" numberOfLines={1} style={{ width: Math.round(px(78)), flexShrink: 0 }}>{it.label}</Txt>
+            <View style={{ flex: 1, minWidth: px(24), height: size.hbar, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }}>
+              <HBar pct={(it.value / max) * 100} color={c.chart1} delay={DUR.fillDelay - 50 + i * 40} />
             </View>
-            <Txt v="chartRow" style={{ fontFamily: FONT[600], color: c.textStrong, fontVariant: ['tabular-nums'] }}>{format(it.value)}</Txt>
+            <Txt v="chartRow" numberOfLines={1} align="right" style={{ fontFamily: FONT[600], color: c.textStrong, fontVariant: ['tabular-nums'], maxWidth: '32%', flexShrink: 0 }}>{format(it.value)}</Txt>
           </View>
         ))}
       </View>

@@ -16,8 +16,14 @@ export { statusLabel, SectionHead };
 /** Ro'yxat kaliti → modul toni (ikonka plitkasi foni). */
 export const listModule = (key?: string | null): ModuleTone => (key ? LIST_MODULE[key] ?? 'brand' : 'brand');
 
+/**
+ * Marshrut bo'lagi uchun id: bo'shliq, apostrof, "/" kodlanadi (direktor muammosi `over-Ish haqi`),
+ * ":" esa o'z holida qoladi — aralash ro'yxat id'lari (`orders:<id>`) avvalgidek ko'rinadi.
+ */
+export const idSeg = (id: string) => encodeURIComponent(id).replace(/%3A/gi, ':');
+
 /** Karta bosilganda qayerga borishi — server `open` beradi (batafsil kartochka yoki ro'yxat). */
-export const cardHref = (card: ErpCard) => (card.open ? (card.open.id ? `/erp/${card.open.key}/${card.open.id}` : `/erp/list/${card.open.key}`) : null);
+export const cardHref = (card: ErpCard) => (card.open ? (card.open.id ? `/erp/${card.open.key}/${idSeg(card.open.id)}` : `/erp/list/${card.open.key}`) : null);
 
 /** Ro'yxat kaliti → qator ikoni. */
 export const ROW_ICON: Record<string, IconName> = {

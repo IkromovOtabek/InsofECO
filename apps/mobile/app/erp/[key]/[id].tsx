@@ -14,7 +14,7 @@ import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
-import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, listModule, splitValue, statusLabel } from '@/features/erp/ui';
+import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
 
 /**
@@ -54,7 +54,12 @@ const ACTION_ICON: Record<string, IconName> = {
   // Brigadir: smena, ish bosqichlari, muammo va brak
   'shift.open': 'log-in', 'shift.close': 'clipboard-check', 'shift.defect': 'circle-x', 'task.defect': 'circle-x',
   'task.start': 'hammer', 'task.finish': 'circle-check',
-  'issue.equipment': 'wrench', 'issue.material': 'package', 'issue.staff': 'user-plus', 'issue.other': 'triangle-alert', 'issue.resolve': 'circle-check',
+  'issue.equipment': 'wrench', 'issue.material': 'package', 'issue.staff': 'user-plus', 'issue.other': 'triangle-alert', 'issue.resolve': 'circle-check', 'issue.remind': 'bell',
+  // Ta'minot zanjiri va direktor qarorlari
+  'supply.approve': 'circle-check', 'supply.director': 'circle-check', 'supply.fund': 'banknote', 'supply.reject': 'circle-x',
+  'supply.price': 'tag', 'supply.receive': 'package-check', 'supply.fact': 'pencil', 'supply.delivery': 'truck', 'supply.incident': 'triangle-alert',
+  'supply.incident.resolve': 'circle-check', 'supply.doc': 'camera', 'supply.quote': 'files', 'supply.quote.choose': 'check', 'supply.meta': 'settings',
+  'order.invoice': 'receipt', 'problem.assign': 'send', 'problem.note': 'pencil',
 };
 
 /** Hujjat turi — kartochka ustki yozuvi (demo "BETON M300 · 12 M³" o'rnida tur nomi). */
@@ -63,6 +68,7 @@ const KIND_LABEL: Record<string, string> = {
   supply: "Ta'minot", snabjeniye: "Ta'minot", receipts: 'Kirim', stock: 'Xomashyo', production: 'Zames', tasks: 'Topshiriq',
   customers: 'Mijoz', leads: 'Ariza', employees: 'Xodim', drivers: 'Haydovchi', brigades: 'Brigada', suppliers: 'Yetkazuvchi',
   'brig-issues': 'Muammo', 'brig-shifts': 'Smena', 'prod-report': 'Hisobot',
+  problem: 'Egasi qarori', activity: 'Xodim faoliyati', 'brig-issue': 'Muammo', 'brig-shift': 'Smena',
 };
 
 /** Katta summa qatori: "Summa", "Jami", "To'lov summasi"… — raqamli bo'lsa kartochka tepasida katta yoziladi. */
@@ -187,8 +193,18 @@ export default function ErpDetail() {
 
   /** Amal tugmasi varianti — server toni bo'yicha. */
   const variantOf = (a: ErpAction) => (a.tone === 'danger' ? 'danger' : a.tone === 'success' ? 'success' : 'primary') as 'danger' | 'success' | 'primary';
-  // Birinchi amal — keyingi qadam (server tartibi). Demo `.sticky`: "…" (qolgan amallar) · ikkilamchi · asosiy.
-  const [primary, secondary, ...sheetActions] = data?.actions ?? [];
+  /**
+   * Demo `.sticky`: "Yana" (qolgan amallar) · ikkilamchi · asosiy.
+   * Asosiy — server tartibidagi birinchi "ijobiy" amal (Tasdiqlash, Blokni ochish, Yetkazdim — yopiq bo'lsa ham,
+   * sababi bilan); ikkilamchi — salbiy amal (Rad etish / Bekor qilish), bo'lmasa keyingisi; qolgani "Yana"da.
+   * Ilgari birinchi amal ko'r-ko'rona asosiy bo'lardi: server faqat "Bekor qilish"ni bersa yoki u birinchi
+   * kelsa, qizil tugma asosiy bo'lib, tasdiqlash ko'rinmay qolardi.
+   */
+  const acts = data?.actions ?? [];
+  const negative = (a: ErpAction) => a.tone === 'danger';
+  const primary = acts.find((a) => !negative(a)) ?? acts[0];
+  const secondary = acts.find((a) => a !== primary && negative(a)) ?? acts.find((a) => a !== primary);
+  const sheetActions = acts.filter((a) => a !== primary && a !== secondary);
   const amount = data && !data.receipt ? pickAmount(data.fields) : null;
   const amountVal = amount ? splitValue(amount.value) : null;
   const kv = data ? data.fields.filter((f) => f !== amount) : [];
@@ -202,7 +218,7 @@ export default function ErpDetail() {
         title={data?.title ?? kind ?? 'Kartochka'}
         onBack={back}
         raised={raise.raised}
-        actions={sheetActions.length ? [{ icon: 'ellipsis', label: 'Boshqa amallar', onPress: () => setMoreOpen(true) }] : undefined}
+        actions={sheetActions.length ? [{ icon: 'ellipsis', label: 'Yana amallar', onPress: () => setMoreOpen(true) }] : undefined}
         style={{ paddingTop: insets.top + space.sm }}
       />
       <ScrollView
@@ -251,7 +267,9 @@ export default function ErpDetail() {
                 rows={s.rows}
                 module={listModule(s.target)}
                 icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
-                onRow={(r) => (s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined)}
+                // Qatorning `open`i — ro'yxat (masalan muammoning "Bog'liq bo'lim"i), aks holda bo'lim kartochkasi
+                onRow={(r) => (r.open ? () => router.push(`/erp/list/${r.open}` as never)
+                  : s.target ? () => router.push(`/erp/${s.target}/${idSeg(r.id)}` as never) : undefined)}
               />
             ),
           ])}
@@ -276,12 +294,12 @@ export default function ErpDetail() {
             loading: run.isPending,
             onPress: () => press(primary),
           }}
-          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : undefined, tone: secondary.tone === 'danger' ? 'danger' : undefined, onPress: () => press(secondary) } : undefined}
-          more={sheetActions.length ? { label: 'Boshqa amallar', icon: 'ellipsis', onPress: () => setMoreOpen(true) } : undefined}
+          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : ACTION_ICON[secondary.id], tone: secondary.tone === 'danger' ? 'danger' : undefined, onPress: () => press(secondary) } : undefined}
+          more={sheetActions.length ? { label: 'Yana amallar', icon: 'ellipsis', onPress: () => setMoreOpen(true) } : undefined}
         />
       ) : null}
 
-      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Amallar">
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Yana amallar">
         <View style={{ gap: space.md }}>
           {sheetActions.map((a) => (
             <View key={a.id} style={{ gap: space.xs }}>
