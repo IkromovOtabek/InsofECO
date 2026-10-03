@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChipGroup, ListGroup, SectionHead } from '@/design/blocks';
-import { Badge, Button, EmptyState, Gap, IconButton, Input, ListItem, Screen, Txt } from '@/design/primitives';
-import { Appear } from '@/design/motion';
+import { ChipGroup, ListGroup, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
+import { Badge, Button, EmptyState, Gap, IconButton, ListItem, Screen, SearchField, Txt } from '@/design/primitives';
 import { Avatar, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
 import { api, uuid } from '@/core/api';
 
 interface Member { id: string; role: string; isActive: boolean; user: { id: string; phone: string; fullName: string | null } }
@@ -43,12 +41,12 @@ export default function MembersScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
-        {q.isLoading ? <ListSkeleton rows={6} />
+        {q.isLoading ? <SkeletonList rows={6} />
           : q.isError && !q.data ? <EmptyState icon="cloud-off" title="Xodimlar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} />
           : (
             <>
               {pending.length ? (
-                <Appear>
+                <Reveal gap={space.sm}>
                   <SectionHead title="Tasdiq kutmoqda" count={pending.length} icon="user-plus" />
                   <ListGroup>
                     {pending.map((m) => (
@@ -67,16 +65,12 @@ export default function MembersScreen() {
                     ))}
                   </ListGroup>
                   <Gap h={space.section} />
-                </Appear>
+                </Reveal>
               ) : null}
 
               <SectionHead title="Xodimlar" count={activeAll.length || undefined} icon="users" />
               <View style={{ gap: space.md }}>
-                <Input
-                  value={search} onChangeText={setSearch} placeholder="Ism yoki telefon…" left="search" autoCorrect={false} returnKeyType="search"
-                  right={search ? <IconButton icon="x" label="Tozalash" tone="muted" size={size.touch - space.sm} onPress={() => setSearch('')} /> : null}
-                  containerStyle={{ marginBottom: 0 }}
-                />
+                <SearchField value={search} onChangeText={setSearch} placeholder="Ism yoki telefon…" />
                 <ChipGroup
                   items={[{ key: 'all' as RoleKey, label: 'Barchasi' }, { key: 'QURUVCHI' as RoleKey, label: 'Quruvchi', count: countOf('QURUVCHI') }, { key: 'HAYDOVCHI' as RoleKey, label: 'Haydovchi', count: countOf('HAYDOVCHI') }, { key: 'TADBIRKOR' as RoleKey, label: 'Tadbirkor', count: countOf('TADBIRKOR') }]}
                   value={role} onChange={setRole}

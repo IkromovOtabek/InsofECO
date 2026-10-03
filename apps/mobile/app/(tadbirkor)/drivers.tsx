@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChipGroup, ListGroup } from '@/design/blocks';
-import { Badge, EmptyState, IconButton, Input, ListItem, Screen, StatusChip, Txt, fmtUnit } from '@/design/primitives';
-import { Appear } from '@/design/motion';
+import { ChipGroup, ListGroup, Reveal, SkeletonList } from '@/design/blocks';
+import { Badge, EmptyState, ListItem, Screen, SearchField, StatusChip, Txt, fmtUnit } from '@/design/primitives';
 import { Avatar, Stars } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
 import { useDrivers } from '@/features/eco/api';
 
 type SegKey = 'all' | 'busy' | 'free';
@@ -31,24 +29,20 @@ export default function Drivers() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
-        <Input
-          value={search} onChangeText={setSearch} placeholder="Ism, telefon yoki raqam…" left="search" autoCorrect={false} returnKeyType="search"
-          right={search ? <IconButton icon="x" label="Tozalash" tone="muted" size={size.touch - space.sm} onPress={() => setSearch('')} /> : null}
-          containerStyle={{ marginBottom: 0 }}
-        />
+        <SearchField value={search} onChangeText={setSearch} placeholder="Ism, telefon yoki raqam…" />
         <ChipGroup<SegKey>
           items={[{ key: 'all', label: 'Barchasi', count: all.length || undefined }, { key: 'busy', label: 'Reysda', count: busyCount || undefined }, { key: 'free', label: "Bo'sh", count: all.length - busyCount || undefined }]}
           value={seg} onChange={setSeg}
         />
-        {q.isLoading ? <ListSkeleton rows={5} />
+        {q.isLoading ? <SkeletonList rows={5} />
           : q.isError && !q.data ? <EmptyState icon="cloud-off" title="Haydovchilar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} />
           : list.length === 0 ? (
             all.length === 0
               ? <EmptyState icon="car" title="Haydovchilar yo'q" hint="Xodimlar bo'limida haydovchini tasdiqlang" action="Xodimlar" onAction={() => router.push('/(tadbirkor)/members')} />
               : <EmptyState icon="search" title="Hech kim topilmadi" hint={needle ? "Boshqa so'z bilan qidiring" : seg === 'busy' ? "Hozir reysda haydovchi yo'q" : "Bo'sh haydovchi yo'q"} />
           ) : (
-            <Appear key={seg}>
-              <Txt v="caption" color="muted" style={{ marginBottom: space.sm }}>{`${list.length} ta haydovchi`}</Txt>
+            <Reveal key={seg} gap={space.sm}>
+              <Txt v="overline">{`${list.length} ta haydovchi`}</Txt>
               <ListGroup>
                 {list.map((d) => {
                   const veh = d.vehicle ? `${d.vehicle.brand ? `${d.vehicle.brand} · ` : ''}${d.vehicle.plateNumber}${d.vehicle.capacityTons ? ` · ${fmtUnit(d.vehicle.capacityTons, 't')}` : ''}` : 'Transport biriktirilmagan';
@@ -73,7 +67,7 @@ export default function Drivers() {
                   );
                 })}
               </ListGroup>
-            </Appear>
+            </Reveal>
           )}
       </ScrollView>
     </Screen>

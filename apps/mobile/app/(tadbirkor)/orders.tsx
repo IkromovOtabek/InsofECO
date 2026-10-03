@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChipGroup, ListGroup, StickyActionBar } from '@/design/blocks';
-import { EmptyState, IconButton, Input, ListItem, Screen, StatusChip, Txt, fmtDate, fmtM3 } from '@/design/primitives';
-import { Appear } from '@/design/motion';
+import { ChipGroup, ListGroup, Reveal, SkeletonList, StickyActionBar } from '@/design/blocks';
+import { EmptyState, ListItem, Screen, SearchField, Txt, fmtDate, fmtM3, statusLabel, statusTone } from '@/design/primitives';
 import { Avatar, daysLeft, fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
 import { useWorkOrders } from '@/features/eco/api';
 import { useOrders } from '@/features/orders/api';
 
@@ -38,21 +36,17 @@ export default function Orders() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={cur.isRefetching} onRefresh={() => void cur.refetch()} tintColor={c.textMuted} />}
       >
-        <Input
-          value={search} onChangeText={setSearch} placeholder={isBeton ? 'Raqam, mijoz yoki manzil…' : 'Raqam, ish, loyiha yoki quruvchi…'} left="search" autoCorrect={false} returnKeyType="search"
-          right={search ? <IconButton icon="x" label="Tozalash" tone="muted" size={size.touch - space.sm} onPress={() => setSearch('')} /> : null}
-          containerStyle={{ marginBottom: 0 }}
-        />
+        <SearchField value={search} onChangeText={setSearch} placeholder={isBeton ? 'Raqam, mijoz yoki manzil…' : 'Raqam, ish, loyiha yoki quruvchi…'} />
         <ChipGroup items={SEG.map((s) => ({ key: s.key, label: s.label }))} value={seg} onChange={setSeg} />
-        {cur.isLoading ? <ListSkeleton rows={5} />
+        {cur.isLoading ? <SkeletonList rows={5} />
           : cur.isError && !cur.data ? <EmptyState icon="cloud-off" title="Buyurtmalar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void cur.refetch()} />
           : count === 0 ? (
             needle ? <EmptyState icon="search" title="Hech narsa topilmadi" hint="Boshqa so'z bilan qidiring" />
               : isBeton ? <EmptyState icon="package" title="Beton buyurtmalari yo'q" hint="Zavodga berilgan buyurtmalar shu yerda ko'rinadi" />
               : <EmptyState icon="clipboard-list" title={seg === 'all' ? "Buyurtmalar yo'q" : `"${label}" buyurtmalar yo'q`} hint="Pastdagi Yangi buyurtma tugmasi bilan yarating" />
           ) : (
-            <Appear key={seg}>
-              <Txt v="caption" color="muted" style={{ marginBottom: space.sm }}>{`${count} ta buyurtma`}</Txt>
+            <Reveal key={seg} gap={space.sm}>
+              <Txt v="overline">{`${count} ta buyurtma`}</Txt>
               <ListGroup>
                 {isBeton
                   ? betonList.map((o) => (
@@ -61,7 +55,7 @@ export default function Orders() {
                       title={`№${o.number} · ${o.client.name}`}
                       subtitle={`${o.items.map((i) => `${i.gradeSnapshot} ${fmtM3(i.volumeM3)}`).join(' · ')}\n${o.address}`}
                       onPress={() => router.push(`/order/${o.id}`)}
-                      right={<RightCol value={`${fmtShort(o.totalAmount)} so'm`} status={o.status} />}
+                      value={`${fmtShort(o.totalAmount)} so'm`} badge={{ text: statusLabel(o.status), tone: statusTone(o.status) }}
                     />
                   ))
                   : woList.map((o) => {
@@ -76,24 +70,15 @@ export default function Orders() {
                         title={o.title}
                         subtitle={`№${o.number} · ${o.project?.name ?? 'Loyihasiz'}\n${o.worker?.fullName ?? 'Quruvchi biriktirilmagan'} · ${due}`}
                         onPress={() => router.push(`/work-order/${o.id}`)}
-                        right={<RightCol value={`${fmtShort(o.price)} so'm`} status={o.status} danger={late} />}
+                        value={`${fmtShort(o.price)} so'm`} badge={{ text: statusLabel(o.status), tone: late ? 'danger' : statusTone(o.status) }}
                       />
                     );
                   })}
               </ListGroup>
-            </Appear>
+            </Reveal>
           )}
       </ScrollView>
       {isBeton ? null : <StickyActionBar primary={{ title: 'Yangi buyurtma', icon: 'plus', onPress: () => router.push('/(tadbirkor)/new-order') }} style={{ paddingBottom: space.md }} />}
     </Screen>
-  );
-}
-
-function RightCol({ value, status, danger }: { value: string; status: string; danger?: boolean }) {
-  return (
-    <View style={{ alignItems: 'flex-end', gap: space.xs, flexShrink: 0 }}>
-      <Txt v="bodyStrong" color={danger ? 'danger' : 'strong'}>{value}</Txt>
-      <StatusChip status={status} />
-    </View>
   );
 }

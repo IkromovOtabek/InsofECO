@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChipGroup, KpiGrid, ListGroup } from '@/design/blocks';
-import { Badge, EmptyState, ListItem, Screen, StatusChip, Txt, fmtDateFull, fmtM3, fmtUnit } from '@/design/primitives';
-import { Appear } from '@/design/motion';
+import { ChipGroup, KpiGrid, ListGroup, Reveal, SkeletonList } from '@/design/blocks';
+import { EmptyState, ListItem, Screen, fmtDateFull, fmtM3, fmtUnit, statusLabel, statusTone } from '@/design/primitives';
 import { daysLeft } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
 import { useDrivers, useShipments, useVehicles } from '@/features/eco/api';
 
 type SegKey = 'vehicles' | 'shipments';
@@ -42,11 +40,11 @@ export default function Transport() {
           items={[{ key: 'vehicles', label: 'Mashinalar', count: vehicles.length || undefined }, { key: 'shipments', label: 'Yetkazishlar', count: shipments.length || undefined }]}
           value={seg} onChange={setSeg}
         />
-        {cur.isLoading ? <ListSkeleton rows={4} />
+        {cur.isLoading ? <SkeletonList rows={4} />
           : cur.isError && !cur.data ? <EmptyState icon="cloud-off" title="Ma'lumot yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void cur.refetch()} />
           : seg === 'vehicles' ? (
             vehicles.length === 0 ? <EmptyState icon="bus" title="Hozircha transport yo'q" hint="Qo'shilgan mashinalar shu yerda ko'rinadi" /> : (
-              <Appear key="v">
+              <Reveal key="v" gap={space.sm}>
                 <ListGroup>
                   {vehicles.map((x) => {
                     const drv = (d.data ?? []).find((y) => y.userId === x.driverUserId);
@@ -60,33 +58,29 @@ export default function Transport() {
                         key={x.id} icon="bus" module="logistics" tone={soon ? 'warning' : undefined} chevron={false}
                         title={`${x.brand ?? x.type} · ${x.plateNumber}`}
                         subtitle={`${line1}\n${line2}`}
-                        right={(
-                          <View style={{ alignItems: 'flex-end', gap: space.xs, flexShrink: 0 }}>
-                            <Txt v="bodyStrong" color={fuel != null && fuel < 25 ? 'danger' : 'strong'}>{`${fuel ?? '—'}%`}</Txt>
-                            {soon ? <Badge label="Ko'rik" tone="warning" icon="wrench" /> : <Txt v="caption" color="muted">yoqilg&apos;i</Txt>}
-                          </View>
-                        )}
+                        value={fuel != null ? `${fuel}% yoqilg'i` : undefined}
+                        badge={soon ? { text: "Ko'rik", tone: 'warning' } : fuel != null && fuel < 25 ? { text: "Kam yoqilg'i", tone: 'danger' } : undefined}
                       />
                     );
                   })}
                 </ListGroup>
-              </Appear>
+              </Reveal>
             )
           ) : (
             shipments.length === 0 ? <EmptyState icon="package" title="Faol yuklar yo'q" hint="Material so'rovi tasdiqlanganda yuk shu yerda paydo bo'ladi" /> : (
-              <Appear key="s">
+              <Reveal key="s" gap={space.sm}>
                 <ListGroup>
                   {shipments.map((s) => (
                     <ListItem
                       key={s.id} icon="package" module="logistics"
                       title={`№${s.number} ${s.cargo}`}
                       subtitle={`${s.warehouse.name} → ${s.project.name}${s.driver ? `\n${s.driver.fullName ?? s.driver.phone}` : '\nHaydovchi biriktirilmagan'}`}
-                      right={<StatusChip status={s.status} />}
+                      badge={{ text: statusLabel(s.status), tone: statusTone(s.status) }}
                       onPress={() => router.push(`/shipment/${s.id}`)}
                     />
                   ))}
                 </ListGroup>
-              </Appear>
+              </Reveal>
             )
           )}
       </ScrollView>

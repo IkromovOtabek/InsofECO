@@ -2,12 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { EXPENSE_LABEL, INCOME_LABEL } from '@insof/shared';
-import { Button, Card, Divider, Gap, Input, ListItem, Panel, Screen, Txt, TxtColor, fmtDateFull, fmtSum } from '@/design/primitives';
-import { BarChart, Breakdown, Legend, Tabs, toast } from '@/design/ui';
+import { BarChartCard, BreakdownCard, ChipGroup, HeroCard, KpiGrid, ListGroup, Reveal, SkeletonList } from '@/design/blocks';
+import { Button, Card, EmptyState, Gap, Input, ListItem, Screen, Txt, fmtDateFull, fmtNum } from '@/design/primitives';
+import { fmtShort, toast } from '@/design/ui';
+import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useAction, useExpenses, useFinance, useIncomes } from '@/features/eco/api';
 
+/** Moliya: chiplar (Umumiy / Daromad / Xarajat) → hero foyda, KPI, dinamika, taqsimotlar; ro'yxatlar ListGroup qatorlarida. */
 export default function Finance() {
+  const { c } = useTheme();
   const f = useFinance();
   const ex = useExpenses();
   const inc = useIncomes();
@@ -18,45 +22,56 @@ export default function Finance() {
   const [amt, setAmt] = useState(''); const [desc, setDesc] = useState('');
   const addExpense = useAction<{ amount: number; description: string; category: string }>((body) => ({ path: '/finance/expenses', body }), ['finance', 'dash']);
   const d = f.data;
+  const n = (x: unknown) => Number(x ?? 0);
+  const incomes = inc.data ?? [];
+  const expenses = ex.data ?? [];
+  const incSrc = (d?.incomeBySource ?? []).map((i) => ({ label: INCOME_LABEL[i.source as keyof typeof INCOME_LABEL] ?? i.source, value: n(i.amount) })).filter((i) => i.value > 0);
+  const expCat = (d?.expenseByCategory ?? []).map((e) => ({ label: EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category, value: n(e.amount) })).filter((e) => e.value > 0);
+  const hasMonths = (d?.months ?? []).some((m) => n(m.income) > 0 || n(m.expense) > 0);
+  const refresh = () => { void f.refetch(); void ex.refetch(); void inc.refetch(); };
   return (
     <Screen padded={false}>
       <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
-        <Tabs value={seg} onChange={setSeg} items={[{ key: 'overview', label: 'Umumiy' }, { key: 'income', label: 'Daromad' }, { key: 'expense', label: 'Xarajat' }]} />
+        <ChipGroup value={seg} onChange={setSeg} items={[{ key: 'overview', label: 'Umumiy' }, { key: 'income', label: 'Daromad', count: incomes.length || undefined }, { key: 'expense', label: 'Xarajat', count: expenses.length || undefined }]} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingTop: space.md }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={f.isFetching} onRefresh={() => { void f.refetch(); void ex.refetch(); void inc.refetch(); }} />}>
-        {seg === 'overview' && d ? (
-          <>
-            <Card>
-              <Line label="Daromad" value={fmtSum(d.income)} tone="success" />
-              <Line label="Xarajat" value={fmtSum(d.expense)} tone="danger" />
-              <Divider style={{ marginVertical: space.sm }} />
-              <Line label="Foyda" value={fmtSum(d.profit)} tone="brand" big />
-              <Txt v="caption" style={{ marginTop: space.sm }}>Kutilayotgan daromad: {fmtSum(d.expectedIncome)}</Txt>
-            </Card>
-            <Panel title="6 oylik dinamika">
-              <View style={{ paddingVertical: space.sm }}>
-                <BarChart data={d.months.map((m) => ({ label: m.label, a: Number(m.income), b: Number(m.expense) }))} height={160} />
-                <Legend items={[{ label: 'Daromad', tone: 'chart1' }, { label: 'Xarajat', tone: 'chart2' }]} />
-              </View>
-            </Panel>
-            <Panel title="Daromad manbalari"><View style={{ paddingVertical: space.sm }}><Breakdown rows={d.incomeBySource.map((i) => ({ label: INCOME_LABEL[i.source as keyof typeof INCOME_LABEL], value: Number(i.amount) }))} /></View></Panel>
-            <Panel title="Xarajat kategoriyalari"><View style={{ paddingVertical: space.sm }}><Breakdown rows={d.expenseByCategory.map((e) => ({ label: EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL], value: Number(e.amount) }))} /></View></Panel>
-          </>
+      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingTop: space.md, paddingBottom: space.xxxl }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={f.isRefetching || ex.isRefetching || inc.isRefetching} onRefresh={refresh} tintColor={c.textMuted} />}>
+        {seg === 'overview' ? (
+          f.isError && !d ? <EmptyState icon="cloud-off" title="Moliya yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={refresh} /> : (
+            <Reveal key="o" loading={!d}>
+              {d ? <HeroCard label="Sof foyda · jami" value={n(d.profit)} format={(v) => fmtNum(Math.round(v))} unit="so'm" /> : null}
+              {d ? (
+                <KpiGrid items={[
+                  { label: 'Daromad', value: fmtShort(d.income), icon: 'wallet', module: 'brand', onPress: () => setSeg('income') },
+                  { label: 'Xarajat', value: fmtShort(d.expense), icon: 'arrow-down', module: 'warehouse', onPress: () => setSeg('expense') },
+                  { label: 'Kutilgan tushum', value: fmtShort(d.expectedIncome), icon: 'clock', module: 'brand' },
+                  { label: 'Bugungi xarajat', value: fmtShort(d.todayExpense), icon: 'receipt', module: 'warehouse' },
+                ]} />
+              ) : null}
+              {d && hasMonths ? <BarChartCard title="6 oylik dinamika" unit="so'm" labels={d.months.map((m) => m.label)} series={[{ name: 'Daromad', data: d.months.map((m) => n(m.income)) }, { name: 'Xarajat', data: d.months.map((m) => n(m.expense)) }]} /> : null}
+              {incSrc.length ? <BreakdownCard title="Daromad manbalari" unit="so'm" items={incSrc} /> : null}
+              {expCat.length ? <BreakdownCard title="Xarajat tarkibi" unit="so'm" items={expCat} /> : null}
+            </Reveal>
+          )
         ) : null}
         {seg === 'income' ? (
-          <Panel title="Daromadlar" style={{ marginTop: 0 }}>
-            {(inc.data ?? []).length === 0 ? <Txt v="bodySm" color="muted" style={{ paddingVertical: space.md }}>Hali daromad yo&apos;q</Txt> : null}
-            {(inc.data ?? []).map((i, idx, arr) => (
-              <ListItem
-                key={i.id} icon={i.isExpected ? 'clock' : 'circle-arrow-down'} tone={i.isExpected ? 'warning' : 'success'} title={i.description}
-                subtitle={`${INCOME_LABEL[i.source as keyof typeof INCOME_LABEL]}${i.project ? ' · ' + i.project.name : ''} · ${fmtDateFull(i.date)}`}
-                right={<Txt v="bodyStrong" color={i.isExpected ? 'warning' : 'success'}>{fmtSum(i.amount)}</Txt>} last={idx === arr.length - 1}
-              />
-            ))}
-          </Panel>
+          <Reveal key="i" loading={inc.isLoading} skeleton={<SkeletonList rows={5} />}>
+            {incomes.length ? [
+              <Txt key="h" v="overline">{`${incomes.length} ta daromad`}</Txt>,
+              <ListGroup key="l">
+                {incomes.map((i) => (
+                  <ListItem
+                    key={i.id} icon={i.isExpected ? 'clock' : 'circle-arrow-down'} tone={i.isExpected ? 'warning' : 'success'} title={i.description}
+                    subtitle={`${INCOME_LABEL[i.source as keyof typeof INCOME_LABEL] ?? i.source}${i.project ? ' · ' + i.project.name : ''} · ${fmtDateFull(i.date)}`}
+                    value={`+${fmtShort(i.amount)} so'm`}
+                    badge={i.isExpected ? { text: 'Kutilmoqda', tone: 'warning' } : { text: 'Tushdi', tone: 'success' }}
+                  />
+                ))}
+              </ListGroup>,
+            ] : inc.isError ? <EmptyState icon="cloud-off" title="Daromadlar yuklanmadi" onRetry={() => void inc.refetch()} /> : <EmptyState icon="wallet" title="Hali daromad yo'q" hint="Kiritilgan tushumlar shu yerda ko'rinadi" />}
+          </Reveal>
         ) : null}
         {seg === 'expense' ? (
-          <>
+          <Reveal key="e">
             <Card>
               <Txt v="titleSm">Xarajat kiritish</Txt>
               <Gap h={space.md} />
@@ -64,29 +79,21 @@ export default function Finance() {
               <Input label="Izoh" value={desc} onChangeText={setDesc} placeholder="Masalan: yoqilg'i, DAF" />
               <Button title="Qo'shish" icon="plus" loading={addExpense.isPending} disabled={!amt || desc.length < 2} onPress={() => addExpense.mutate({ amount: Number(amt), description: desc, category: 'OTHER' }, { onSuccess: () => { setAmt(''); setDesc(''); void ex.refetch(); toast.success('Xarajat qo\'shildi'); }, onError: (e) => toast.error(e.message, 'Xato') })} />
             </Card>
-            <Panel title="Xarajatlar">
-              {(ex.data ?? []).length === 0 ? <Txt v="bodySm" color="muted" style={{ paddingVertical: space.md }}>Hali xarajat yo&apos;q</Txt> : null}
-              {(ex.data ?? []).map((e, idx, arr) => (
-                <ListItem
-                  key={e.id} icon="circle-arrow-up" tone="danger" title={e.description}
-                  subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL]}${e.project ? ' · ' + e.project.name : ''} · ${fmtDateFull(e.date)}`}
-                  right={<Txt v="bodyStrong" color="danger">−{fmtSum(e.amount)}</Txt>} last={idx === arr.length - 1}
-                />
-              ))}
-            </Panel>
-          </>
+            {ex.isLoading ? <SkeletonList rows={4} /> : expenses.length ? [
+              <Txt key="h" v="overline">{`${expenses.length} ta xarajat`}</Txt>,
+              <ListGroup key="l">
+                {expenses.map((e) => (
+                  <ListItem
+                    key={e.id} icon="circle-arrow-up" tone="danger" title={e.description}
+                    subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category}${e.project ? ' · ' + e.project.name : ''} · ${fmtDateFull(e.date)}`}
+                    value={`−${fmtShort(e.amount)} so'm`}
+                  />
+                ))}
+              </ListGroup>,
+            ] : <ListGroup><EmptyState compact icon="receipt" title="Hali xarajat yo'q" hint="Yuqoridagi forma bilan kiriting" /></ListGroup>}
+          </Reveal>
         ) : null}
-        <Gap h={space.xxxl} />
       </ScrollView>
     </Screen>
-  );
-}
-
-function Line({ label, value, tone, big }: { label: string; value: string; tone: TxtColor; big?: boolean }) {
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: space.xs, gap: space.sm }}>
-      <Txt v={big ? 'titleSm' : 'body'}>{label}</Txt>
-      <Txt v={big ? 'titleMd' : 'bodyStrong'} color={tone}>{value}</Txt>
-    </View>
   );
 }

@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChipGroup, ListGroup, StickyActionBar } from '@/design/blocks';
-import { EmptyState, IconButton, Input, ListItem, Screen, StatusChip, Txt } from '@/design/primitives';
-import { Appear } from '@/design/motion';
+import { ChipGroup, ListGroup, Reveal, SkeletonList, StickyActionBar } from '@/design/blocks';
+import { EmptyState, ListItem, Screen, SearchField, Txt, statusLabel, statusTone } from '@/design/primitives';
 import { daysLeft, fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { size, space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
+import { space } from '@/design/tokens';
 import { useProjects } from '@/features/eco/api';
 
 const SEG = [{ key: 'all', label: 'Barchasi' }, { key: 'ACTIVE', label: 'Faol' }, { key: 'DELAYED', label: 'Kechikmoqda' }, { key: 'PLANNING', label: 'Reja' }, { key: 'COMPLETED', label: 'Tugallangan' }] as const;
@@ -33,21 +31,17 @@ export default function Projects() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
-        <Input
-          value={search} onChangeText={setSearch} placeholder="Loyiha yoki manzil…" left="search" autoCorrect={false} returnKeyType="search"
-          right={search ? <IconButton icon="x" label="Tozalash" tone="muted" size={size.touch - space.sm} onPress={() => setSearch('')} /> : null}
-          containerStyle={{ marginBottom: 0 }}
-        />
+        <SearchField value={search} onChangeText={setSearch} placeholder="Loyiha yoki manzil…" />
         <ChipGroup items={SEG.map((s) => ({ key: s.key, label: s.label, count: s.key === 'all' ? all.length || undefined : counts[s.key] || undefined }))} value={seg} onChange={setSeg} />
-        {q.isLoading ? <ListSkeleton rows={5} />
+        {q.isLoading ? <SkeletonList rows={5} />
           : q.isError && !q.data ? <EmptyState icon="cloud-off" title="Loyihalar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} />
           : list.length === 0 ? (
             all.length === 0
               ? <EmptyState icon="building" title="Loyihalar yo'q" hint="Pastdagi Yangi loyiha tugmasi bilan boshlang" />
               : <EmptyState icon="search" title="Hech narsa topilmadi" hint={needle ? "Boshqa so'z bilan qidiring" : `"${active?.label ?? ''}" holatida loyiha yo'q`} />
           ) : (
-            <Appear>
-              <Txt v="caption" color="muted" style={{ marginBottom: space.sm }}>{`${list.length} ta loyiha`}</Txt>
+            <Reveal gap={space.sm}>
+              <Txt v="overline">{`${list.length} ta loyiha`}</Txt>
               <ListGroup>
                 {list.map((p) => {
                   const dl = daysLeft(p.deadline);
@@ -64,17 +58,13 @@ export default function Projects() {
                       key={p.id} icon="building" module="production" tone={late ? 'danger' : undefined}
                       title={p.name} subtitle={`${p.address}\n${meta}`} subtitleLines={2}
                       onPress={() => router.push(`/project/${p.id}`)}
-                      right={(
-                        <View style={{ alignItems: 'flex-end', gap: space.xs, flexShrink: 0 }}>
-                          <Txt v="bodyStrong" color={late ? 'danger' : 'strong'}>{`${p.progress}%`}</Txt>
-                          <StatusChip status={p.status} />
-                        </View>
-                      )}
+                      value={`${p.progress}%`}
+                      badge={{ text: statusLabel(p.status), tone: late ? 'danger' : statusTone(p.status) }}
                     />
                   );
                 })}
               </ListGroup>
-            </Appear>
+            </Reveal>
           )}
       </ScrollView>
       <StickyActionBar primary={{ title: 'Yangi loyiha', icon: 'plus', onPress: () => router.push('/(tadbirkor)/new-project') }} style={{ paddingBottom: space.md }} />

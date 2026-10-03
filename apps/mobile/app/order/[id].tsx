@@ -2,26 +2,29 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { DeliveryStatus } from '@insof/shared';
-import { ListGroup, SectionHead, StickyActionBar, StickyPrimary } from '@/design/blocks';
-import { Button, Callout, Card, EmptyState, Gap, Input, ListItem, Screen, StatusChip, Txt, fmtDate, fmtM3, fmtSum, fmtTime } from '@/design/primitives';
+import { ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar, StickyPrimary } from '@/design/blocks';
+import { Badge, Button, Callout, Card, EmptyState, Input, KVList, ListItem, Screen, StatusChip, Timeline, Txt, fmtDate, fmtM3, fmtNum, fmtTime, statusLabel, statusTone } from '@/design/primitives';
 import { Sheet, dialog, toast } from '@/design/ui';
-import { size, space } from '@/design/tokens';
-import { useTheme } from '@/design/theme';
-import { Loader } from '@/design/loader';
+import { space } from '@/design/tokens';
 import { useOrder, useOrderAction } from '@/features/orders/api';
 import { usePlan } from '@/features/dispatch/api';
 import { useSession } from '@/core/session';
 
-/** Kalit — qiymat qatori (ListGroup ichida; birinchisidan keyin ichki chiziq). */
-function KV({ k, v, first, strong }: { k: string; v: string; first?: boolean; strong?: boolean }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.row, paddingVertical: space.sm, paddingHorizontal: space.card }}>
-      {first ? null : <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card, right: space.md, height: size.hairline, backgroundColor: c.borderSubtle }} />}
-      <Txt v="bodySm" color="muted" style={{ flexShrink: 0 }}>{k}</Txt>
-      <Txt v={strong ? 'bodyStrong' : 'body'} color={strong ? 'brand' : 'strong'} align="right" style={{ flex: 1 }}>{v}</Txt>
-    </View>
-  );
+/** Buyurtma bosqichlari (demo "Jarayon"). */
+const FLOW: { status: string; title: string }[] = [
+  { status: 'SUBMITTED', title: 'Buyurtma yuborildi' },
+  { status: 'CONFIRMED', title: 'Zavod tasdig\'i' },
+  { status: 'SCHEDULED', title: "Reyslarga bo'lindi" },
+  { status: 'IN_PROGRESS', title: 'Yetkazilmoqda' },
+  { status: 'DELIVERED', title: 'Yetkazildi' },
+  { status: 'COMPLETED', title: 'Yakunlandi' },
+];
+function orderSteps(status: string): { title: string; sub?: string; state: 'done' | 'now' | 'todo' }[] {
+  if (status === 'REJECTED' || status === 'CANCELLED') {
+    return [{ title: FLOW[0]!.title, state: 'done' }, { title: status === 'REJECTED' ? 'Rad etildi' : 'Bekor qilindi', state: 'now' }];
+  }
+  const at = status === 'DRAFT' ? -1 : FLOW.findIndex((f) => f.status === status);
+  return FLOW.map((f, i) => ({ title: f.title, state: i < at || (i === at && status === 'COMPLETED') ? 'done' : i === at + 1 ? 'now' : 'todo', sub: i === at + 1 ? 'Kutilmoqda' : undefined }));
 }
 
 /**
@@ -42,8 +45,10 @@ export default function OrderScreen() {
   const o = q.data;
   if (!o) {
     return (
-      <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Buyurtma yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
+      <Screen padded={false}>
+        {q.isError ? <EmptyState icon="circle-alert" title="Buyurtma yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : (
+          <Reveal loading skeleton={<SkeletonList rows={4} />} style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>{null}</Reveal>
+        )}
       </Screen>
     );
   }
@@ -59,64 +64,61 @@ export default function OrderScreen() {
   else if (!isPlant && o.status === 'DELIVERED') bar = { primary: { title: 'Yakuniy qabul', icon: 'circle-check', variant: 'success', onPress: () => dialog('Yakunlash', 'Barcha reyslar qabul qilingan', [{ text: 'OK' }]) } };
   else if (!isPlant && ['DRAFT', 'SUBMITTED', 'CONFIRMED'].includes(o.status)) bar = { primary: { title: 'Buyurtmani bekor qilish', icon: 'x', variant: 'danger', loading: act.isPending, onPress: cancel } };
 
-  const details: [string, string][] = [
-    ['Sana', `${fmtDate(o.scheduledAt)} · ${fmtTime(o.scheduledAt)}`],
-    ['Interval', `har ${o.intervalMinutes} daqiqa`],
-    ['Nasos', o.needsPump ? 'Kerak' : 'Kerak emas'],
-    ...(o.site ? [['Obyekt', o.site.name] as [string, string]] : []),
-    ['Manzil', o.address],
-    ...(o.note ? [['Izoh', o.note] as [string, string]] : []),
+  const details: { label: string; value: string; tone?: 'danger' }[] = [
+    { label: 'Yetkazish', value: `${fmtDate(o.scheduledAt)} · ${fmtTime(o.scheduledAt)}` },
+    { label: 'Interval', value: `har ${o.intervalMinutes} daqiqa` },
+    { label: 'Nasos', value: o.needsPump ? 'Kerak' : 'Kerak emas' },
+    ...(o.site ? [{ label: 'Obyekt', value: o.site.name }] : []),
+    { label: 'Manzil', value: o.address },
+    ...(o.note ? [{ label: 'Izoh', value: o.note }] : []),
+  ];
+  const composition = [
+    ...o.items.map((i) => ({ label: `${i.gradeSnapshot} · ${fmtM3(i.volumeM3)}`, value: `${fmtNum(Math.round(Number(i.unitPriceSnapshot)))} so'm / m³` })),
+    ...(Number(o.deliveryFee) > 0 ? [{ label: 'Yetkazish narxi', value: `${fmtNum(Math.round(Number(o.deliveryFee)))} so'm` }] : []),
   ];
   const deliveries = o.deliveries ?? [];
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }}>
-        <Card style={{ padding: space.panel }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
-            <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{isPlant ? o.client.name : o.plant.name}</Txt>
-            <StatusChip status={o.status} />
-          </View>
-          <Txt v="titleLg" style={{ marginTop: space.xs }}>Buyurtma №{o.number}</Txt>
-          <Txt v="bodySm" color="muted">{o.items.map((i) => `${i.gradeSnapshot} · ${fmtM3(i.volumeM3)}`).join(' + ')}</Txt>
-          <Gap h={space.md} />
-          <Txt v="caption">Jami</Txt>
-          <Txt v="metric" color="brand" numberOfLines={1} adjustsFontSizeToFit>{fmtSum(o.totalAmount)}</Txt>
-        </Card>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.xxl }}>
+        <Reveal>
+          <Card style={{ gap: space.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+              <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{o.items.map((i) => `${i.gradeSnapshot} · ${fmtM3(i.volumeM3)}`).join(' + ')}</Txt>
+              <Badge label={statusLabel(o.status)} tone={statusTone(o.status)} />
+            </View>
+            <Txt v="metric" numberOfLines={1} adjustsFontSizeToFit>
+              {fmtNum(Math.round(Number(o.totalAmount)))}
+              <Txt v="tSm">{" so'm"}</Txt>
+            </Txt>
+            <Txt v="tSm" numberOfLines={2}>{`№${o.number} · ${isPlant ? o.client.name : o.plant.name}`}</Txt>
+          </Card>
 
-        {o.credit?.exceeded ? (
-          <Callout tone="danger" style={{ marginTop: space.grid }}>
-            {`Kredit limit oshgan (qarz ${fmtSum(o.credit.debt)}) — to'lov kiriting yoki limitni kengaytiring`}
-          </Callout>
-        ) : null}
+          {o.credit?.exceeded ? (
+            <Callout tone="danger">
+              {`Kredit limit oshgan (qarz ${fmtNum(Math.round(o.credit.debt))} so'm) — to'lov kiriting yoki limitni kengaytiring`}
+            </Callout>
+          ) : null}
 
-        <Gap h={space.section} />
-        <SectionHead title="Tarkib" />
-        <ListGroup>
-          {o.items.map((i, idx) => <KV key={i.id} first={idx === 0} k={`${i.gradeSnapshot} · ${fmtM3(i.volumeM3)}`} v={`${fmtSum(i.unitPriceSnapshot)} / m³`} />)}
-          {Number(o.deliveryFee) > 0 ? <KV k="Yetkazish" v={fmtSum(o.deliveryFee)} /> : null}
-          <KV k="Jami" v={fmtSum(o.totalAmount)} strong />
-        </ListGroup>
+          <KVList rows={details} />
+          <KVList rows={composition} />
 
-        <Gap h={space.section} />
-        <SectionHead title="Tafsilotlar" />
-        <ListGroup>
-          {details.map(([k, v], i) => <KV key={k} k={k} v={v} first={i === 0} />)}
-        </ListGroup>
+          <SectionHead title="Jarayon" />
+          <Card><Timeline steps={orderSteps(o.status)} /></Card>
 
-        <Gap h={space.section} />
-        <SectionHead title="Reyslar" count={deliveries.length || undefined} icon="truck" />
-        {deliveries.length ? (
-          <ListGroup>
-            {deliveries.map((d) => (
-              <ListItem key={d.id} icon="truck" module="logistics" title={`Reys ${d.sequence} · ${fmtM3(d.plannedM3)} · ${fmtTime(d.plannedAt)}`} subtitle={d.driver ? `${d.driver.user.fullName ?? d.driver.user.phone} · ${d.vehicle?.plateNumber ?? ''}` : 'Haydovchi biriktirilmagan'} right={<StatusChip status={d.status as DeliveryStatus} />} onPress={() => router.push(`/delivery/${d.id}`)} />
-            ))}
-          </ListGroup>
-        ) : (
-          <ListGroup>
-            <EmptyState compact icon="truck" title={o.status === 'CONFIRMED' ? "Reyslar hali bo'linmagan" : "Reyslar hali yo'q"} hint={o.status === 'CONFIRMED' ? (isPlant ? "Pastdagi \"Reyslarga bo'lish\" tugmasini bosing" : "Zavod reyslarga bo'lgach shu yerda ko'rinadi") : undefined} />
-          </ListGroup>
-        )}
+          <SectionHead title="Reyslar" count={deliveries.length || undefined} />
+          {deliveries.length ? (
+            <ListGroup>
+              {deliveries.map((d) => (
+                <ListItem key={d.id} icon="truck" module="logistics" title={`Reys ${d.sequence} · ${fmtM3(d.plannedM3)} · ${fmtTime(d.plannedAt)}`} subtitle={d.driver ? `${d.driver.user.fullName ?? d.driver.user.phone} · ${d.vehicle?.plateNumber ?? ''}` : 'Haydovchi biriktirilmagan'} right={<StatusChip status={d.status as DeliveryStatus} />} onPress={() => router.push(`/delivery/${d.id}`)} />
+              ))}
+            </ListGroup>
+          ) : (
+            <ListGroup>
+              <EmptyState compact icon="truck" title={o.status === 'CONFIRMED' ? "Reyslar hali bo'linmagan" : "Reyslar hali yo'q"} hint={o.status === 'CONFIRMED' ? (isPlant ? "Pastdagi \"Reyslarga bo'lish\" tugmasini bosing" : "Zavod reyslarga bo'lgach shu yerda ko'rinadi") : undefined} />
+            </ListGroup>
+          )}
+        </Reveal>
       </ScrollView>
 
       {bar ? <StickyActionBar primary={bar.primary} secondary={bar.secondary} /> : null}

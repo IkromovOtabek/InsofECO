@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { ChipGroup, ListGroup, SectionHead } from '@/design/blocks';
-import { Badge, Button, EmptyState, Gap, IconButton, Input, ListItem, Screen, StatusChip, Txt, fmtSum, fmtUnit } from '@/design/primitives';
-import { Appear } from '@/design/motion';
-import { dialog, toast } from '@/design/ui';
+import { ChipGroup, ListGroup, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
+import { Button, EmptyState, Gap, IconButton, ListItem, Screen, SearchField, fmtSum, fmtUnit, statusLabel, statusTone } from '@/design/primitives';
+import { dialog, fmtShort, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { size, space } from '@/design/tokens';
-import { ListSkeleton } from '@/features/erp/ui';
+import { space } from '@/design/tokens';
 import { useAction, useDrivers, useMaterialRequests, useMaterials } from '@/features/eco/api';
 
 type SegKey = 'requests' | 'stock';
@@ -49,11 +47,11 @@ export default function Materials() {
           items={[{ key: 'requests', label: "So'rovlar", count: pending.length || undefined }, { key: 'stock', label: 'Ombor', count: lowCount || undefined }]}
           value={seg} onChange={setSeg}
         />
-        {cur.isLoading ? <ListSkeleton rows={5} />
+        {cur.isLoading ? <SkeletonList rows={5} />
           : cur.isError && !cur.data ? <EmptyState icon="cloud-off" title="Ma'lumot yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void cur.refetch()} />
           : seg === 'requests' ? (
             pending.length === 0 && others.length === 0 ? <EmptyState title="So'rovlar yo'q" hint="Quruvchi material so'raganda shu yerda ko'rinadi" icon="package" /> : (
-              <Appear key="r">
+              <Reveal key="r" gap={space.sm}>
                 {pending.length ? (
                   <>
                     <SectionHead title="Tasdiq kutmoqda" count={pending.length} icon="clock" />
@@ -64,7 +62,7 @@ export default function Materials() {
                             icon="package" module="warehouse" tone="warning" chevron={false}
                             title={`${r.material.name} — ${fmtUnit(r.quantity, r.material.unit)}`}
                             subtitle={`№${r.number} · ${r.project.name}${r.reason ? `\nSabab: ${r.reason}` : ''}`}
-                            right={<Txt v="bodyStrong" style={{ flexShrink: 0 }}>{`≈ ${fmtSum(Number(r.material.price) * Number(r.quantity))}`}</Txt>}
+                            value={`≈ ${fmtShort(Number(r.material.price) * Number(r.quantity))} so'm`} badge={{ text: 'Kutilmoqda', tone: 'warning' }}
                           />
                           <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.card, paddingBottom: space.md }}>
                             <IconButton icon="x" label="Rad etish" tone="danger" variant="secondary" onPress={() => reject.mutate({ id: r.id, reason: 'Hozircha imkoniyat yo\'q' }, { onError: (e) => toast.error(e.message, 'Xato') })} />
@@ -87,25 +85,21 @@ export default function Materials() {
                           key={r.id} icon={r.shipment?.driver ? 'truck' : 'package'} module="warehouse" chevron={false}
                           title={`№${r.number} ${r.material.name} — ${fmtUnit(r.quantity, r.material.unit)}`}
                           subtitle={`${r.project.name}${r.rejectReason ? ` · ${r.rejectReason}` : ''}${r.shipment?.driver ? `\n${r.shipment.driver.fullName ?? r.shipment.driver.phone}` : ''}`}
-                          right={<StatusChip status={r.status} />}
+                          badge={{ text: statusLabel(r.status), tone: statusTone(r.status) }}
                         />
                       ))}
                     </ListGroup>
                   </>
                 ) : null}
-              </Appear>
+              </Reveal>
             )
           ) : (
             <>
-              <Input
-                value={search} onChangeText={setSearch} placeholder="Material yoki toifa…" left="search" autoCorrect={false} returnKeyType="search"
-                right={search ? <IconButton icon="x" label="Tozalash" tone="muted" size={size.touch - space.sm} onPress={() => setSearch('')} /> : null}
-                containerStyle={{ marginBottom: 0 }}
-              />
+              <SearchField value={search} onChangeText={setSearch} placeholder="Material yoki toifa…" />
               {stock.length === 0 ? (
                 <EmptyState icon={needle ? 'search' : 'warehouse'} title={needle ? 'Hech narsa topilmadi' : "Omborda material yo'q"} hint={needle ? "Boshqa so'z bilan qidiring" : undefined} />
               ) : (
-                <Appear key="st">
+                <Reveal key="st" gap={space.sm}>
                   {Object.entries(byCat).map(([cat, list], ci) => (
                     <View key={cat} style={{ marginTop: ci ? space.lg : 0 }}>
                       <SectionHead title={cat} count={list.length} />
@@ -115,18 +109,14 @@ export default function Materials() {
                             key={m.id} icon="package" module="warehouse" tone={m.low ? 'danger' : undefined} chevron={false}
                             title={m.name}
                             subtitle={`${fmtSum(m.price)} / ${m.unit} · minimal ${fmtUnit(m.minStock, m.unit)}`}
-                            right={(
-                              <View style={{ alignItems: 'flex-end', gap: space.xs, flexShrink: 0 }}>
-                                <Txt v="bodyStrong" color={m.low ? 'danger' : 'strong'}>{fmtUnit(m.stock, m.unit)}</Txt>
-                                {m.low ? <Badge label="Kam" tone="danger" icon="triangle-alert" /> : null}
-                              </View>
-                            )}
+                            value={fmtUnit(m.stock, m.unit)}
+                            badge={m.low ? { text: 'Kam', tone: 'danger' } : undefined}
                           />
                         ))}
                       </ListGroup>
                     </View>
                   ))}
-                </Appear>
+                </Reveal>
               )}
             </>
           )}

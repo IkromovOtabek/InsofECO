@@ -83,7 +83,7 @@ export default function TadbirkorHome() {
   const delayed = n(k.delayedProjects);
 
   const kpis: KpiItem[] = [
-    { label: 'Daromad', value: fmtShort(cur.inc), icon: 'wallet', module: 'brand', delta: incCh !== null ? { text: signed(incCh), tone: incCh >= 0 ? 'success' : 'danger' } : undefined, onPress: () => router.push('/(tadbirkor)/finance') },
+    { label: 'Daromad', value: fmtShort(cur.inc), icon: 'wallet', module: 'brand', delta: incCh !== null ? { text: signed(incCh), tone: incCh >= 0 ? 'success' : 'danger' } : undefined, onPress: () => router.push({ pathname: '/(tadbirkor)/finance', params: { seg: 'income' } }) },
     { label: 'Xarajat', value: fmtShort(cur.exp), icon: 'arrow-down', module: 'warehouse', delta: expCh !== null ? { text: signed(expCh), tone: expCh > 0 ? 'warning' : 'success' } : undefined, onPress: () => router.push({ pathname: '/(tadbirkor)/finance', params: { seg: 'expense' } }) },
     { label: 'Buyurtma', value: activeOrders, icon: 'package', module: 'production', delta: openOrders ? { text: `+${openOrders} yangi`, tone: 'success' } : undefined, onPress: () => router.push('/(tadbirkor)/orders') },
     { label: 'Reyslar', value: enRoute, icon: 'truck', module: 'logistics', delta: enRoute ? { text: "yo'lda", tone: 'info' } : undefined, onPress: () => router.push('/(tadbirkor)/transport') },

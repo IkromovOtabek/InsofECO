@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EXPENSE_LABEL, SPECIALTY_LABEL } from '@insof/shared';
-import { BreakdownCard, ChipGroup, KpiGrid, ListGroup, ProgressCard, SectionHead, StickyActionBar } from '@/design/blocks';
-import { Badge, Card, EmptyState, Gap, ListItem, ProgressBar, Screen, StatusChip, Txt, fmtDate, fmtDateFull, fmtSum } from '@/design/primitives';
+import { BreakdownCard, ChipGroup, KpiGrid, ListGroup, ProgressCard, Reveal, SectionHead, SkeletonList, StickyActionBar } from '@/design/blocks';
+import { Badge, Card, EmptyState, KVList, ListItem, ProgressBar, Screen, StatusChip, Timeline, Txt, fmtDate, fmtDateFull, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { dialog, Avatar, daysLeft, fmtShort, toast } from '@/design/ui';
-import { size, space } from '@/design/tokens';
+import { space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
-import { Loader } from '@/design/loader';
 import { useAction, useProject } from '@/features/eco/api';
 import { useSession } from '@/core/session';
 
@@ -15,16 +14,15 @@ const TABS = [{ key: 'overview', label: 'Umumiy' }, { key: 'tasks', label: 'Vazi
 type TabKey = (typeof TABS)[number]['key'];
 const PRIORITY_LABEL: Record<string, string> = { LOW: 'Past', MEDIUM: "O'rta", HIGH: 'Muhim' };
 
-/** Kalit — qiymat qatori (ListGroup ichida; birinchisidan keyin ichki chiziq). */
-function KV({ k, v, first, tone }: { k: string; v: string; first?: boolean; tone?: 'danger' }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.row, paddingVertical: space.sm, paddingHorizontal: space.card }}>
-      {first ? null : <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card, right: space.md, height: size.hairline, backgroundColor: c.borderSubtle }} />}
-      <Txt v="bodySm" color="muted" style={{ flexShrink: 0 }}>{k}</Txt>
-      <Txt v="body" color={tone ?? 'strong'} align="right" style={{ flex: 1 }}>{v}</Txt>
-    </View>
-  );
+/** Loyiha bosqichlari (demo "Jarayon"): reja → ish → topshirish; to'xtatilgan / bekor — joriy bosqichda belgilanadi. */
+function projectSteps(p: { status: string; startDate?: string | null; deadline?: string | null }): { title: string; sub?: string; state: 'done' | 'now' | 'todo' }[] {
+  const at = p.status === 'PLANNING' ? 0 : p.status === 'COMPLETED' ? 3 : 1;
+  const mid = p.status === 'DELAYED' ? 'Kechikmoqda' : p.status === 'ON_HOLD' ? "To'xtatilgan" : p.status === 'CANCELLED' ? 'Bekor qilindi' : undefined;
+  return [
+    { title: 'Rejalashtirish', state: at > 0 ? 'done' : 'now' },
+    { title: 'Qurilish ishlari', sub: [p.startDate ? `${fmtDateFull(p.startDate)} dan` : null, mid].filter(Boolean).join(' · ') || undefined, state: at > 1 ? 'done' : at === 1 ? 'now' : 'todo' },
+    { title: 'Topshirish', sub: p.deadline ? `Muddat ${fmtDateFull(p.deadline)}` : undefined, state: at === 3 ? 'done' : 'todo' },
+  ];
 }
 
 /**
@@ -42,8 +40,10 @@ export default function ProjectScreen() {
   const p = q.data;
   if (!p) {
     return (
-      <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Loyiha yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
+      <Screen padded={false}>
+        {q.isError ? <EmptyState icon="circle-alert" title="Loyiha yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : (
+          <Reveal loading skeleton={<SkeletonList rows={4} />} style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>{null}</Reveal>
+        )}
       </Screen>
     );
   }
@@ -58,103 +58,92 @@ export default function ProjectScreen() {
     <Screen padded={false}>
       <ScrollView stickyHeaderIndices={[1]} contentContainerStyle={{ paddingBottom: space.xxl }} refreshControl={<RefreshControl refreshing={q.isFetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}>
         <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
-          <Card style={{ padding: space.panel }}>
+          <Card style={{ gap: space.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
-              <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{p.clientName ?? 'Loyiha'}</Txt>
-              <StatusChip status={p.status} />
+              <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{p.clientName ? `${p.name} · ${p.clientName}` : p.name}</Txt>
+              <Badge label={statusLabel(p.status)} tone={statusTone(p.status)} />
             </View>
-            <Txt v="titleLg" style={{ marginTop: space.xs }}>{p.name}</Txt>
-            <Txt v="bodySm" color="muted">{p.address}</Txt>
-            <Gap h={space.md} />
+            <Txt v="metric" numberOfLines={1}>
+              {`${p.progress}%`}
+              <Txt v="tSm">{' bajarildi'}</Txt>
+            </Txt>
             <ProgressBar value={p.progress} tone={p.status === 'DELAYED' ? 'warning' : p.status === 'COMPLETED' ? 'success' : 'brand'} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.sm, gap: space.sm }}>
-              <Txt v="bodyStrong">{p.progress}% bajarildi</Txt>
-              {dl === null ? null : dl < 0 ? <Badge tone="danger" icon="clock" label={`${-dl} kun kechikdi`} /> : <Badge tone="neutral" icon="calendar-days" label={`${dl} kun qoldi`} />}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}>
+              <Txt v="tSm" numberOfLines={1} style={{ flex: 1 }}>{p.address}</Txt>
+              {dl === null ? null : dl < 0 ? <Badge tone="danger" label={`${-dl} kun kechikdi`} /> : <Badge tone="neutral" label={`${dl} kun qoldi`} />}
             </View>
           </Card>
         </View>
         <View style={{ backgroundColor: c.bgApp, paddingHorizontal: space.pageX, paddingVertical: space.sm }}>
           <ChipGroup items={TABS.map((t) => ({ key: t.key, label: t.label }))} value={tab} onChange={setTab} />
         </View>
-        <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
-          {tab === 'overview' ? (
-            <>
-              <KpiGrid items={[
+        <Reveal replay={tab} style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
+          {tab === 'overview' ? [
+              <KpiGrid key="k" items={[
                 { label: 'Byudjet', value: fmtShort(budget), icon: 'wallet', module: 'brand' },
                 { label: 'Sarflangan', value: fmtShort(spent), icon: 'trending-down', tone: overBudget ? 'danger' : undefined, delta: budget ? { text: `${Math.round((spent / budget) * 100)}%`, tone: overBudget ? 'danger' : 'warning' } : undefined, onPress: () => setTab('finance') },
                 { label: 'Quruvchilar', value: p.members.length, icon: 'users', module: 'production', onPress: () => setTab('team') },
                 { label: 'Vazifalar', value: `${doneTasks}/${p.tasks.length}`, icon: 'square-check', module: 'production', onPress: () => setTab('tasks') },
-              ]} />
-              {budget > 0 ? (
-                <>
-                  <Gap h={space.grid} />
-                  <ProgressCard title="Byudjet ijrosi" value={Math.min(100, Math.round((spent / budget) * 100))} tone={overBudget ? 'danger' : 'info'} caption={`${fmtSum(spent)} / ${fmtSum(budget)} · qoldiq ${fmtSum(budget - spent)}`} />
-                </>
-              ) : null}
-              <Gap h={space.section} />
-              <SectionHead title="Ma'lumot" />
-              <ListGroup>
-                <KV first k="Boshlanish" v={p.startDate ? fmtDateFull(p.startDate) : '—'} />
-                <KV k="Muddat" v={p.deadline ? fmtDateFull(p.deadline) : '—'} tone={dl !== null && dl < 0 ? 'danger' : undefined} />
-                {p.clientName ? <KV k="Buyurtmachi" v={p.clientName} /> : null}
-                <KV k="Manzil" v={p.address} />
-              </ListGroup>
-              {p.description ? (
-                <>
-                  <Gap h={space.section} />
-                  <SectionHead title="Tavsif" />
-                  <Card><Txt v="body">{p.description}</Txt></Card>
-                </>
-              ) : null}
-            </>
-          ) : null}
+              ]} />,
+              budget > 0 ? <ProgressCard key="b" title="Byudjet ijrosi" value={Math.min(100, Math.round((spent / budget) * 100))} tone={overBudget ? 'danger' : 'info'} caption={`${fmtSum(spent)} / ${fmtSum(budget)} · qoldiq ${fmtSum(budget - spent)}`} /> : null,
+              <KVList key="kv" rows={[
+                ...(p.startDate ? [{ label: 'Boshlanish', value: fmtDateFull(p.startDate) }] : []),
+                ...(p.deadline ? [{ label: 'Muddat', value: fmtDateFull(p.deadline), tone: dl !== null && dl < 0 ? ('danger' as const) : undefined }] : []),
+                ...(p.clientName ? [{ label: 'Buyurtmachi', value: p.clientName }] : []),
+                { label: 'Manzil', value: p.address },
+              ]} />,
+              <SectionHead key="jh" title="Jarayon" />,
+              <Card key="jt"><Timeline steps={projectSteps(p)} /></Card>,
+              p.description ? <SectionHead key="dh" title="Tavsif" /> : null,
+              p.description ? <Card key="dc"><Txt v="body">{p.description}</Txt></Card> : null,
+            ] : null}
 
           {tab === 'tasks' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <SectionHead title="Vazifalar" count={p.tasks.length || undefined} />
               {p.tasks.length ? (
                 <ListGroup>
                   {p.tasks.map((t) => <ListItem key={t.id} icon={t.status === 'DONE' ? 'square-check' : t.status === 'REVIEW' ? 'clock' : 'circle'} tone={t.status === 'DONE' ? 'success' : t.status === 'REVIEW' ? 'warning' : 'brand'} title={t.title} subtitle={`${t.assignee?.fullName ?? 'Biriktirilmagan'}${t.dueDate ? ` · ${fmtDate(t.dueDate)}` : ''}`} right={<Badge label={PRIORITY_LABEL[t.priority] ?? t.priority} tone={t.priority === 'HIGH' ? 'danger' : t.priority === 'MEDIUM' ? 'warning' : 'neutral'} icon={null} />} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="clipboard-list" title="Vazifalar yo'q" hint="Yangi vazifa qo'shilganda shu yerda ko'rinadi" /></ListGroup>}
-            </>
+            </View>
           ) : null}
 
           {tab === 'team' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <SectionHead title="Quruvchilar" count={p.members.length || undefined} />
               {p.members.length ? (
                 <ListGroup>
                   {p.members.map((m) => <ListItem key={m.user.id} leading={<Avatar name={m.user.fullName} />} title={m.user.fullName ?? m.user.phone} subtitle={m.user.workerProfile ? SPECIALTY_LABEL[m.user.workerProfile.specialty as keyof typeof SPECIALTY_LABEL] : m.user.phone} onPress={() => router.push(`/worker/${m.user.id}`)} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="users" title="A'zolar yo'q" hint="Quruvchi biriktirilganda shu yerda ko'rinadi" /></ListGroup>}
-            </>
+            </View>
           ) : null}
 
           {tab === 'materials' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <SectionHead title="Material so'rovlari" count={p.materialRequests.length || undefined} />
               {p.materialRequests.length ? (
                 <ListGroup>
                   {p.materialRequests.map((r) => <ListItem key={r.id} icon="package" tone={r.status === 'CONFIRMED' ? 'success' : r.status === 'REJECTED' ? 'danger' : 'warning'} title={`${r.material.name} — ${r.quantity} ${r.material.unit}`} subtitle={`№${r.number}${r.reason ? ` · ${r.reason}` : ''}`} right={<StatusChip status={r.status} />} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="package" title="So'rovlar yo'q" hint="Quruvchi material so'raganda shu yerda ko'rinadi" /></ListGroup>}
-            </>
+            </View>
           ) : null}
 
           {tab === 'transport' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <SectionHead title="Yetkazib berishlar" count={p.shipments.length || undefined} />
               {p.shipments.length ? (
                 <ListGroup>
                   {p.shipments.map((s) => <ListItem key={s.id} icon="truck" module="logistics" title={`№${s.number} ${s.cargo}`} subtitle={`${s.driver?.fullName ?? "Haydovchi yo'q"} · ${s.vehicle?.plateNumber ?? ''}`} right={<StatusChip status={s.status} />} onPress={() => router.push(`/shipment/${s.id}`)} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="truck" title="Yuklar yo'q" hint="Material yetkazish rejalashtirilganda shu yerda ko'rinadi" /></ListGroup>}
-            </>
+            </View>
           ) : null}
 
           {tab === 'finance' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <KpiGrid items={[
                 { label: 'Daromad', value: fmtShort(p.incomeTotal), icon: 'trending-up', module: 'brand', tone: 'success' },
                 { label: 'Kutilmoqda', value: fmtShort(p.expectedIncome), icon: 'hourglass', module: 'brand' },
@@ -162,28 +151,27 @@ export default function ProjectScreen() {
                 { label: 'Qoldiq byudjet', value: fmtShort(budget - spent), icon: 'wallet', tone: overBudget ? 'danger' : undefined },
               ]} />
               {p.expenseByCategory.length ? (
-                <><Gap h={space.grid} /><BreakdownCard title="Xarajat tarkibi" unit="so'm" items={p.expenseByCategory.map((e) => ({ label: EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category, value: Number(e.amount) }))} /></>
+                <BreakdownCard title="Xarajat tarkibi" unit="so'm" items={p.expenseByCategory.map((e) => ({ label: EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category, value: Number(e.amount) }))} />
               ) : null}
-              <Gap h={space.section} />
               <SectionHead title="Oxirgi xarajatlar" />
               {p.expenses.length ? (
                 <ListGroup>
                   {p.expenses.slice(0, 15).map((e) => <ListItem key={e.id} icon="circle-arrow-up" tone="danger" title={e.description} subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category} · ${fmtDateFull(e.date)}`} right={<Txt v="bodyStrong" color="danger">−{fmtShort(e.amount)}</Txt>} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="receipt" title="Xarajatlar yo'q" /></ListGroup>}
-            </>
+            </View>
           ) : null}
 
           {tab === 'docs' ? (
-            <>
+            <View style={{ gap: space.stack }}>
               <SectionHead title="Hujjatlar, foto/video" count={p.documents.length || undefined} />
               <ListGroup>
                 {p.documents.map((d) => <ListItem key={d.id} icon={d.kind === 'photo' || d.kind === 'video' ? 'image' : 'file-text'} tone={d.kind === 'photo' ? 'info' : 'brand'} title={d.name} subtitle={fmtDateFull(d.createdAt)} />)}
                 <ListItem icon="chart-column" tone="neutral" title="Hisobot (PDF)" subtitle="Progress, xarajat, jamoa — keyingi versiyada" />
               </ListGroup>
-            </>
+            </View>
           ) : null}
-        </View>
+        </Reveal>
       </ScrollView>
 
       {role === 'TADBIRKOR' ? (
