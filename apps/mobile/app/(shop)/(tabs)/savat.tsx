@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, EmptyState, IconButton, KVList, Txt, fmtNum } from '@/design/primitives';
 import { PageHeader, Reveal, StickyActionBar } from '@/design/blocks';
-import { haptic } from '@/design/motion';
+import { LiveItem, LiveList, haptic } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { cartTotal, useCart, type CartLine } from '@/features/shop/cart';
@@ -55,14 +55,21 @@ export default function ShopCart() {
       {lines.length ? (
         <>
           <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xl }}>
-            <Reveal gap={space.md}>
-              {lines.map((l) => <CartRow key={l.productId} line={l} />)}
-              <KVList rows={[
-                { label: 'Mahsulotlar', value: `${lines.length} ta` },
-                { label: 'Taxminiy jami', value: `${fmtNum(total)} so'm` },
-              ]} />
-              <Txt v="caption" align="center">Yetkazish narxini sotuv bo&apos;limi aniqlab aytadi</Txt>
-            </Reveal>
+            {/* Qatorlar birinchi ochilishda ketma-ket kiradi; o'chirilgan qator so'nadi, qolganlari (va jami) joyiga suriladi */}
+            <LiveList stagger>
+              <View style={{ gap: space.md }}>
+                {lines.map((l, i) => <LiveItem key={l.productId} index={i}><CartRow line={l} /></LiveItem>)}
+                <LiveItem key="sum" index={lines.length}>
+                  <KVList rows={[
+                    { label: 'Mahsulotlar', value: `${lines.length} ta` },
+                    { label: 'Taxminiy jami', value: `${fmtNum(total)} so'm` },
+                  ]} />
+                </LiveItem>
+                <LiveItem key="note" index={lines.length + 1}>
+                  <Txt v="caption" align="center">Yetkazish narxini sotuv bo&apos;limi aniqlab aytadi</Txt>
+                </LiveItem>
+              </View>
+            </LiveList>
           </ScrollView>
           <StickyActionBar primary={{ title: 'Rasmiylashtirish', icon: 'arrow-right', onPress: () => router.push('/(shop)/checkout' as never) }} />
         </>

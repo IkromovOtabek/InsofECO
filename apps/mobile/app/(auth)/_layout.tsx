@@ -1,7 +1,8 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/design/theme';
-import { stackOptions } from '@/design/nav';
+import { authStackOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 
 /**
  * Boshlang'ich ekran `login`: ro'yxat berilmasa expo-router alifbo bo'yicha birinchi
@@ -13,11 +14,12 @@ export const unstable_settings = { initialRouteName: 'login' };
 
 const SCREENS = ['welcome', 'login', 'select-role', 'phone', 'otp', 'register', 'forgot', 'new-password', 'change-password', 'pin', 'done'];
 
-/** Autentifikatsiya ekranlari o'z orqaga tugmasini chizadi (AuthScreen) — nav header yo'q. */
+/** Autentifikatsiya ekranlari o'z orqaga tugmasini chizadi (AuthScreen) — nav header yo'q; qadamlar orasida yumshoq fade. */
 export default function AuthLayout() {
   const { c } = useTheme();
+  const reduce = useReducedMotion();
   return (
-    <Stack screenOptions={{ ...stackOptions(c), headerShown: false }}>
+    <Stack screenOptions={authStackOptions(c, { reduce })}>
       {SCREENS.map((n) => <Stack.Screen key={n} name={n} />)}
     </Stack>
   );

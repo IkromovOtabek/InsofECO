@@ -319,7 +319,7 @@ export interface KpiItem {
 /** Demo `.card.kpi`: padding 12, chapda 40 dp plitka (radius 15), o'ngda yorliq / qiymat / o'zgarish. */
 function KpiCell({ item }: { item: KpiItem }) {
   const { c } = useTheme();
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   const counted = useCountUp(typeof item.value === 'number' ? item.value : 0, { format: (n) => fmtNum(n) });
   const countedText = useCountUpText(typeof item.value === 'string' ? item.value : '');
   const shown = typeof item.value === 'number' ? counted : countedText;
@@ -367,7 +367,7 @@ export interface ActionItem { label: string; icon: IconName; module?: ModuleTone
 
 function ActionCell({ a, primary }: { a: ActionItem; primary: boolean }) {
   const { c } = useTheme();
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   return (
     <Animated.View style={[{ flex: 1 }, ps.style]}>
       <Pressable

@@ -7,6 +7,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { Button, Card, EmptyState, IconButton, Txt } from '@/design/primitives';
 import { dialog, Icon } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { Appear } from '@/design/motion';
 import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
@@ -357,34 +358,36 @@ export default function TripRoute() {
         </View>
       )}
 
-      {/* Pastki panel: mijoz, to'rtta raqam va keyingi qadam */}
-      <View style={{ backgroundColor: c.bgSurface, borderTopWidth: size.hairline, borderTopColor: c.borderDefault, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md }}>
-        <Txt v="bodyStrong" numberOfLines={1}>{data.customer}</Txt>
-        <Txt v="caption" numberOfLines={1}>{data.address}</Txt>
+      {/* Pastki panel: mijoz, to'rtta raqam va keyingi qadam — ochilganda pastdan yumshoq ko'tariladi */}
+      <Appear from={24} scale={1}>
+        <View style={{ backgroundColor: c.bgSurface, borderTopWidth: size.hairline, borderTopColor: c.borderDefault, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md }}>
+          <Txt v="bodyStrong" numberOfLines={1}>{data.customer}</Txt>
+          <Txt v="caption" numberOfLines={1}>{data.address}</Txt>
 
-        <Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.md, marginTop: space.md, marginBottom: space.md }}>
-          <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
-          <Metric label="Bosib o'tildi" value={distanceLabel(data.traveledMeters)} unit={data.traveledMinutes > 0 ? durationLabel(data.traveledMinutes) : '—'} />
-          <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={data.routeSource === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
-          <Metric label="Yetib borish" value={arrivalClock(etaMin)} unit={durationLabel(etaMin)} />
-        </Card>
+          <Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.md, marginTop: space.md, marginBottom: space.md }}>
+            <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
+            <Metric label="Bosib o'tildi" value={distanceLabel(data.traveledMeters)} unit={data.traveledMinutes > 0 ? durationLabel(data.traveledMinutes) : '—'} />
+            <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={data.routeSource === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
+            <Metric label="Yetib borish" value={arrivalClock(etaMin)} unit={durationLabel(etaMin)} />
+          </Card>
 
-        {noGps ? (
-          <Txt v="caption" color="danger" align="center" style={{ marginBottom: space.sm }}>
-            Joylashuvga ruxsat berilmagan — tezlik va qolgan masofa ko&apos;rinmaydi
-          </Txt>
-        ) : null}
+          {noGps ? (
+            <Txt v="caption" color="danger" align="center" style={{ marginBottom: space.sm }}>
+              Joylashuvga ruxsat berilmagan — tezlik va qolgan masofa ko&apos;rinmaydi
+            </Txt>
+          ) : null}
 
-        {/* Obyektga yetilmaguncha tugma yopiq turadi; sababi ostidagi izohda */}
-        <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} onPress={onDeliver} />
-        {nearHint ? <Txt v="caption" align="center" style={{ marginTop: space.xs }}>{nearHint}</Txt> : null}
+          {/* Obyektga yetilmaguncha tugma yopiq turadi; sababi ostidagi izohda */}
+          <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} onPress={onDeliver} />
+          {nearHint ? <Txt v="caption" align="center" style={{ marginTop: space.xs }}>{nearHint}</Txt> : null}
 
-        {/* Ovozli yo'l-yo'riq kerak bo'lsa — tashqi navigator. Ixtiyoriy: reysni olib borish
-            uchun shart emas, shuning uchun ikkinchi darajali tugma. */}
-        {dest ? (
-          <Button variant="ghost" icon="navigation" title="Navigatorda ochish" onPress={() => void openNavigation(dest.lat, dest.lng, data.address)} style={{ marginTop: space.sm }} />
-        ) : null}
-      </View>
+          {/* Ovozli yo'l-yo'riq kerak bo'lsa — tashqi navigator. Ixtiyoriy: reysni olib borish
+              uchun shart emas, shuning uchun ikkinchi darajali tugma. */}
+          {dest ? (
+            <Button variant="ghost" icon="navigation" title="Navigatorda ochish" onPress={() => void openNavigation(dest.lat, dest.lng, data.address)} style={{ marginTop: space.sm }} />
+          ) : null}
+        </View>
+      </Appear>
 
       {form ? (
         <ActionSheet

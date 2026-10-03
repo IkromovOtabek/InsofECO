@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design/theme';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 import { HeaderBack, tabIcon } from '@/design/ui';
 
 /**
@@ -12,9 +13,10 @@ import { HeaderBack, tabIcon } from '@/design/ui';
 export default function HaydovchiLayout() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const hidden = { href: null } as const;
   return (
-    <Tabs tabBar={floatingTabBar({ driver: true })} screenOptions={tabsOptions(c, insets.bottom, { driver: true })}>
+    <Tabs tabBar={floatingTabBar({ driver: true })} screenOptions={tabsOptions(c, insets.bottom, { driver: true, reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Bugun', headerShown: false, tabBarIcon: tabIcon('house', { driver: true }) }} />
       <Tabs.Screen name="deliveries" options={{ title: 'Yuklar', tabBarIcon: tabIcon('package', { driver: true }) }} />
       <Tabs.Screen name="earnings" options={{ title: 'Daromad', tabBarIcon: tabIcon('wallet', { driver: true }) }} />

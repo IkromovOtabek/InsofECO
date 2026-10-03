@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { WorkOrderCreateSchema, SPECIALTY_LABEL } from '@insof/shared';
 import { ChipGroup, StickyActionBar } from '@/design/blocks';
 import { Card, Gap, Input, Screen, Select, Txt } from '@/design/primitives';
-import { haptic } from '@/design/motion';
+import { Appear, PressScale, haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors } from '@/design/tokens';
@@ -51,13 +51,13 @@ function Step({ n, title, hint, done }: { n: number; title: string; hint?: strin
 function Slot({ label, on, off, onPress }: { label: string; on: boolean; off: boolean; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable
-      onPress={() => { haptic.selection(); onPress(); }} disabled={off}
+    <PressScale
+      haptic={false} onPress={() => { haptic.selection(); onPress(); }} disabled={off}
       accessibilityRole="radio" accessibilityState={{ selected: on, disabled: off }} accessibilityLabel={label}
-      style={({ pressed }) => [{ flexGrow: 1, flexBasis: '22%', minHeight: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : off ? c.bgMuted : c.bgSurface, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderSubtle }, pressed && !on && { backgroundColor: c.bgSubtle }]}
+      style={{ flexGrow: 1, flexBasis: '22%', minHeight: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : off ? c.bgMuted : c.bgSurface, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderSubtle }}
     >
       <Txt v="label" mono color={on ? 'onBrand' : off ? 'faint' : 'strong'} style={off ? { textDecorationLine: 'line-through' } : undefined}>{label}</Txt>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -101,31 +101,33 @@ export default function NewWorkOrder() {
     <Screen padded={false}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
-          <Card>
-            <Step n={1} title="Loyiha va ish" hint="Qaysi obyektda, qanday ish" done={step1} />
-            <Select label="Loyiha" value={f.projectId} options={projectOptions} placeholder="Loyihani tanlang" onChange={(v) => setF((s) => ({ ...s, projectId: v, address: s.address || (projects.data ?? []).find((p) => p.id === v)?.address || '' }))} />
-            <Input label="Ish" required value={f.title} onChangeText={set('title')} placeholder="Masalan: Devor qurish (2-qavat)" />
-            <Input label="Tavsif" value={f.description} onChangeText={set('description')} placeholder="Tavsif, talablar" multiline containerStyle={{ marginBottom: 0 }} style={{ minHeight: space.x12 + space.xxxl, paddingTop: space.md, textAlignVertical: 'top' }} />
-          </Card>
+          <Appear>
+            <Card>
+              <Step n={1} title="Loyiha va ish" hint="Qaysi obyektda, qanday ish" done={step1} />
+              <Select label="Loyiha" value={f.projectId} options={projectOptions} placeholder="Loyihani tanlang" onChange={(v) => setF((s) => ({ ...s, projectId: v, address: s.address || (projects.data ?? []).find((p) => p.id === v)?.address || '' }))} />
+              <Input label="Ish" required value={f.title} onChangeText={set('title')} placeholder="Masalan: Devor qurish (2-qavat)" />
+              <Input label="Tavsif" value={f.description} onChangeText={set('description')} placeholder="Tavsif, talablar" multiline containerStyle={{ marginBottom: 0 }} style={{ minHeight: space.x12 + space.xxxl, paddingTop: space.md, textAlignVertical: 'top' }} />
+            </Card>
 
-          <Gap h={space.grid} />
-          <Card>
-            <Step n={2} title="Obyekt va muddat" hint={deadline ? `Muddat: ${dayLabel} · ${time}` : 'Kun va vaqtni tanlang'} done={step2} />
-            <Input label="Manzil" required value={f.address} onChangeText={set('address')} placeholder="Manzil" left="map-pin" />
-            <Txt v="overline" style={{ marginBottom: space.sm }}>Kun</Txt>
-            <ChipGroup items={days} value={day} onChange={(k) => { setDay(k); if (k === today && time && Number(time.slice(0, 2)) <= nowH) setTime(''); }} />
-            <Txt v="overline" style={{ marginTop: space.lg, marginBottom: space.sm }}>Vaqt</Txt>
-            <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-              {SLOTS.map((s) => <Slot key={s} label={s} on={time === s} off={slotOff(s)} onPress={() => setTime(s)} />)}
-            </View>
-          </Card>
+            <Gap h={space.grid} />
+            <Card>
+              <Step n={2} title="Obyekt va muddat" hint={deadline ? `Muddat: ${dayLabel} · ${time}` : 'Kun va vaqtni tanlang'} done={step2} />
+              <Input label="Manzil" required value={f.address} onChangeText={set('address')} placeholder="Manzil" left="map-pin" />
+              <Txt v="overline" style={{ marginBottom: space.sm }}>Kun</Txt>
+              <ChipGroup items={days} value={day} onChange={(k) => { setDay(k); if (k === today && time && Number(time.slice(0, 2)) <= nowH) setTime(''); }} />
+              <Txt v="overline" style={{ marginTop: space.lg, marginBottom: space.sm }}>Vaqt</Txt>
+              <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                {SLOTS.map((s) => <Slot key={s} label={s} on={time === s} off={slotOff(s)} onPress={() => setTime(s)} />)}
+              </View>
+            </Card>
 
-          <Gap h={space.grid} />
-          <Card>
-            <Step n={3} title="Narx va quruvchi" hint="Quruvchini keyin ham biriktirsa bo'ladi" done={step3} />
-            <Input label="To'lov" required value={f.price} onChangeText={set('price')} placeholder="To'lov, so'm" keyboardType="number-pad" mono left="banknote" />
-            <Select label="Quruvchi" value={f.workerUserId} options={workerOptions} onChange={(v) => set('workerUserId')(v)} />
-          </Card>
+            <Gap h={space.grid} />
+            <Card>
+              <Step n={3} title="Narx va quruvchi" hint="Quruvchini keyin ham biriktirsa bo'ladi" done={step3} />
+              <Input label="To'lov" required value={f.price} onChangeText={set('price')} placeholder="To'lov, so'm" keyboardType="number-pad" mono left="banknote" />
+              <Select label="Quruvchi" value={f.workerUserId} options={workerOptions} onChange={(v) => set('workerUserId')(v)} />
+            </Card>
+          </Appear>
         </ScrollView>
         <StickyActionBar primary={{ title: 'Buyurtmani yaratish', icon: 'check', onPress: submit, loading: create.isPending, disabled: !!missing, disabledReason: missing }} />
       </KeyboardAvoidingView>

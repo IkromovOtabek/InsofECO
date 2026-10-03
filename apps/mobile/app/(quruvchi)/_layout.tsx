@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design/theme';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 import { HeaderBack, tabIcon } from '@/design/ui';
 
 /**
@@ -13,9 +14,10 @@ import { HeaderBack, tabIcon } from '@/design/ui';
 export default function QuruvchiLayout() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const hidden = { href: null } as const;
   return (
-    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom)}>
+    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Bosh', headerShown: false, tabBarIcon: tabIcon('house') }} />
       <Tabs.Screen name="sites" options={{ title: 'Obyektlar', tabBarIcon: tabIcon('hard-hat') }} />
       <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('receipt') }} />

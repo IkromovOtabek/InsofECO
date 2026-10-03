@@ -6,6 +6,7 @@ import { ChipGroup, StickyActionBar } from '@/design/blocks';
 import { Card, Gap, Input, Screen, Txt, fmtDateFull } from '@/design/primitives';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { Appear } from '@/design/motion';
 import { radius, size, space, toneColors } from '@/design/tokens';
 import { useAction } from '@/features/eco/api';
 
@@ -55,32 +56,34 @@ export default function NewProject() {
     <Screen padded={false}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
-          <Card>
-            <Step n={1} title="Asosiy" hint="Nomi, manzili va buyurtmachisi" done={step1} />
-            <Input label="Loyiha nomi" required value={f.name} onChangeText={set('name')} placeholder="Masalan, Toshkent Residence" autoFocus />
-            <Input label="Manzil" required value={f.address} onChangeText={set('address')} placeholder="Manzil" left="map-pin" />
-            <Input label="Buyurtmachi" value={f.clientName} onChangeText={set('clientName')} placeholder="Ixtiyoriy" left="user" containerStyle={{ marginBottom: 0 }} />
-          </Card>
+          <Appear>
+            <Card>
+              <Step n={1} title="Asosiy" hint="Nomi, manzili va buyurtmachisi" done={step1} />
+              <Input label="Loyiha nomi" required value={f.name} onChangeText={set('name')} placeholder="Masalan, Toshkent Residence" autoFocus />
+              <Input label="Manzil" required value={f.address} onChangeText={set('address')} placeholder="Manzil" left="map-pin" />
+              <Input label="Buyurtmachi" value={f.clientName} onChangeText={set('clientName')} placeholder="Ixtiyoriy" left="user" containerStyle={{ marginBottom: 0 }} />
+            </Card>
 
-          <Gap h={space.grid} />
-          <Card>
-            <Step n={2} title="Byudjet va muddat" hint={dlValid ? `Muddat: ${fmtDateFull(f.deadline)}` : 'Muddat ixtiyoriy'} done={budgetOk} />
-            <Input label="Byudjet" required value={f.budget} onChangeText={set('budget')} placeholder="Byudjet, so'm" keyboardType="number-pad" mono left="wallet" />
-            <Txt v="overline" style={{ marginBottom: space.sm }}>Muddat</Txt>
-            <ChipGroup<DlKey>
-              items={[{ key: 'none', label: 'Muddatsiz' }, { key: 'm1', label: '1 oy' }, { key: 'm3', label: '3 oy' }, { key: 'm6', label: '6 oy' }, { key: 'y1', label: '1 yil' }, { key: 'custom', label: 'Aniq sana' }]}
-              value={dl} onChange={pickDl}
-            />
-            {dl === 'custom' ? (
-              <Input value={f.deadline} onChangeText={set('deadline')} placeholder="YYYY-MM-DD" mono left="calendar-days" keyboardType="numbers-and-punctuation" hint="Masalan: 2027-03-31" containerStyle={{ marginTop: space.md, marginBottom: 0 }} />
-            ) : null}
-          </Card>
+            <Gap h={space.grid} />
+            <Card>
+              <Step n={2} title="Byudjet va muddat" hint={dlValid ? `Muddat: ${fmtDateFull(f.deadline)}` : 'Muddat ixtiyoriy'} done={budgetOk} />
+              <Input label="Byudjet" required value={f.budget} onChangeText={set('budget')} placeholder="Byudjet, so'm" keyboardType="number-pad" mono left="wallet" />
+              <Txt v="overline" style={{ marginBottom: space.sm }}>Muddat</Txt>
+              <ChipGroup<DlKey>
+                items={[{ key: 'none', label: 'Muddatsiz' }, { key: 'm1', label: '1 oy' }, { key: 'm3', label: '3 oy' }, { key: 'm6', label: '6 oy' }, { key: 'y1', label: '1 yil' }, { key: 'custom', label: 'Aniq sana' }]}
+                value={dl} onChange={pickDl}
+              />
+              {dl === 'custom' ? (
+                <Input value={f.deadline} onChangeText={set('deadline')} placeholder="YYYY-MM-DD" mono left="calendar-days" keyboardType="numbers-and-punctuation" hint="Masalan: 2027-03-31" containerStyle={{ marginTop: space.md, marginBottom: 0 }} />
+              ) : null}
+            </Card>
 
-          <Gap h={space.grid} />
-          <Card>
-            <Step n={3} title="Tavsif" hint="Ixtiyoriy" done={!!f.description.trim()} />
-            <Input value={f.description} onChangeText={set('description')} placeholder="Qisqacha tavsif" multiline containerStyle={{ marginBottom: 0 }} style={{ minHeight: space.x12 + space.xxxl, paddingTop: space.md, textAlignVertical: 'top' }} />
-          </Card>
+            <Gap h={space.grid} />
+            <Card>
+              <Step n={3} title="Tavsif" hint="Ixtiyoriy" done={!!f.description.trim()} />
+              <Input value={f.description} onChangeText={set('description')} placeholder="Qisqacha tavsif" multiline containerStyle={{ marginBottom: 0 }} style={{ minHeight: space.x12 + space.xxxl, paddingTop: space.md, textAlignVertical: 'top' }} />
+            </Card>
+          </Appear>
         </ScrollView>
         <StickyActionBar primary={{ title: 'Loyihani yaratish', icon: 'check', onPress: submit, loading: create.isPending, disabled: !!missing, disabledReason: missing }} />
       </KeyboardAvoidingView>

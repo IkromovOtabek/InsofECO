@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import i18n from '@/core/i18n';
 import Animated from 'react-native-reanimated';
-import { Shimmer, haptic, usePressScale } from './motion';
+import { ENTER_ITEM, Shimmer, haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
 import { Icon, IconName, IconTone } from './icons';
 import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
@@ -156,7 +156,7 @@ export function Button({
   const txt: TypeVariant = sizeKey === 'xl' ? 'titleMd' : sizeKey === 'stickyXl' ? 'buttonXl' : sizeKey === 'md' ? 'bodyStrong' : 'button';
   const iconSize = sizeKey === 'xl' || sizeKey === 'stickyXl' ? size.iconLg : sizeKey === 'md' ? size.iconSm : size.iconMd;
   const off = !!(disabled || loading);
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   const lift: ViewStyle | null = off ? null
     : variant === 'primary' ? glow(c.brand)
     : variant === 'danger' ? glow(c.dangerSolid)
@@ -309,20 +309,20 @@ export function Select<V extends string = string>({ label, value, options, onCha
         <View>
           <Pressable
             accessibilityRole="button" accessibilityLabel={label ?? placeholder} accessibilityState={{ expanded: open }}
-            onPress={() => setOpen((v) => !v)}
+            onPress={() => { haptic.selection(); setOpen((v) => !v); }}
             style={{ flexDirection: 'row', alignItems: 'center', minHeight: size.input, paddingHorizontal: space.md + space.xs, borderRadius: radius.sm, borderCurve: 'continuous', borderWidth: size.hairline, borderColor: error ? c.danger : open ? c.brand : c.borderSubtle, backgroundColor: c.bgSurface, gap: space.sm }}
           >
             <Txt v="body" color={selected ? 'strong' : 'faint'} style={{ flex: 1 }} numberOfLines={1}>{selected?.label ?? placeholder}</Txt>
             <Icon name={open ? 'chevron-up' : 'chevron-down'} tone="muted" />
           </Pressable>
           {open ? (
-            <View style={{ marginTop: space.sm, gap: space.sm }}>
+            <Animated.View entering={ENTER_ITEM} style={{ marginTop: space.sm, gap: space.sm }}>
               {searchable ? <Input value={q} onChangeText={setQ} placeholder={i18n.t('ui.search')} left="search" autoCorrect={false} containerStyle={{ marginBottom: 0 }} /> : null}
               <ScrollView style={{ maxHeight: 264 }} nestedScrollEnabled keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.sm }}>
                 {list.map((o) => <Opt key={o.value} o={o} />)}
                 {list.length === 0 ? <Txt v="bodySm" color="muted" style={{ padding: space.md }}>{i18n.t('ui.notFound')}</Txt> : null}
               </ScrollView>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       ) : (
@@ -455,21 +455,28 @@ export function ListItem({ title, subtitle, subtitleLines = 2, right, value, bad
     </View>
   ) : null;
   const showChevron = chevron ?? (!!onPress && !right && !rightCol);
+  // Bosilganda qator foni yorishadi va mazmuni prujina bilan ozgina (0.98) kichrayadi; qatorning o'zi
+  // (bosish maydoni, ajratuvchi chiziq) o'z joyida qoladi
+  const ps = usePressScale(0.98);
+  const padX = inGroup ? space.card : 0;
   return (
     <Pressable
-      onPress={onPress ? () => { haptic.selection(); onPress(); } : undefined} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
+      onPress={onPress ? () => { haptic.light(); onPress(); } : undefined} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
+      onPressIn={onPress ? ps.onPressIn : undefined} onPressOut={onPress ? ps.onPressOut : undefined}
       android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: lg ? size.driverTouch : size.row, paddingVertical: lg ? space.lg : space.md }, inGroup && { paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }, style]}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', minHeight: lg ? size.driverTouch : size.row, paddingVertical: lg ? space.lg : space.md }, inGroup && { paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }, style]}
     >
-      {line ? <View pointerEvents="none" style={{ position: 'absolute', left: tx ?? (inGroup ? space.card : 0), right: inGroup ? space.card : 0, height: size.hairline, backgroundColor: c.borderSubtle, ...(inGroup ? { top: 0 } : { bottom: 0 }) }} /> : null}
-      {leading ?? (icon ? <IconTile icon={icon} module={m} tone={tone} size={lg ? size.iconTile + space.sm : size.tile} /> : null)}
-      <View style={{ flex: 1, minWidth: 0 }} onLayout={(e) => { const x = Math.round(e.nativeEvent.layout.x); if (x !== tx) setTx(x); }}>
-        <Txt v={lg ? 'titleSm' : 'listTitle'} numberOfLines={1}>{title}</Txt>
-        {subtitle ? <Txt v={lg ? 'bodySm' : 'tSm'} numberOfLines={subtitleLines}>{subtitle}</Txt> : null}
-      </View>
-      {rightCol}
-      {right}
-      {showChevron ? <Icon name="chevron-right" size={size.iconMd - 1} tone="faint" strokeWidth={1.75} /> : null}
+      {line ? <View pointerEvents="none" style={{ position: 'absolute', left: padX + (tx ?? 0), right: padX, height: size.hairline, backgroundColor: c.borderSubtle, ...(inGroup ? { top: 0 } : { bottom: 0 }) }} /> : null}
+      <Animated.View style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md }, ps.style]}>
+        {leading ?? (icon ? <IconTile icon={icon} module={m} tone={tone} size={lg ? size.iconTile + space.sm : size.tile} /> : null)}
+        <View style={{ flex: 1, minWidth: 0 }} onLayout={(e) => { const x = Math.round(e.nativeEvent.layout.x); if (x !== tx) setTx(x); }}>
+          <Txt v={lg ? 'titleSm' : 'listTitle'} numberOfLines={1}>{title}</Txt>
+          {subtitle ? <Txt v={lg ? 'bodySm' : 'tSm'} numberOfLines={subtitleLines}>{subtitle}</Txt> : null}
+        </View>
+        {rightCol}
+        {right}
+        {showChevron ? <Icon name="chevron-right" size={size.iconMd - 1} tone="faint" strokeWidth={1.75} /> : null}
+      </Animated.View>
     </Pressable>
   );
 }
@@ -497,7 +504,7 @@ export function Delta({ text, tone = 'neutral', dir, onInverse }: { text: string
 export function KPICard({ label, value, caption, icon = 'activity', module: m = 'brand', tone, onPress, hero, delta, layout = 'stack', style }: { label: string; value: string; caption?: string; icon?: IconName | string; module?: ModuleTone; tone?: Tone; onPress?: () => void; hero?: boolean; /** O'zgarish: `{ text: '+12%', tone: 'success' }`. */ delta?: { text: string; tone: Tone }; layout?: 'stack' | 'inline'; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   const valueColor: TxtColor = tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : tone === 'success' ? 'success' : 'strong';
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   const inline = layout === 'inline';
   return (
     <Animated.View style={[ps.style, style]}>

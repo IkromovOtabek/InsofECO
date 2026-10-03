@@ -427,6 +427,8 @@ export const textRoom = (text: string, fontSize: number, extra = 0) => text.leng
 /** Yagona tezliklar: mikro (hover/fokus), holat, ekran o'tishi, yuklanish sikli. */
 export const duration = {
   micro: 120, state: 220, screen: 320, loop: 1200,
+  /** Navigatsiya o'tishi (stack push/pop, modal) — 300 ms; tab almashishi — cross-fade 200 ms. */
+  nav: 300, tab: 200,
   /** Demo "Animatsiya v2": `enter .6s`, qadam 60 ms. */
   enter: 600, stagger: 60,
   /** Raqam sanash — 1 s (ease-out quart). */

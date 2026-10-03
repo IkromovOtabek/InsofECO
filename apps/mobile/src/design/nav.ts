@@ -2,7 +2,7 @@ import React from 'react';
 import { Platform, Text, View } from 'react-native';
 import type { Stack, Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { FONT, Palette, elevation, radius, size, space, type } from './tokens';
+import { FONT, Palette, duration, elevation, radius, size, space, type } from './tokens';
 import { FloatingTabBar } from './ui';
 
 type TabOpts = Exclude<NonNullable<React.ComponentProps<typeof Tabs>['screenOptions']>, (...a: never[]) => unknown>;
@@ -32,7 +32,7 @@ export function floatingTabBar(opts: { driver?: boolean } = {}) {
  * shuning uchun kontent panel ostiga kirmaydi va hech qanday ekranga pastki padding kerak emas.
  * Faol tab — ikonka brandSoft pill ichida (`tabIcon` — ui.tsx). Yorliq shrifti kattalashadi, lekin 1.2× dan oshmaydi.
  */
-export function tabsOptions(c: Palette, bottomInset: number, opts: { driver?: boolean } = {}): TabOpts {
+export function tabsOptions(c: Palette, bottomInset: number, opts: { driver?: boolean; /** `useReducedMotion()` — tab almashganda animatsiyasiz. */ reduce?: boolean } = {}): TabOpts {
   const driver = !!opts.driver;
   const barH = driver ? BAR_H.driver : BAR_H.normal;
   const bottomGap = Math.max(bottomInset, space.lg);
@@ -67,11 +67,19 @@ export function tabsOptions(c: Palette, bottomInset: number, opts: { driver?: bo
     headerTitleAlign: 'center',
     headerTitleStyle: { fontFamily: FONT[600], fontSize: type.titleSm.fontSize },
     sceneStyle: { backgroundColor: c.bgApp },
+    // Tablar orasida yumshoq cross-fade (native driver, UI oqimida); harakat kamaytirilgan bo'lsa — bir zumda
+    animation: opts.reduce ? 'none' : 'fade',
+    transitionSpec: { animation: 'timing', config: { duration: duration.tab } },
   };
 }
 
+type StackAnim = NonNullable<StackOpts['animation']>;
+
+/** Oddiy push: iOS — tizim slaydi (orqaga surish bilan), Android — fade_from_bottom. */
+const PUSH: StackAnim = Platform.OS === 'ios' ? 'default' : 'fade_from_bottom';
+
 /** Stack sarlavhasi — chiziqsiz, ekran foni (bgApp) bilan bir xil: sahifa bitta yuza bo'lib ko'rinadi. */
-export function stackOptions(c: Palette): StackOpts {
+export function stackOptions(c: Palette, opts: { /** `useReducedMotion()` — o'tishlar animatsiyasiz. */ reduce?: boolean } = {}): StackOpts {
   return {
     headerStyle: { backgroundColor: c.bgApp },
     headerTintColor: c.textStrong,
@@ -81,6 +89,26 @@ export function stackOptions(c: Palette): StackOpts {
     headerTitleAlign: 'center',
     headerTitleStyle: { fontFamily: FONT[600], fontSize: type.titleSm.fontSize },
     contentStyle: { backgroundColor: c.bgApp },
-    ...(Platform.OS === 'android' ? { animation: 'fade_from_bottom' as const } : null),
+    animation: opts.reduce ? 'none' : PUSH,
+    animationDuration: duration.nav,
+    gestureEnabled: true,
   };
+}
+
+/**
+ * Modalga o'xshash ekran (sozlamalar, rasmiylashtirish, yangi forma) — pastdan yumshoq ko'tariladi,
+ * lekin oddiy kartochka bo'lib qoladi (o'z orqaga tugmasi va sarlavhasi ishlayveradi).
+ */
+export function sheetScreen(opts: { reduce?: boolean } = {}): StackOpts {
+  return { animation: opts.reduce ? 'none' : 'fade_from_bottom', animationDuration: duration.nav, gestureEnabled: true };
+}
+
+/** Haqiqiy modal (iOS — varaq, pastga tortib yopiladi). Ichida o'z sarlavhasi bo'lgan qisqa formalar uchun. */
+export function modalScreen(opts: { reduce?: boolean } = {}): StackOpts {
+  return { presentation: 'modal', animation: opts.reduce ? 'none' : 'default', animationDuration: duration.nav, gestureEnabled: true };
+}
+
+/** Kirish oqimi (login → OTP → ro'yxat): qadamlar orasida yumshoq fade, 280 ms. */
+export function authStackOptions(c: Palette, opts: { reduce?: boolean } = {}): StackOpts {
+  return { ...stackOptions(c, opts), headerShown: false, animation: opts.reduce ? 'none' : 'fade', animationDuration: 280 };
 }

@@ -11,6 +11,7 @@ import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Row, Scre
 import { dialog, toast } from '@/design/ui';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
+import { Appear } from '@/design/motion';
 import { requestAcceptOtp, useDelivery, useDriverTransition, useSignDelivery } from '@/features/deliveries/api';
 import { useLivePosition } from '@/features/tracking/useLivePosition';
 import { startTracking, stopTracking } from '@/core/location';
@@ -50,33 +51,35 @@ export default function DeliveryScreen() {
   return (
     <Screen padded={false}>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
-        <Row style={{ justifyContent: 'space-between', gap: space.sm }}>
-          <Txt v="titleMd" style={{ flex: 1 }} numberOfLines={1}>№{d.order.number} · reys {d.sequence}</Txt>
-          <StatusChip status={d.status} />
-        </Row>
-        <Txt color="muted">{fmtM3(d.plannedM3)} {d.order.items.map((i) => i.gradeSnapshot).join('/')} · {d.order.client.name}{d.order.needsPump ? ' · nasos' : ''}</Txt>
-        <Txt v="caption">{d.order.address} · reja {fmtTime(d.plannedAt)}</Txt>
-        {d.slaBreached ? <Badge tone="danger" icon="clock" label="90 daqiqa oshdi" style={{ marginTop: space.sm }} /> : null}
-        <Gap />
+        <Appear>
+          <Row style={{ justifyContent: 'space-between', gap: space.sm }}>
+            <Txt v="titleMd" style={{ flex: 1 }} numberOfLines={1}>№{d.order.number} · reys {d.sequence}</Txt>
+            <StatusChip status={d.status} />
+          </Row>
+          <Txt color="muted">{fmtM3(d.plannedM3)} {d.order.items.map((i) => i.gradeSnapshot).join('/')} · {d.order.client.name}{d.order.needsPump ? ' · nasos' : ''}</Txt>
+          <Txt v="caption">{d.order.address} · reja {fmtTime(d.plannedAt)}</Txt>
+          {d.slaBreached ? <Badge tone="danger" icon="clock" label="90 daqiqa oshdi" style={{ marginTop: space.sm }} /> : null}
+          <Gap />
 
-        {/* Xarita kalitisiz build'da xarita yo'q — `core/config.ts` ga qarang */}
-        {config.mapsEnabled && (
-        <View style={{ height: 220, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
-          <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
-            <Marker coordinate={dest} tone="brand" />
-            {truck ? <Marker coordinate={truck} tone="info" /> : null}
-          </MapView>
-        </View>
-        )}
-        {live?.etaMin != null && d.status === 'EN_ROUTE' ? <Txt v="titleSm" color="brand" style={{ marginTop: space.sm }}>Taxminan {live.etaMin} daqiqada yetib keladi</Txt> : null}
-        <Gap />
+          {/* Xarita kalitisiz build'da xarita yo'q — `core/config.ts` ga qarang */}
+          {config.mapsEnabled && (
+          <View style={{ height: 220, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
+            <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
+              <Marker coordinate={dest} tone="brand" />
+              {truck ? <Marker coordinate={truck} tone="info" /> : null}
+            </MapView>
+          </View>
+          )}
+          {live?.etaMin != null && d.status === 'EN_ROUTE' ? <Txt v="titleSm" color="brand" style={{ marginTop: space.sm }}>Taxminan {live.etaMin} daqiqada yetib keladi</Txt> : null}
+          <Gap />
 
-        {isDriver ? <DriverPanel d={d} /> : <ClientPanel d={d} />}
+          {isDriver ? <DriverPanel d={d} /> : <ClientPanel d={d} />}
 
-        <Panel title="Tarix" icon="history">
-          {d.events.length === 0 ? <EmptyState title="Hali voqea yo'q" hint="Reys boshlanishi bilan bu yerda ko'rinadi" icon="history" /> : null}
-          {d.events.map((e, i, arr) => <ListItem key={e.id} title={STATUS_LABEL[e.to] ?? e.to} subtitle={e.note ?? undefined} right={<Txt v="caption">{fmtTime(e.at)}</Txt>} last={i === arr.length - 1} />)}
-        </Panel>
+          <Panel title="Tarix" icon="history">
+            {d.events.length === 0 ? <EmptyState title="Hali voqea yo'q" hint="Reys boshlanishi bilan bu yerda ko'rinadi" icon="history" /> : null}
+            {d.events.map((e, i, arr) => <ListItem key={e.id} title={STATUS_LABEL[e.to] ?? e.to} subtitle={e.note ?? undefined} right={<Txt v="caption">{fmtTime(e.at)}</Txt>} last={i === arr.length - 1} />)}
+          </Panel>
+        </Appear>
       </ScrollView>
     </Screen>
   );

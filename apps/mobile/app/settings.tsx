@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Txt } from '@/design/primitives';
 import { Toggle } from '@/design/blocks';
 import { Avatar, Icon, SegmentTrack } from '@/design/ui';
-import { Appear, haptic, stagger } from '@/design/motion';
+import { Appear, PressScale, haptic, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { SchemePref, usePrefs } from '@/design/prefs';
 import { PALETTE_NAMES, PaletteName, elevation, palettes, radius, size, space } from '@/design/tokens';
@@ -56,15 +56,14 @@ function PaletteCard({ name, label, selected, dark, onPress }: { name: PaletteNa
   const { c } = useTheme();
   const p = palettes[name][dark ? 'dark' : 'light'];
   return (
-    <Pressable
-      onPress={onPress}
+    <PressScale
+      onPress={onPress} haptic={false}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={`${label} palitrasi`}
-      style={({ pressed }) => [
+      style={[
         { flex: 1, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md, gap: space.md, borderWidth: size.ring, borderColor: selected ? c.brand : 'transparent' },
         elevation(c).sh1,
-        pressed && { opacity: 0.85 },
       ]}
     >
       {/* Mini ekran: palitra foni ustida to'q "hero" plashka, brend tugma va aksent nuqta */}
@@ -87,7 +86,7 @@ function PaletteCard({ name, label, selected, dark, onPress }: { name: PaletteNa
           {selected ? <Icon name="check" size={size.iconSm} tone="onBrand" strokeWidth={2.5} /> : null}
         </View>
       </View>
-    </Pressable>
+    </PressScale>
   );
 }
 

@@ -5,6 +5,7 @@ import { ChipGroup, ListGroup, Reveal, SkeletonList, StickyActionBar } from '@/d
 import { EmptyState, ListItem, Screen, SearchField, Txt, statusLabel, statusTone } from '@/design/primitives';
 import { daysLeft, fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { LiveItem, LiveList } from '@/design/motion';
 import { space } from '@/design/tokens';
 import { useProjects } from '@/features/eco/api';
 
@@ -42,6 +43,8 @@ export default function Projects() {
           ) : (
             <Reveal gap={space.sm}>
               <Txt v="overline">{`${list.length} ta loyiha`}</Txt>
+              {/* Chip/qidiruv bilan filtrlanganda qatorlar so'nib chiqadi va joyiga suriladi */}
+              <LiveList>
               <ListGroup>
                 {list.map((p) => {
                   const dl = daysLeft(p.deadline);
@@ -54,16 +57,19 @@ export default function Projects() {
                     `${p._count?.members ?? 0} kishi`,
                   ].filter(Boolean).join(' · ');
                   return (
+                    <LiveItem key={p.id}>
                     <ListItem
-                      key={p.id} icon="building" module="production" tone={late ? 'danger' : undefined}
+                      icon="building" module="production" tone={late ? 'danger' : undefined}
                       title={p.name} subtitle={`${p.address}\n${meta}`} subtitleLines={2}
                       onPress={() => router.push(`/project/${p.id}`)}
                       value={`${p.progress}%`}
                       badge={{ text: statusLabel(p.status), tone: late ? 'danger' : statusTone(p.status) }}
                     />
+                    </LiveItem>
                   );
                 })}
               </ListGroup>
+              </LiveList>
             </Reveal>
           )}
       </ScrollView>
