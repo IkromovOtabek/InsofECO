@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -70,6 +70,8 @@ export default function Checkout() {
   const [sheet, setSheet] = useState<null | 'address' | 'time' | 'contact'>(null);
   const [sending, setSending] = useState<number | null>(null);
   const [placed, setPlaced] = useState<SentOrder[] | null>(null);
+  // Ikki marta tez bosilsa (tugma `loading` bo'lib ulgurmasdan) buyurtmalar ikki marta ketmasin
+  const inFlight = useRef(false);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/(shop)/(tabs)/savat' as never));
 
@@ -93,9 +95,16 @@ export default function Checkout() {
     if (!nameOk || !phoneOk) { haptic.warning(); toast.warning(!nameOk ? 'Ismingizni yozing' : 'Telefon: 90 123 45 67'); setSheet('contact'); return; }
     setContact({ name: name.trim(), phone: phone.trim(), address: address.trim() });
     const note = [when ? `Yetkazish vaqti: ${when}` : null, `To'lov: ${pay}`].filter(Boolean).join('. ');
+    if (inFlight.current) return;
+    inFlight.current = true;
     setSending(0);
-    const out = await submitCart(lines, { name: name.trim(), phone: phone.trim(), address: address.trim(), note }, (n) => setSending(n));
-    setSending(null);
+    let out: Awaited<ReturnType<typeof submitCart>>;
+    try {
+      out = await submitCart(lines, { name: name.trim(), phone: phone.trim(), address: address.trim(), note }, (n) => setSending(n));
+    } finally {
+      inFlight.current = false;
+      setSending(null);
+    }
     const rows = out.done.length ? markSent(out.done, { address: address.trim(), when: when ?? undefined, pay }) : [];
     const notSent = out.failed.length + out.skipped.length;
     if (!out.done.length) {

@@ -140,10 +140,13 @@ export default function ShopProduct() {
           <QtyStepper value={qty} onChange={setQty} unit={item.unitLabel} min={item.minQty ?? 1} />
           <PressScale
             onPress={addToCart} accessibilityRole="button" accessibilityLabel={`Savatga qo'shish, jami ${fmtNum(total)} so'm`}
-            style={[{ flex: 1, height: size.stickyButton, borderRadius: radius.pill, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.md }, elevation(c).glow(c.brand)]}
+            style={{ flex: 1 }}
           >
-            <Txt v="caption" numberOfLines={1} style={{ color: c.textOnBrand, opacity: 0.85 }}>{total ? `Jami ${fmtNum(total)} so'm` : 'Hajmni kiriting'}</Txt>
-            <Txt v="button" numberOfLines={1} style={{ color: c.textOnBrand }}>Savatga qo&apos;shish</Txt>
+            {/* Pill — Pressable ichida: bosish maydoni butun tugma (PressScale uslubi tashqi Animated.View'da) */}
+            <View style={[{ height: size.stickyButton, borderRadius: radius.pill, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.md }, elevation(c).glow(c.brand)]}>
+              <Txt v="caption" numberOfLines={1} style={{ color: c.textOnBrand, opacity: 0.85 }}>{total ? `Jami ${fmtNum(total)} so'm` : 'Hajmni kiriting'}</Txt>
+              <Txt v="button" numberOfLines={1} style={{ color: c.textOnBrand }}>Savatga qo&apos;shish</Txt>
+            </View>
           </PressScale>
         </View>
       ) : null}

@@ -196,13 +196,16 @@ export function FloatingTabBar({ state, descriptors, navigation, insets, driver 
   const pillW = driver ? size.tabPillWDriver : size.tabPillW;
   const pillH = driver ? size.tabPillHDriver : size.tabPillH;
   const padV = driver ? space.md : space.sm + 2;
+  // Yashirin (`href: null`) ekran ochiq bo'lsa hech bir tab faol emas — pill eski tab ostida qolmasin
+  const focusedShown = routes.some((r) => r.key === focusedKey);
   const move = React.useCallback(() => {
+    if (!focusedShown) { x.value = -1; placed.current = false; return; }
     const l = focusedKey ? lay.current[focusedKey] : undefined;
     if (!l) return;
     const to = l.x + (l.w - pillW) / 2;
     if (!placed.current || reduce) { x.value = to; placed.current = true; }
     else x.value = withSpring(to, SPRING_TAB);
-  }, [focusedKey, pillW, reduce, x]);
+  }, [focusedKey, focusedShown, pillW, reduce, x]);
   useEffect(() => { move(); }, [move]);
   const ind = useAnimatedStyle(() => ({ opacity: x.value < 0 ? 0 : 1, transform: [{ translateX: x.value }] }));
   if (flat(focusedOpts?.tabBarStyle).display === 'none') return null;

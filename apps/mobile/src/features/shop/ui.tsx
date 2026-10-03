@@ -80,9 +80,10 @@ export function AddButton({ item }: { item: ShopItem }) {
     <PressScale
       onPress={() => { add(item, item.minQty ?? 1); haptic.success(); toast.success(`${item.name} — ${fmtNum(item.minQty ?? 1)} ${item.unitLabel}`, "Savatga qo'shildi"); }}
       accessibilityRole="button" accessibilityLabel={`${item.name} — savatga qo'shish`} hitSlop={space.xs}
-      style={[{ width: size.iconTile - space.xs, height: size.iconTile - space.xs, borderRadius: radius.pill, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }, elevation(c).chipGlow(c.brand)]}
     >
-      <Icon name="plus" size={size.iconMd - 2} color={c.textOnBrand} strokeWidth={2.25} />
+      <View style={[{ width: size.iconTile - space.xs, height: size.iconTile - space.xs, borderRadius: radius.pill, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }, elevation(c).chipGlow(c.brand)]}>
+        <Icon name="plus" size={size.iconMd - 2} color={c.textOnBrand} strokeWidth={2.25} />
+      </View>
     </PressScale>
   );
 }

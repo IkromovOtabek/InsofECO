@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Confirm, toast } from '@/design/ui';
+import React, { useRef } from 'react';
+import { dialog, toast } from '@/design/ui';
 import { useSession } from '@/core/session';
 import { SetRow } from '@/components/set-row';
 import { authApi } from './api';
@@ -8,21 +8,22 @@ import { authApi } from './api';
  * "Hisobni o'chirish" qatori (App Store / Google Play talabi) — `SetGroup` ichida ishlatiladi.
  * Faqat ECO hisobi uchun: server `DELETE /me` bor. Mijoz darhol o'chadi; zavod haydovchisi so'rov
  * qoldiradi — direktor ERP'da tasdiqlagach hisob anonimlashadi. ERP hisobida (API yo'q) hech narsa chizilmaydi.
+ * Tasdiq — `dialog()` (ildizdagi DialogHost): qator `SetGroup` (overflow: hidden) ichida, daraxt ichidagi
+ * `Confirm` karta chegarasida qirqilib qolardi.
  */
 export function DeleteAccountRow() {
   const { kind, user, setUser, signOut } = useSession();
-  const [ask, setAsk] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const busy = useRef(false);
   if (kind !== 'eco' || !user) return null;
 
   const isDriver = user.memberships.some((m) => m.isActive && m.role === 'HAYDOVCHI');
   const requested = !!user.deleteRequestedAt;
 
   const remove = async () => {
-    setBusy(true);
+    if (busy.current) return;
+    busy.current = true;
     try {
       const r = await authApi.deleteAccount();
-      setAsk(false);
       if (r.status === 'deleted') {
         toast.success("Hisobingiz o'chirildi");
         await signOut();
@@ -33,9 +34,20 @@ export function DeleteAccountRow() {
     } catch (e) {
       toast.error((e as Error).message, 'Xato');
     } finally {
-      setBusy(false);
+      busy.current = false;
     }
   };
+
+  const ask = () => dialog(
+    "Hisobni o'chirish",
+    isDriver
+      ? "Siz zavod haydovchisisiz — hisobni direktor tasdiqlagach o'chiramiz. Shu vaqtgacha ilova ishlayveradi."
+      : "Telefon raqamingiz, ismingiz va kirish ma'lumotlaringiz butunlay o'chiriladi. Buyurtma tarixi shaxsga bog'lanmagan holda qoladi. Qaytarib bo'lmaydi.",
+    [
+      { text: isDriver ? "So'rov yuborish" : "Ha, o'chirish", style: 'destructive', onPress: () => void remove() },
+      { text: 'Bekor', style: 'cancel' },
+    ],
+  );
 
   const cancel = async () => {
     try {
@@ -47,25 +59,9 @@ export function DeleteAccountRow() {
     }
   };
 
-  return (
-    <>
-      {requested ? (
-        <SetRow icon="hourglass" tone="warning" title="O'chirish so'ralgan" subtitle="Direktor tasdig'i kutilmoqda — bekor qilish uchun bosing" onPress={() => void cancel()} chevron={false} />
-      ) : (
-        <SetRow icon="trash" module="warehouse" title="Hisobni o'chirish" danger onPress={() => setAsk(true)} chevron={false} />
-      )}
-      <Confirm
-        open={ask}
-        onClose={() => setAsk(false)}
-        onConfirm={() => void remove()}
-        danger
-        loading={busy}
-        title="Hisobni o'chirish"
-        confirmLabel={isDriver ? "So'rov yuborish" : "Ha, o'chirish"}
-        message={isDriver
-          ? "Siz zavod haydovchisisiz — hisobni direktor tasdiqlagach o'chiramiz. Shu vaqtgacha ilova ishlayveradi."
-          : "Telefon raqamingiz, ismingiz va kirish ma'lumotlaringiz butunlay o'chiriladi. Buyurtma tarixi shaxsga bog'lanmagan holda qoladi. Qaytarib bo'lmaydi."}
-      />
-    </>
+  return requested ? (
+    <SetRow icon="hourglass" tone="warning" title="O'chirish so'ralgan" subtitle="Direktor tasdig'i kutilmoqda — bekor qilish uchun bosing" onPress={() => void cancel()} chevron={false} />
+  ) : (
+    <SetRow icon="trash" module="warehouse" title="Hisobni o'chirish" danger onPress={ask} chevron={false} />
   );
 }

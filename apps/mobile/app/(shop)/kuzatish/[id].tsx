@@ -114,9 +114,10 @@ export default function TrackDelivery() {
                   {phone ? (
                     <PressScale
                       onPress={() => void Linking.openURL(`tel:${phone}`)} accessibilityRole="button" accessibilityLabel="Haydovchiga qo'ng'iroq"
-                      style={{ width: size.touch + space.sm, height: size.touch + space.sm, borderRadius: radius.pill, backgroundColor: c.successSolid, alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <Icon name="phone" size={size.iconMd} color={c.textOnSolid} />
+                      <View style={{ width: size.touch + space.sm, height: size.touch + space.sm, borderRadius: radius.pill, backgroundColor: c.successSolid, alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="phone" size={size.iconMd} color={c.textOnSolid} />
+                      </View>
                     </PressScale>
                   ) : null}
                 </Card>
