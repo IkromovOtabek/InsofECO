@@ -25,8 +25,9 @@ Xulosa: **xodimlar 1–2 kunda production'da ishlay oladi** (APK + TestFlight), 
    Tavsiya: tashkilot hisobi.
 3. **Firebase loyihasi** (Android push uchun): console.firebase.google.com → Android ilova `uz.insofeco.app` →
    `google-services.json` ni `apps/mobile/` ga qo'yish, FCM V1 xizmat hisobini `eas credentials` ga yuklash.
-4. **Google Maps release SHA-1**: birinchi `eas build -p android --profile production` dan keyin
-   `eas credentials` → SHA-1 → Google Cloud `insof-eco` → API kalit cheklovlariga qo'shish.
+4. **Yandex MapKit kaliti**: developer.tech.yandex.ru → MapKit SDK. EAS'ga
+   `EXPO_PUBLIC_YANDEX_MAPKIT_KEY` sifatida (`production` muhit) qo'shiladi; lokal build uchun `apps/mobile/.env`.
+   Kalitsiz build'da xaritalar o'rnida ro'yxat/raqamlar chiqadi (ilova yiqilmaydi).
 5. Birinchi build interaktiv: `eas build -p android --profile production` (keystore yaratadi),
    `eas build -p ios --profile production` (Apple ID bilan kiradi, sertifikat yaratadi).
 

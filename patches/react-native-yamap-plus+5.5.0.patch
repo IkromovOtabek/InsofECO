@@ -1,0 +1,179 @@
+diff --git a/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt b/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt
+index 593c2b8..50395fe 100644
+--- a/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt
++++ b/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt
+@@ -36,36 +36,36 @@ class YamapPackage : BaseReactPackage() {
+     override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
+         mapOf(
+             TransportModuleImpl.NAME to ReactModuleInfo(
+-                name = TransportModuleImpl.NAME,
+-                className = TransportModuleImpl.NAME,
+-                canOverrideExistingModule = false,
+-                needsEagerInit = false,
+-                isCxxModule = false,
+-                isTurboModule = true
++                TransportModuleImpl.NAME,
++                TransportModuleImpl.NAME,
++                false,
++                false,
++                false,
++                true
+             ),
+             SearchModuleImpl.NAME to ReactModuleInfo(
+-                name = SearchModuleImpl.NAME,
+-                className = SearchModuleImpl.NAME,
+-                canOverrideExistingModule = false,
+-                needsEagerInit = false,
+-                isCxxModule = false,
+-                isTurboModule = true
++                SearchModuleImpl.NAME,
++                SearchModuleImpl.NAME,
++                false,
++                false,
++                false,
++                true
+             ),
+             SuggestsModuleImpl.NAME to ReactModuleInfo(
+-                name = SuggestsModuleImpl.NAME,
+-                className = SuggestsModuleImpl.NAME,
+-                canOverrideExistingModule = false,
+-                needsEagerInit = false,
+-                isCxxModule = false,
+-                isTurboModule = true
++                SuggestsModuleImpl.NAME,
++                SuggestsModuleImpl.NAME,
++                false,
++                false,
++                false,
++                true
+             ),
+             YamapModuleImpl.NAME to ReactModuleInfo(
+-                name = YamapModuleImpl.NAME,
+-                className = YamapModuleImpl.NAME,
+-                canOverrideExistingModule = false,
+-                needsEagerInit = false,
+-                isCxxModule = false,
+-                isTurboModule = true
++                YamapModuleImpl.NAME,
++                YamapModuleImpl.NAME,
++                false,
++                false,
++                false,
++                true
+             ),
+         )
+     }
+diff --git a/node_modules/react-native-yamap-plus/ios/View/CircleView.mm b/node_modules/react-native-yamap-plus/ios/View/CircleView.mm
+index 08dfca7..f033abe 100644
+--- a/node_modules/react-native-yamap-plus/ios/View/CircleView.mm
++++ b/node_modules/react-native-yamap-plus/ios/View/CircleView.mm
+@@ -197,4 +197,15 @@ - (YMKCircleMapObject*)getMapObject {
+     return mapObject;
+ }
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++
++// RN 0.76: RCTThirdPartyFabricComponentsProvider komponentni shu funksiya orqali topadi
++// (yangi RN `codegenConfig.ios.componentProvider` ni ishlatadi, shuning uchun kutubxonada yo'q edi)
++Class<RCTComponentViewProtocol> CircleViewCls(void)
++{
++    return CircleView.class;
++}
++
++#endif
++
+ @end
+diff --git a/node_modules/react-native-yamap-plus/ios/View/ClusteredYamapView.mm b/node_modules/react-native-yamap-plus/ios/View/ClusteredYamapView.mm
+index f0acab8..74cbfa5 100644
+--- a/node_modules/react-native-yamap-plus/ios/View/ClusteredYamapView.mm
++++ b/node_modules/react-native-yamap-plus/ios/View/ClusteredYamapView.mm
+@@ -101,4 +101,15 @@ - (void)prepareForRecycle
+ 
+ #endif
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++
++// RN 0.76: RCTThirdPartyFabricComponentsProvider komponentni shu funksiya orqali topadi
++// (yangi RN `codegenConfig.ios.componentProvider` ni ishlatadi, shuning uchun kutubxonada yo'q edi)
++Class<RCTComponentViewProtocol> ClusteredYamapViewCls(void)
++{
++    return ClusteredYamapView.class;
++}
++
++#endif
++
+ @end
+diff --git a/node_modules/react-native-yamap-plus/ios/View/MarkerView.mm b/node_modules/react-native-yamap-plus/ios/View/MarkerView.mm
+index aa61bd5..ec09810 100644
+--- a/node_modules/react-native-yamap-plus/ios/View/MarkerView.mm
++++ b/node_modules/react-native-yamap-plus/ios/View/MarkerView.mm
+@@ -368,4 +368,15 @@ - (void)animatedRotateTo:(float)angle withDuration:(float)duration {
+     }
+ }
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++
++// RN 0.76: RCTThirdPartyFabricComponentsProvider komponentni shu funksiya orqali topadi
++// (yangi RN `codegenConfig.ios.componentProvider` ni ishlatadi, shuning uchun kutubxonada yo'q edi)
++Class<RCTComponentViewProtocol> MarkerViewCls(void)
++{
++    return MarkerView.class;
++}
++
++#endif
++
+ @end
+diff --git a/node_modules/react-native-yamap-plus/ios/View/PolygonView.mm b/node_modules/react-native-yamap-plus/ios/View/PolygonView.mm
+index 32da16c..b77c183 100644
+--- a/node_modules/react-native-yamap-plus/ios/View/PolygonView.mm
++++ b/node_modules/react-native-yamap-plus/ios/View/PolygonView.mm
+@@ -229,4 +229,15 @@ - (YMKPolygonMapObject*)getMapObject {
+     return mapObject;
+ }
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++
++// RN 0.76: RCTThirdPartyFabricComponentsProvider komponentni shu funksiya orqali topadi
++// (yangi RN `codegenConfig.ios.componentProvider` ni ishlatadi, shuning uchun kutubxonada yo'q edi)
++Class<RCTComponentViewProtocol> PolygonViewCls(void)
++{
++    return PolygonView.class;
++}
++
++#endif
++
+ @end
+diff --git a/node_modules/react-native-yamap-plus/ios/View/YamapView.mm b/node_modules/react-native-yamap-plus/ios/View/YamapView.mm
+index 1e643a3..fc4a61a 100644
+--- a/node_modules/react-native-yamap-plus/ios/View/YamapView.mm
++++ b/node_modules/react-native-yamap-plus/ios/View/YamapView.mm
+@@ -1248,4 +1248,15 @@ - (BOOL)onClusterTapWithCluster:(nonnull YMKCluster *)cluster {
+     return YES;
+ }
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++
++// RN 0.76: RCTThirdPartyFabricComponentsProvider komponentni shu funksiya orqali topadi
++// (yangi RN `codegenConfig.ios.componentProvider` ni ishlatadi, shuning uchun kutubxonada yo'q edi)
++Class<RCTComponentViewProtocol> YamapViewCls(void)
++{
++    return YamapView.class;
++}
++
++#endif
++
+ @end
+diff --git a/node_modules/react-native-yamap-plus/src/spec/NativeSearchModule.ts b/node_modules/react-native-yamap-plus/src/spec/NativeSearchModule.ts
+index 64bb6c3..0d63c22 100644
+--- a/node_modules/react-native-yamap-plus/src/spec/NativeSearchModule.ts
++++ b/node_modules/react-native-yamap-plus/src/spec/NativeSearchModule.ts
+@@ -58,7 +58,8 @@ export interface SearchOptions {
+ }
+ 
+ interface Spec extends TurboModule {
+-  searchByAddress(query: string, figure?: FigureParams, options?: SearchOptions): Promise<Address>
++  // RN 0.76 iOS codegen union'ni struct ichida qabul qilmaydi; native tomon baribir NSDictionary oladi
++  searchByAddress(query: string, figure?: Object, options?: SearchOptions): Promise<Address>
+   searchByPoint(point: Point, zoom?: Double, options?: SearchOptions): Promise<Address>
+   geoToAddress(point: Point): Promise<Address>
+   addressToGeo(address: string): Promise<Point>

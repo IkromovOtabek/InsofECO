@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import MapView, { Marker } from 'react-native-maps';
+import { MapView, Marker } from '@/core/map';
 import { config } from '@/core/config';
 import { DRIVER_PRIMARY_NEXT, DeliveryStatus } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Row, Screen, StatusChip, Txt, fmtM3, fmtTime, STATUS_LABEL } from '@/design/primitives';
@@ -59,12 +59,12 @@ export default function DeliveryScreen() {
         {d.slaBreached ? <Badge tone="danger" icon="clock" label="90 daqiqa oshdi" style={{ marginTop: space.sm }} /> : null}
         <Gap />
 
-        {/* Kalitsiz Android'da Google Maps ilovani yiqitadi — `core/config.ts` ga qarang */}
+        {/* Xarita kalitisiz build'da xarita yo'q — `core/config.ts` ga qarang */}
         {config.mapsEnabled && (
         <View style={{ height: 220, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
           <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
-            <Marker coordinate={dest} title="Obyekt" pinColor={c.brand} />
-            {truck ? <Marker coordinate={truck} title="Mashina" description={live?.etaMin != null ? `~${live.etaMin} daq` : undefined} pinColor={c.info} /> : null}
+            <Marker coordinate={dest} tone="brand" />
+            {truck ? <Marker coordinate={truck} tone="info" /> : null}
           </MapView>
         </View>
         )}

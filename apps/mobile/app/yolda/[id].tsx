@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { InteractionManager, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Button, Card, EmptyState, IconButton, Txt } from '@/design/primitives';
@@ -12,6 +11,7 @@ import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
 import { openNavigation } from '@/core/navigate';
+import { Circle, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
 import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters, type LatLng } from '@/core/geo';
 import { useErpAction, useErpTripRoute } from '@/features/erp/api';
@@ -81,7 +81,7 @@ export default function TripRoute() {
   const fixRef = useRef<Fix | null>(null);
   const speedsRef = useRef<{ kmh: number; at: number }[]>([]);
   const rerouteRef = useRef(0);
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<MapHandle | null>(null);
 
   /**
    * Yo'l faqat kerak bo'lganda qayta quriladi: birinchi ochilishda va yo'ldan chiqib
@@ -173,7 +173,7 @@ export default function TripRoute() {
   // Xarita mashina ortidan yuradi; haydovchi xaritani qo'li bilan sursa — kuzatish to'xtaydi
   useEffect(() => {
     if (!follow || !fix || !mapRef.current) return;
-    mapRef.current.animateCamera({ center: { latitude: fix.lat, longitude: fix.lng } }, { duration: 600 });
+    mapRef.current.animateCamera({ latitude: fix.lat, longitude: fix.lng }, 600);
   }, [fix, follow]);
 
   // Chiziq kelgach qayta so'rash shart emas — keyingi safar keshdagisi ishlatiladi
@@ -278,10 +278,7 @@ export default function TripRoute() {
     const here = fixRef.current;
     if (!here || !dest) { void centerOnMe(); return; }
     setFollow(false);
-    mapRef.current?.fitToCoordinates(
-      [{ latitude: here.lat, longitude: here.lng }, { latitude: dest.lat, longitude: dest.lng }],
-      { edgePadding: { top: 90, right: 70, bottom: 90, left: 70 }, animated: true },
-    );
+    mapRef.current?.fitToCoordinates([{ latitude: here.lat, longitude: here.lng }, { latitude: dest.lat, longitude: dest.lng }]);
   }, [dest, centerOnMe]);
 
   const onDeliver = useCallback(() => {
@@ -302,8 +299,8 @@ export default function TripRoute() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda faqat raqamlar qoladi
-          (`core/config.ts`), ya'ni reys baribir olib boriladi va yopiladi. */}
+      {/* Xarita kalitisiz build'da faqat raqamlar qoladi (`core/config.ts`),
+          ya'ni reys baribir olib boriladi va yopiladi. */}
       {config.mapsEnabled && dest && canMap ? (
         <View style={{ flex: 1 }}>
           <MapView
@@ -313,8 +310,6 @@ export default function TripRoute() {
             // Tizimning ko'k nuqtasi emas, o'z belgimiz (pastda): u har doim chiziladi
             // va ko'rinishini biz boshqaramiz — haydovchi "men qayerdaman?" degan savolga
             // bir qarashda javob topishi kerak.
-            showsUserLocation={false}
-            showsMyLocationButton={false}
             onPanDrag={() => setFollow(false)}
           >
             {/* Yo'l — brend; obyekt va yetib borish doirasi — yashil; mashina — ko'k */}
@@ -326,25 +321,13 @@ export default function TripRoute() {
               strokeColor={c.successSolid + '99'}
               fillColor={c.successSolid + '1A'}
             />
-            <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} title="Obyekt" description={data.address} pinColor={c.successSolid} />
+            <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} tone="success" />
+            {/* Yurayotganda — yo'nalishga qaragan o'q, turganda — oddiy nuqta */}
             {fix ? (
-              <Marker coordinate={{ latitude: fix.lat, longitude: fix.lng }} title="Siz" anchor={{ x: 0.5, y: 0.5 }} flat>
-                {/* Yurayotganda — yo'nalishga qaragan o'q, turganda — oddiy nuqta */}
-                <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.bgSurface, alignItems: 'center', justifyContent: 'center', borderWidth: size.ring, borderColor: c.infoSolid }}>
-                  {fix.heading != null && fix.speedKmh >= HEADING_MIN_KMH ? (
-                    <View style={{ transform: [{ rotate: `${fix.heading}deg` }] }}>
-                      {/* Uchburchak — chegaralar orqali chiziladi, rasm fayli kerak emas */}
-                      <View style={{
-                        width: 0, height: 0,
-                        borderLeftWidth: 7, borderRightWidth: 7, borderBottomWidth: 15,
-                        borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: c.infoSolid,
-                      }} />
-                    </View>
-                  ) : (
-                    <View style={{ width: size.iconSm - 2, height: size.iconSm - 2, borderRadius: radius.pill, backgroundColor: c.infoSolid }} />
-                  )}
-                </View>
-              </Marker>
+              <MeMarker
+                coordinate={{ latitude: fix.lat, longitude: fix.lng }}
+                heading={fix.heading != null && fix.speedKmh >= HEADING_MIN_KMH ? fix.heading : null}
+              />
             ) : null}
           </MapView>
           {/* "Meni top" — HAR DOIM ko'rinadi. Ilgari faqat xarita qo'l bilan surilganda

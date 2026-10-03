@@ -14,7 +14,7 @@ import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom
 import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { Appear, PressScale, stagger, useHeaderRaise } from '@/design/motion';
 import { useSession } from '@/core/session';
-import MapView, { Marker } from 'react-native-maps';
+import { MapView, Marker, type MapHandle } from '@/core/map';
 import { config } from '@/core/config';
 import { erpAuth, type ErpCard, type ErpFleetTruck, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
 import { erpRoleConfig, type ErpTabSpec } from './roles';
@@ -504,20 +504,14 @@ function LiveTrucks({ trucks }: { trucks: ErpLiveTruck[] }) {
   return (
     <View style={{ paddingHorizontal: space.pageX, paddingTop: space.xl }}>
       <SectionHead title={`Yo'lda · ${trucks.length} ta`} />
-      {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda pastdagi ro'yxat qoladi,
-          ya'ni ma'lumot yo'qolmaydi, faqat ko'rinish soddalashadi (`core/config.ts`). */}
+      {/* Xarita kalitisiz build'da pastdagi ro'yxat qoladi, ya'ni ma'lumot
+          yo'qolmaydi, faqat ko'rinish soddalashadi (`core/config.ts`). */}
       {config.mapsEnabled && (
       <View style={{ height: 190, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault, marginBottom: space.sm }}>
         {/* Scroll bilan urishmasin deb xarita ichida siljimaydi — tafsilot pastdagi qatordan ochiladi */}
-        <MapView style={{ flex: 1 }} initialRegion={region} scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false}>
+        <MapView style={{ flex: 1 }} initialRegion={region} interactive={false}>
           {trucks.map((t) => (
-            <Marker
-              key={t.ref}
-              coordinate={{ latitude: t.lat, longitude: t.lng }}
-              title={`${t.plate} · ${t.km} km`}
-              description={`${t.driver} → ${t.customer}`}
-              pinColor={c.infoSolid}
-            />
+            <Marker key={t.ref} coordinate={{ latitude: t.lat, longitude: t.lng }} tone="info" />
           ))}
         </MapView>
       </View>
@@ -568,7 +562,7 @@ function agoLabel(iso: string) {
 function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
   const { c } = useTheme();
   const router = useRouter();
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<MapHandle | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
   const located = fleet.filter((t): t is ErpFleetTruck & { gps: NonNullable<ErpFleetTruck['gps']> } => !!t.gps);
@@ -584,7 +578,7 @@ function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
     : null;
 
   const showAll = () => {
-    if (coords.length > 1) mapRef.current?.fitToCoordinates(coords, { edgePadding: { top: 48, right: 48, bottom: 48, left: 48 }, animated: true });
+    if (coords.length > 1) mapRef.current?.fitToCoordinates(coords);
     else if (coords[0]) mapRef.current?.animateToRegion({ latitude: coords[0].latitude, longitude: coords[0].longitude, latitudeDelta: 0.04, longitudeDelta: 0.04 }, 400);
   };
 
@@ -605,7 +599,7 @@ function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
         action={fleet.length ? 'Barchasi' : undefined}
         onAction={() => router.push('/erp/list/trips' as never)}
       />
-      {/* Kalitsiz Android'da xarita ilovani yiqitadi — bunday holda ro'yxat qoladi (`core/config.ts`). */}
+      {/* Xarita kalitisiz build'da ro'yxat qoladi (`core/config.ts`). */}
       {config.mapsEnabled && region ? (
         <View style={{ height: FLEET_MAP_HEIGHT, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault, marginBottom: space.sm }}>
           <MapView
@@ -614,17 +608,15 @@ function FleetMap({ fleet }: { fleet: ErpFleetTruck[] }) {
             initialRegion={region}
             rotateEnabled={false}
             pitchEnabled={false}
-            toolbarEnabled={false}
             onPress={() => { if (selected) { setSelected(null); showAll(); } }}
           >
             {located.map((t) => {
               const active = selected === t.ref;
               return (
                 <Marker
-                  key={t.ref}
+                  // MapKit plitkani rasmga aylantirib oladi va o'zgarishni sezmaydi — tanlov o'zgarsa qayta yaratiladi
+                  key={`${t.ref}:${active ? 1 : 0}`}
                   coordinate={{ latitude: t.gps.lat, longitude: t.gps.lng }}
-                  title={`${t.plate} · ${t.driver}`}
-                  description={`${t.customer} · ${t.phase}${t.gps.etaMin != null ? ` · ~${t.gps.etaMin} daq` : ''}`}
                   anchor={{ x: 0.5, y: 0.5 }}
                   onPress={() => { setSelected(t.ref); mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500); }}
                   zIndex={active ? 2 : 1}

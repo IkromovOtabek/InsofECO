@@ -1,0 +1,13 @@
+{
+  // Faqat `tsc` uchun (yarn typecheck / lint). Metro bu faylni o'qimaydi — u tsconfig.json dagi
+  // `paths` ni runtime'da ham qo'llaydi, shuning uchun paket yo'naltirishi shu yerda turadi.
+  // react-native-yamap-plus TS manbasini beradi va u `noUncheckedIndexedAccess` dan o'tmaydi —
+  // tip tekshiruvi uning o'rniga `src/core/yamap.d.ts` ni oladi.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["src/*"],
+      "react-native-yamap-plus": ["src/core/yamap.d.ts"]
+    }
+  }
+}

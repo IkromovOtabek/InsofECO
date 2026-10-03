@@ -21,6 +21,10 @@ import { stackOptions } from '@/design/nav';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
 import { afterLogin } from '@/features/shop/after-login';
+import { initMaps } from '@/core/map';
+
+// Yandex MapKit kaliti birinchi xaritadan oldin berilishi shart — ilova ochilishida bir marta
+initMaps();
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }) });
 

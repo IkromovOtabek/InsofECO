@@ -37,7 +37,6 @@ const config: ExpoConfig = {
       'POST_NOTIFICATIONS',
       'RECEIVE_BOOT_COMPLETED',
     ],
-    config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_KEY ?? '' } },
   },
   plugins: [
     'expo-router',
@@ -49,6 +48,8 @@ const config: ExpoConfig = {
     ['expo-notifications', { color: '#0b4fd6', sounds: ['./assets/bildirishnoma.wav'] }],
     // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
     './plugins/withKotlinVersion.js',
+    // Yandex MapKit: Lite versiya va Android minSdk 26 (izoh plugin ichida)
+    './plugins/withYandexMapKit.js',
     // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
     // Apple review matn haqiqiy ishlatilishga mos bo'lishini tekshiradi — yangi foto holati qo'shilsa shu yerga ham yozing.
     ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: "Profil rasmi, nakladnoy va yetkazish fotosini olish hamda ishga kelganda davomat uchun selfi tushirish uchun." }],
@@ -57,10 +58,10 @@ const config: ExpoConfig = {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',
     // Insof ERP — zavod xodimlari (sotuv, logistika, sklad...) shu backend bilan kiradi
     erpUrl: process.env.EXPO_PUBLIC_ERP_URL ?? 'http://localhost:3000',
-    // Android'da react-native-maps Google Maps'ni ishlatadi va kalitsiz ilovani YIQITADI
-    // (IllegalStateException: API key not found). Shuning uchun kalit bor-yo'qligini
-    // to'plam ichiga chiqaramiz — kalitsiz xarita umuman chizilmaydi.
-    hasMaps: !!process.env.GOOGLE_MAPS_ANDROID_KEY,
+    // Yandex MapKit kaliti (developer.tech.yandex.ru → MapKit SDK). Asosiy manba —
+    // EXPO_PUBLIC_YANDEX_MAPKIT_KEY (JS to'plamiga yoziladi), bu yer — zaxira (`core/config.ts`).
+    // Kalitsiz build'da xarita umuman chizilmaydi, ekranlar raqam va ro'yxat bilan ishlaydi.
+    yandexMapKitKey: process.env.EXPO_PUBLIC_YANDEX_MAPKIT_KEY ?? process.env.YANDEX_MAPKIT_KEY ?? '',
     eas: { projectId: EAS_PROJECT_ID },
   },
   // EAS Update (OTA): JS/UI o'zgarishlari do'konsiz yetib boradi — `eas update --channel production`.

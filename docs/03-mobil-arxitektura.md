@@ -21,7 +21,7 @@ Flutterga o'tish kerak bo'lsa — backend va contracts o'zgarmaydi (ADR-0002).
 | Lokal holat | Zustand (sessiya, faol rol, UI) |
 | Saqlash | expo-secure-store (tokenlar), MMKV (kesh, offline navbat) |
 | Formalar | react-hook-form + zod (`@insof/shared`) |
-| Xarita | react-native-maps (Apple Maps iOS / Google Maps Android) |
+| Xarita | Yandex MapKit Lite — `react-native-yamap-plus` 5.x, ilova ichida `src/core/map.tsx` orqali. Kalit: `EXPO_PUBLIC_YANDEX_MAPKIT_KEY` |
 | Joylashuv | expo-location (foreground + background task) |
 | Push | expo-notifications |
 | Tarmoq | ky/fetch + interceptorlar (token refresh, Idempotency-Key, X-Org-Id) |
@@ -73,7 +73,7 @@ Bitta kod, ammo platforma odatlari hurmat qilinadi:
 | Xabar | Alert (2 tugma) | Snackbar / Material dialog |
 | Shrift | SF Pro (tizim) | Roboto / Samsung One UI (tizim) — `fontFamily` berilmaydi, tizimniki |
 | Orqaga | Swipe-back | Hardware/gesture back — `BackHandler` bilan wizard'da tasdiq |
-| Xarita | Apple Maps | Google Maps |
+| Xarita | Yandex MapKit | Yandex MapKit (Android 8.0+, minSdk 26 — MapKit talabi) |
 | Push ruxsat | Birinchi reysdan oldin so'raladi (kontekst bilan) | Android 13+: `POST_NOTIFICATIONS` runtime |
 | Fon GPS | "Always" ruxsat — tushuntirish ekrani keyin so'rov | Foreground Service + bildirishnoma (majburiy) |
 | Samsung xususiyati | – | Batareya optimizatsiyasidan chiqarish bo'yicha yo'riqnoma (One UI agressiv o'chiradi) |
