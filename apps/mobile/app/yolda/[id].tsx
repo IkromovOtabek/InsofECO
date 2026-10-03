@@ -11,8 +11,10 @@ import { Appear } from '@/design/motion';
 import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
-import { openNavigation } from '@/core/navigate';
-import { Circle, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
+import { openInNavigator } from '@/core/navigate';
+import { Circle, MapUnavailable, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
+import { SITE_RADIUS_M, type Fix as SiteFix } from '@/core/location';
+import { confirmAtSite } from '@/features/address/site-check';
 import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters, type LatLng } from '@/core/geo';
 import { useErpAction, useErpTripRoute } from '@/features/erp/api';
@@ -209,28 +211,36 @@ export default function TripRoute() {
   }, [remainingM, data, fix]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * "Yetkazdim" — obyektga 1 km qolgandan keyin ochiladi (radiusni server aytadi).
+   * "Yetkazdim" radiusi — server aytgani (ERP, odatda 1 km) va ilovadagi `SITE_RADIUS_M`
+   * (300 m) dan kichigi. Ilgari 1 km edi: haydovchi obyektga yetmay, qo'shni mahallada
+   * turib reysni yopa olardi. Bosilganda YANGI GPS nuqta bilan qayta tekshiriladi
+   * (`confirmAtSite`) — kuzatuvdagi nuqta bir necha daqiqa eski bo'lishi mumkin.
    * Zayavkada koordinata bo'lmasa tekshiradigan narsa yo'q: server qarorini olamiz.
    */
+  const radiusM = Math.min(data?.arriveWithinM || SITE_RADIUS_M, SITE_RADIUS_M);
   const straightM = fix && dest ? haversineMeters(fix, dest) : null;
   const near = !dest ? (data?.canDeliver ?? false)
     : straightM == null ? false
-    : straightM <= (data?.arriveWithinM ?? 1000);
+    : straightM <= radiusM;
   const nearHint = !dest ? data?.deliverHint ?? null
     : straightM == null ? 'Joylashuv aniqlanmoqda…'
     : near ? null
-    : `Obyektgacha ${distanceLabel(straightM)} — ${distanceLabel(data?.arriveWithinM ?? 1000)} qolganda ochiladi`;
+    : `Obyektgacha ${distanceLabel(straightM)} — ${distanceLabel(radiusM)} qolganda ochiladi`;
+  /** Obyekt yonida ekani tasdiqlangan aniq nuqta — "Yetkazdim" shu bilan yuboriladi. */
+  const siteFixRef = useRef<SiteFix | null>(null);
 
   /** Reysni yopish — maydonlar kartochkadagi bilan bir xil (server yuboradi). */
   const deliver = async (payload: Record<string, unknown>) => {
     try {
-      // Hozirgi nuqtani avval serverga yetkazamiz: "1 km qoldimi?" qoidasi o'sha yerda ham
-      // tekshiriladi va u oxirgi saqlangan nuqtaga qaraydi.
-      if (fixRef.current) await pushErpFix(fixRef.current); else await flushErpGps();
+      // Obyekt yonida tasdiqlangan nuqtani avval serverga yetkazamiz: ERP qoidasi ("yetib
+      // keldimi?") oxirgi saqlangan nuqtaga qaraydi — eski nuqta bilan rad etilmasin.
+      const here = siteFixRef.current ?? fixRef.current;
+      if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at }); else await flushErpGps();
       const r = await run.mutateAsync({ action: 'trip.delivered', id: id!, payload });
       setForm(null);
       await stopErpTracking(); // qolgan nuqtalar yuboriladi va kuzatuv to'xtaydi
-      dialog('Bajarildi', r.message, [{ text: 'Yopish', onPress: () => router.back() }]);
+      // Aniq nima bo'lganini aytamiz — umumiy "Bajarildi" emas. Server rad etsa bu yerga kelinmaydi (catch).
+      dialog('Yetkazildi', r.message || `${data?.ref ?? 'Reys'} yopildi — yuk mijozga topshirildi.`, [{ text: 'Yopish', onPress: () => router.back() }], { tone: 'success' });
     } catch (e) {
       setFormError(e instanceof ApiException ? e.message : 'Tarmoq xatosi');
     }
@@ -282,11 +292,25 @@ export default function TripRoute() {
     mapRef.current?.fitToCoordinates([{ latitude: here.lat, longitude: here.lng }, { latitude: dest.lat, longitude: dest.lng }]);
   }, [dest, centerOnMe]);
 
-  const onDeliver = useCallback(() => {
-    if (!near) { dialog('Yetkazdim', nearHint ?? 'Obyektga yetib borilmagan'); return; }
+  /**
+   * "Yetkazdim": avval YANGI GPS nuqta bilan obyekt yonidami tekshiriladi. Uzoq bo'lsa —
+   * masofa va "Qayta tekshirish" (site-check.ts); forma faqat obyekt yonida ochiladi.
+   */
+  const [checking, setChecking] = useState(false);
+  const onDeliver = useCallback(async () => {
+    if (!dest && !near) { dialog('Hali yopib bo\'lmaydi', nearHint ?? 'Obyektga yetib borilmagan', undefined, { tone: 'warning' }); return; }
+    setChecking(true);
+    const here = await confirmAtSite(dest, 'Yetkazdim').finally(() => setChecking(false));
+    if (here === null) return;
+    siteFixRef.current = here ?? null;
+    if (here) {
+      const p: Fix = { lat: here.lat, lng: here.lng, speedKmh: fixRef.current?.speedKmh ?? 0, heading: fixRef.current?.heading ?? null, at: here.at };
+      fixRef.current = p;
+      setFix(p);
+    }
     setFormError(null);
     setForm(deliverAction);
-  }, [near, nearHint, deliverAction]);
+  }, [dest, near, nearHint, deliverAction]);
 
   if (isLoading) return <Loader fill />;
   if (error || !data) return <EmptyState title="Marshrut ochilmadi" hint="Internetni tekshiring" />;
@@ -318,7 +342,7 @@ export default function TripRoute() {
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
               center={{ latitude: dest.lat, longitude: dest.lng }}
-              radius={data.arriveWithinM}
+              radius={radiusM}
               strokeColor={c.successSolid + '99'}
               fillColor={c.successSolid + '1A'}
             />
@@ -349,13 +373,22 @@ export default function TripRoute() {
           </View>
         </View>
       ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.sm }}>
-          <Icon name="map" size={size.iconXl} tone="muted" />
-          <Txt v="bodyStrong" align="center">{data.address}</Txt>
-          <Txt v="bodySm" color="muted" align="center">
-            {dest ? 'Xarita bu qurilmada ko\'rsatilmaydi' : 'Zayavkada obyekt nuqtasi belgilanmagan'}
-          </Txt>
-        </View>
+        !dest ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.sm }}>
+            <Icon name="map-pin" size={size.iconXl} tone="muted" />
+            <Txt v="bodyStrong" align="center">{data.address}</Txt>
+            <Txt v="bodySm" color="muted" align="center">Zayavkada obyekt nuqtasi belgilanmagan — yo&apos;lni manzil bo&apos;yicha toping yoki logistga qo&apos;ng&apos;iroq qiling</Txt>
+          </View>
+        ) : !config.mapsEnabled ? (
+          // Sabab — build'da MapKit kaliti yo'q (core/map.tsx → MapUnavailable). Xaritasiz ham
+          // to'g'ri chiziq masofasi, yo'nalish va tashqi navigator ishlaydi.
+          <MapUnavailable style={{ flex: 1 }}>
+            {straightM != null ? <Txt v="metric" color="brand" align="center" style={{ marginTop: space.sm }}>{distanceLabel(straightM)}</Txt> : null}
+            {straightM != null ? <Txt v="caption" align="center">obyektgacha to&apos;g&apos;ri chiziq bo&apos;yicha</Txt> : null}
+          </MapUnavailable>
+        ) : (
+          <Loader fill />
+        )
       )}
 
       {/* Pastki panel: mijoz, to'rtta raqam va keyingi qadam — ochilganda pastdan yumshoq ko'tariladi */}
@@ -378,13 +411,13 @@ export default function TripRoute() {
           ) : null}
 
           {/* Obyektga yetilmaguncha tugma yopiq turadi; sababi ostidagi izohda */}
-          <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} onPress={onDeliver} />
+          <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} loading={checking} onPress={() => void onDeliver()} />
           {nearHint ? <Txt v="caption" align="center" style={{ marginTop: space.xs }}>{nearHint}</Txt> : null}
 
           {/* Ovozli yo'l-yo'riq kerak bo'lsa — tashqi navigator. Ixtiyoriy: reysni olib borish
               uchun shart emas, shuning uchun ikkinchi darajali tugma. */}
           {dest ? (
-            <Button variant="ghost" icon="navigation" title="Navigatorda ochish" onPress={() => void openNavigation(dest.lat, dest.lng, data.address)} style={{ marginTop: space.sm }} />
+            <Button variant={config.mapsEnabled ? 'ghost' : 'secondary'} icon="navigation" title="Navigatorda ochish" onPress={() => void openInNavigator({ lat: dest.lat, lng: dest.lng, label: data.address })} style={{ marginTop: space.sm }} />
           ) : null}
         </View>
       </Appear>

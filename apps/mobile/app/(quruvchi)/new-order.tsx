@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Location from 'expo-location';
 import { CreateOrderSchema } from '@insof/shared';
-import { ChipGroup, HeroCard, ListGroup, SectionHead, StickyActionBar, Toggle } from '@/design/blocks';
+import { HeroCard, ListGroup, SectionHead, StickyActionBar, Toggle } from '@/design/blocks';
 import { Callout, Card, Gap, IconButton, Input, ListItem, Screen, Select, Txt, fmtM3, fmtNum, fmtSum } from '@/design/primitives';
+import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
+import { DayStrip, addDays, atTime, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
 import { Appear, PressScale, haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -17,24 +18,26 @@ const OTHER = '__other';
 const STEP_TITLES = ['Beton', 'Obyekt va vaqt', 'Tasdiqlash'];
 /** Boshlanish vaqti slotlari (soat). Tushlik soati (12) yo'q. */
 const SLOTS = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
-const DAYS = 7;
 /** Bugun uchun eng erta slot — hozirdan kamida shuncha soat keyin (zavod tayyorlanishi). */
 const LEAD_HOURS = 2;
-const WD = ['Ya', 'Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sha'];
-const MON = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+/** Kun lentasi (2 hafta) va kalendar chegarasi — zavod 2 oydan uzoq rejani qabul qilmaydi. */
+const STRIP_DAYS = 14;
+const MAX_DAYS = 60;
 const INTERVAL_STEP = 5;
 const INTERVAL_MAX = 240;
 
-const dayAt = (offset: number, hour = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); d.setHours(hour, 0, 0, 0); return d; };
-const dayLabel = (offset: number) => { if (offset === 0) return 'Bugun'; if (offset === 1) return 'Ertaga'; const d = dayAt(offset); return `${WD[d.getDay()]}, ${d.getDate()}-${MON[d.getMonth()]}`; };
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
-const slotPast = (offset: number, h: number) => dayAt(offset, h).getTime() < Date.now() + LEAD_HOURS * 3_600_000;
+/** Kun (mahalliy `YYYY-MM-DD`) + soat → mahalliy vaqt; serverga ISO (UTC) bo'lib ketadi — siljish yo'q. */
+const slotAt = (day: string, h: number) => atTime(day, hh(h));
+const slotPast = (day: string, h: number) => slotAt(day, h).getTime() < Date.now() + LEAD_HOURS * 3_600_000;
+/** Kunning barcha slotlari o'tib ketgan — lentada yopiq. */
+const dayFull = (day: string) => SLOTS.every((h) => slotPast(day, h));
 
 /** Zod xatolarini odam tilida: maydon nomi bo'yicha. */
 const FIELD_MSG: Record<string, string> = {
   plantOrgId: 'Zavodni tanlang',
   address: "Manzil 5 dan 200 belgigacha bo'lsin",
-  location: 'Obyekt joylashuvi aniqlanmagan — ro\'yxatdan obyekt tanlang yoki "Joylashuvimni aniqlash"ni bosing',
+  location: 'Obyekt nuqtasi belgilanmagan — manzilni takliflardan tanlang, xaritada pinni qo\'ying yoki «Joylashuvim»ni bosing',
   items: 'Marka va hajmni tanlang (hajm 0,5 m³ qadam bilan, 500 m³ gacha)',
   scheduledAt: 'Kun va boshlanish vaqtini tanlang',
   intervalMinutes: "Mikserlar oralig'i 0–240 daqiqa bo'lsin",
@@ -58,10 +61,9 @@ export default function NewOrder() {
   const [volume, setVolume] = useState('8');
   const [needsPump, setNeedsPump] = useState(false);
   const [siteId, setSiteId] = useState<string>();
-  const [address, setAddress] = useState('');
-  const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [day, setDay] = useState(1);
+  const [addr, setAddr] = useState<AddressValue>({ address: '', lat: null, lng: null });
+  // Standart — ertaga (bugun ko'pincha zavod ulgurmaydi); bugungi slotlar qolgan bo'lsa ham tanlasa bo'ladi
+  const [day, setDay] = useState(() => ymd(addDays(startOfToday(), 1)));
   const [slot, setSlot] = useState<number | null>(8);
   const [interval, setInterval] = useState(30);
   const [note, setNote] = useState('');
@@ -72,7 +74,9 @@ export default function NewOrder() {
   const mix = mixes.data?.find((m) => m.id === mixId);
   const vol = Number(volume.replace(',', '.'));
   const estimate = mix ? Number(mix.unitPrice) * (vol || 0) : 0;
-  const scheduled = slot != null ? dayAt(day, slot) : null;
+  const scheduled = slot != null ? slotAt(day, slot) : null;
+  const address = addr.address;
+  const loc = addr.lat != null && addr.lng != null ? { lat: addr.lat, lng: addr.lng } : null;
 
   const payload = useMemo(() => ({
     plantOrgId: plantId, siteId, address: (site?.address ?? address).trim(), location: site ? { lat: site.lat, lng: site.lng } : loc ?? undefined,
@@ -84,29 +88,9 @@ export default function NewOrder() {
   const step1Block = !plantId ? 'Avval zavodni tanlang' : !mixId ? 'Markani tanlang' : !(vol > 0) || volError ? volError ?? 'Hajmni kiriting' : undefined;
   const addressError = !siteId && touched && address.trim().length < 5 ? "Manzil kamida 5 belgi: tuman, ko'cha, mo'ljal" : undefined;
   const step2Block = !siteId && address.trim().length < 5 ? 'Manzilni kiriting (kamida 5 belgi)'
-    : !siteId && !loc ? 'Obyekt joylashuvini aniqlang'
+    : !siteId && !loc ? 'Obyekt nuqtasini belgilang: taklifdan tanlang, xaritada pin yoki «Joylashuvim»'
     : slot == null ? 'Boshlanish vaqtini tanlang'
     : scheduled && scheduled.getTime() < Date.now() + LEAD_HOURS * 3_600_000 ? 'Bu vaqt o\'tib ketgan — keyinroq slotni tanlang' : undefined;
-
-  const locate = async () => {
-    setLocating(true);
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== 'granted') { toast.warning("Joylashuvga ruxsat berilmadi — sozlamalardan yoqing yoki ro'yxatdan obyekt tanlang"); return; }
-      const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLoc({ lat: p.coords.latitude, lng: p.coords.longitude });
-      haptic.success();
-      if (address.trim().length < 5) {
-        const g = (await Location.reverseGeocodeAsync({ latitude: p.coords.latitude, longitude: p.coords.longitude }).catch(() => []))[0];
-        const text = g ? [g.city ?? g.subregion, g.district, g.street, g.streetNumber].filter(Boolean).join(', ') : '';
-        if (text.length >= 5) setAddress(text);
-      }
-    } catch {
-      toast.error("Joylashuv aniqlanmadi — GPS yoqilganini tekshiring", 'Xato');
-    } finally {
-      setLocating(false);
-    }
-  };
 
   const submit = () => {
     const parsed = CreateOrderSchema.safeParse(payload);
@@ -123,7 +107,7 @@ export default function NewOrder() {
   const plantOptions = (plants.data ?? []).map((p) => ({ value: p.id, label: p.name, hint: p.address ?? undefined }));
   const mixOptions = (mixes.data ?? []).map((m) => ({ value: m.id, label: m.grade, hint: `${fmtSum(m.unitPrice)} / m³` }));
   const siteOptions = [...(sites.data ?? []).map((s) => ({ value: s.id, label: s.name, hint: s.address })), { value: OTHER, label: 'Boshqa manzil', hint: "Manzilni qo'lda kiritaman" }];
-  const pickDay = (k: string) => { const d = Number(k); setDay(d); if (slot != null && slotPast(d, slot)) setSlot(null); };
+  const pickDay = (k: string) => { setDay(k); if (slot != null && slotPast(k, slot)) setSlot(null); };
 
   const next = () => (step === 1 ? setStep(2) : step === 2 ? setStep(3) : submit());
   const block = step === 1 ? step1Block : step === 2 ? step2Block : undefined;
@@ -171,21 +155,18 @@ export default function NewOrder() {
                 <Card>
                   <Select label="Obyekt" value={siteId ?? OTHER} options={siteOptions} onChange={(v) => setSiteId(v === OTHER ? undefined : v)} containerStyle={siteId ? { marginBottom: 0 } : undefined} />
                   {!siteId ? (
-                    <>
-                      <Input label="Manzil" required value={address} onChangeText={setAddress} onBlur={() => setTouched(true)} placeholder="Tuman, ko'cha, mo'ljal" left="map-pin" error={addressError} />
-                      <ListItem
-                        icon={loc ? 'locate-fixed' : 'locate'} module="logistics" tone={loc ? 'success' : undefined} last
-                        title={locating ? 'Aniqlanmoqda…' : loc ? 'Joylashuv aniqlandi' : 'Joylashuvimni aniqlash'}
-                        subtitle={loc ? 'Haydovchi shu nuqtaga keladi · qayta aniqlash uchun bosing' : "Obyektda turgan bo'lsangiz — koordinata telefoningizdan olinadi"}
-                        onPress={locating ? undefined : () => void locate()}
-                      />
-                    </>
+                    <AddressPicker
+                      label="Obyekt manzili" required error={addressError}
+                      value={addr} onChange={(v) => { setAddr(v); if (v.address.trim().length >= 5) setTouched(true); }}
+                      placeholder="Tuman, ko'cha, uy yoki mo'ljal"
+                    />
                   ) : site ? <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>{site.address}</Txt> : null}
                 </Card>
 
                 <Gap h={space.section} />
                 <SectionHead title="Kun" icon="calendar-days" />
-                <ChipGroup items={Array.from({ length: DAYS }, (_, i) => ({ key: String(i), label: dayLabel(i) }))} value={String(day)} onChange={pickDay} />
+                <DayStrip value={day} onChange={pickDay} days={STRIP_DAYS} maxDays={MAX_DAYS} isDisabled={dayFull} />
+                <Txt v="caption" color="muted" style={{ marginTop: space.xs }}>{dayLabelLong(day)}</Txt>
 
                 <Gap h={space.section} />
                 <SectionHead title="Boshlanish vaqti" icon="clock" />
@@ -208,7 +189,7 @@ export default function NewOrder() {
                     );
                   })}
                 </View>
-                {day === 0 && SLOTS.every((h) => slotPast(0, h)) ? <Callout tone="info" icon="info" style={{ marginTop: space.md }}>Bugunga bo&apos;sh vaqt qolmadi — ertangi kunni tanlang</Callout> : null}
+                {dayFull(day) ? <Callout tone="info" icon="info" style={{ marginTop: space.md }}>Bu kunga bo&apos;sh vaqt qolmadi — boshqa kunni tanlang</Callout> : null}
 
                 <Gap h={space.section} />
                 <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -235,7 +216,7 @@ export default function NewOrder() {
                 <ListGroup>
                   <ListItem icon="factory" module="production" title={mix?.grade ?? '—'} subtitle={`${fmtM3(vol)}${needsPump ? ' · nasos bilan' : ''}`} onPress={() => setStep(1)} />
                   <ListItem icon="map-pin" module="logistics" title={site?.name ?? 'Boshqa manzil'} subtitle={site?.address ?? address} onPress={() => setStep(2)} />
-                  <ListItem icon="calendar-days" module="brand" title={scheduled ? `${dayLabel(day)}, ${hh(slot!)}` : '—'} subtitle={`Mikserlar oralig'i ${interval} daqiqa`} onPress={() => setStep(2)} />
+                  <ListItem icon="calendar-days" module="brand" title={scheduled ? `${dayLabelLong(day)}, ${hh(slot!)}` : '—'} subtitle={`Mikserlar oralig'i ${interval} daqiqa`} onPress={() => setStep(2)} />
                   {note.trim() ? <ListItem icon="file-text" title="Izoh" subtitle={note.trim()} /> : null}
                 </ListGroup>
                 <Gap h={space.grid} />

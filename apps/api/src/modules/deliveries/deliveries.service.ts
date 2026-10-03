@@ -21,6 +21,19 @@ import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
 import { OrdersService } from '../orders/orders.service';
 import { DELIVERY_EVENTS, DeliveryStatusChangedEvent } from './deliveries.events';
+import { assertAtSite, knownPoint } from './geofence';
+
+/**
+ * Kun chegarasi — O'zbekiston vaqti (UTC+5, yozgi vaqt yo'q).
+ * Server UTC da ishlaydi: `setHours(0)` UTC yarim tuni = Toshkentda 05:00, ya'ni 00:00-05:00
+ * oralig'idagi reyslar oldingi kunga tushib qolardi.
+ */
+const TZ_OFFSET_MIN = 5 * 60;
+function localDayRange(date: Date) {
+  const shifted = new Date(date.getTime() + TZ_OFFSET_MIN * 60_000);
+  const start = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - TZ_OFFSET_MIN * 60_000);
+  return { start, end: new Date(start.getTime() + 86_400_000) };
+}
 
 const SLA_QUEUE = 'sla';
 type SignInput = z.infer<typeof SignDeliverySchema>;
@@ -46,8 +59,7 @@ export class DeliveriesService {
 
   /** Haydovchi: o'z reyslari (kun bo'yicha). */
   async mine(a: AuthContext, date: Date) {
-    const start = new Date(date); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const { start, end } = localDayRange(Number.isNaN(date.getTime()) ? new Date() : date);
     return this.prisma.delivery.findMany({
       where: { driver: { userId: a.userId }, OR: [{ plannedAt: { gte: start, lt: end } }, { status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'] } }] },
       include: this.include,
@@ -86,6 +98,11 @@ export class DeliveriesService {
     }
     if (input.to === 'COMPLETED' && role === 'HAYDOVCHI') {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Yakunlash uchun quruvchi imzosi yoki SMS-kod kerak (POST /sign)');
+    }
+    // "Yetib keldim" / "Tushirishni boshladim" — faqat obyekt yonida. Dispetcher (TADBIRKOR)
+    // override qila oladi: u telefonda emas, ofisda turib holatni to'g'rilaydi.
+    if (role === 'HAYDOVCHI' && (input.to === 'ARRIVED' || input.to === 'UNLOADING')) {
+      assertAtSite(input.location, knownPoint(d.order.lat, d.order.lng), input.to === 'ARRIVED' ? 'Yetib keldim' : 'Tushirishni boshladim');
     }
 
     const now = input.at > new Date() ? new Date() : input.at; // kelajak vaqt qabul qilinmaydi

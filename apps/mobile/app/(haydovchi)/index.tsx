@@ -14,7 +14,7 @@ import { Shipment, q, useAction, useHaydovchiDashboard, useShipmentHistory } fro
 import { avatarUri } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
-import { openNavigation } from '@/core/navigate';
+import { openInNavigator } from '@/core/navigate';
 import { useOutboxSize } from '@/shared/hooks';
 
 /** Holatga qarab bitta asosiy tugma: Qabul qilish → Yuklashni boshladim → Yo'lga chiqdim → Yetkazdim. */
@@ -162,7 +162,7 @@ export default function DriverToday() {
                 <InvRoute from={active.warehouse.name} to={active.project.address || active.project.name} toNote={active.distanceKm ? fmtUnit(active.distanceKm, 'km') : undefined} />
                 {(lat && lng) || phone ? (
                   <View style={{ flexDirection: 'row', gap: space.sm }}>
-                    {lat && lng ? <InvChip title="Navigator" icon="navigation" onPress={() => void openNavigation(lat, lng, active.project.name)} /> : null}
+                    {lat && lng ? <InvChip title="Navigator" icon="navigation" onPress={() => void openInNavigator({ lat, lng, label: `${active.project.name}${active.project.address ? `, ${active.project.address}` : ''}` })} /> : null}
                     {phone ? <InvChip title="Mijoz" icon="phone" onPress={() => void Linking.openURL(`tel:${phone}`)} /> : null}
                   </View>
                 ) : null}

@@ -22,6 +22,10 @@ const config: ExpoConfig = {
       NSLocationWhenInUseUsageDescription: 'Obyekt manzilini aniqlash va reys holatini belgilash uchun.',
       NSLocationAlwaysAndWhenInUseUsageDescription: 'Faol reys davomida mashina joylashuvini quruvchi va dispetcherga ko\'rsatish uchun (faqat reys vaqtida).',
       UIBackgroundModes: ['location', 'remote-notification'],
+      // "Navigatorda ochish" ro'yxati: iOS faqat shu sxemalar uchun `canOpenURL` ga to'g'ri javob beradi.
+      // `src/core/navigate.ts` (APPS) va Android `plugins/withNavigatorQueries.js` bilan bir xil bo'lsin.
+      // Apple Xaritalar (`maps://`) tizimniki — ro'yxatga kerak emas. Native o'zgarish: yangi build.
+      LSApplicationQueriesSchemes: ['yandexnavi', 'yandexmaps', 'dgis', 'comgooglemaps', 'waze'],
     },
     config: { usesNonExemptEncryption: false },
   },
@@ -48,8 +52,10 @@ const config: ExpoConfig = {
     ['expo-notifications', { color: '#0b4fd6', sounds: ['./assets/bildirishnoma.wav'] }],
     // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
     './plugins/withKotlinVersion.js',
-    // Yandex MapKit: Lite versiya va Android minSdk 26 (izoh plugin ichida)
+    // Yandex MapKit: FULL versiya (manzil takliflari va teskari geokodlash uchun) va Android minSdk 26 (izoh plugin ichida)
     './plugins/withYandexMapKit.js',
+    // Android 11+: navigator ilovalarini ko'rish uchun <queries> (Yandex Navigator, Yandex Xaritalar, 2GIS, Google Maps, Waze)
+    './plugins/withNavigatorQueries.js',
     // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
     // Apple review matn haqiqiy ishlatilishga mos bo'lishini tekshiradi — yangi foto holati qo'shilsa shu yerga ham yozing.
     ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: "Profil rasmi, nakladnoy va yetkazish fotosini olish hamda ishga kelganda davomat uchun selfi tushirish uchun." }],
@@ -62,6 +68,12 @@ const config: ExpoConfig = {
     // EXPO_PUBLIC_YANDEX_MAPKIT_KEY (JS to'plamiga yoziladi), bu yer — zaxira (`core/config.ts`).
     // Kalitsiz build'da xarita umuman chizilmaydi, ekranlar raqam va ro'yxat bilan ishlaydi.
     yandexMapKitKey: process.env.EXPO_PUBLIC_YANDEX_MAPKIT_KEY ?? process.env.YANDEX_MAPKIT_KEY ?? '',
+    // Ixtiyoriy zaxira — MapKit qidiruvi ishlamasa (eski Lite build, kalit cheklangan) manzil takliflari
+    // HTTP orqali: EXPO_PUBLIC_YANDEX_GEOSUGGEST_KEY (Geosuggest API) va EXPO_PUBLIC_YANDEX_GEOCODER_KEY
+    // (HTTP Geocoder — taklifning koordinatasi va xaritadagi nuqtaning manzili). Ikkalasi ham
+    // to'g'ridan-to'g'ri `process.env` dan o'qiladi (src/features/address/geocode.ts); bo'lmasa — oddiy matn + GPS.
+    // Kalit qo'shilgach: `.env` (lokal) va EAS → Environment variables (production/preview) ga yozib, qayta build.
+    // Kalitsiz build'da xarita joyida aniq izoh chiqadi (src/core/map.tsx → MapUnavailable).
     eas: { projectId: EAS_PROJECT_ID },
   },
   // EAS Update (OTA): JS/UI o'zgarishlari do'konsiz yetib boradi — `eas update --channel production`.

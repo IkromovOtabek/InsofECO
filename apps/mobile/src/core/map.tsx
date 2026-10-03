@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
+import { View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
 import {
   Circle as YCircle,
   Marker as YMarker,
@@ -10,6 +10,9 @@ import {
   type YamapRef,
 } from 'react-native-yamap-plus';
 import { useTheme } from '@/design/theme';
+import { Txt } from '@/design/primitives';
+import { Icon } from '@/design/icons';
+import { radius, size, space } from '@/design/tokens';
 import { config } from './config';
 
 /**
@@ -75,12 +78,17 @@ type MapProps = {
   showsUserLocation?: boolean;
   /** Xarita foydalanuvchi qo'li bilan surildi — "mashina ortidan yurish" shu bilan o'chadi. */
   onPanDrag?: () => void;
+  /**
+   * Kamera to'xtadi — markaz nuqtasi. `byUser` — qo'l bilan surilgan (dastur emas).
+   * Manzil tanlashdagi "markaziy pin" shu bilan ishlaydi.
+   */
+  onRegionChangeComplete?: (center: LatLng, byUser: boolean) => void;
   onPress?: () => void;
   children?: React.ReactNode;
 };
 
 export const MapView = forwardRef<MapHandle, MapProps>(function MapView(
-  { style, initialRegion, interactive = true, scrollEnabled = true, zoomEnabled = true, rotateEnabled = true, pitchEnabled = true, showsUserLocation, onPanDrag, onPress, children },
+  { style, initialRegion, interactive = true, scrollEnabled = true, zoomEnabled = true, rotateEnabled = true, pitchEnabled = true, showsUserLocation, onPanDrag, onRegionChangeComplete, onPress, children },
   ref,
 ) {
   const map = useRef<YamapRef | null>(null);
@@ -116,6 +124,10 @@ export const MapView = forwardRef<MapHandle, MapProps>(function MapView(
       nightMode={dark}
       // Kamera dastur tomonidan ham suriladi (mashina ortidan yurish) — faqat qo'l harakati hisoblanadi
       onCameraPositionChange={onPanDrag ? (e) => { if (e.nativeEvent.reason === 'GESTURES') onPanDrag(); } : undefined}
+      onCameraPositionChangeEnd={onRegionChangeComplete ? (e) => {
+        const p = e.nativeEvent;
+        onRegionChangeComplete({ latitude: p.point.lat, longitude: p.point.lon }, p.reason === 'GESTURES');
+      } : undefined}
       onMapPress={onPress ? () => onPress() : undefined}
     >
       {children}
@@ -199,4 +211,41 @@ export function Polyline({ coordinates, strokeColor, strokeWidth = 4, lineDashPa
 
 export function Circle({ center, radius, strokeColor, fillColor }: { center: LatLng; radius: number; strokeColor: string; fillColor: string }) {
   return <YCircle center={toPoint(center)} radius={radius} strokeColor={strokeColor} fillColor={fillColor} strokeWidth={1.5} />;
+}
+
+/**
+ * Xarita chizilmaydigan holat — HALOL va amaliy izoh.
+ *
+ * Yagona sabab: build'ga Yandex MapKit kaliti berilmagan (`EXPO_PUBLIC_YANDEX_MAPKIT_KEY`,
+ * `core/config.ts` → `mapsEnabled`). Platforma cheklovi yo'q — kalit bo'lsa Android va iOS'da
+ * ishlaydi. Ilgari "Xarita bu qurilmada ko'rsatilmaydi" deyilardi: haydovchi telefonida
+ * nuqson bor deb o'ylardi. Endi nima ishlashi va nima qilish kerakligi aytiladi.
+ */
+export const MAP_OFF_TITLE = "Ilova ichidagi xarita hali yoqilmagan";
+export const MAP_OFF_HINT = "Bu versiyaga Yandex xarita kaliti ulanmagan — telefoningizda nuqson yo'q. Masofa va yo'nalish ishlayveradi, yo'lni «Navigatorda ochish» orqali ko'ring. Xaritani yoqish uchun administratorga ayting.";
+
+export function MapUnavailable({ title = MAP_OFF_TITLE, hint = MAP_OFF_HINT, compact, style, children }: {
+  title?: string;
+  hint?: string;
+  /** Kartochka ichidagi kichik variant (manzil tanlash, yuk sahifasi). */
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+  /** Pastda — amal tugmasi (Navigatorda ochish, Joylashuvim). */
+  children?: React.ReactNode;
+}) {
+  const { c } = useTheme();
+  return (
+    <View
+      accessible accessibilityRole="summary" accessibilityLabel={`${title}. ${hint}`}
+      style={[
+        { alignItems: 'center', justifyContent: 'center', gap: space.sm, padding: compact ? space.lg : space.xxl, backgroundColor: c.bgMuted, borderRadius: compact ? radius.card : 0 },
+        style,
+      ]}
+    >
+      <Icon name="map" size={compact ? size.iconLg : size.iconXl} tone="muted" />
+      <Txt v={compact ? 'bodyStrong' : 'titleSm'} align="center">{title}</Txt>
+      <Txt v="caption" color="muted" align="center">{hint}</Txt>
+      {children}
+    </View>
+  );
 }

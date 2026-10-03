@@ -6,6 +6,7 @@ import { SHIPMENT_TRANSITIONS, ShipmentStatus, ShipmentTransitionSchema, canTran
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
+import { assertAtSite, knownPoint } from '../deliveries/geofence';
 
 const include = {
   project: { select: { id: true, name: true, address: true, lat: true, lng: true } },
@@ -56,6 +57,12 @@ export class ShipmentsService {
     if (a.role === 'HAYDOVCHI' && s.driverUserId && s.driverUserId !== a.userId) throw DomainError.forbidden('Bu yuk boshqa haydovchiga biriktirilgan');
     if (!canTransition(SHIPMENT_TRANSITIONS, from, input.to, a.role!)) throw new DomainError('DELIVERY_INVALID_TRANSITION', `${from} → ${input.to} (${a.role}) mumkin emas`);
 
+    // "Yetkazdim" — faqat obyekt yonida. Ilgari ilova koordinata yubormas, server esa
+    // tekshirmas edi: haydovchi yo'lning yarmida bossa ham yuk "Yetkazildi" bo'lib qolardi.
+    // DELIVERED faqat haydovchiniki (SHIPMENT_TRANSITIONS) — dispetcher override'i bu holat uchun yo'q.
+    if (input.to === 'DELIVERED' && a.role === 'HAYDOVCHI') {
+      assertAtSite(input.location, knownPoint(s.project.lat, s.project.lng), 'Yetkazdim');
+    }
     if (input.to === 'ACCEPTED') {
       const busy = await this.prisma.shipment.count({ where: { driverUserId: a.userId, status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE'] } } });
       if (busy > 0) throw new DomainError('DELIVERY_DRIVER_BUSY', 'Avval joriy yukni yetkazing');

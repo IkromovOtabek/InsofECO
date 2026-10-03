@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Linking, Platform, ScrollView, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { MapView, Marker, Polyline } from '@/core/map';
+import { Linking, ScrollView, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { MapUnavailable, MapView, Marker, Polyline } from '@/core/map';
+import { openInNavigator } from '@/core/navigate';
+import { ApiException } from '@/core/api';
+import { confirmAtSite } from '@/features/address/site-check';
+import { SITE_RADIUS_M } from '@/core/location';
 import { config } from '@/core/config';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum, fmtTime, fmtUnit } from '@/design/primitives';
@@ -10,7 +14,7 @@ import { BigAction, BigSecondary, RouteBlock, StepDots } from '@/design/driver';
 import { radius, size, space } from '@/design/tokens';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '@/design/theme';
-import { Appear } from '@/design/motion';
+import { Appear, PressScale } from '@/design/motion';
 import { useAction, useShipment } from '@/features/eco/api';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
@@ -26,8 +30,10 @@ export default function ShipmentScreen() {
   const { c } = useTheme();
   const role = useSession((s) => s.active?.role);
   const q = useShipment(id);
+  const router = useRouter();
   const [receiver, setReceiver] = useState('');
-  const tr = useAction<{ to: string; receiverName?: string; photoKey?: string }>((v) => ({ path: `/shipments/${id}/transition`, body: v }), ['shipments', 'dash', 'material-requests', 'materials', 'finance']);
+  const [checking, setChecking] = useState(false);
+  const tr = useAction<TrVars>((v) => ({ path: `/shipments/${id}/transition`, body: v }), ['shipments', 'dash', 'material-requests', 'materials', 'finance']);
   const err = (e: Error) => toast.error(e.message, 'Xato');
   const s = q.data;
   if (!s) {
@@ -41,11 +47,32 @@ export default function ShipmentScreen() {
   const from = s.warehouse.lat && s.warehouse.lng ? { latitude: s.warehouse.lat, longitude: s.warehouse.lng } : null;
   const to = s.project.lat && s.project.lng ? { latitude: s.project.lat, longitude: s.project.lng } : null;
   const next = SHIPMENT_DRIVER_NEXT[s.status as keyof typeof SHIPMENT_DRIVER_NEXT];
-  const navigate = () => { if (!to) return; const y = `yandexnavi://build_route_on_map?lat_to=${to.latitude}&lon_to=${to.longitude}`; const f = Platform.select({ ios: `maps://?daddr=${to.latitude},${to.longitude}`, default: `geo:${to.latitude},${to.longitude}` })!; void Linking.canOpenURL(y).then((ok) => Linking.openURL(ok ? y : f)); };
+  const navigate = () => {
+    if (!to) { toast.warning(`Obyekt nuqtasi belgilanmagan — manzil: ${s.project.address}`, 'Navigatsiya'); return; }
+    void openInNavigator({ lat: to.latitude, lng: to.longitude, label: `${s.project.name}, ${s.project.address}` });
+  };
+  /**
+   * "Yetkazdim" — faqat obyekt yonida (300 m). Avval yangi GPS nuqta tekshiriladi, keyin
+   * shu nuqta serverga ketadi va server ham tekshiradi (shipments.service → assertAtSite).
+   * Muvaffaqiyat xabari aniq: "Yetkazildi", rad etilsa — sababi va "Qayta tekshirish".
+   */
+  const deliver = async () => {
+    setChecking(true);
+    const here = await confirmAtSite(to ? { lat: to.latitude, lng: to.longitude } : null, 'Yetkazdim').finally(() => setChecking(false));
+    if (here === null) return;
+    tr.mutate({ to: 'DELIVERED', receiverName: receiver.trim() || undefined, photoKey: 'photo/demo.jpg', location: here ? { lat: here.lat, lng: here.lng } : undefined }, {
+      onSuccess: () => toast.success('Qabul qiluvchi tasdiqlagach haq hisobingizga tushadi', 'Yetkazildi'),
+      onError: (e) => dialog('«Yetkazdim» belgilanmadi', e instanceof ApiException ? e.message : "Internet yo'q — ulanib, qayta bosing", [
+        { text: 'Qayta tekshirish', onPress: () => void deliver() },
+        { text: 'Yopish', style: 'cancel' },
+      ], { tone: 'warning', icon: 'map-pin' }),
+    });
+  };
+  const openMap = () => router.push(`/shipment/xarita/${s.id}` as never);
   // NEW/ACCEPTED→0 Ombor, LOADING→1, EN_ROUTE→2, DELIVERED→3, CONFIRMED→4
   const step = Math.max(0, Math.min(STEPS.length, idx - 1));
 
-  if ((role as string) === 'HAYDOVCHI') return <DriverView s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} from={from} to={to} />;
+  if ((role as string) === 'HAYDOVCHI') return <DriverView s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || tr.isPending} from={from} to={to} />;
   return (
     <Screen padded={false}>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
@@ -80,11 +107,11 @@ export default function ShipmentScreen() {
                 <Button title="Foto" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — keyingi versiya, demo foto biriktiriladi')} /><Gap h={space.sm} />
                 <StatusLine icon="map-pin" tone="info" text="Joylashuv avtomatik qo'shiladi" />
                 <Input value={receiver} onChangeText={setReceiver} placeholder="Qabul qiluvchi ismi" />
-                <Button title="Yetkazildi" size="xl" icon="flag" loading={tr.isPending} onPress={() => tr.mutate({ to: 'DELIVERED', receiverName: receiver || undefined, photoKey: 'photo/demo.jpg' }, { onError: err })} />
+                <Button title="Yetkazdim" size="xl" icon="flag" loading={tr.isPending || checking} onPress={() => void deliver()} />
               </Card>
             ) : (
               <><Button title={NEXT_LABEL[s.status] ?? LABEL[next] ?? next} size="xl" loading={tr.isPending} onPress={() => tr.mutate({ to: next }, { onError: err })} />
-                {['ACCEPTED', 'LOADING', 'EN_ROUTE'].includes(s.status) ? <><Gap h={space.sm} /><Button title="Navigatsiya (Yandex/Apple Maps)" icon="navigation" variant="secondary" onPress={navigate} /></> : null}</>
+                {['ACCEPTED', 'LOADING', 'EN_ROUTE'].includes(s.status) ? <><Gap h={space.sm} /><Button title="Navigatorda ochish" icon="navigation" variant="secondary" onPress={navigate} /></> : null}</>
             )
           ) : null}
           {(role === 'QURUVCHI' || role === 'TADBIRKOR') && s.status === 'DELIVERED' ? <Button title="Materialni qabul qildim (tasdiqlash)" size="xl" icon="package-check" loading={tr.isPending} onPress={() => tr.mutate({ to: 'CONFIRMED' }, { onError: err })} /> : null}
@@ -97,7 +124,9 @@ export default function ShipmentScreen() {
 }
 
 /** Shafyor ko'rinishi: katta stepper, marshrut, bitta asosiy tugma, qo'ng'iroq/navigatsiya. Ekran o'chmaydi. */
-function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, from, to }: { s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<{ to: string; receiverName?: string; photoKey?: string }>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
+type TrVars = { to: string; receiverName?: string; photoKey?: string; location?: { lat: number; lng: number } };
+
+function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to }: { s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
   const { c } = useTheme();
   useKeepAwake();
   const call = () => { if (s.contact?.phone) void Linking.openURL(`tel:${s.contact.phone}`); else toast.warning('Buyurtmachi raqami ko\'rsatilmagan — dispetcher bilan bog\'laning', 'Aloqa'); };
@@ -112,12 +141,21 @@ function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, f
           {!done ? <Card style={{ paddingVertical: space.lg }}><StepDots steps={STEPS} current={step} /></Card> : null}
           <Gap h={space.md} />
           <Card style={{ padding: space.xl }}><RouteBlock from={s.warehouse.name} to={s.project.name} /><Txt v="body" color="muted" style={{ marginTop: space.sm }}>{s.project.address}</Txt></Card>
-          {from && to && config.mapsEnabled ? (
-            <View style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', marginTop: space.md, borderWidth: size.hairline, borderColor: c.borderDefault }}>
-              <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }} interactive={false}>
-                <Marker coordinate={from} tone="info" /><Marker coordinate={to} tone="brand" /><Polyline coordinates={[from, to]} strokeColor={c.brand} strokeWidth={4} lineDashPattern={[8, 6]} />
-              </MapView>
-            </View>
+          {to && config.mapsEnabled ? (
+            // Bosilsa — to'liq ekranli xarita: mashina, obyekt, masofa, ETA va kuzatish rejimi
+            <PressScale onPress={openMap} accessibilityRole="button" accessibilityLabel="Xaritani to'liq ekranda ochish" scale={0.99}
+              style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', marginTop: space.md, borderWidth: size.hairline, borderColor: c.borderDefault }}>
+              <View pointerEvents="none" style={{ flex: 1 }}>
+                <MapView style={{ flex: 1 }} initialRegion={from ? { latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 } : { ...to, latitudeDelta: 0.05, longitudeDelta: 0.05 }} interactive={false}>
+                  {from ? <Marker coordinate={from} tone="info" /> : null}<Marker coordinate={to} tone="brand" />{from ? <Polyline coordinates={[from, to]} strokeColor={c.brand} strokeWidth={4} lineDashPattern={[8, 6]} /> : null}
+                </MapView>
+              </View>
+              <View pointerEvents="none" style={{ position: 'absolute', right: space.sm, bottom: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs }}>
+                <Icon name="map" size={size.iconSm} tone="brand" /><Txt v="label" color="brand">Xaritada ochish</Txt>
+              </View>
+            </PressScale>
+          ) : to && s.status !== 'CONFIRMED' && s.status !== 'CANCELLED' ? (
+            <MapUnavailable compact style={{ marginTop: space.md }} />
           ) : null}
           <Gap h={space.md} />
           <Card style={{ flexDirection: 'row', gap: space.lg }}>
@@ -132,8 +170,8 @@ function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, f
               <Txt v="titleMd">Obyektga yetdim</Txt>
               <Gap h={space.md} />
               <Input value={receiver} onChangeText={setReceiver} placeholder="Kim qabul qildi? (ism)" left="user" />
-              <BigAction title="Yetkazdim" icon="flag" loading={tr.isPending} onPress={() => tr.mutate({ to: 'DELIVERED', receiverName: receiver || undefined, photoKey: 'photo/demo.jpg' }, { onError: err })} />
-              <View style={{ marginTop: space.sm }}><StatusLine icon="map-pin" tone="info" text="Joylashuv va vaqt avtomatik yoziladi" /></View>
+              <BigAction title="Yetkazdim" icon="flag" loading={delivering} onPress={deliver} />
+              <View style={{ marginTop: space.sm }}><StatusLine icon="map-pin" tone="info" text={`Obyektdan ${SITE_RADIUS_M} m ichida bosiladi — joylashuv va vaqt yoziladi`} /></View>
             </Card>
           ) : next ? (
             <BigAction title={{ NEW: 'Qabul qilish', ACCEPTED: 'Yuklashni boshladim', LOADING: "Yukladim — yo'lga chiqdim" }[s.status] ?? next} icon={s.status === 'NEW' ? 'circle-check' : s.status === 'ACCEPTED' ? 'package' : 'navigation'} loading={tr.isPending} onPress={() => tr.mutate({ to: next }, { onError: err })} />

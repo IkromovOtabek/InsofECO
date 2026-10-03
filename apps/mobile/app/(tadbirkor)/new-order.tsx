@@ -1,34 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { WorkOrderCreateSchema, SPECIALTY_LABEL } from '@insof/shared';
-import { ChipGroup, StickyActionBar } from '@/design/blocks';
+import { StickyActionBar } from '@/design/blocks';
 import { Card, Gap, Input, Screen, Select, Txt } from '@/design/primitives';
 import { Appear, PressScale, haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors } from '@/design/tokens';
 import { useAction, useProjects, useWorkers } from '@/features/eco/api';
+import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
+import { DayStrip, atTime, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
 
-const WEEKDAY = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
-const MONTH = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
 const SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const addDays = (n: number) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
-
-/** Kun chiplari: bugun, ertaga, keyingi 5 kun, +2 hafta, +1 oy. Kalit — YYYY-MM-DD. */
-function dayOptions() {
-  const out: { key: string; label: string }[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(i);
-    out.push({ key: ymd(d), label: i === 0 ? 'Bugun' : i === 1 ? 'Ertaga' : `${WEEKDAY[d.getDay()]}, ${d.getDate()}-${MONTH[d.getMonth()]}` });
-  }
-  const w2 = addDays(14); out.push({ key: ymd(w2), label: `2 hafta · ${d2(w2)}` });
-  const m1 = addDays(30); out.push({ key: ymd(m1), label: `1 oy · ${d2(m1)}` });
-  return out;
-}
-const d2 = (d: Date) => `${d.getDate()}-${MONTH[d.getMonth()]}`;
+/** Kun lentasi — 2 hafta; uzoqroq muddat (oy, chorak) — kalendardan. */
+const STRIP_DAYS = 14;
+const MAX_DAYS = 180;
 
 /** Bo'lim sarlavhasi: raqamli doira + nom + izoh. */
 function Step({ n, title, hint, done }: { n: number; title: string; hint?: string; done?: boolean }) {
@@ -67,16 +54,20 @@ export default function NewWorkOrder() {
   const projects = useProjects();
   const workers = useWorkers();
   const [f, setF] = useState({ projectId: '', title: '', description: '', address: '', price: '', workerUserId: '' });
+  /** Xarita nuqtasi — ish buyurtmasi API'sida koordinata maydoni yo'q, hozircha faqat manzil matni yuboriladi. */
+  const [pin, setPin] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [day, setDay] = useState<string>('');
   const [time, setTime] = useState<string>('');
   const set = (k: keyof typeof f) => (v: string) => setF((s) => ({ ...s, [k]: v }));
   const create = useAction<Record<string, unknown>, { id: string }>((body) => ({ path: '/work-orders', body }), ['work-orders', 'dash']);
-  const days = useMemo(dayOptions, []);
-  const today = days[0]!.key;
+  const today = ymd(startOfToday());
   const nowH = new Date().getHours();
   const slotOff = (s: string) => day === today && Number(s.slice(0, 2)) <= nowH;
-  // Muddat — avvalgidek "YYYY-MM-DDTHH:mm" satri (sxema z.coerce.date bilan o'qiydi)
-  const deadline = day && time ? `${day}T${time}` : '';
+  /** Bugungi barcha slotlar o'tgan bo'lsa bugun yopiq. */
+  const dayFull = (k: string) => k === today && SLOTS.every((x) => Number(x.slice(0, 2)) <= nowH);
+  // Muddat — telefon vaqtida yig'iladi va ISO (UTC) bo'lib ketadi. Ilgari "YYYY-MM-DDTHH:mm"
+  // satri mintaqasiz yuborilardi va UTC serverda 5 soat siljirdi (18:00 → 23:00).
+  const deadline = day && time ? atTime(day, time).toISOString() : '';
 
   const submit = () => {
     const parsed = WorkOrderCreateSchema.safeParse({ projectId: f.projectId || undefined, title: f.title, description: f.description || undefined, address: f.address, price: Number(f.price.replace(/\s/g, '')), deadline, workerUserId: f.workerUserId || undefined });
@@ -95,7 +86,8 @@ export default function NewWorkOrder() {
   const step2 = f.address.trim().length >= 3 && !!deadline;
   const step3 = Number(f.price.replace(/\s/g, '')) > 0;
   const missing = !step1 ? 'Ish nomini kiriting' : f.address.trim().length < 3 ? 'Manzilni kiriting' : !day ? 'Muddat kunini tanlang' : !time ? 'Muddat vaqtini tanlang' : !step3 ? "To'lov summasini kiriting" : undefined;
-  const dayLabel = days.find((d) => d.key === day)?.label;
+  const dayLabel = day ? dayLabelLong(day) : '';
+  const addr: AddressValue = { address: f.address, lat: pin.lat, lng: pin.lng };
 
   return (
     <Screen padded={false}>
@@ -112,9 +104,9 @@ export default function NewWorkOrder() {
             <Gap h={space.grid} />
             <Card>
               <Step n={2} title="Obyekt va muddat" hint={deadline ? `Muddat: ${dayLabel} · ${time}` : 'Kun va vaqtni tanlang'} done={step2} />
-              <Input label="Manzil" required value={f.address} onChangeText={set('address')} placeholder="Manzil" left="map-pin" />
-              <Txt v="overline" style={{ marginBottom: space.sm }}>Kun</Txt>
-              <ChipGroup items={days} value={day} onChange={(k) => { setDay(k); if (k === today && time && Number(time.slice(0, 2)) <= nowH) setTime(''); }} />
+              <AddressPicker label="Obyekt manzili" required value={addr} onChange={(v) => { set('address')(v.address); setPin({ lat: v.lat, lng: v.lng }); }} />
+              <Txt v="overline" style={{ marginTop: space.lg, marginBottom: space.sm }}>Kun</Txt>
+              <DayStrip value={day} onChange={(k) => { setDay(k); if (k === today && time && Number(time.slice(0, 2)) <= nowH) setTime(''); }} days={STRIP_DAYS} maxDays={MAX_DAYS} isDisabled={dayFull} />
               <Txt v="overline" style={{ marginTop: space.lg, marginBottom: space.sm }}>Vaqt</Txt>
               <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
                 {SLOTS.map((s) => <Slot key={s} label={s} on={time === s} off={slotOff(s)} onPress={() => setTime(s)} />)}
