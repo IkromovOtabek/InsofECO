@@ -169,7 +169,9 @@ export default function TripRoute() {
           setFix(next);
         },
       );
-    })();
+      // Ekran kutish paytida yopilgan bo'lsa — obuna oqib qolmasin
+      if (!alive) sub.remove();
+    })().catch(() => { /* GPS xatosi — ekran raqamsiz ishlayveradi */ });
     return () => { alive = false; sub?.remove(); };
   }, []);
 
@@ -223,7 +225,7 @@ export default function TripRoute() {
     : straightM == null ? false
     : straightM <= radiusM;
   const nearHint = !dest ? data?.deliverHint ?? null
-    : straightM == null ? 'Joylashuv aniqlanmoqda…'
+    : straightM == null ? (noGps ? "Joylashuvga ruxsat yo'q — «Yetkazdim»ni bosing, ruxsat so'raladi" : "Joylashuv aniqlanmoqda… GPS sekin bo'lsa «Yetkazdim»ni bosib tekshiring")
     : near ? null
     : `Obyektgacha ${distanceLabel(straightM)} — ${distanceLabel(radiusM)} qolganda ochiladi`;
   /** Obyekt yonida ekani tasdiqlangan aniq nuqta — "Yetkazdim" shu bilan yuboriladi. */
@@ -297,10 +299,13 @@ export default function TripRoute() {
    * masofa va "Qayta tekshirish" (site-check.ts); forma faqat obyekt yonida ochiladi.
    */
   const [checking, setChecking] = useState(false);
+  const checkingRef = useRef(false);
   const onDeliver = useCallback(async () => {
     if (!dest && !near) { dialog('Hali yopib bo\'lmaydi', nearHint ?? 'Obyektga yetib borilmagan', undefined, { tone: 'warning' }); return; }
+    if (checkingRef.current) return; // tez ikki bosish — ikki GPS oynasi chiqmasin
+    checkingRef.current = true;
     setChecking(true);
-    const here = await confirmAtSite(dest, 'Yetkazdim').finally(() => setChecking(false));
+    const here = await confirmAtSite(dest, 'Yetkazdim').finally(() => { checkingRef.current = false; setChecking(false); });
     if (here === null) return;
     siteFixRef.current = here ?? null;
     if (here) {
@@ -411,7 +416,9 @@ export default function TripRoute() {
           ) : null}
 
           {/* Obyektga yetilmaguncha tugma yopiq turadi; sababi ostidagi izohda */}
-          <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={!near || run.isPending} loading={checking} onPress={() => void onDeliver()} />
+          {/* Nuqta hali yo'q (GPS sekin yoki ruxsat yo'q) — qulf emas: bosilsa yangi nuqta olinadi yoki sababi
+              aytiladi (site-check.ts). Aks holda ruxsatsiz haydovchi "aniqlanmoqda…" bilan abadiy qolib ketardi. */}
+          <Button size="lg" title="Yetkazdim" icon={near ? 'flag' : 'lock'} disabled={(!near && !(dest && straightM == null)) || run.isPending || checking} loading={checking} onPress={() => void onDeliver()} />
           {nearHint ? <Txt v="caption" align="center" style={{ marginTop: space.xs }}>{nearHint}</Txt> : null}
 
           {/* Ovozli yo'l-yo'riq kerak bo'lsa — tashqi navigator. Ixtiyoriy: reysni olib borish

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapUnavailable, MapView, Marker, Polyline } from '@/core/map';
@@ -33,6 +33,8 @@ export default function ShipmentScreen() {
   const router = useRouter();
   const [receiver, setReceiver] = useState('');
   const [checking, setChecking] = useState(false);
+  /** GPS tekshiruvi + so'rov davomida ikkinchi bosish bo'lmasin (ikki oyna / ikki so'rov). */
+  const busy = useRef(false);
   const tr = useAction<TrVars>((v) => ({ path: `/shipments/${id}/transition`, body: v }), ['shipments', 'dash', 'material-requests', 'materials', 'finance']);
   const err = (e: Error) => toast.error(e.message, 'Xato');
   const s = q.data;
@@ -57,10 +59,13 @@ export default function ShipmentScreen() {
    * Muvaffaqiyat xabari aniq: "Yetkazildi", rad etilsa — sababi va "Qayta tekshirish".
    */
   const deliver = async () => {
+    if (busy.current) return;
+    busy.current = true;
     setChecking(true);
     const here = await confirmAtSite(to ? { lat: to.latitude, lng: to.longitude } : null, 'Yetkazdim').finally(() => setChecking(false));
-    if (here === null) return;
+    if (here === null) { busy.current = false; return; }
     tr.mutate({ to: 'DELIVERED', receiverName: receiver.trim() || undefined, photoKey: 'photo/demo.jpg', location: here ? { lat: here.lat, lng: here.lng } : undefined }, {
+      onSettled: () => { busy.current = false; },
       onSuccess: () => toast.success('Qabul qiluvchi tasdiqlagach haq hisobingizga tushadi', 'Yetkazildi'),
       onError: (e) => dialog('«Yetkazdim» belgilanmadi', e instanceof ApiException ? e.message : "Internet yo'q — ulanib, qayta bosing", [
         { text: 'Qayta tekshirish', onPress: () => void deliver() },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChipGroup, ListGroup, SectionHead } from '@/design/blocks';
@@ -24,6 +24,9 @@ export default function AdminBroadcast() {
   const [org, setOrg] = useState<{ id: string; name: string } | null>(null);
   const [preview, setPreview] = useState<{ recipients: number; devices: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  // "Yuborish" ikki marta tez bosilsa (tugma `loading` bo'lib ulgurmasdan) — har biri yangi idempotency kalit bilan
+  // ketib, xabar ikki marta borardi. Ref — render kutmaydi.
+  const inFlight = useRef(false);
   const q = useDebounced(search.trim());
   const orgs = useAdminOrgs({ q: q || undefined });
   const ok = title.trim().length >= 2 && body.trim().length >= 2;
@@ -31,17 +34,21 @@ export default function AdminBroadcast() {
 
   const fail = (e: unknown) => toast.error(e instanceof ApiException ? e.message : 'Tarmoq xatosi', 'Bajarilmadi');
   const check = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
-    try { setPreview(await adminApi.broadcast({ ...payload, dryRun: true })); } catch (e) { fail(e); } finally { setBusy(false); }
+    try { setPreview(await adminApi.broadcast({ ...payload, dryRun: true })); } catch (e) { fail(e); } finally { inFlight.current = false; setBusy(false); }
   };
   const send = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const r = await adminApi.broadcast(payload);
       setPreview(null);
       toast.success(`${fmtNum(r.recipients)} foydalanuvchiga yuborildi`, 'Yuborildi');
       router.back();
-    } catch (e) { fail(e); } finally { setBusy(false); }
+    } catch (e) { fail(e); } finally { inFlight.current = false; setBusy(false); }
   };
 
   return (

@@ -74,7 +74,8 @@ export function AddressPicker({ value, onChange, label = 'Obyekt manzili', requi
   useEffect(() => {
     if (skipNext.current) { skipNext.current = false; return; }
     const q = value.address.trim();
-    if (!focused || q.length < 3 || source === 'none') { setItems([]); setLoading(false); return; }
+    // Ketayotgan so'rov ham eskiradi: matn 3 belgidan qisqarsa / maydon yopilsa kech kelgan javob ro'yxatni qaytarmasin
+    if (!focused || q.length < 3 || source === 'none') { seq.current++; setItems([]); setLoading(false); return; }
     const my = ++seq.current;
     setLoading(true);
     const t = setTimeout(() => {
@@ -94,13 +95,14 @@ export function AddressPicker({ value, onChange, label = 'Obyekt manzili', requi
     Keyboard.dismiss();
     setItems([]);
     const text = [s.title, s.subtitle].filter(Boolean).join(', ');
-    skipNext.current = true;
+    // `skipNext` faqat matn haqiqatan o'zgarsa: aks holda effekt ishlamaydi, bayroq qolib ketadi
+    // va foydalanuvchining keyingi harfi uchun takliflar chiqmay qoladi
+    if (text !== latest.current.address) skipNext.current = true;
     onChange({ address: text, lat: null, lng: null });
     setBusyPin(true);
     try {
       const r = await resolvePlace(s);
       if (r) {
-        skipNext.current = true;
         onChange({ address: text, lat: r.lat, lng: r.lng });
         flyTo(r.lat, r.lng);
       } else {
@@ -119,7 +121,7 @@ export function AddressPicker({ value, onChange, label = 'Obyekt manzili', requi
       const text = await reverseGeocode(lat, lng);
       // Javob kelguncha foydalanuvchi pinni yana surgan bo'lsa — eski manzilni yozmaymiz
       const cur = latest.current;
-      if (text && cur.lat === lat && cur.lng === lng) { skipNext.current = true; onChange({ address: text, lat, lng }); }
+      if (text && cur.lat === lat && cur.lng === lng) { if (text !== cur.address) skipNext.current = true; onChange({ address: text, lat, lng }); }
     } finally {
       setBusyPin(false);
     }

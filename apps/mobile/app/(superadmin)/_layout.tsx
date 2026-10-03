@@ -20,7 +20,9 @@ export default function SuperAdminLayout() {
   // Bo'limdan chiqilganda admin ma'lumoti (barcha foydalanuvchilar) xotirada ham qolmasin
   useEffect(() => () => queryClient.removeQueries({ queryKey: ['admin'] }), []);
   return (
-    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
+    // `history` — yashirin kartochkalardan (tashkilot, foydalanuvchi, jurnal) «Orqaga» ochilgan joyiga qaytadi,
+    // birinchi tabga (Holat) emas
+    <Tabs backBehavior="history" tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Holat', headerShown: false, tabBarIcon: tabIcon('activity') }} />
       <Tabs.Screen name="tashkilotlar" options={{ title: 'Tashkilotlar', tabBarIcon: tabIcon('building') }} />
       <Tabs.Screen name="foydalanuvchilar" options={{ title: 'Foydalanuvchilar', tabBarIcon: tabIcon('users') }} />

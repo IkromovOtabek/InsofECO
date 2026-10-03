@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -108,6 +108,8 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
     onSuccess: (u) => { qc.setQueryData(deliveryKeys.one(d.id), u); void qc.invalidateQueries({ queryKey: ['deliveries'] }); },
   });
   const [checking, setChecking] = useState(false);
+  /** GPS tekshiruvi + so'rov davomida ikkinchi bosish (ikki oyna, ikki so'rov) bo'lmasin — render kutmaydi. */
+  const busy = useRef(false);
   const sign = useSignDelivery(d.id);
   const [loaded, setLoaded] = useState(String(d.plannedM3));
   const [otp, setOtp] = useState('');
@@ -131,10 +133,13 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
   const go = async (to: DeliveryStatus) => {
     const site = SITE_DONE[to];
     if (site) {
+      if (busy.current) return;
+      busy.current = true;
       setChecking(true);
       const here = await confirmAtSite(dest, site.action).finally(() => setChecking(false));
-      if (here === null) return; // obyektda emas / GPS yo'q — sababi oynada aytildi, hech narsa yuborilmaydi
+      if (here === null) { busy.current = false; return; } // obyektda emas / GPS yo'q — sababi oynada aytildi, hech narsa yuborilmaydi
       siteTr.mutate({ to, location: here ? { lat: here.lat, lng: here.lng } : undefined }, {
+        onSettled: () => { busy.current = false; },
         onSuccess: () => toast.success(site.text, site.title),
         // Server rad etdi — "Bajarildi" emas, aniq sabab va qayta urinish
         onError: (e) => dialog(`«${site.action}» belgilanmadi`, e instanceof ApiException ? e.message : 'Internet yo\'q — ulanib, qayta bosing', [

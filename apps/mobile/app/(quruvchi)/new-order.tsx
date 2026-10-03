@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CreateOrderSchema } from '@insof/shared';
@@ -92,13 +92,18 @@ export default function NewOrder() {
     : slot == null ? 'Boshlanish vaqtini tanlang'
     : scheduled && scheduled.getTime() < Date.now() + LEAD_HOURS * 3_600_000 ? 'Bu vaqt o\'tib ketgan — keyinroq slotni tanlang' : undefined;
 
+  // Tez ikki bosish — har mutate yangi idempotency kalit oladi, ya'ni ikkita buyurtma ketardi
+  const sending = useRef(false);
   const submit = () => {
+    if (sending.current) return;
     const parsed = CreateOrderSchema.safeParse(payload);
     if (!parsed.success) {
       const msgs = [...new Set(parsed.error.issues.map((i) => FIELD_MSG[String(i.path[0])] ?? "Ma'lumotlarni tekshiring"))];
       return toast.error(msgs.join('\n'), 'Tekshiring');
     }
+    sending.current = true;
     create.mutate(parsed.data, {
+      onSettled: () => { sending.current = false; },
       onSuccess: (o) => { toast.success(`Buyurtma №${o.number} zavodga yuborildi. Tasdiqlanganda xabar keladi.`, 'Yuborildi'); router.replace(`/order/${o.id}`); },
       onError: (e) => toast.error(e instanceof ApiException ? e.message : "Tarmoq xatosi — internetni tekshirib qayta urinib ko'ring", 'Xato'),
     });

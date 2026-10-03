@@ -24,8 +24,9 @@ const config: ExpoConfig = {
       UIBackgroundModes: ['location', 'remote-notification'],
       // "Navigatorda ochish" ro'yxati: iOS faqat shu sxemalar uchun `canOpenURL` ga to'g'ri javob beradi.
       // `src/core/navigate.ts` (APPS) va Android `plugins/withNavigatorQueries.js` bilan bir xil bo'lsin.
-      // Apple Xaritalar (`maps://`) tizimniki — ro'yxatga kerak emas. Native o'zgarish: yangi build.
-      LSApplicationQueriesSchemes: ['yandexnavi', 'yandexmaps', 'dgis', 'comgooglemaps', 'waze'],
+      // `maps` (Apple Xaritalar) ham yozilgan: iOS ro'yxatda yo'q sxema uchun `canOpenURL` ni har doim
+      // `false` qaytaradi — shunda Apple Xaritalar tanlov ro'yxatidan tushib qolardi. Native o'zgarish: yangi build.
+      LSApplicationQueriesSchemes: ['yandexnavi', 'yandexmaps', 'dgis', 'comgooglemaps', 'waze', 'maps'],
     },
     config: { usesNonExemptEncryption: false },
   },

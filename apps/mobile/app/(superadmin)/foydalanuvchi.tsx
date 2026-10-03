@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChipGroup, ListGroup, SectionHead, SkeletonList, Toggle } from '@/design/blocks';
@@ -32,6 +32,9 @@ export default function AdminUser() {
   const u = q.data;
   const [ask, setAsk] = useState<Ask | null>(null);
   const [adding, setAdding] = useState(false);
+  // Yashirin tab qayta ishlatiladi: boshqa foydalanuvchi ochilganda oldingisining ochiq oynasi
+  // (bloklash tasdig'i) yangi odamga qo'llanib ketmasin
+  useEffect(() => { setAsk(null); setAdding(false); }, [id]);
   const act = useAdminAction<Act>((v) => ({ path: v.path, method: v.method, body: v.body }));
   const run = (v: Act) => act.mutate(v, {
     onSuccess: () => { setAsk(null); setAdding(false); toast.success(v.done); },

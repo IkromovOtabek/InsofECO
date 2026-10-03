@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { KpiGrid, ListGroup, SectionHead, SkeletonList } from '@/design/blocks';
@@ -17,6 +17,8 @@ export default function AdminOrganization() {
   const q = useAdminOrg(id);
   const o = q.data;
   const [ask, setAsk] = useState<'block' | 'unblock' | null>(null);
+  // Yashirin tab qayta ishlatiladi — boshqa tashkilotga o'tilganda ochiq tasdiq oynasi yopiladi
+  useEffect(() => { setAsk(null); }, [id]);
   const act = useAdminAction<{ kind: 'block' | 'unblock'; reason?: string }>((v) => ({ path: `/admin/organizations/${id}/${v.kind}`, body: v.kind === 'block' ? { reason: v.reason } : {} }));
   const run = (v: { kind: 'block' | 'unblock'; reason?: string }) => act.mutate(v, {
     onSuccess: () => { setAsk(null); toast.success(v.kind === 'block' ? 'Tashkilot bloklandi' : 'Blokdan chiqarildi'); },

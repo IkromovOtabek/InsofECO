@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { WorkOrderCreateSchema, SPECIALTY_LABEL } from '@insof/shared';
@@ -69,10 +69,14 @@ export default function NewWorkOrder() {
   // satri mintaqasiz yuborilardi va UTC serverda 5 soat siljirdi (18:00 → 23:00).
   const deadline = day && time ? atTime(day, time).toISOString() : '';
 
+  // Tez ikki bosish — ikkita ish buyurtmasi yaratilmasin (har mutate yangi idempotency kalit)
+  const sending = useRef(false);
   const submit = () => {
+    if (sending.current) return;
     const parsed = WorkOrderCreateSchema.safeParse({ projectId: f.projectId || undefined, title: f.title, description: f.description || undefined, address: f.address, price: Number(f.price.replace(/\s/g, '')), deadline, workerUserId: f.workerUserId || undefined });
     if (!parsed.success) return toast.error(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n'), 'Tekshiring');
-    create.mutate(parsed.data as never, { onSuccess: (o) => router.replace(`/work-order/${o.id}`), onError: (e) => toast.error(e.message, 'Xato') });
+    sending.current = true;
+    create.mutate(parsed.data as never, { onSettled: () => { sending.current = false; }, onSuccess: (o) => router.replace(`/work-order/${o.id}`), onError: (e) => toast.error(e.message, 'Xato') });
   };
   const projectOptions = (projects.data ?? []).filter((p) => p.status !== 'COMPLETED').map((p) => ({ value: p.id, label: p.name, hint: p.address }));
   const workerOptions = [
