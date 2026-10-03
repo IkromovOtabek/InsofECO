@@ -68,14 +68,15 @@ export function HeroSwiper({ banners, phone, onCatalog, onProduct }: { banners: 
   const render = (s: Slide, i: number) => {
     if (s.kind === 'hero') {
       return (
-        <View key="hero" style={[box, { backgroundColor: c.brand, padding: space.lg, justifyContent: 'space-between' }]}>
+        <View key="hero" style={[box, { backgroundColor: c.bgInverse, padding: space.xl, justifyContent: 'space-between' }]}>
           <View style={{ gap: space.xs }}>
-            <Txt v="overline" style={{ color: c.textOnBrand, opacity: 0.8 }}>Temir beton mahsulotlari</Txt>
-            <Txt v="titleMd" style={{ color: c.textOnBrand }} numberOfLines={2}>Beton va JBI — zavoddan to'g'ridan-to'g'ri</Txt>
-            <Txt v="caption" style={{ color: c.textOnBrand, opacity: 0.85 }} numberOfLines={2}>Narxni ko'ring, hajmni yozing — sotuv bo'limi o'zi qo'ng'iroq qiladi</Txt>
+            <View style={{ width: space.x7, height: 3, borderRadius: radius.pill, backgroundColor: c.accent, marginBottom: space.xs }} />
+            <Txt v="overline" style={{ color: c.textOnInverseMuted }}>Temir beton mahsulotlari</Txt>
+            <Txt v="titleMd" style={{ color: c.textOnInverse }} numberOfLines={2}>Beton va JBI — zavoddan to'g'ridan-to'g'ri</Txt>
+            <Txt v="caption" style={{ color: c.textOnInverseMuted }} numberOfLines={2}>Narxni ko'ring, hajmni yozing — sotuv bo'limi o'zi qo'ng'iroq qiladi</Txt>
           </View>
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button title="Katalog" variant="secondary" iconRight="arrow-right" onPress={onCatalog} style={{ flex: 1 }} />
+          <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
+            <Button title="Katalog" iconRight="arrow-right" full={false} onPress={onCatalog} />
             {phone ? <Button title="Qo'ng'iroq" variant="secondary" icon="phone" full={false} onPress={() => void Linking.openURL(`tel:${phone}`)} /> : null}
           </View>
         </View>
@@ -83,7 +84,7 @@ export function HeroSwiper({ banners, phone, onCatalog, onProduct }: { banners: 
     }
     if (s.kind === 'steps') {
       return (
-        <View key="steps" style={[box, { backgroundColor: c.bgChrome, borderWidth: size.hairline, borderColor: c.borderDefault, padding: space.lg, justifyContent: 'space-between' }]}>
+        <View key="steps" style={[box, { backgroundColor: c.bgSurface, padding: space.lg, justifyContent: 'space-between' }]}>
           <Txt v="titleSm">Buyurtma 3 qadamda</Txt>
           {[
             ['1', 'Mahsulotni tanlang', 'katalogdan'],
@@ -104,14 +105,15 @@ export function HeroSwiper({ banners, phone, onCatalog, onProduct }: { banners: 
       const uri = photoUrl(s.ad.image);
       const open = () => (s.ad.productId ? onProduct(s.ad.productId) : onCatalog());
       return (
-        <Pressable key={s.ad.id} accessibilityRole="button" accessibilityLabel={`Reklama: ${s.ad.title}`} onPress={open} style={[box, { backgroundColor: c.brandSoft }]}>
+        <Pressable key={s.ad.id} accessibilityRole="button" accessibilityLabel={`Reklama: ${s.ad.title}`} onPress={open} style={[box, { backgroundColor: c.bgInverse }]}>
           {uri ? (
             <Image source={{ uri }} style={{ width: W, height: H }} resizeMode="cover" accessibilityIgnoresInvertColors />
           ) : (
-            <View style={{ flex: 1, padding: space.lg, justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, padding: space.xl, justifyContent: 'space-between' }}>
               <View style={{ gap: space.xs }}>
-                <Txt v="titleMd" color="brand" numberOfLines={2}>{s.ad.title}</Txt>
-                {s.ad.subtitle ? <Txt v="bodySm" numberOfLines={2}>{s.ad.subtitle}</Txt> : null}
+                <Txt v="overline" style={{ color: c.textOnInverseMuted }}>Bugungi taklif</Txt>
+                <Txt v="titleMd" style={{ color: c.textOnInverse }} numberOfLines={2}>{s.ad.title}</Txt>
+                {s.ad.subtitle ? <Txt v="bodySm" style={{ color: c.textOnInverseMuted }} numberOfLines={2}>{s.ad.subtitle}</Txt> : null}
               </View>
               <Button title={s.ad.buttonText ?? 'Batafsil'} iconRight="arrow-right" full={false} onPress={open} />
             </View>
@@ -144,7 +146,7 @@ export function HeroSwiper({ banners, phone, onCatalog, onProduct }: { banners: 
       </ScrollView>
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.xs }}>
         {slides.map((_, i) => (
-          <View key={i} style={{ width: i === index ? space.lg : space.sm, height: space.sm, borderRadius: radius.pill, backgroundColor: i === index ? c.brand : c.borderStrong }} />
+          <View key={i} style={{ width: i === index ? space.lg : space.sm, height: space.sm, borderRadius: radius.pill, backgroundColor: i === index ? c.brand : c.borderDefault }} />
         ))}
       </View>
     </View>

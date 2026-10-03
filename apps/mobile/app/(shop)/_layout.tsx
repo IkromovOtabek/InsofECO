@@ -17,9 +17,10 @@ export default function ShopLayout() {
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <Stack screenOptions={stackOptions(c)}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="[id]" options={{ title: 'Mahsulot' }} />
-        <Stack.Screen name="zavod" options={{ title: 'Sotuvchi' }} />
-        <Stack.Screen name="kalkulyator" options={{ title: 'Beton kalkulyatori' }} />
+        {/* Mahsulot va zavod — surat/muqova ekran tepasigacha, orqaga tugmasi suzib turadi */}
+        <Stack.Screen name="[id]" options={{ title: 'Mahsulot', headerShown: false }} />
+        <Stack.Screen name="zavod" options={{ title: 'Zavod', headerShown: false }} />
+        <Stack.Screen name="kalkulyator" options={{ title: 'Kalkulyator' }} />
       </Stack>
       <LoginPrompt />
     </View>

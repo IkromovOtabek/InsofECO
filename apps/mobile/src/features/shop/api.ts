@@ -64,8 +64,15 @@ async function shopFetch<T>(path: string, init?: { method?: 'POST'; body?: unkno
 export const useShopCatalog = () =>
   useQuery({ queryKey: ['shop', 'catalog'], queryFn: () => shopFetch<ShopCatalog>(''), staleTime: 60_000 });
 
+/**
+ * Buyurtma javobi. Hozirgi ERP faqat `{ ok, message }` qaytaradi; raqam (`number`/`id`) keyinchalik
+ * qo'shilsa muvaffaqiyat ekrani uni ko'rsatadi. Savat, to'lov va kuzatish API'si hali yo'q —
+ * bitta so'rov = bitta mahsulot, narx va yetkazishni sotuv bo'limi qo'ng'iroqda kelishadi.
+ */
+export interface ShopOrderResult { ok: true; message: string; id?: string | number; number?: string | number }
+
 export const useShopOrder = () =>
-  useMutation({ mutationFn: (body: ShopOrderInput) => shopFetch<{ ok: true; message: string }>('/order', { method: 'POST', body }) });
+  useMutation({ mutationFn: (body: ShopOrderInput) => shopFetch<ShopOrderResult>('/order', { method: 'POST', body }) });
 
 /** "Menga qo'ng'iroq qiling" — mahsulotsiz so'rov (Aloqa bo'limi). */
 export const useShopCallback = () =>
