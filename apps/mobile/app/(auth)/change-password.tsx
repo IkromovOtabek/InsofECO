@@ -7,7 +7,7 @@ import { authApi } from '@/features/auth/api';
 import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, ErrorBox, InfoCard, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
+import { AuthIcon, AuthScreen, ErrorBox, InfoCard, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
 import { dialog } from '@/design/ui';
 
 /**
@@ -30,6 +30,7 @@ export default function ChangePassword() {
   if (kind === 'erp') {
     return (
       <AuthScreen>
+        <AuthIcon icon="key-round" tone="info" />
         <Title hint="Insof ERP xodimi hisobi kompyuterdagi ERP orqali boshqariladi.">Parolni o&apos;zgartirish</Title>
         <Appear delay={130} style={{ marginTop: space.xxl }}>
           <InfoCard icon="info" tone="info">
@@ -68,6 +69,7 @@ export default function ChangePassword() {
 
   return (
     <AuthScreen>
+      <AuthIcon icon="key-round" />
       <Title hint="Joriy parolni tasdiqlang va yangisini kiriting.">Parolni o&apos;zgartirish</Title>
 
       <Appear delay={130} style={{ marginTop: space.xxl }}>

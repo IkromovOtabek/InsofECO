@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Switch, View } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import type * as ImagePickerNS from 'expo-image-picker';
 import { Button, Card, IconButton, Input, Label, Select, Txt, type SelectOption } from '@/design/primitives';
+import { Toggle } from '@/design/blocks';
+import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
+import { radius, shadow, size, space, toneColors, type Tone } from '@/design/tokens';
 import type { ErpDayCell, ErpFormField, ErpFormOption } from '@/core/erp';
 
 /**
@@ -51,6 +53,48 @@ export function firstMissing(fields: ErpFormField[], values: Values): string | n
   return null;
 }
 
+/**
+ * Maydon xatolari — hamma ko'rinadigan majburiy maydonlar bir yo'la (`firstMissing` bilan bir xil qoida).
+ * Kalit — maydon nomi; `items` qatoridagi katak — `<maydon>.<qator>.<ustun>`.
+ * Qiymat — maydon ostida chiqadigan qisqa matn.
+ */
+export type FieldErrors = Record<string, string>;
+
+export function validate(fields: ErpFormField[], values: Values): FieldErrors {
+  const out: FieldErrors = {};
+  for (const f of visibleFields(fields, values)) {
+    if (!f.required) continue;
+    if (f.type === 'items') {
+      const rows = (values[f.name] as ItemRow[]) ?? [];
+      const cols = f.columns ?? [];
+      let filled = 0;
+      rows.forEach((r, i) => {
+        if (!cols.some((c) => r[c.name]?.trim())) return;
+        filled++;
+        for (const c of cols) {
+          if (c.required && !r[c.name]?.trim()) {
+            out[`${f.name}.${i}.${c.name}`] = `${c.label} kiritilmagan`;
+            out[f.name] ??= `${i + 1}-qatorda ${c.label} to'ldirilmagan`;
+          }
+        }
+      });
+      if (filled === 0) out[f.name] = 'Kamida bitta qator kerak';
+      continue;
+    }
+    if (!str(values[f.name]).trim()) out[f.name] = f.type === 'select' || f.type === 'date' || f.type === 'time' ? 'Tanlanmagan' : f.type === 'photo' ? 'Surat kerak' : "To'ldirilmagan";
+  }
+  return out;
+}
+
+/** Xatolardan maydonni (va uning qator kataklarini) olib tashlaydi — qiymat o'zgarganda. */
+export function clearError(errors: FieldErrors, name: string): FieldErrors {
+  const keys = Object.keys(errors).filter((k) => k === name || k.startsWith(`${name}.`));
+  if (!keys.length) return errors;
+  const next = { ...errors };
+  for (const k of keys) delete next[k];
+  return next;
+}
+
 /** Serverga yuboriladigan ko'rinish: ko'rinmaydigan maydonlar tushib qoladi. */
 export function toPayload(fields: ErpFormField[], values: Values): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -69,17 +113,32 @@ export function toPayload(fields: ErpFormField[], values: Values): Record<string
 
 // ───────────────────────── Bitta maydon ─────────────────────────
 
-export function FieldInput({ field, values, onChange }: { field: ErpFormField; values: Values; onChange: (name: string, v: string | ItemRow[]) => void }) {
+/** Maydon ostidagi xato qatori — Input'dagi bilan bir xil (ikonka + qizil izoh). */
+function FieldError({ text }: { text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs }} accessibilityLiveRegion="polite">
+      <Icon name="circle-alert" tone="danger" size={size.iconSm - 2} />
+      <Txt v="caption" color="danger" style={{ flex: 1 }}>{text}</Txt>
+    </View>
+  );
+}
+
+/**
+ * Bitta maydon. `errors` — `validate()` natijasi: maydon xatosi bo'lsa u qizil chegara/fon bilan
+ * ajraladi va ostida sababi yoziladi (alohida oyna chiqmaydi).
+ */
+export function FieldInput({ field, values, onChange, errors }: { field: ErpFormField; values: Values; onChange: (name: string, v: string | ItemRow[]) => void; errors?: FieldErrors }) {
   const { c } = useTheme();
   const value = str(values[field.name]);
+  const error = errors?.[field.name];
 
   // Input/Select o'z pastki bo'shlig'ini o'zi qo'yadi; qolgan turlar Label + tana + izoh sifatida chiziladi
   switch (field.type) {
     case 'select':
       return (
         <View>
-          <SelectField field={field} value={value} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />
-          {field.hint ? <Txt v="caption" style={{ marginTop: -space.md, marginBottom: space.lg }}>{field.hint}</Txt> : null}
+          <SelectField field={field} value={value} error={error} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />
+          {field.hint && !error ? <Txt v="caption" style={{ marginTop: -space.md, marginBottom: space.lg }}>{field.hint}</Txt> : null}
         </View>
       );
     case 'text':
@@ -89,6 +148,7 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
           label={field.label}
           required={field.required}
           hint={field.hint}
+          error={error}
           value={value}
           onChangeText={(v: string) => onChange(field.name, v)}
           placeholder={field.placeholder}
@@ -104,24 +164,27 @@ export function FieldInput({ field, values, onChange }: { field: ErpFormField; v
   const body = () => {
     switch (field.type) {
       case 'switch': return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: size.touch, gap: space.md }}>
-          <Txt v="bodyStrong" style={{ flex: 1 }}>{field.label}</Txt>
-          <Switch value={value === 'true'} onValueChange={(v) => onChange(field.name, String(v))} trackColor={{ true: c.brand }} accessibilityLabel={field.label} />
+        <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card }, shadow.card]}>
+          <Toggle value={value === 'true'} onChange={(v) => onChange(field.name, String(v))} label={field.label} />
         </View>
       );
       case 'date': return <DateInput field={field} value={value} onChange={(v) => onChange(field.name, v)} />;
       case 'time': return <TimeInput value={value} onChange={(v) => onChange(field.name, v)} />;
-      case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} onChange={(rows) => onChange(field.name, rows)} />;
+      case 'items': return <ItemsInput field={field} rows={(values[field.name] as ItemRow[]) ?? []} errors={errors} onChange={(rows) => onChange(field.name, rows)} />;
       case 'photo': return <PhotoInput value={value} onChange={(v) => onChange(field.name, v)} camera={field.camera} cameraOnly={field.cameraOnly} />;
       default: return null;
     }
   };
 
+  // Sana/soat/surat — tanlov qatori xato bo'lsa qizil yumshoq fon ichiga olinadi (maydon ko'zga tashlansin)
+  const framed = !!error && field.type !== 'items' && field.type !== 'switch';
   return (
     <View style={{ marginBottom: space.lg }}>
-      {field.type === 'switch' ? null : <Label required={field.required}>{field.label}</Label>}
-      {body()}
-      {field.hint ? <Txt v="caption" style={{ marginTop: space.xs }}>{field.hint}</Txt> : null}
+      {field.type === 'switch' ? null : <Label required={field.required} style={error ? { color: c.danger } : undefined}>{field.label}</Label>}
+      <View style={framed ? { backgroundColor: c.dangerBg, borderRadius: radius.card, borderCurve: 'continuous', borderWidth: size.hairline, borderColor: c.danger, padding: space.sm } : undefined}>
+        {body()}
+      </View>
+      {error ? <FieldError text={error} /> : field.hint ? <Txt v="caption" style={{ marginTop: space.xs }}>{field.hint}</Txt> : null}
     </View>
   );
 }
@@ -156,7 +219,7 @@ function PhotoInput({ value, onChange, camera, cameraOnly }: { value: string; on
   return (
     <View style={{ gap: space.sm }}>
       {value ? (
-        <View style={{ borderRadius: radius.md, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
+        <View style={[{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: c.bgMuted }, shadow.card]}>
           <Image source={{ uri: value }} style={{ width: '100%', aspectRatio: camera === 'front' ? 3 / 4 : 4 / 3 }} resizeMode="cover" accessibilityIgnoresInvertColors />
         </View>
       ) : null}
@@ -187,13 +250,14 @@ type FormOption = SelectOption & Pick<ErpFormOption, 'extra'>;
  * Umumiy `Select` ustidagi yupqa qatlam: variant tanlanganda `extra`si bilan qaytaradi —
  * `Select` faqat {value,label} biladi, marka → narx to'ldirish uchun asl variant kerak.
  */
-function SelectField({ field, value, onChange, compact }: { field: ErpFormField; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean }) {
+function SelectField({ field, value, onChange, compact, error }: { field: ErpFormField; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean; error?: string }) {
   const all: FormOption[] = field.options ?? [];
   return (
     <Select
       label={field.label}
       required={field.required}
       compact={compact}
+      error={error}
       value={value || null}
       options={all}
       onChange={(v) => onChange(v, all.find((o) => o.value === v))}
@@ -214,7 +278,7 @@ function useScrollToSelected(index: number, itemWidth: number) {
   return ref;
 }
 
-/** Gorizontal tanlov chipi (sana/soat) — tanlangani brend fonida, matni to'q. */
+/** Gorizontal tanlov chipi (sana/soat) — yumshoq oq plitka (soya), tanlangani to'liq brend fonida. */
 function ChoiceChip({ on, onPress, label, children }: { on: boolean; onPress: () => void; label: string; children: React.ReactNode }) {
   const { c } = useTheme();
   return (
@@ -223,8 +287,9 @@ function ChoiceChip({ on, onPress, label, children }: { on: boolean; onPress: ()
       accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={label}
       android_ripple={{ color: c.bgMuted }}
       style={({ pressed }) => [
-        { minHeight: size.touch, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: on ? c.brand : c.borderDefault, backgroundColor: on ? c.brandSoft : c.bgSurface, alignItems: 'center', justifyContent: 'center' },
-        pressed && !on && { backgroundColor: c.bgMuted },
+        { minHeight: size.touch, paddingHorizontal: space.md + space.xs, paddingVertical: space.sm, borderRadius: radius.md, borderCurve: 'continuous', backgroundColor: on ? c.brand : c.bgSurface, alignItems: 'center', justifyContent: 'center' },
+        on ? null : shadow.card,
+        pressed && !on && { backgroundColor: c.bgSubtle },
       ]}
     >
       {children}
@@ -250,7 +315,7 @@ function DayCapacityChip({ cell, on, onPress }: { cell: ErpDayCell; on: boolean;
       accessibilityLabel={`${cell.weekday} ${cell.label} — ${cell.count ? `${m3Text(cell.m3)}, ${cell.count} ta zayavka` : "bo'sh, joy ko'p"}`}
       android_ripple={{ color: c.bgMuted }}
       style={({ pressed }) => [
-        { minWidth: 68, minHeight: size.touch + space.lg, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.sm, borderWidth: on ? 2 : size.hairline, borderColor: on ? c.brand : ink, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', gap: 2 },
+        { minWidth: 68, minHeight: size.touch + space.lg, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.md, borderCurve: 'continuous', borderWidth: size.ring, borderColor: on ? c.brand : 'transparent', backgroundColor: bg, alignItems: 'center', justifyContent: 'center', gap: 2 },
         pressed && !on && { opacity: 0.85 },
       ]}
     >
@@ -274,21 +339,21 @@ function DateInput({ field, value, onChange }: { field: ErpFormField; value: str
 
   if (cells?.length) {
     return (
-      <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
+      <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: space.xs, paddingHorizontal: 2 }}>
         {cells.map((cell) => <DayCapacityChip key={cell.key} cell={cell} on={cell.key === value} onPress={() => onChange(cell.key)} />)}
       </ScrollView>
     );
   }
   return (
-    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
+    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: space.xs, paddingHorizontal: 2 }}>
       {days.map((d, i) => {
         const v = ymd(d); const on = v === value;
         const day = i === 0 ? 'Bugun' : i === 1 ? 'Ertaga' : DAY_NAMES[d.getDay()];
         const date = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
         return (
           <ChoiceChip key={v} on={on} onPress={() => onChange(v)} label={`${day} ${date}`}>
-            <Txt v="caption" color={on ? 'brand' : 'muted'}>{day}</Txt>
-            <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{date}</Txt>
+            <Txt v="caption" color={on ? 'onBrand' : 'muted'}>{day}</Txt>
+            <Txt v="bodyStrong" color={on ? 'onBrand' : 'strong'}>{date}</Txt>
           </ChoiceChip>
         );
       })}
@@ -301,12 +366,12 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
   const slots = useMemo(() => { const out: string[] = []; for (let h = 6; h <= 20; h++) { out.push(`${String(h).padStart(2, '0')}:00`); if (h < 20) out.push(`${String(h).padStart(2, '0')}:30`); } return out; }, []);
   const ref = useScrollToSelected(slots.indexOf(value), 82);
   return (
-    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: 2 }}>
+    <ScrollView ref={ref} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingVertical: space.xs, paddingHorizontal: 2 }}>
       {slots.map((t) => {
         const on = t === value;
         return (
           <ChoiceChip key={t} on={on} onPress={() => onChange(t)} label={t}>
-            <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{t}</Txt>
+            <Txt v="bodyStrong" color={on ? 'onBrand' : 'strong'}>{t}</Txt>
           </ChoiceChip>
         );
       })}
@@ -315,23 +380,25 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 /** Takrorlanuvchi qatorlar — zayavka mahsulotlari. */
-function ItemsInput({ field, rows, onChange }: { field: ErpFormField; rows: ItemRow[]; onChange: (rows: ItemRow[]) => void }) {
+function ItemsInput({ field, rows, onChange, errors }: { field: ErpFormField; rows: ItemRow[]; onChange: (rows: ItemRow[]) => void; errors?: FieldErrors }) {
+  const { c } = useTheme();
   const cols = field.columns ?? [];
+  const cellError = (i: number, col: string) => errors?.[`${field.name}.${i}.${col}`];
   const set = (i: number, name: string, v: string) => onChange(rows.map((r, x) => (x === i ? { ...r, [name]: v } : r)));
 
   return (
     <View style={{ gap: space.md }}>
       {rows.map((row, i) => (
-        <Card key={i}>
+        <Card key={i} style={cols.some((col) => cellError(i, col.name)) ? { borderWidth: size.hairline, borderColor: c.danger } : undefined}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm, minHeight: size.touch - space.sm }}>
-            <Txt v="label" style={{ flex: 1 }}>{i + 1}-qator</Txt>
+            <Txt v="overline" style={{ flex: 1 }}>{i + 1}-qator</Txt>
             {rows.length > 1 ? (
               <IconButton icon="trash" label="Qatorni o'chirish" tone="danger" size={size.touch - space.sm} onPress={() => onChange(rows.filter((_, x) => x !== i))} />
             ) : null}
           </View>
           {cols.map((col) => (
             col.type === 'select'
-              ? <SelectField key={col.name} field={col} value={row[col.name] ?? ''} compact onChange={(v, o) => {
+              ? <SelectField key={col.name} field={col} value={row[col.name] ?? ''} compact error={cellError(i, col.name)} onChange={(v, o) => {
                   const next = { ...row, [col.name]: v };
                   // Marka tanlansa narx avtomatik to'ladi (bo'sh bo'lsa)
                   if (o?.extra) for (const [k, ev] of Object.entries(o.extra)) if (!next[k]?.trim()) next[k] = ev;
@@ -341,6 +408,7 @@ function ItemsInput({ field, rows, onChange }: { field: ErpFormField; rows: Item
                   key={col.name}
                   label={col.label}
                   required={col.required}
+                  error={cellError(i, col.name)}
                   value={row[col.name] ?? ''}
                   onChangeText={(v: string) => set(i, col.name, v)}
                   placeholder={col.placeholder}

@@ -1,8 +1,8 @@
 // Holat belgilari — butun ilova bo'ylab yagona: muvaffaqiyat "ptichka"si (Lottie) va xato/ogohlantirish
 // doirachasi. Manba: LottieFiles "success" (Biswajit Rout), Lottie Simple License — bepul, tijoriy
 // foydalanish mumkin. Ptichka kerak bo'lgan har joyda (oynalar, toast, "tayyor" ekranlari) shu fayl.
-import React, { useEffect } from 'react';
-import { StyleProp, UIManager, View, ViewStyle } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Platform, StyleProp, UIManager, View, ViewStyle } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
 import { useTheme } from './theme';
@@ -50,11 +50,17 @@ export function StatusMark({ tone, size = 96, icon }: { tone: Tone; size?: numbe
   const { bg, solid } = toneColors(c, tone);
   const mid = Math.round(size * 0.8);
   const dot = Math.round(size * 0.6);
+  // Yumshoq "nur" — doira ostida o'z rangidagi soya (tugmalardagi kabi)
+  const glow: ViewStyle = Platform.select<ViewStyle>({
+    ios: { shadowColor: solid, shadowOpacity: 0.35, shadowRadius: dot / 5, shadowOffset: { width: 0, height: dot / 10 } },
+    android: { elevation: 3, shadowColor: solid },
+    default: {},
+  })!;
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Animated.View style={[{ position: 'absolute', width: size, height: size, borderRadius: radius.pill, backgroundColor: bg }, outer]} />
       <Animated.View style={[{ position: 'absolute', width: mid, height: mid, borderRadius: radius.pill, backgroundColor: bg }, inner]} />
-      <Animated.View style={[{ width: dot, height: dot, borderRadius: radius.pill, backgroundColor: solid, alignItems: 'center', justifyContent: 'center' }, core]}>
+      <Animated.View style={[{ width: dot, height: dot, borderRadius: radius.pill, backgroundColor: solid, alignItems: 'center', justifyContent: 'center' }, glow, core]}>
         <Icon name={icon ?? ICON[tone]} size={Math.round(dot * 0.52)} color={c.textOnSolid} strokeWidth={3} />
       </Animated.View>
     </View>
@@ -69,6 +75,17 @@ export function StatusMark({ tone, size = 96, icon }: { tone: Tone; size?: numbe
  */
 export function SuccessCheck({ size = 96, style }: { size?: number; style?: StyleProp<ViewStyle> }) {
   const reduce = useReducedMotion();
+  const { c } = useTheme();
+  /**
+   * Lottie ranglari palitraga moslanadi: yashil doira va uchqunlar — `successSolid`,
+   * kulrang halqalar — `successBg` (qorong'i mavzuda ham yumshoq), oq ptichka o'zgarmaydi.
+   */
+  const colorFilters = useMemo(() => [
+    { keypath: 'Layer 1 Outlines', color: c.successSolid },
+    { keypath: 'Pre-comp 1', color: c.successSolid },
+    { keypath: 'Shape Layer 1', color: c.successBg },
+    { keypath: 'Shape Layer 2', color: c.successBg },
+  ], [c.successSolid, c.successBg]);
   if (!hasLottie) return <View style={style}><StatusMark tone="success" size={size} /></View>;
   return (
     <View style={[{ width: size, height: size }, style]} accessibilityRole="image" accessibilityLabel="Bajarildi">
@@ -77,6 +94,7 @@ export function SuccessCheck({ size = 96, style }: { size?: number; style?: Styl
         autoPlay={!reduce}
         progress={reduce ? 1 : undefined}
         loop={false}
+        colorFilters={colorFilters}
         resizeMode="contain"
         style={{ width: size, height: size }}
       />

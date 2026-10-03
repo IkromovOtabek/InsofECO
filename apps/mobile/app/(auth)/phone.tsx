@@ -7,7 +7,7 @@ import { space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { ApiException } from '@/core/api';
-import { AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PhonePrefix, PrimaryButton, Title } from '@/features/auth/ui';
+import { AuthIcon, AuthScreen, Divider, ErrorBox, FooterLink, GhostButton, PhonePrefix, PrimaryButton, Title } from '@/features/auth/ui';
 
 /** Telefon orqali kirish — raqamga 6 xonali kod yuboriladi. */
 export default function PhoneScreen() {
@@ -33,6 +33,7 @@ export default function PhoneScreen() {
 
   return (
     <AuthScreen footer={<FooterLink text="Hisobingiz yo'qmi?" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
+      <AuthIcon icon="smartphone" />
       <Title hint="Raqamingizni kiriting — tasdiqlash uchun 6 xonali kod Telegram'ga (bo'lmasa SMS) yuboramiz.">Telefon raqamingiz</Title>
 
       <Appear delay={130} style={{ marginTop: space.xxl }}>

@@ -3,7 +3,7 @@ import { BackHandler, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
 import { IconButton, Input, Label, Txt } from '@/design/primitives';
-import { Tabs } from '@/design/ui';
+import { SegmentedControl } from '@/design/blocks';
 import { size, space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
@@ -120,7 +120,7 @@ export default function Login() {
       <Title display hint={mode === 'phone' ? "Raqamingizga 6 xonali kod yuboramiz — Telegram'ga, Telegram bo'lmasa SMS." : "Har bir bo'lim o'z login va paroli bilan kiradi. Ruxsatlar rolga qarab ochiladi."}>Tizimga kirish</Title>
 
       <Appear delay={110} style={{ marginTop: space.xl }}>
-        <Tabs<Mode> value={mode} onChange={switchMode} items={[{ key: 'phone', label: 'Telefon raqam' }, { key: 'password', label: 'Login va parol' }]} />
+        <SegmentedControl<Mode> value={mode} onChange={switchMode} items={[{ key: 'phone', label: 'Telefon raqam', icon: 'smartphone' }, { key: 'password', label: 'Login va parol', icon: 'key-round' }]} />
       </Appear>
 
       {mode === 'phone' ? (

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
-import { Button, IconButton, Txt } from '@/design/primitives';
-import { Icon, IconName, Modal } from '@/design/ui';
+import { Button, IconButton, IconTile, Txt } from '@/design/primitives';
+import { IconName, Modal } from '@/design/ui';
 import { radius, size, space } from '@/design/tokens';
+import { Appear, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { useSession } from '@/core/session';
 
@@ -47,9 +48,7 @@ export function LoginPrompt() {
   return (
     <Modal open={open} onClose={close}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-        <View style={{ width: size.iconTile + space.sm, height: size.iconTile + space.sm, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="user" size={size.iconLg} color={c.brandInk} />
-        </View>
+        <IconTile icon="user" module="brand" size={size.avatarLg} />
         <View style={{ flex: 1, gap: space.xs, paddingTop: space.xs }}>
           <Txt v="titleMd">Hisobingizga kiring</Txt>
           <Txt v="bodySm" color="muted">Mahsulotlarni ko'rishni hisobsiz ham davom ettirishingiz mumkin.</Txt>
@@ -57,12 +56,12 @@ export function LoginPrompt() {
         <IconButton icon="x" label="Yopish" onPress={close} />
       </View>
 
-      <View style={{ gap: space.md, paddingVertical: space.md, paddingHorizontal: space.lg, borderRadius: radius.card, backgroundColor: c.bgSubtle }}>
-        {PERKS.map((p) => (
-          <View key={p.icon} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <Icon name={p.icon} size={size.iconMd} color={c.brandInk} />
+      <View style={{ gap: space.md, padding: space.md, borderRadius: radius.card, borderCurve: 'continuous', backgroundColor: c.bgSubtle }}>
+        {PERKS.map((p, i) => (
+          <Appear key={p.icon} delay={120 + stagger(i, 60)} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <IconTile icon={p.icon} module="brand" size={size.iconTileSm} />
             <Txt v="body" style={{ flex: 1 }}>{p.text}</Txt>
-          </View>
+          </Appear>
         ))}
       </View>
 

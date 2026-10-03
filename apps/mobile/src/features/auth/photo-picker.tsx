@@ -4,7 +4,7 @@ import { requireOptionalNativeModule } from 'expo';
 import type * as ImagePickerNS from 'expo-image-picker';
 import { Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
-import { radius, size, space } from '@/design/tokens';
+import { radius, shadow, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { TextLink } from '@/features/auth/ui';
 
@@ -44,16 +44,22 @@ export function PhotoPicker({ value, onChange, error }: { value: PickedPhoto | n
 
   return (
     <View style={{ alignItems: 'center', marginBottom: space.lg }}>
-      <Pressable
-        onPress={() => void pick(false)}
-        accessibilityRole="button"
-        accessibilityLabel={value ? 'Rasmni almashtirish' : 'Rasm yuklash'}
-        style={({ pressed }) => ({ width: PHOTO, height: PHOTO, borderRadius: radius.pill, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgMuted, borderWidth: value ? 0 : size.ring, borderStyle: 'dashed', borderColor: error ? c.danger : c.borderStrong, opacity: pressed ? 0.8 : 1 })}
-      >
-        {value
-          ? <Image source={{ uri: value.uri }} style={{ width: '100%', height: '100%' }} accessibilityIgnoresInvertColors />
-          : <Icon name="camera" size={size.iconXl} tone="muted" />}
-      </Pressable>
+      <View>
+        <Pressable
+          onPress={() => void pick(false)}
+          accessibilityRole="button"
+          accessibilityLabel={value ? 'Rasmni almashtirish' : 'Rasm yuklash'}
+          style={({ pressed }) => [{ width: PHOTO, height: PHOTO, borderRadius: radius.pill, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: value ? c.bgSurface : c.bgSubtle, borderWidth: value ? 0 : size.ring, borderStyle: 'dashed', borderColor: error ? c.danger : c.borderStrong }, pressed && { opacity: 0.8 }]}
+        >
+          {value
+            ? <Image source={{ uri: value.uri }} style={{ width: '100%', height: '100%' }} accessibilityIgnoresInvertColors />
+            : <Icon name="user" size={size.iconXl} tone="faint" />}
+        </Pressable>
+        {/* Kamera nishoni — doira burchagida brend tugmachasi (bezak, bosish butun doirada) */}
+        <View pointerEvents="none" style={[{ position: 'absolute', right: 0, bottom: 0, width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.brand, borderWidth: size.ring, borderColor: c.bgApp, alignItems: 'center', justifyContent: 'center' }, shadow.card]}>
+          <Icon name={value ? 'pencil' : 'camera'} size={size.iconSm} color={c.textOnBrand} strokeWidth={2} />
+        </View>
+      </View>
       <Txt v="caption" style={{ marginTop: space.sm }}>{value ? 'Profil rasmi' : "Profil rasmi (ixtiyoriy)"}</Txt>
       <View style={{ flexDirection: 'row', gap: space.lg }}>
         <TextLink onPress={() => void pick(false)}>{value ? 'Almashtirish' : 'Galereya'}</TextLink>

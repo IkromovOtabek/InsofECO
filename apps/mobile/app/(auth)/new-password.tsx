@@ -7,7 +7,7 @@ import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, ErrorBox, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
+import { AuthIcon, AuthScreen, ErrorBox, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
 
 /**
  * Parolni tiklash — 2-qadam: yangi parol.
@@ -54,6 +54,7 @@ export default function NewPassword() {
         </Row>
       }
     >
+      <AuthIcon icon="lock" />
       <Title hint="Parol kamida 8 belgidan iborat bo'lsin. Eski parolni qayta ishlatib bo'lmaydi.">Yangi parol</Title>
 
       <Appear delay={130} style={{ marginTop: space.xxl }}>

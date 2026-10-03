@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { StyleProp, View, ViewStyle } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Rect } from 'react-native-svg';
 import Animated, { Easing, SharedValue, cancelAnimation, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { brand, illus as K, space } from './tokens';
+import { brand, illus as K, radius, space } from './tokens';
 import { EASE_LOOP } from './motion';
 import { Txt } from './primitives';
+import { useTheme } from './theme';
 
 /**
  * Yuklanish belgisi — beton mikser (avtobeton): baraban aylanadi, g'ildiraklar aylanadi,
@@ -111,31 +112,38 @@ export function MixerTruck({ width, style }: { width: number; style?: StyleProp<
   );
 }
 
-/** Yo'l — uzuq chiziqlar orqaga oqadi (mashina oldinga ketayotgandek). */
+/** Yo'l — palitradagi yumshoq kulrang; uzuq chiziqlar orqaga oqadi (mashina oldinga ketayotgandek). */
 function Road({ width }: { width: number }) {
+  const { c } = useTheme();
   const reduce = useReducedMotion();
   const flow = useLoop(650, reduce);
   const props = useAnimatedProps(() => ({ strokeDashoffset: flow.value * 16 }));
   return (
     <Svg width={width} height={6} viewBox={`0 0 ${width} 6`}>
-      <Line x1={0} y1={1} x2={width} y2={1} stroke={K.ground.right} strokeWidth={2} />
-      <ALine animatedProps={props} x1={0} y1={4.5} x2={width} y2={4.5} stroke={K.ground.right} strokeWidth={1.5} strokeDasharray="8 8" />
+      <Line x1={2} y1={1} x2={width - 2} y2={1} stroke={c.borderStrong} strokeWidth={2} strokeLinecap="round" />
+      <ALine animatedProps={props} x1={0} y1={4.5} x2={width} y2={4.5} stroke={c.borderDefault} strokeWidth={1.5} strokeDasharray="8 8" strokeLinecap="round" />
     </Svg>
   );
 }
 
+
 /** Sahifa yoki bo'lim yuklanayotganda. `fill` — butun ekran markazida. */
 export function Loader({ label = 'Yuklanmoqda…', width = 104, fill, style }: { label?: string | null; width?: number; fill?: boolean; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
   return (
     <View
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? 'Yuklanmoqda'}
-      style={[{ alignItems: 'center', justifyContent: 'center', paddingVertical: space.xxl }, fill && { flex: 1 }, style]}
+      style={[{ alignItems: 'center', justifyContent: 'center', paddingVertical: space.xxl }, fill && { flex: 1, backgroundColor: c.bgApp }, style]}
     >
       <MixerTruck width={width} />
       <Road width={width * 1.5} />
-      {label ? <Txt v="caption" style={{ marginTop: space.md }}>{label}</Txt> : null}
+      {label ? (
+        <View style={{ marginTop: space.md, paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.pill, backgroundColor: c.bgSurface }}>
+          <Txt v="caption" color="muted">{label}</Txt>
+        </View>
+      ) : null}
     </View>
   );
 }

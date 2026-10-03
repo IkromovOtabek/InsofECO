@@ -2,11 +2,11 @@ import React from 'react';
 import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, TextInputProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Callout, IconButton, Input, Txt } from '@/design/primitives';
+import { Button, Callout, IconButton, IconTile, Input, Txt } from '@/design/primitives';
 export { Callout };
 import { Icon, IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { Tone, radius, size, space, toneColors } from '@/design/tokens';
+import { Tone, radius, shadow, size, space, toneColors } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import i18n from '@/core/i18n';
 import { config } from '@/core/config';
@@ -19,12 +19,12 @@ const LOGO_RATIO = 970 / 210;
  * tizim sozlamasiga ergashadi). Kirish, ro'yxat, SMS kod, parol tiklash va PIN shu yerdan quriladi.
  */
 
-/** "+998" prefiksi — telefon maydoni yonida, input balandligida (fokus halqasi hisobga olingan). */
+/** "+998" prefiksi — telefon maydoni yonida, input balandligida; yumshoq muted plitka, chegarasiz. */
 export function PhonePrefix() {
   const { c } = useTheme();
   return (
-    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
-      <Txt v="body" mono color="muted">+998</Txt>
+    <View style={{ height: size.input, marginTop: size.ring, paddingHorizontal: space.md + space.xs, borderRadius: radius.sm, borderCurve: 'continuous', backgroundColor: c.bgMuted, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs }}>
+      <Txt v="body" mono color="strong">+998</Txt>
     </View>
   );
 }
@@ -47,11 +47,20 @@ export function AuthScreen({ children, back = true, onBack, footer }: { children
   );
 }
 
-/** Brend logotipi (Insof JBI) — kirish ekrani tepasida. */
-export function AuthLogo({ height = 64 }: { height?: number }) {
+/** Brend logotipi (Insof JBI) — kirish ekrani tepasida (Welcome bilan bir xil o'lcham va kirish harakati). */
+export function AuthLogo({ height = space.x12 + space.lg }: { height?: number }) {
   return (
-    <Appear delay={40} style={{ marginTop: space.xxl, alignItems: 'center' }}>
+    <Appear delay={40} from={18} style={{ marginTop: space.xl, alignItems: 'center' }}>
       <Image source={LOGO} style={{ height, width: height * LOGO_RATIO }} resizeMode="contain" accessibilityLabel="Insof JBI — temir beton mahsulotlari" />
+    </Appear>
+  );
+}
+
+/** Ekran belgisi — sarlavha ustidagi katta brend plitka (OTP ekrani bilan bir xil). */
+export function AuthIcon({ icon, tone }: { icon: IconName; tone?: Tone }) {
+  return (
+    <Appear delay={40} style={{ marginTop: space.xxl }}>
+      <IconTile icon={icon} module="brand" tone={tone} size={size.iconTile + space.md} />
     </Appear>
   );
 }
@@ -94,11 +103,11 @@ export const AuthField = (p: TextInputProps & { label?: string; error?: string; 
 
 export const Hint = ({ children }: { children: string }) => <Txt v="caption" style={{ marginTop: space.xs }}>{children}</Txt>;
 
-/** Asosiy amal — amber, 52 px, o'ngda strelka. */
+/** Asosiy amal — brend pill, 52 px, o'ngda strelka. */
 export const PrimaryButton = ({ title, onPress, loading, icon = 'arrow-right', disabled }: { title: string; onPress: () => void; loading?: boolean; icon?: IconName | null; disabled?: boolean }) =>
   <Button title={title} size="lg" onPress={onPress} loading={loading} disabled={disabled} iconRight={icon ?? undefined} />;
 
-/** Ikkilamchi — chegarali. */
+/** Ikkilamchi — oq pill, yumshoq soya (chegarasiz). */
 export const GhostButton = ({ title, onPress, icon }: { title: string; onPress: () => void; icon?: IconName; iconColor?: string }) =>
   <Button title={title} variant="secondary" size="lg" onPress={onPress} icon={icon} />;
 
@@ -181,6 +190,7 @@ export function Strength({ password }: { password: string }) {
 /** Parol talablari — bajarilgani belgi bilan. */
 export function Requirements({ password }: { password: string }) {
   const { c } = useTheme();
+  const done = [password.length >= 8, /[a-z]/.test(password) && /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
   const rules = [
     { label: 'Kamida 8 ta belgi', ok: password.length >= 8 },
     { label: 'Katta va kichik harf', ok: /[a-z]/.test(password) && /[A-Z]/.test(password) },
@@ -188,8 +198,11 @@ export function Requirements({ password }: { password: string }) {
     { label: 'Maxsus belgi (# $ % !)', ok: /[^A-Za-z0-9]/.test(password) },
   ];
   return (
-    <View style={{ backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault, borderRadius: radius.card, padding: space.card, gap: space.sm }}>
-      <Txt v="overline" style={{ marginBottom: space.xs }}>Talablar</Txt>
+    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card, gap: space.sm }, shadow.card]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.xs }}>
+        <Txt v="overline" style={{ flex: 1 }}>Talablar</Txt>
+        <Txt v="caption" color={done === rules.length ? 'success' : 'faint'}>{done}/{rules.length}</Txt>
+      </View>
       {rules.map((r) => (
         <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <View style={{ width: space.xl, height: space.xl, borderRadius: radius.pill, backgroundColor: r.ok ? c.successBg : c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
@@ -235,18 +248,19 @@ export function PinKeypad({ onDigit, onDelete }: { onDigit: (d: string) => void;
   const { c } = useTheme();
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md }}>
       {keys.map((k, i) => {
-        if (!k) return <View key={i} style={{ flexGrow: 0, flexBasis: '30.5%', height: size.driverTouch }} />;
+        if (!k) return <View key={i} style={{ flexBasis: '33.33%', height: size.driverTouch }} />;
         const isDel = k === 'del';
         return (
-          <Pressable
-            key={i} onPress={() => (isDel ? onDelete() : onDigit(k))} accessibilityRole="button" accessibilityLabel={isDel ? "Oxirgi raqamni o'chirish" : k}
-            android_ripple={{ color: c.bgMuted }}
-            style={({ pressed }) => [{ flexGrow: 0, flexBasis: '30.5%', height: size.driverTouch, borderRadius: radius.card, borderWidth: isDel ? 0 : size.hairline, borderColor: c.borderDefault, backgroundColor: isDel ? 'transparent' : c.bgSurface, alignItems: 'center', justifyContent: 'center' }, pressed && { backgroundColor: c.bgMuted }]}
-          >
-            {isDel ? <Icon name="delete" size={size.iconLg} tone="muted" /> : <Txt v="metric">{k}</Txt>}
-          </Pressable>
+          <View key={i} style={{ flexBasis: '33.33%', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => (isDel ? onDelete() : onDigit(k))} accessibilityRole="button" accessibilityLabel={isDel ? "Oxirgi raqamni o'chirish" : k}
+              style={({ pressed }) => [{ width: size.driverTouch, height: size.driverTouch, borderRadius: radius.pill, backgroundColor: isDel ? 'transparent' : c.bgSurface, alignItems: 'center', justifyContent: 'center' }, isDel ? null : shadow.card, pressed && { backgroundColor: c.brandSoft, transform: [{ scale: 0.92 }] }]}
+            >
+              {isDel ? <Icon name="delete" size={size.iconLg} tone="muted" /> : <Txt v="metric">{k}</Txt>}
+            </Pressable>
+          </View>
         );
       })}
     </View>
