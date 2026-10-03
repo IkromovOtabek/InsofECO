@@ -32,6 +32,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ErpIntegrationModule } from './modules/integrations/erp/erp.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { UserGateModule } from './common/auth/user-gate';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PolicyGuard } from './common/auth/policy.guard';
 import { IdempotencyInterceptor } from './common/idempotency/idempotency.interceptor';
@@ -77,6 +78,7 @@ import { HealthController } from './health.controller';
     DashboardModule,
     ErpIntegrationModule,
     AdminModule,
+    UserGateModule,
   ],
   controllers: [HealthController],
   providers: [

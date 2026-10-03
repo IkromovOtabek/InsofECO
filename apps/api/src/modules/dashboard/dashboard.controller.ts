@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
 import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
+import { startOfTashkentDay } from '../../common/time';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { FinanceService } from '../finance/finance.service';
 
@@ -56,7 +57,7 @@ export class DashboardController {
 
   @Roles('QURUVCHI') @Get('quruvchi')
   async quruvchi(@CurrentUser() a: AuthContext) {
-    const day = new Date(); day.setHours(0, 0, 0, 0);
+    const day = startOfTashkentDay();
     const [todayTasks, activeOrders, done, earnings, profile, openOrders] = await Promise.all([
       this.prisma.task.findMany({ where: { assigneeUserId: a.userId, status: { not: 'DONE' }, OR: [{ dueDate: { lte: new Date(day.getTime() + 86_400_000) } }, { dueDate: null }] }, include: { project: { select: { name: true } } }, orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }], take: 10 }),
       this.prisma.workOrder.findMany({ where: { workerUserId: a.userId, status: { in: ['WORKER_ASSIGNED', 'IN_PROGRESS', 'REVIEW'] } }, include: { project: { select: { name: true } } } }),
@@ -70,7 +71,7 @@ export class DashboardController {
 
   @Roles('HAYDOVCHI') @Get('haydovchi')
   async haydovchi(@CurrentUser() a: AuthContext) {
-    const day = new Date(); day.setHours(0, 0, 0, 0);
+    const day = startOfTashkentDay();
     const [todayAll, active, vehicle, earnings, open] = await Promise.all([
       this.prisma.shipment.findMany({ where: { driverUserId: a.userId, OR: [{ createdAt: { gte: day } }, { status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE'] } }] }, select: { id: true, status: true } }),
       this.prisma.shipment.findFirst({ where: { driverUserId: a.userId, status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE'] } }, include: { project: { select: { name: true, address: true } }, warehouse: { select: { name: true } } } }),

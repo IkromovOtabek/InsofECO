@@ -185,7 +185,14 @@ export class AuthService {
     });
   }
 
-  /** Refresh rotatsiya + reuse detection (ADR-0004). Token format: `${sessionId}.${secret}` */
+  /**
+   * Refresh rotatsiya + reuse detection (ADR-0004). Token format: `${sessionId}.${secret}`
+   *
+   * Poyga (race) bilan bloklash/seanslarni yopish: rotatsiya `User` qatorini `FOR UPDATE` bilan
+   * qulflaydigan tranzaksiyada bajariladi. Superadmin amali ham avval `User` qatorini yangilaydi,
+   * shuning uchun ikkalasi navbat bilan ishlaydi: yo refresh oldin tugaydi va yangi sessiya
+   * keyingi `session.updateMany` bilan bekor bo'ladi, yo refresh yangilangan holatni ko'rib rad etiladi.
+   */
   async refresh(refreshToken: string) {
     const [sessionId, secret] = refreshToken.split('.');
     if (!sessionId || !secret) throw new DomainError('AUTH_TOKEN_INVALID', 'Refresh yaroqsiz');
@@ -204,8 +211,24 @@ export class AuthService {
     if (session.expiresAt < new Date()) throw new DomainError('AUTH_TOKEN_INVALID', 'Sessiya muddati tugagan');
     if (!(await argon2.verify(session.refreshTokenHash, secret))) throw new DomainError('AUTH_TOKEN_INVALID', 'Refresh yaroqsiz');
 
-    await this.prisma.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
-    return this.issueSession(session.userId, session.deviceId, session.familyId);
+    // Xesh tranzaksiyadan oldin (argon2 sekin — qulfni ushlab turmaslik uchun)
+    const nextSecret = randomBytes(32).toString('base64url');
+    const nextHash = await argon2.hash(nextSecret);
+    const next = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${session.userId} FOR UPDATE`;
+      const u = await tx.user.findUniqueOrThrow({ where: { id: session.userId }, select: { blockedAt: true, deletedAt: true, tokensValidAfter: true } });
+      if (u.blockedAt || u.deletedAt) throw new DomainError('AUTH_TOKEN_INVALID', 'Hisob faol emas');
+      // "Barcha seanslarni yopish"dan oldin ochilgan sessiya — revokedAt yozilmagan bo'lsa ham yaroqsiz
+      if (u.tokensValidAfter && session.createdAt < u.tokensValidAfter) throw new DomainError('AUTH_TOKEN_INVALID', 'Seans yopilgan');
+      // Shartli rotatsiya: shu orada bekor qilingan bo'lsa (count = 0) — yangi sessiya berilmaydi
+      const rotated = await tx.session.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: new Date() } });
+      if (rotated.count !== 1) throw new DomainError('AUTH_TOKEN_INVALID', 'Sessiya yopilgan');
+      return tx.session.create({
+        data: { userId: session.userId, deviceId: session.deviceId, familyId: session.familyId, refreshTokenHash: nextHash, expiresAt: new Date(Date.now() + REFRESH_DAYS * 86_400_000) },
+      });
+    });
+    const accessToken = await this.jwt.signAsync({ sub: session.userId, sid: next.id });
+    return { accessToken, refreshToken: `${next.id}.${nextSecret}` };
   }
 
   async logout(sessionId: string) {

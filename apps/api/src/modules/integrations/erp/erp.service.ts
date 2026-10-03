@@ -6,6 +6,7 @@ import { ACTIVE_DELIVERY_STATUSES, DeliveryStatus, OrderStatus } from '@insof/sh
 import { InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { DomainError } from '../../../common/errors/domain.error';
+import { startOfTashkentMonth, tashkentDayRange } from '../../../common/time';
 import { AuthContext } from '../../../common/auth/decorators';
 import { VISIBLE_MEMBER, VISIBLE_USER } from '../../../common/auth/superadmin';
 import { DeliveriesService } from '../../deliveries/deliveries.service';
@@ -154,8 +155,7 @@ export class ErpService {
 
   /** Bugungi va faol reyslar (ERP monitoring sahifasi uchun). */
   listTrips(a: AuthContext, date: Date) {
-    const start = new Date(date); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const { start, end } = tashkentDayRange(date);
     return this.prisma.delivery.findMany({
       where: { order: { plantOrgId: a.orgId! }, externalRef: { not: null }, OR: [{ plannedAt: { gte: start, lt: end } }, { status: { in: ACTIVE_DELIVERY_STATUSES as DeliveryStatus[] } }] },
       include: this.include,
@@ -645,7 +645,7 @@ export class ErpService {
    */
   async mileage(a: AuthContext, fromISO?: string, toISO?: string) {
     const to = toISO ? new Date(toISO) : new Date();
-    const from = fromISO ? new Date(fromISO) : new Date(to.getFullYear(), to.getMonth(), 1);
+    const from = fromISO ? new Date(fromISO) : startOfTashkentMonth(to);
     const rows = await this.tracking.mileageByDriver(a.orgId!, from, to);
     return {
       from: from.toISOString(),

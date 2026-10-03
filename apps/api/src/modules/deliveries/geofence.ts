@@ -20,8 +20,13 @@ export function haversineMeters(a: LatLng, b: LatLng) {
   const R = 6371e3, toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  // Yaxlitlash xatosi h ni 1 dan biroz oshirsa asin → NaN bo'lardi
+  return 2 * R * Math.asin(Math.sqrt(Math.min(1, Math.max(0, h))));
 }
+
+/** Haqiqiy GPS nuqtasimi (diapazon tekshiruvi). Diapazondan tashqari qiymat formulada NaN beradi. */
+const validPoint = (p: LatLng) =>
+  Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180 && !(p.lat === 0 && p.lng === 0);
 
 /** Obyekt nuqtasi haqiqiymi: null yoki (0, 0) — zayavkada belgilanmagan. */
 export function knownPoint(lat: number | null | undefined, lng: number | null | undefined): LatLng | null {
@@ -43,8 +48,12 @@ export function assertAtSite(location: LatLng | undefined | null, dest: LatLng |
   if (!location) {
     throw new DomainError('DELIVERY_INVALID_TRANSITION', `«${action}» uchun joylashuv kerak — GPS yoqib, qayta urinib ko'ring`, { reason: 'LOCATION_REQUIRED', radiusM: SITE_RADIUS_M });
   }
+  // Diapazondan tashqari koordinata (lat=1000) ilgari NaN masofa berardi va `NaN > 300` = false — tekshiruv chetlab o'tilardi
+  if (!validPoint(location)) {
+    throw new DomainError('DELIVERY_INVALID_TRANSITION', `«${action}» uchun joylashuv noto'g'ri — GPS yoqib, qayta urinib ko'ring`, { reason: 'LOCATION_INVALID', radiusM: SITE_RADIUS_M });
+  }
   const distanceM = Math.round(haversineMeters(location, dest));
-  if (distanceM > SITE_RADIUS_M) {
+  if (!(distanceM <= SITE_RADIUS_M)) {
     throw new DomainError(
       'DELIVERY_INVALID_TRANSITION',
       `Obyektgacha ${label(distanceM)} — «${action}» faqat obyektdan ${SITE_RADIUS_M} m ichida belgilanadi`,

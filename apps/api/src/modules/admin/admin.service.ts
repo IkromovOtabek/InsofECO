@@ -3,19 +3,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DeliveryStatus, Prisma } from '@prisma/client';
 import { ACTIVE_DELIVERY_STATUSES } from '@insof/shared';
 import { DomainError } from '../../common/errors/domain.error';
-import { invalidateUserGate } from '../../common/auth/jwt-auth.guard';
+import { startOfTashkentDay } from '../../common/time';
+import { UserRevocationService } from '../../common/auth/user-gate';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { PushService } from '../../infra/push/push.service';
 import { MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
 import { BlockInput, BroadcastInput, ConfigSetInput, MembershipSetInput, OrgListQuery, UserListQuery } from './admin.schemas';
-
-/** Toshkent vaqti bo'yicha bugun 00:00 (UTC+5, yozgi vaqt yo'q). */
-function startOfTodayTashkent(): Date {
-  const off = 5 * 3600_000;
-  const local = new Date(Date.now() + off);
-  local.setUTCHours(0, 0, 0, 0);
-  return new Date(local.getTime() - off);
-}
 
 const digits = (q: string) => q.replace(/\D/g, '');
 
@@ -34,12 +27,13 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly push: PushService,
     private readonly events: EventEmitter2,
+    private readonly revocation: UserRevocationService,
   ) {}
 
   // ───────────────────────── Umumiy ko'rinish ─────────────────────────
 
   async overview() {
-    const today = startOfTodayTashkent();
+    const today = startOfTashkentDay();
     const active = ACTIVE_DELIVERY_STATUSES as unknown as DeliveryStatus[];
     const [users, usersToday, blockedUsers, orgs, blockedOrgs, ordersToday, ordersByStatus, deliveriesToday, deliveriesByStatus, activeDeliveries, slaToday, devices24h] = await Promise.all([
       this.prisma.user.count({ where: { deletedAt: null, isSuperAdmin: false } }),
@@ -99,7 +93,7 @@ export class AdminService {
       },
     });
     if (!o) throw DomainError.notFound('Tashkilot');
-    const today = startOfTodayTashkent();
+    const today = startOfTashkentDay();
     const ordersToday = await this.prisma.order.count({ where: { createdAt: { gte: today }, OR: [{ plantOrgId: id }, { clientOrgId: id }] } });
     return {
       id: o.id, name: o.name, type: o.type, inn: o.inn, address: o.address, externalRef: o.externalRef,
@@ -190,14 +184,14 @@ export class AdminService {
       this.prisma.user.update({ where: { id }, data: { blockedAt: now, blockedReason: input.reason, tokensValidAfter: now } }),
       this.prisma.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now } }),
     ]);
-    invalidateUserGate(id);
+    await this.revocation.revoke(id);
     return { ok: true };
   }
 
   async unblockUser(actorId: string, id: string) {
     await this.target(actorId, id);
     await this.prisma.user.update({ where: { id }, data: { blockedAt: null, blockedReason: null } });
-    invalidateUserGate(id);
+    await this.revocation.revoke(id);
     return { ok: true };
   }
 
@@ -205,11 +199,12 @@ export class AdminService {
   async revokeSessions(actorId: string, id: string) {
     await this.target(actorId, id);
     const now = new Date();
-    const [r] = await this.prisma.$transaction([
-      this.prisma.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now } }),
+    // Avval User qatori (refresh shu qatorni FOR UPDATE bilan qulflaydi — poyga yopiladi), keyin sessiyalar
+    const [, r] = await this.prisma.$transaction([
       this.prisma.user.update({ where: { id }, data: { tokensValidAfter: now } }),
+      this.prisma.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now } }),
     ]);
-    invalidateUserGate(id);
+    await this.revocation.revoke(id);
     return { ok: true, revoked: r.count };
   }
 
@@ -233,7 +228,9 @@ export class AdminService {
   }
 
   async patchMembership(actorId: string, userId: string, membershipId: string, isActive: boolean) {
-    await this.target(actorId, userId);
+    const u = await this.target(actorId, userId);
+    // setMembership bilan bir xil qoida: superadminning a'zoligini faollashtirib bo'lmaydi (o'chirish mumkin)
+    if (u.isSuperAdmin && isActive) throw DomainError.forbidden('Superadminga tashkilot roli berilmaydi');
     const m = await this.prisma.membership.findFirst({ where: { id: membershipId, userId } });
     if (!m) throw DomainError.notFound('A\'zolik');
     if (m.isActive === isActive) return m;
@@ -255,25 +252,37 @@ export class AdminService {
         ? { memberships: { some: { isActive: true, ...(input.role ? { role: input.role } : {}), ...(input.organizationId ? { organizationId: input.organizationId } : {}) } } }
         : {}),
     };
-    const users = await this.prisma.user.findMany({ where, select: { id: true }, take: 50_000 });
-    const ids = users.map((u) => u.id);
-    const devices = ids.length ? await this.prisma.device.count({ where: { userId: { in: ids }, expoPushToken: { not: null } } }) : 0;
-    if (input.dryRun || ids.length === 0) return { recipients: ids.length, devices, sent: false };
+    // Sanoq — relation filtr bilan (50k id'ni IN ga qo'yish Postgres'ning 32767 parametr chegarasidan oshardi)
+    const [recipients, devices] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.device.count({ where: { expoPushToken: { not: null }, user: where } }),
+    ]);
+    if (input.dryRun || recipients === 0) return { recipients, devices, sent: false };
 
     const data = { kind: 'broadcast' } as Prisma.InputJsonObject;
-    for (let i = 0; i < ids.length; i += 1000) {
-      await this.prisma.notification.createMany({ data: ids.slice(i, i + 1000).map((userId) => ({ userId, type: 'ADMIN_BROADCAST', title: input.title, body: input.body, data })) });
-    }
-    // Push fon rejimida, 100 tadan (Expo cheklovi) — javob kutib qolmaydi
-    void (async () => {
-      for (let i = 0; i < ids.length; i += 500) {
-        const tokens = await this.prisma.device.findMany({ where: { userId: { in: ids.slice(i, i + 500) }, expoPushToken: { not: null } }, select: { expoPushToken: true } });
-        const to = tokens.map((t) => t.expoPushToken!);
-        for (let j = 0; j < to.length; j += 100) await this.push.send({ to: to.slice(j, j + 100), title: input.title, body: input.body, data: { kind: 'broadcast' }, channel: 'oddiy' });
+    // Kursor bilan 1000 tadan: xotira cheklangan, hech kim "take" chegarasidan tushib qolmaydi
+    const pages = async (fn: (ids: string[]) => Promise<void>) => {
+      let cursor: string | undefined;
+      for (;;) {
+        const page = await this.prisma.user.findMany({ where, select: { id: true }, orderBy: { id: 'asc' }, take: 1000, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}) });
+        if (!page.length) return;
+        await fn(page.map((u) => u.id));
+        cursor = page[page.length - 1]!.id;
       }
-    })().catch((e: unknown) => this.logger.error(`broadcast push: ${String(e)}`));
-    this.logger.log(`broadcast by ${actorId}: ${ids.length} foydalanuvchi`);
-    return { recipients: ids.length, devices, sent: true };
+    };
+    let sent = 0;
+    await pages(async (ids) => {
+      const r = await this.prisma.notification.createMany({ data: ids.map((userId) => ({ userId, type: 'ADMIN_BROADCAST', title: input.title, body: input.body, data })) });
+      sent += r.count;
+    });
+    // Push fon rejimida, 100 tadan (Expo cheklovi) — javob kutib qolmaydi
+    void pages(async (ids) => {
+      const tokens = await this.prisma.device.findMany({ where: { userId: { in: ids }, expoPushToken: { not: null } }, select: { expoPushToken: true } });
+      const to = tokens.map((t) => t.expoPushToken!);
+      for (let j = 0; j < to.length; j += 100) await this.push.send({ to: to.slice(j, j + 100), title: input.title, body: input.body, data: { kind: 'broadcast' }, channel: 'oddiy' });
+    }).catch((e: unknown) => this.logger.error(`broadcast push: ${String(e)}`));
+    this.logger.log(`broadcast by ${actorId}: ${sent} foydalanuvchi`);
+    return { recipients: sent, devices, sent: true };
   }
 
   // ───────────────────────── Sozlamalar (feature flag) ─────────────────────────

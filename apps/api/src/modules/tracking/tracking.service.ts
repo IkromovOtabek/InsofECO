@@ -29,6 +29,7 @@ export class TrackingService {
    * Saqlaydi (Postgres), oxirgi nuqtani Redis'ga (tez o'qish), geofence tekshiradi.
    */
   async ingest(userId: string, batch: GpsBatch): Promise<LivePosition | null> {
+    if (!userId) return null;
     const d = await this.prisma.delivery.findFirst({
       where: { id: batch.deliveryId, driver: { userId }, status: { in: ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'] } },
       include: { order: { select: { lat: true, lng: true, plantOrgId: true, clientOrgId: true } } },
@@ -132,8 +133,10 @@ export class TrackingService {
 
   /** Foydalanuvchi shu reysni kuzatishga haqlimi (zavod, mijoz yoki haydovchi). */
   async canWatch(userId: string, deliveryId: string) {
+    // Prisma'da `userId: undefined` = filtr yo'q → har qanday reys mos kelardi. Bo'sh id — rad.
+    if (!userId || !deliveryId) return false;
     const d = await this.prisma.delivery.findFirst({
-      where: { id: deliveryId, OR: [{ driver: { userId } }, { order: { plant: { memberships: { some: { userId, isActive: true } } } } }, { order: { client: { memberships: { some: { userId, isActive: true } } } } }] },
+      where: { id: deliveryId, OR: [{ driver: { userId } }, { order: { plant: { blockedAt: null, memberships: { some: { userId, isActive: true } } } } }, { order: { client: { blockedAt: null, memberships: { some: { userId, isActive: true } } } } }] },
       select: { id: true },
     });
     return !!d;

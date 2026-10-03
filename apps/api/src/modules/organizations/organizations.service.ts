@@ -106,7 +106,7 @@ export class OrganizationsService {
 
   /** Zavodlar ro'yxati — Quruvchi buyurtma berishda tanlaydi. */
   plants() {
-    return this.prisma.organization.findMany({ where: { type: 'PLANT', deletedAt: null }, select: { id: true, name: true, address: true } });
+    return this.prisma.organization.findMany({ where: { type: 'PLANT', deletedAt: null, blockedAt: null }, select: { id: true, name: true, address: true } });
   }
 
   vehicles(orgId: string) {

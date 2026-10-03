@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { ConfirmOrderSchema } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
+import { tashkentDayRange } from '../../common/time';
 import { AuthContext } from '../../common/auth/decorators';
 import { ORDER_EVENTS, OrderStatusChangedEvent } from './orders.events';
 
@@ -40,7 +41,7 @@ export class OrdersService {
     const where: Prisma.OrderWhereInput = {
       ...(org.type === 'PLANT' ? { plantOrgId: a.orgId! } : { clientOrgId: a.orgId! }),
       ...(statusFilter ? { status: statusFilter } : {}),
-      ...(q.date ? { scheduledAt: { gte: startOfDay(q.date), lt: endOfDay(q.date) } } : {}),
+      ...(q.date ? { scheduledAt: (({ start, end }) => ({ gte: start, lt: end }))(tashkentDayRange(q.date)) } : {}),
       ...(q.since ? { updatedAt: { gt: q.since } } : {}),
     };
     const rows = await this.prisma.order.findMany({
@@ -219,5 +220,3 @@ export class OrdersService {
   }
 }
 
-function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-function endOfDay(d: Date) { const x = startOfDay(d); x.setDate(x.getDate() + 1); return x; }

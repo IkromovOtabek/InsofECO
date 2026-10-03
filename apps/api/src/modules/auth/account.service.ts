@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { AuthContext } from '../../common/auth/decorators';
 import { DomainError } from '../../common/errors/domain.error';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { UserRevocationService } from '../../common/auth/user-gate';
 import { removeAvatar } from '../users/avatar';
 import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
 
@@ -26,6 +27,7 @@ export class AccountService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly revocation: UserRevocationService,
   ) {}
 
   /** Ilovadan: "Hisobni o'chirish" tugmasi. */
@@ -110,6 +112,8 @@ export class AccountService {
         data: { phone: `deleted:${userId}:${randomBytes(3).toString('hex')}`, fullName: null, passwordHash: null, avatarKey: null, deletedAt: now, deleteRequestedAt: null },
       });
     });
+    // Access token (≤15 daq) va /tracking socketlari ham darhol to'xtaydi
+    await this.revocation.revoke(userId);
     // Yuz surati — shaxsiy ma'lumot, anonimlashtirishda diskdan ham o'chadi
     await removeAvatar(u0avatar);
     for (const m of removed) {

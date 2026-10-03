@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { ACTIVE_DELIVERY_STATUSES, DeliveryStatus, splitVolumeIntoTrips } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
+import { tashkentDayRange } from '../../common/time';
 import { AuthContext } from '../../common/auth/decorators';
 import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 import { OrdersService } from '../orders/orders.service';
@@ -68,8 +69,7 @@ export class DispatchService {
 
   /** Dispetcher ekrani: bugungi reyslar + bo'sh haydovchilar + mashinalar. */
   async board(a: AuthContext, date: Date) {
-    const start = new Date(date); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const { start, end } = tashkentDayRange(date);
     const [deliveries, drivers, vehicles] = await Promise.all([
       this.prisma.delivery.findMany({
         where: { order: { plantOrgId: a.orgId! }, plannedAt: { gte: start, lt: end } },

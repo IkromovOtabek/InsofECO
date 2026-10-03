@@ -4,9 +4,10 @@ import { z } from 'zod';
 import { ExpenseCreateSchema, IncomeCreateSchema } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AuthContext } from '../../common/auth/decorators';
+import { startOfTashkentDay, startOfTashkentMonth, startOfTashkentWeek, tashkentParts } from '../../common/time';
 
 const D = Prisma.Decimal;
-const monthStart = (d: Date, shift = 0) => new Date(d.getFullYear(), d.getMonth() + shift, 1);
+const monthStart = startOfTashkentMonth;
 
 @Injectable()
 export class FinanceService {
@@ -23,16 +24,17 @@ export class FinanceService {
       this.prisma.income.aggregate({ where: { organizationId: orgId, isExpected: true }, _sum: { amount: true } }),
       this.prisma.income.findMany({ where: { organizationId: orgId, isExpected: false, date: { gte: from6 } }, select: { amount: true, date: true } }),
       this.prisma.expense.findMany({ where: { organizationId: orgId, date: { gte: from6 } }, select: { amount: true, date: true } }),
-      this.prisma.expense.aggregate({ where: { organizationId: orgId, date: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } }, _sum: { amount: true } }),
+      this.prisma.expense.aggregate({ where: { organizationId: orgId, date: { gte: startOfTashkentDay(now) } }, _sum: { amount: true } }),
     ]);
     const income = incBySrc.reduce((s, i) => s.plus(i._sum.amount ?? 0), new D(0));
     const expense = expByCat.reduce((s, e) => s.plus(e._sum.amount ?? 0), new D(0));
     const months = Array.from({ length: 6 }, (_, i) => {
       const m = monthStart(now, i - 5);
-      const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+      const mp = tashkentParts(m);
+      const key = `${mp.year}-${String(mp.month + 1).padStart(2, '0')}`;
       const inM = incomes.filter((x) => x.date >= m && x.date < monthStart(m, 1)).reduce((s, x) => s.plus(x.amount), new D(0));
       const exM = expenses.filter((x) => x.date >= m && x.date < monthStart(m, 1)).reduce((s, x) => s.plus(x.amount), new D(0));
-      return { month: key, label: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'][m.getMonth()], income: inM, expense: exM };
+      return { month: key, label: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'][mp.month], income: inM, expense: exM };
     });
     return {
       income, expense, profit: income.minus(expense), expectedIncome: expected._sum.amount ?? new D(0), todayExpense: todayExp._sum.amount ?? new D(0),
@@ -61,8 +63,8 @@ export class FinanceService {
   /** Quruvchi / Haydovchi: bugun, hafta, oy; to'langan/kutilayotgan; ro'yxat. */
   async myEarnings(a: AuthContext) {
     const now = new Date();
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const week = new Date(day); week.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+    const day = startOfTashkentDay(now);
+    const week = startOfTashkentWeek(now);
     const month = monthStart(now);
     const all = await this.prisma.payout.findMany({ where: { userId: a.userId, organizationId: a.orgId! }, orderBy: { earnedAt: 'desc' }, include: { workOrder: { select: { number: true, title: true } }, shipment: { select: { number: true, cargo: true } } } });
     const sum = (f: (p: (typeof all)[number]) => boolean) => all.filter(f).reduce((s, p) => s.plus(p.amount), new D(0));

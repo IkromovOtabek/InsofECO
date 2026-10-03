@@ -63,7 +63,8 @@ export class ErpWebhookListener {
   async onMembership(e: MembershipChangedEvent) {
     if (e.role === 'QURUVCHI') return this.onCustomerRegistered(e);
     if (e.role !== 'HAYDOVCHI') return;
-    const user = await this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true } });
+    // Superadmin ERP xodimlar ro'yxatiga ham tushmaydi
+    const user = await this.prisma.user.findFirst({ where: { id: e.userId, isSuperAdmin: false }, select: { id: true, fullName: true, phone: true } });
     if (!user) return;
     await this.broadcast(e.organizationId, e.byUserId, {
       event: 'driver.changed',
@@ -85,7 +86,7 @@ export class ErpWebhookListener {
     if (e.reason !== 'registered') return;
     const [org, user] = await Promise.all([
       this.prisma.organization.findUnique({ where: { id: e.organizationId }, select: { id: true, name: true, externalRef: true } }),
-      this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true } }),
+      this.prisma.user.findFirst({ where: { id: e.userId, isSuperAdmin: false }, select: { id: true, fullName: true, phone: true } }),
     ]);
     if (!org?.externalRef || !user) return;
     const [limits, orders] = await Promise.all([
@@ -110,7 +111,7 @@ export class ErpWebhookListener {
   /** Haydovchi ilovada ismini o'zgartirdi → ERP xodim kartasi. */
   @OnEvent(ORG_EVENTS.userUpdated, { async: true })
   async onUser(e: UserUpdatedEvent) {
-    const user = await this.prisma.user.findUnique({ where: { id: e.userId }, select: { id: true, fullName: true, phone: true, memberships: { where: { role: 'HAYDOVCHI' } } } });
+    const user = await this.prisma.user.findFirst({ where: { id: e.userId, isSuperAdmin: false }, select: { id: true, fullName: true, phone: true, memberships: { where: { role: 'HAYDOVCHI' } } } });
     if (!user) return;
     for (const m of user.memberships) {
       await this.broadcast(m.organizationId, e.byUserId, { event: 'driver.changed', reason: 'profile', userId: user.id, membershipId: m.id, fullName: user.fullName, phone: user.phone, isActive: m.isActive });

@@ -18,22 +18,13 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { SmsPort } from '../../infra/sms/sms.port';
 import { DomainError } from '../../common/errors/domain.error';
+import { tashkentDayRange } from '../../common/time';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 import { AuthContext } from '../../common/auth/decorators';
 import { OrdersService } from '../orders/orders.service';
 import { DELIVERY_EVENTS, DeliveryStatusChangedEvent } from './deliveries.events';
 import { assertAtSite, knownPoint } from './geofence';
 
-/**
- * Kun chegarasi — O'zbekiston vaqti (UTC+5, yozgi vaqt yo'q).
- * Server UTC da ishlaydi: `setHours(0)` UTC yarim tuni = Toshkentda 05:00, ya'ni 00:00-05:00
- * oralig'idagi reyslar oldingi kunga tushib qolardi.
- */
-const TZ_OFFSET_MIN = 5 * 60;
-function localDayRange(date: Date) {
-  const shifted = new Date(date.getTime() + TZ_OFFSET_MIN * 60_000);
-  const start = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - TZ_OFFSET_MIN * 60_000);
-  return { start, end: new Date(start.getTime() + 86_400_000) };
-}
 
 const SLA_QUEUE = 'sla';
 type SignInput = z.infer<typeof SignDeliverySchema>;
@@ -59,7 +50,7 @@ export class DeliveriesService {
 
   /** Haydovchi: o'z reyslari (kun bo'yicha). */
   async mine(a: AuthContext, date: Date) {
-    const { start, end } = localDayRange(Number.isNaN(date.getTime()) ? new Date() : date);
+    const { start, end } = tashkentDayRange(date);
     return this.prisma.delivery.findMany({
       where: { driver: { userId: a.userId }, OR: [{ plannedAt: { gte: start, lt: end } }, { status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'] } }] },
       include: this.include,
@@ -161,7 +152,7 @@ export class DeliveriesService {
   async requestAcceptOtp(a: AuthContext, id: string) {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida');
-    const client = await this.prisma.membership.findFirst({ where: { organizationId: d.order.clientOrgId, isActive: true }, include: { user: true }, orderBy: { createdAt: 'asc' } });
+    const client = await this.prisma.membership.findFirst({ where: { organizationId: d.order.clientOrgId, isActive: true, ...VISIBLE_MEMBER }, include: { user: true }, orderBy: { createdAt: 'asc' } });
     if (!client) throw DomainError.notFound('Mijoz');
     const code = (process.env.SMS_PROVIDER ?? 'FAKE') === 'FAKE' ? '0000' : String(randomInt(0, 10_000)).padStart(4, '0');
     await this.prisma.delivery.update({ where: { id }, data: { acceptOtpHash: await argon2.hash(code) } });
