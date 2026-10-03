@@ -36,6 +36,12 @@ export default function Menu() {
 
         <Appear delay={stagger(1)}>
           <Gap h={space.section} />
+          <SectionHead title="Biznes" />
+          <ListGroup>
+            <ListItem icon="hard-hat" module="production" title="Loyihalar" subtitle="Bajarilish, byudjet, muddat" onPress={() => router.push('/(tadbirkor)/projects')} />
+            <ListItem icon="chart-column" module="brand" title="Moliya" subtitle="Daromad, xarajat, foyda" onPress={() => router.push('/(tadbirkor)/finance')} />
+          </ListGroup>
+          <Gap h={space.section} />
           <SectionHead title="Jamoa va resurslar" />
           <ListGroup>
             <ListItem icon="users" module="production" title="Quruvchilar" subtitle="Profil, reyting, ish tarixi" onPress={() => router.push('/(tadbirkor)/workers')} />

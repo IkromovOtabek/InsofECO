@@ -2,29 +2,30 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design/theme';
-import { tabsOptions } from '@/design/nav';
+import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { HeaderBack, tabIcon } from '@/design/ui';
 
 /**
- * Tadbirkor — 5 tab (roles/TADBIRKOR.json): Bosh · Loyihalar · Buyurtma · Moliya · Menyu.
- * Yashirin ekranlar: Quruvchilar, Haydovchilar, Materiallar, Transport, Xabarlar, Bildirishnomalar, Profil, Xodimlar.
+ * Tadbirkor — demo 01 tab paneli: Asosiy · Buyurtma · Xabarlar · Profil (Profil — hisob va menyu hubi).
+ * Loyihalar va Moliya — bosh sahifadan (Loyihalar "Barchasi", Daromad/Xarajat KPI) va menyudan ochiladi.
+ * Yashirin ekranlar: Quruvchilar, Haydovchilar, Materiallar, Transport, Bildirishnomalar, Profil, Xodimlar.
  */
 export default function TadbirkorLayout() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const hidden = { href: null } as const;
   return (
-    <Tabs screenOptions={tabsOptions(c, insets.bottom)}>
-      <Tabs.Screen name="index" options={{ title: 'Bosh', headerShown: false, tabBarIcon: tabIcon('house') }} />
-      <Tabs.Screen name="projects" options={{ title: 'Loyihalar', tabBarIcon: tabIcon('hard-hat') }} />
-      <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('clipboard-list') }} />
-      <Tabs.Screen name="finance" options={{ title: 'Moliya', tabBarIcon: tabIcon('chart-column') }} />
-      <Tabs.Screen name="menu" options={{ title: 'Menyu', tabBarIcon: tabIcon('menu') }} />
+    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom)}>
+      <Tabs.Screen name="index" options={{ title: 'Asosiy', headerShown: false, tabBarIcon: tabIcon('house') }} />
+      <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('list') }} />
+      <Tabs.Screen name="messages" options={{ title: 'Xabarlar', tabBarIcon: tabIcon('message-circle') }} />
+      <Tabs.Screen name="menu" options={{ title: 'Profil', tabBarIcon: tabIcon('user') }} />
+      <Tabs.Screen name="projects" options={{ ...hidden, title: 'Loyihalar', headerLeft: HeaderBack }} />
+      <Tabs.Screen name="finance" options={{ ...hidden, title: 'Moliya', headerLeft: HeaderBack }} />
       <Tabs.Screen name="workers" options={{ ...hidden, title: 'Quruvchilar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="drivers" options={{ ...hidden, title: 'Haydovchilar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="materials" options={{ ...hidden, title: 'Materiallar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="transport" options={{ ...hidden, title: 'Transport', headerLeft: HeaderBack }} />
-      <Tabs.Screen name="messages" options={{ ...hidden, title: 'Xabarlar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="notifications" options={{ ...hidden, title: 'Bildirishnomalar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="profile" options={{ ...hidden, title: 'Profil', headerLeft: HeaderBack }} />
       <Tabs.Screen name="members" options={{ ...hidden, title: 'Xodimlar', headerLeft: HeaderBack }} />

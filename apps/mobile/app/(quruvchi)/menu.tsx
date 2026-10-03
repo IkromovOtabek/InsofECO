@@ -32,6 +32,7 @@ export default function QuruvchiMenu() {
         <SectionHead title="Ish va daromad" />
         <ListGroup>
           <ListItem icon="banknote" tone="success" title="Daromad" subtitle={e ? `Bu oy ${fmtShort(e.month)} so'm · kutilmoqda ${fmtShort(e.monthPending)}` : "To'langan va kutilayotgan"} onPress={() => router.push('/(quruvchi)/earnings')} />
+          <ListItem icon="square-check" module="production" title="Vazifalar" subtitle="Bugungi va keyingi vazifalar" onPress={() => router.push('/(quruvchi)/tasks')} />
           <ListItem icon="briefcase" module="production" title="Ishlarim" subtitle="Tarix va reyting" onPress={() => router.push('/(quruvchi)/my-jobs')} />
           <ListItem icon="store" module="brand" title="Do'kon" subtitle="Zavod mahsulotlari va narxlar" onPress={() => router.push('/(shop)')} />
         </ListGroup>

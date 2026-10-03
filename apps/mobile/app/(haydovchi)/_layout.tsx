@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design/theme';
-import { tabsOptions } from '@/design/nav';
+import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { HeaderBack, tabIcon } from '@/design/ui';
 
 /**
@@ -14,7 +14,7 @@ export default function HaydovchiLayout() {
   const insets = useSafeAreaInsets();
   const hidden = { href: null } as const;
   return (
-    <Tabs screenOptions={tabsOptions(c, insets.bottom, { driver: true })}>
+    <Tabs tabBar={floatingTabBar({ driver: true })} screenOptions={tabsOptions(c, insets.bottom, { driver: true })}>
       <Tabs.Screen name="index" options={{ title: 'Bugun', headerShown: false, tabBarIcon: tabIcon('house', { driver: true }) }} />
       <Tabs.Screen name="deliveries" options={{ title: 'Yuklar', tabBarIcon: tabIcon('package', { driver: true }) }} />
       <Tabs.Screen name="earnings" options={{ title: 'Daromad', tabBarIcon: tabIcon('wallet', { driver: true }) }} />
@@ -23,6 +23,7 @@ export default function HaydovchiLayout() {
       <Tabs.Screen name="history" options={{ ...hidden, title: 'Tarix', headerLeft: HeaderBack }} />
       <Tabs.Screen name="messages" options={{ ...hidden, title: 'Xabarlar', headerLeft: HeaderBack }} />
       <Tabs.Screen name="profile" options={{ ...hidden, title: 'Profil', headerLeft: HeaderBack }} />
+      <Tabs.Screen name="notifications" options={{ ...hidden, title: 'Bildirishnomalar', headerLeft: HeaderBack }} />
     </Tabs>
   );
 }
