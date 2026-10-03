@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Input, ListItem, Skeleton, Txt } from '@/design/primitives';
@@ -36,6 +36,8 @@ export default function ShopContact() {
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
+  // Tez ikki marta bosilsa (isPending render bo'lguncha) so'rov ikki marta ketmasin
+  const inFlight = useRef(false);
 
   const submit = () => {
     const e: Record<string, string> = {};
@@ -44,11 +46,14 @@ export default function ShopContact() {
     if (digits.length !== 9 && digits.length !== 12) e.phone = 'Telefon: 90 123 45 67';
     setErrors(e);
     if (Object.keys(e).length) { haptic.warning(); return; }
+    if (inFlight.current) return;
+    inFlight.current = true;
     cb.mutate(
       { name: name.trim(), phone: tel.trim(), message: message.trim() || undefined },
       {
         onSuccess: (r) => { haptic.success(); toast.success(r.message, 'Qabul qilindi'); setMessage(''); setSent(true); },
         onError: (err) => toast.error(err instanceof ApiException ? err.message : 'Tarmoq xatosi — internetni tekshiring', 'Yuborilmadi'),
+        onSettled: () => { inFlight.current = false; },
       },
     );
   };
@@ -63,8 +68,9 @@ export default function ShopContact() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <PageHeader overline="Sotuv bo'limi" title="Aloqa" onBack={() => (router.canGoBack() ? router.back() : router.replace('/(shop)' as never))} style={{ paddingTop: insets.top + space.sm }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ paddingTop: space.sm, paddingBottom: space.xxl, gap: space.section }} keyboardShouldPersistTaps="handled">
+      {/* KeyboardAvoidingView sarlavha ostida offset'siz edi — forma tugmasi klaviatura ostida qolardi; ScrollView o'zi suriladi */}
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: space.sm, paddingBottom: space.xxl, gap: space.section }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
           <Appear>
             <TodayCard seller={seller} phone={phone} />
           </Appear>
@@ -99,7 +105,7 @@ export default function ShopContact() {
             </Card>
           </Appear>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

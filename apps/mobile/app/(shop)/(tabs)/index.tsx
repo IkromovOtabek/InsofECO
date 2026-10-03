@@ -57,7 +57,7 @@ export default function ShopHome() {
         ) : (
           <Reveal loading={q.isLoading} skeleton={<HomeSkeleton />} gap={space.lg}>
             <PromoCard banners={q.data?.banners ?? []} items={items} onOpen={(id) => (id && items.some((i) => i.id === id) ? toProduct(id) : toCatalog())} />
-            {phone || q.data?.seller?.hours || q.data?.seller?.telegram ? <TodayCard seller={q.data?.seller} phone={phone} /> : null}
+            {phone || q.data?.seller?.hours || q.data?.seller?.telegram ? <TodayCard seller={q.data?.seller} phone={phone} onPress={() => router.push('/(shop)/zavod' as never)} /> : null}
             {cats.length > 1 ? <CategoryTiles items={cats} onPick={(g) => toCatalog({ group: g, t: String(Date.now()) })} /> : null}
             <CalcPromo onPress={() => router.push('/(shop)/kalkulyator' as never)} />
             {featured.length ? (

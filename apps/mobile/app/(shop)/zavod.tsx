@@ -4,16 +4,20 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Rect } from 'react-native-svg';
 import { Badge, Card, EmptyState, ListItem, Skeleton, Txt } from '@/design/primitives';
-import { ListGroup, Reveal, StickyActionBar } from '@/design/blocks';
+import { ListGroup, Reveal, SectionHead, StickyActionBar } from '@/design/blocks';
+import { PressScale } from '@/design/motion';
+import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { alpha, radius, size, space } from '@/design/tokens';
 import { useShopCatalog } from '@/features/shop/api';
 import { IsoBox } from '@/features/shop/art';
-import { FloatingButton, LOGO_MARK } from '@/features/shop/ui';
+import { FloatingButton, LOGO_MARK, ProductGrid } from '@/features/shop/ui';
 import { useTodayStatus } from '@/features/shop/today';
 
 /** Demo `.zcover` — 130 css → 180 dp. */
 const COVER_H = 180;
+/** Zavod sahifasida ko'rinadigan mahsulotlar (qolgani — "Barchasi" → katalog shu zavod bo'yicha). */
+const PREVIEW = 4;
 
 /** Muqova: to'q fonda zavod siluetlari (demo `isoBox` × 2 + minora) — faqat bezak. */
 function Cover({ width }: { width: number }) {
@@ -43,7 +47,8 @@ function ZavodSkeleton() {
 
 /**
  * Zavod sahifasi — demo CLIENT[6]: to'q muqova, ustiga chiqqan karta (logotip, nom, holat nishonlari),
- * 3 ta raqam, manzil / ish vaqti / aloqa ro'yxati va pastda Telegram + Qo'ng'iroq.
+ * 3 ta raqam ("mahsulot" bosiladi), "Mahsulotlar" setkasi (+ "Barchasi" → katalog shu zavod filtri bilan),
+ * manzil / ish vaqti / aloqa ro'yxati va pastda Telegram + Qo'ng'iroq.
  * Faqat ERP bergan ma'lumot: sertifikat, quvvat, mikserlar soni yo'q — ko'rsatilmaydi.
  */
 export default function SellerProfile() {
@@ -57,6 +62,9 @@ export default function SellerProfile() {
   const items = (q.data?.items ?? []).filter((i) => !i.sellerId || !s?.id || i.sellerId === s.id);
   const st = useTodayStatus(s?.hours);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/(shop)' as never));
+  // Katalog — faqat shu zavod mahsulotlari (`seller`), `t` — tab allaqachon ochiq bo'lsa ham filtr qo'llansin
+  const toProducts = () => router.navigate({ pathname: '/(shop)/(tabs)/katalog', params: { ...(s?.id ? { seller: s.id } : {}), t: String(Date.now()) } } as never);
+  const toProduct = (id: string) => router.push(`/(shop)/${id}` as never);
 
   const phone = s?.phone ?? q.data?.company.phone ?? null;
   const address = s?.address ?? q.data?.company.address ?? null;
@@ -71,10 +79,10 @@ export default function SellerProfile() {
   const hoursText = s?.workingHours ?? st?.hoursLabel ?? null;
 
   const stats = [
-    items.length ? { value: String(items.length), label: 'mahsulot' } : null,
+    items.length ? { value: String(items.length), label: 'mahsulot', onPress: toProducts } : null,
     s?.foundedYear ? { value: `${new Date().getFullYear() - s.foundedYear} yil`, label: 'tajriba' } : null,
     st ? { value: st.hoursLabel, label: 'ish vaqti' } : null,
-  ].filter((x): x is { value: string; label: string } => !!x);
+  ].filter((x): x is { value: string; label: string; onPress?: () => void } => !!x);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
@@ -114,14 +122,36 @@ export default function SellerProfile() {
 
               {stats.length > 1 ? (
                 <View style={{ flexDirection: 'row', gap: space.tight }}>
-                  {stats.map((x) => (
-                    <Card key={x.label} style={{ flex: 1, alignItems: 'center', paddingVertical: space.md, paddingHorizontal: space.sm }}>
-                      <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit>{x.value}</Txt>
-                      <Txt v="tSm" numberOfLines={1} align="center">{x.label}</Txt>
-                    </Card>
-                  ))}
+                  {stats.map((x) => {
+                    const body = (
+                      <Card style={{ flex: 1, alignItems: 'center', paddingVertical: space.md, paddingHorizontal: space.sm }}>
+                        <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit>{x.value}</Txt>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                          <Txt v="tSm" numberOfLines={1} align="center" color={x.onPress ? 'brand' : undefined}>{x.label}</Txt>
+                          {x.onPress ? <Icon name="chevron-right" size={size.iconSm} tone="brand" /> : null}
+                        </View>
+                      </Card>
+                    );
+                    // "N mahsulot" — bosiladi: shu zavod mahsulotlari katalogda
+                    return x.onPress ? (
+                      <PressScale key={x.label} onPress={x.onPress} accessibilityRole="button" accessibilityLabel={`${x.value} ${x.label} — barchasini ko'rish`} style={{ flex: 1 }}>{body}</PressScale>
+                    ) : <View key={x.label} style={{ flex: 1 }}>{body}</View>;
+                  })}
                 </View>
               ) : null}
+
+              <View style={{ gap: space.sm }}>
+                <SectionHead title="Mahsulotlar" count={items.length || undefined} action={items.length ? 'Barchasi' : undefined} onAction={toProducts} />
+                {items.length ? (
+                  <ProductGrid items={items.slice(0, PREVIEW)} onOpen={toProduct} />
+                ) : (
+                  <Card>
+                    {q.error
+                      ? <EmptyState compact icon="circle-alert" title="Mahsulotlar yuklanmadi" hint="Internetni tekshiring" onRetry={() => void q.refetch()} />
+                      : <EmptyState compact icon="package" title="Hozircha mahsulot yo'q" hint="Zavod mahsulotlari tez orada qo'shiladi" />}
+                  </Card>
+                )}
+              </View>
 
               <ListGroup>
                 {address ? <ListItem icon="map" module="logistics" title={address} subtitle="Xaritada ochish" onPress={openMap} /> : null}

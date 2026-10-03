@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,7 +45,9 @@ export default function ShopProduct() {
   const add = useCart((s) => s.add);
   const fav = useCart((s) => s.favs.includes(id));
   const toggleFav = useCart((s) => s.toggleFav);
-  const [qty, setQty] = useState(() => qtyParam ?? String(item?.minQty ?? 1));
+  // Kalkulyatordan "12.1" keladi — maydonda vergul bilan ko'rsatiladi
+  const [qty, setQty] = useState(() => (qtyParam ?? String(item?.minQty ?? 1)).replace('.', ','));
+  const addLock = useRef(0);
 
   // Katalog kechroq yuklansa yoki marka almashsa — eng kam hajmdan past bo'lmasin (kalkulyator hajmi ustun)
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function ShopProduct() {
     );
   }
 
+  const hasPhoto = !!item?.photo;
   const n = Number(qty.replace(',', '.'));
   const valid = Number.isFinite(n) && n > 0;
   const total = item && valid ? n * item.price : 0;
@@ -83,6 +86,10 @@ export default function ShopProduct() {
     if (!item) return;
     if (!valid) { haptic.warning(); toast.warning('Hajmni kiriting'); return; }
     if (item.minQty && n < item.minQty) { haptic.warning(); toast.warning(`Eng kam buyurtma: ${fmtNum(item.minQty)} ${item.unitLabel}`); return; }
+    // Tez ikki marta bosilsa hajm savatga ikki marta qo'shilmasin
+    const now = Date.now();
+    if (now - addLock.current < 700) return;
+    addLock.current = now;
     add(item, n);
     haptic.success();
     toast.success(`${item.name} — ${fmtNum(n, n % 1 ? 1 : 0)} ${item.unitLabel}`, "Savatga qo'shildi");
@@ -91,8 +98,15 @@ export default function ShopProduct() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
-        <View style={{ height: HERO_H + insets.top, paddingTop: insets.top + space.xl, paddingBottom: space.xxxl + space.sm, paddingHorizontal: space.x10, backgroundColor: c.bgMuted }}>
-          {item ? <ProductImage item={item} /> : <Skeleton height={HERO_H - space.x12} radius={radius.card} />}
+        {/* Server surati — butun hero maydonini to'ldiradi (cover); surat yo'q bo'lsa — chizma o'rtada */}
+        <View style={{ height: HERO_H + insets.top, backgroundColor: c.bgMuted, overflow: 'hidden' }}>
+          {item && hasPhoto ? (
+            <ProductImage item={item} />
+          ) : (
+            <View style={{ flex: 1, paddingTop: insets.top + space.xl, paddingBottom: space.xxxl + space.sm, paddingHorizontal: space.x10 }}>
+              {item ? <ProductImage item={item} /> : <Skeleton height={HERO_H - space.x12} radius={radius.card} />}
+            </View>
+          )}
         </View>
 
         <View style={[{ marginTop: -space.xxl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', backgroundColor: c.bgApp, paddingTop: space.xl }, elevation(c).raised]}>

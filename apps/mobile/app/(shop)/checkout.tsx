@@ -156,7 +156,7 @@ export default function Checkout() {
               <Card style={{ gap: space.sm }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
                   <Txt v="kv">Mahsulotlar</Txt>
-                  <Txt v="kv" color="strong">{fmtNum(total)}</Txt>
+                  <Txt v="kv" color="strong">{fmtNum(total)} so&apos;m</Txt>
                 </View>
                 <View style={{ height: size.hairline, backgroundColor: c.borderSubtle }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.md }}>

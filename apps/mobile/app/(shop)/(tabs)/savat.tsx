@@ -11,15 +11,18 @@ import { cartTotal, useCart, type CartLine } from '@/features/shop/cart';
 import { MiniArt, QtyStepper } from '@/features/shop/ui';
 
 const parse = (s: string) => { const n = Number(s.replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; };
+const show = (n: number) => String(n).replace('.', ',');
 
 /** Savat qatori: rasm, nom, narx birligi bilan, o'chirish; ostida hajm stepperi va qator summasi. */
 function CartRow({ line }: { line: CartLine }) {
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
-  const [text, setText] = useState(String(line.qty));
+  const [text, setText] = useState(show(line.qty));
   // Savat boshqa joydan o'zgarsa (mahsulot sahifasidan qo'shilsa) — maydon yangilanadi
-  useEffect(() => { if (parse(text) !== line.qty) setText(String(line.qty).replace('.', ',')); }, [line.qty]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (parse(text) !== line.qty) setText(show(line.qty)); }, [line.qty]); // eslint-disable-line react-hooks/exhaustive-deps
   const onChange = (t: string) => { setText(t); const n = parse(t); if (n) setQty(line.productId, n); };
+  // Bo'sh / 0 / eng kamdan past yozib chiqib ketilsa — maydon haqiqiy (summaga kirgan) hajmni ko'rsatadi
+  const onBlur = () => { if (parse(text) !== line.qty) setText(show(line.qty)); };
   return (
     <Card style={{ gap: space.md, padding: space.md + 2 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -31,7 +34,7 @@ function CartRow({ line }: { line: CartLine }) {
         <IconButton icon="trash" label={`${line.name} — savatdan olib tashlash`} tone="muted" onPress={() => { haptic.warning(); remove(line.productId); }} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
-        <QtyStepper compact value={text} onChange={onChange} unit={line.unitLabel} min={line.minQty ?? 1} />
+        <QtyStepper compact value={text} onChange={onChange} onBlur={onBlur} unit={line.unitLabel} min={line.minQty ?? 1} />
         <Txt v="listValue" numberOfLines={1} style={{ flexShrink: 1 }}>{fmtNum(line.qty * line.price)} so&apos;m</Txt>
       </View>
     </Card>
@@ -54,7 +57,7 @@ export default function ShopCart() {
       <PageHeader overline={lines.length ? `${lines.length} ta mahsulot` : undefined} title="Savat" style={{ paddingTop: insets.top + space.sm }} />
       {lines.length ? (
         <>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xl }}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
             {/* Qatorlar birinchi ochilishda ketma-ket kiradi; o'chirilgan qator so'nadi, qolganlari (va jami) joyiga suriladi */}
             <LiveList stagger>
               <View style={{ gap: space.md }}>

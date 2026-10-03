@@ -39,7 +39,7 @@ function CatalogSkeleton() {
 export default function ShopCatalogScreen() {
   const router = useRouter();
   const { c } = useTheme();
-  const params = useLocalSearchParams<{ group?: string; focus?: string; t?: string; fav?: string }>();
+  const params = useLocalSearchParams<{ group?: string; focus?: string; t?: string; fav?: string; seller?: string }>();
   const q = useShopCatalog();
   const favs = useCart((s) => s.favs);
   const [search, setSearch] = useState('');
@@ -47,11 +47,19 @@ export default function ShopCatalogScreen() {
   const [sort, setSort] = useState<Sort>('default');
   const [unit, setUnit] = useState<string>(ALL);
   const [onlyFav, setOnlyFav] = useState(params.fav === '1');
+  // Zavod sahifasidagi "Mahsulotlar" → faqat shu zavod mahsulotlari (`?seller=`)
+  const [seller, setSeller] = useState<string | null>(params.seller ?? null);
   const [filterOpen, setFilterOpen] = useState(false);
 
   // Tab allaqachon ochiq bo'lsa ham bosh sahifadan kelgan toifa qo'llanadi (`t` — har bosishda yangi)
   useEffect(() => { if (params.group) setGroup(params.group); }, [params.group, params.t]);
   useEffect(() => { if (params.fav === '1') setOnlyFav(true); }, [params.fav, params.t]);
+  useEffect(() => {
+    if (!params.seller) return;
+    setSeller(params.seller);
+    // Zavoddan kelinganda — uning BARCHA mahsulotlari (oldingi toifa/qidiruv qolib ketmasin)
+    if (!params.group) { setGroup(ALL); setSearch(''); }
+  }, [params.seller, params.t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const all = useMemo(() => q.data?.items ?? [], [q.data]);
   const groups = useMemo(() => Array.from(new Set(all.map((i) => i.group).filter((g): g is string => !!g))), [all]);
@@ -60,18 +68,20 @@ export default function ShopCatalogScreen() {
     const s = search.trim().toLowerCase();
     const list = all.filter((i) =>
       (group === ALL || i.group === group)
+      && (!seller || !i.sellerId || i.sellerId === seller)
       && (unit === ALL || i.unitLabel === unit)
       && (!onlyFav || favs.includes(i.id))
       && (!s || [i.name, i.code, i.strengthClass, i.group].filter(Boolean).join(' ').toLowerCase().includes(s)));
     if (sort === 'cheap') return [...list].sort((a, b) => a.price - b.price);
     if (sort === 'expensive') return [...list].sort((a, b) => b.price - a.price);
     return list;
-  }, [all, search, group, sort, unit, onlyFav, favs]);
+  }, [all, search, group, sort, unit, onlyFav, favs, seller]);
 
   const filterCount = (unit !== ALL ? 1 : 0) + (onlyFav ? 1 : 0);
   const canFilter = units.length > 1 || favs.length > 0 || onlyFav;
-  const filtered = !!search.trim() || group !== ALL || filterCount > 0;
-  const reset = () => { setSearch(''); setGroup(ALL); setUnit(ALL); setOnlyFav(false); };
+  const filtered = !!search.trim() || group !== ALL || filterCount > 0 || !!seller;
+  const reset = () => { setSearch(''); setGroup(ALL); setUnit(ALL); setOnlyFav(false); setSeller(null); };
+  const sellerName = seller ? (q.data?.seller?.id === seller ? q.data.seller.name : null) ?? 'Zavod' : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
@@ -91,14 +101,19 @@ export default function ShopCatalogScreen() {
             ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
               <Txt v="tSm" numberOfLines={1} style={{ flexShrink: 1 }}><Txt v="tSm" color="strong">{items.length}</Txt> mahsulot</Txt>
-              <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <View style={{ flexDirection: 'row', gap: space.sm, flexShrink: 0 }}>
                 <MiniChip label={SORT_CHIP[sort]} icon="list" active={sort !== 'default'} hint="Bosilsa saralash almashadi" onPress={() => setSort(NEXT_SORT[sort])} />
                 {canFilter ? <MiniChip label={filterCount ? `Filtr · ${filterCount}` : 'Filtr'} icon="settings" active={filterCount > 0} onPress={() => setFilterOpen(true)} /> : null}
               </View>
             </View>
+            {sellerName ? (
+              <View style={{ flexDirection: 'row' }}>
+                <MiniChip label={sellerName} icon="x" active hint="Bosilsa zavod filtri olinadi" onPress={() => setSeller(null)} />
+              </View>
+            ) : null}
             {items.length ? (
               // Toifa / saralash / filtr almashganda setka yumshoq qayta kiradi (birinchi yuklanishda — Reveal o'zi)
-              <Appear instant replay={`${group}|${sort}|${unit}|${onlyFav}`} from={10}>
+              <Appear instant replay={`${group}|${sort}|${unit}|${onlyFav}|${seller}`} from={10}>
                 <ProductGrid items={items} onOpen={(id) => router.push(`/(shop)/${id}` as never)} />
               </Appear>
             ) : (

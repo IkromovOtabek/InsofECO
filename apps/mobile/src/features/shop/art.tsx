@@ -38,7 +38,7 @@ export function IsoBox({ ox, oy, w, d, h, fill }: { ox: number; oy: number; w: n
 }
 
 /** Chizma (SVG 180×110) — konteynerni to'ldiradi. */
-export function ProdArt({ kind, style }: { kind: ArtKind; style?: StyleProp<ViewStyle> }) {
+export function ProdArt({ kind, style, cover }: { kind: ArtKind; style?: StyleProp<ViewStyle>; /** Konteynerni to'liq to'ldiradi (chetlari kesiladi) — kvadrat/dumaloq plitkalar uchun. */ cover?: boolean }) {
   const { c } = useTheme();
   const conc: [string, string, string] = [c.bgSubtle, c.borderDefault, c.borderStrong];
   const white: [string, string, string] = [c.bgSurface, c.bgMuted, c.borderDefault];
@@ -90,16 +90,23 @@ export function ProdArt({ kind, style }: { kind: ArtKind; style?: StyleProp<View
   }
   return (
     <View style={[{ width: '100%', height: '100%' }, style]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Svg width="100%" height="100%" viewBox="0 0 180 110">{body}</Svg>
+      <Svg width="100%" height="100%" viewBox="0 0 180 110" preserveAspectRatio={cover ? 'xMidYMid slice' : 'xMidYMid meet'}>{body}</Svg>
     </View>
   );
 }
 
-/** Mahsulot rasmi: server surati yoki chizma. */
-export function ProductImage({ item, style, cover }: { item: Pick<ShopItem, 'photo' | 'name' | 'group' | 'code' | 'unit'>; style?: StyleProp<ViewStyle>; /** Surat butun maydonni egallaydi (kesiladi). */ cover?: boolean }) {
+/**
+ * Mahsulot rasmi: server surati yoki chizma. Surat DOIM `cover` — konteynerni 100% egallaydi, ortiqchasi
+ * ota konteynerning `overflow: 'hidden'` + radiusi bilan kesiladi (kvadrat surat dumaloq plitka ichida
+ * "orolcha" bo'lib qolmaydi). `cover` — chizma (surat yo'q bo'lsa) ham butun maydonni to'ldiradi.
+ */
+export function ProductImage({ item, style, cover }: { item: Pick<ShopItem, 'photo' | 'name' | 'group' | 'code' | 'unit'>; style?: StyleProp<ViewStyle>; /** Chizma ham to'liq to'ldirsin (chetlari kesiladi). */ cover?: boolean }) {
   const uri = photoUrl(item.photo);
-  if (uri) return <Image source={{ uri }} style={[{ width: '100%', height: '100%' }, style as object]} resizeMode={cover ? 'cover' : 'contain'} accessibilityIgnoresInvertColors />;
-  return <ProdArt kind={artKind(item)} style={style} />;
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => setFailed(false), [uri]);
+  // Surat yuklanmasa (404, internet yo'q) — bo'sh kulrang joy emas, mahsulot chizmasi
+  if (uri && !failed) return <Image source={{ uri }} style={[{ width: '100%', height: '100%' }, style as object]} resizeMode="cover" onError={() => setFailed(true)} accessibilityIgnoresInvertColors />;
+  return <ProdArt kind={artKind(item)} style={style} cover={cover} />;
 }
 
 /** To'q (bgInverse) karta ustidagi xira katak — demo Chizma hero foni (14 css → 19 dp). */

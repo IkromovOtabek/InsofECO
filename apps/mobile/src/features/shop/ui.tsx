@@ -12,6 +12,7 @@ import { useSession } from '@/core/session';
 import type { ShopItem } from './api';
 import { ProductImage } from './art';
 import { useCart } from './cart';
+import { sanitizeInput } from './calc';
 
 /** Kichik belgi (sarlavha, zavod logotipi) — ilova ikonkasi. */
 export const LOGO_MARK = require('../../../assets/icon.png') as number;
@@ -100,8 +101,9 @@ export function ProductCard({ item, onPress, width }: { item: ShopItem; onPress:
       style={[{ flex: width ? undefined : 1, width, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1]}
     >
       <View style={{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden' }}>
-        <View style={{ aspectRatio: CARD_PHOTO_RATIO, backgroundColor: c.bgMuted, padding: space.sm }}>
-          <ProductImage item={item} />
+        {/* Rasm maydoni to'liq: surat/chizma `cover`, karta radiusi bo'yicha kesiladi (ichki padding yo'q) */}
+        <View style={{ aspectRatio: CARD_PHOTO_RATIO, backgroundColor: c.bgMuted }}>
+          <ProductImage item={item} cover />
           {item.badge ? (
             <View style={{ position: 'absolute', left: space.sm + 2, top: space.sm + 2, paddingHorizontal: space.sm + 2, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: c.brand }}>
               <Txt v="badge" numberOfLines={1} style={{ color: c.textOnBrand }}>{item.badge}</Txt>
@@ -142,8 +144,8 @@ export function ProductGrid({ items, onOpen }: { items: ShopItem[]; onOpen: (id:
 export function MiniArt({ item }: { item: Parameters<typeof ProductImage>[0]['item'] }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: size.avatarLg, height: size.touch, borderRadius: radius.sm, backgroundColor: c.bgMuted, padding: 3, overflow: 'hidden' }}>
-      <ProductImage item={item} />
+    <View style={{ width: size.avatarLg, height: size.touch, borderRadius: radius.sm, borderCurve: 'continuous', backgroundColor: c.bgMuted, overflow: 'hidden' }}>
+      <ProductImage item={item} cover />
     </View>
   );
 }
@@ -155,10 +157,10 @@ export function MiniChip({ label, icon, active, onPress, hint }: { label: string
     <PressScale
       accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint} accessibilityState={{ selected: !!active }}
       haptic={false} onPress={() => { haptic.selection(); onPress(); }} hitSlop={{ top: space.xs, bottom: space.xs }}
-      style={[{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, height: size.touch - space.sm, paddingHorizontal: space.md + 2, borderRadius: radius.pill, backgroundColor: active ? c.brandSoft : c.bgSurface }, elevation(c).sh1]}
+      style={[{ maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, height: size.touch - space.sm, paddingHorizontal: space.md + 2, borderRadius: radius.pill, backgroundColor: active ? c.brandSoft : c.bgSurface }, elevation(c).sh1]}
     >
       <Icon name={icon} size={size.iconSm} tone={active ? 'brand' : 'body'} />
-      <Txt v="label" color={active ? 'brand' : 'body'}>{label}</Txt>
+      <Txt v="label" color={active ? 'brand' : 'body'} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Txt>
     </PressScale>
   );
 }
@@ -172,13 +174,14 @@ export function FloatingButton({ icon, label, onPress, style, active }: { icon: 
  * Hajm tanlagich — demo `.stepper`: bgMuted pill, ichida oq dumaloq − / + (sh1) va qiymat.
  * Qiymatni qo'lda ham yozish mumkin (12,5). `min` dan pastga tushmaydi.
  */
-export function QtyStepper({ value, onChange, unit, min = 1, step = 1, compact }: { value: string; onChange: (v: string) => void; unit: string; min?: number; step?: number; compact?: boolean }) {
+export function QtyStepper({ value, onChange, unit, min = 1, step = 1, compact, onBlur }: { value: string; onChange: (v: string) => void; unit: string; min?: number; step?: number; compact?: boolean; /** Maydondan chiqqanda (masalan bo'sh qolsa haqiqiy qiymatni qaytarish). */ onBlur?: () => void }) {
   const { c } = useTheme();
   const n = Number(value.replace(',', '.'));
   const cur = Number.isFinite(n) ? n : 0;
   const bump = (d: number) => {
     haptic.selection();
-    onChange(String(Math.max(min, Math.round((cur + d) * 10) / 10)));
+    // 0,1 aniqlikda; vergul bilan (maydon "12,5" ko'rinishida yoziladi)
+    onChange(String(Math.max(min, Math.round((cur + d) * 10) / 10)).replace('.', ','));
   };
   const b = compact ? size.iconTileSm : size.tile;
   const btn = (icon: IconName, label: string, d: number, disabled?: boolean) => (
@@ -196,8 +199,10 @@ export function QtyStepper({ value, onChange, unit, min = 1, step = 1, compact }
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 2, minWidth: compact ? space.x10 : space.x12 + space.sm }}>
         <TextInput
           value={value}
-          onChangeText={(t) => onChange(t.replace(/[^0-9.,]/g, ''))}
+          onChangeText={(t) => onChange(sanitizeInput(t))}
+          onBlur={onBlur}
           keyboardType="decimal-pad"
+          maxLength={8}
           selectTextOnFocus
           accessibilityLabel={`Hajm, ${unit}`}
           style={[compact ? typeScale.bodyStrong : typeScale.listTitle, { color: c.textStrong, textAlign: 'right', minWidth: space.lg, padding: 0 }]}

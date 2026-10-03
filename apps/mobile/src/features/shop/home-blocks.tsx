@@ -71,23 +71,35 @@ export function PromoCard({ banners, items, onOpen }: { banners: ShopBanner[]; i
  * "Bugungi holat" — demo `.card.today`: yashil jonli nuqta, "Zavod ochiq · 07:00–20:00", ostida
  * "Bugun yetkazamiz · …" va o'ngda qo'ng'iroq. Soatlar ERP Sozlamalardan; bo'lmasa karta faqat aloqa uchun.
  */
-export function TodayCard({ seller, phone }: { seller?: ShopSeller; phone: string | null }) {
+export function TodayCard({ seller, phone, onPress }: { seller?: ShopSeller; phone: string | null; /** Karta (holat qismi) bosilsa — masalan zavod sahifasi. */ onPress?: () => void }) {
   const { c } = useTheme();
   const st = useTodayStatus(seller?.hours);
   const telegram = seller?.telegram ?? null;
   if (!st && !phone && !telegram) return null;
   const dot = size.dot + space.xs + 2;
-  return (
-    <Card style={{ marginHorizontal: space.pageX, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md + 2, paddingHorizontal: space.md + 2 }}>
+  const label = st ? `${st.open ? 'Zavod ochiq' : 'Zavod yopiq'}, ${st.hoursLabel}. ${st.deliveryShort}` : "Zavod bilan bog'lanish";
+  const info = (
+    <>
       {st ? (
         <View style={{ width: dot + space.sm + 2, height: dot + space.sm + 2, borderRadius: radius.pill, backgroundColor: st.open ? c.successBg : c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: dot, height: dot, borderRadius: radius.pill, backgroundColor: st.open ? c.successSolid : c.textFaint }} />
         </View>
       ) : <IconTile icon="factory" module="brand" size={size.iconTileSm} />}
-      <View style={{ flex: 1, minWidth: 0 }} accessible accessibilityLabel={st ? `${st.open ? 'Zavod ochiq' : 'Zavod yopiq'}, ${st.hoursLabel}. ${st.deliveryShort}` : "Zavod bilan bog'lanish"}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Txt v="listTitle" numberOfLines={1}>{st ? `${st.open ? 'Zavod ochiq' : 'Zavod yopiq'} · ${st.hoursLabel}` : 'Savolingiz bormi?'}</Txt>
         <Txt v="tSm" numberOfLines={1}>{st ? st.deliveryShort : "Sotuv bo'limi bilan bog'laning"}</Txt>
       </View>
+    </>
+  );
+  const rowStyle = { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.md } as const;
+  return (
+    <Card style={{ marginHorizontal: space.pageX, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md + 2, paddingHorizontal: space.md + 2 }}>
+      {/* Holat qismi bosiladi (zavod sahifasi); qo'ng'iroq tugmasi — alohida */}
+      {onPress ? (
+        <PressScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Zavod sahifasini ochadi" style={rowStyle}>{info}</PressScale>
+      ) : (
+        <View style={rowStyle} accessible accessibilityLabel={label}>{info}</View>
+      )}
       {phone
         ? <IconButton icon="phone" label="Qo'ng'iroq qilish" variant="secondary" tone="strong" onPress={() => void Linking.openURL(`tel:${phone}`)} />
         : telegram ? <IconButton icon="send" label="Telegram" variant="secondary" tone="strong" onPress={() => void Linking.openURL(telegram)} /> : null}
@@ -144,8 +156,12 @@ export function CategoryTiles({ items, onPick }: { items: Category[]; onPick: (n
           key={g.name} accessibilityRole="button" accessibilityLabel={`${g.name}, ${g.count} ta mahsulot`} onPress={() => onPick(g.name)}
           style={{ alignItems: 'center', gap: space.sm - 2, width: tile }}
         >
-          <View style={[{ width: tile, height: tile, borderRadius: radius.xl, borderCurve: 'continuous', backgroundColor: c.bgSurface, padding: space.sm }, elevation(c).sh1]}>
-            <ProductImage item={g.sample} />
+          {/* Tashqi qatlam — soya (iOS'da overflow:hidden soyani kesadi), ichki — radius bo'yicha kesish.
+              Surat/chizma plitkani 100% to'ldiradi: ichki padding yo'q, `cover`. */}
+          <View style={[{ width: tile, height: tile, borderRadius: radius.xl, borderCurve: 'continuous', backgroundColor: c.bgMuted }, elevation(c).sh1]}>
+            <View style={{ flex: 1, borderRadius: radius.xl, borderCurve: 'continuous', overflow: 'hidden' }}>
+              <ProductImage item={g.sample} cover />
+            </View>
           </View>
           <Txt v="label" color="body" numberOfLines={1} align="center">{g.name}</Txt>
         </PressScale>
