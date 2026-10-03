@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Input, ListItem, Skeleton, Txt } from '@/design/primitives';
 import { ListGroup, PageHeader, SectionHead } from '@/design/blocks';
@@ -18,6 +19,7 @@ import { TodayCard } from '@/features/shop/home-blocks';
  * so'rov ERP'ga ariza bo'lib tushadi.
  */
 export default function ShopContact() {
+  const router = useRouter();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const q = useShopCatalog();
@@ -60,7 +62,7 @@ export default function ShopContact() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <PageHeader overline="Sotuv bo'limi" title="Aloqa" style={{ paddingTop: insets.top + space.sm }} />
+      <PageHeader overline="Sotuv bo'limi" title="Aloqa" onBack={() => (router.canGoBack() ? router.back() : router.replace('/(shop)' as never))} style={{ paddingTop: insets.top + space.sm }} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ paddingTop: space.sm, paddingBottom: space.xxl, gap: space.section }} keyboardShouldPersistTaps="handled">
           <Appear>

@@ -18,6 +18,10 @@ export interface TodayStatus {
   sameDay: boolean;
   /** "Bugun 14:00 gacha buyurtma bering — bugun yetkazamiz" */
   deliveryLabel: string;
+  /** Ish soatlari: "07:00–20:00" (demo "Zavod ochiq · 07:00–20:00"). */
+  hoursLabel: string;
+  /** Qisqa yetkazish: "Bugun yetkazamiz · 14:00 gacha buyurtma" / "Ertaga yetkazamiz". */
+  deliveryShort: string;
 }
 
 export function todayStatus(h: NonNullable<ShopSeller['hours']>, now = new Date()): TodayStatus {
@@ -45,7 +49,10 @@ export function todayStatus(h: NonNullable<ShopSeller['hours']>, now = new Date(
     ? `Bugun ${hh(h.sameDayCutoff)} gacha buyurtma bering — bugun yetkazamiz`
     : `Hozir buyurtma bering — ${nextName} yetkazamiz`;
 
-  return { open, openLabel, sameDay, deliveryLabel };
+  const hoursLabel = `${hh(h.open)}–${hh(h.close)}`;
+  const deliveryShort = sameDay ? `Bugun yetkazamiz · ${hh(h.sameDayCutoff)} gacha buyurtma` : `${cap(nextName)} yetkazamiz`;
+
+  return { open, openLabel, sameDay, deliveryLabel, hoursLabel, deliveryShort };
 }
 
 /** Holat daqiqada bir yangilanadi — sahifa ochiq turganda soat 14:00 dan o'tsa ham to'g'ri. */

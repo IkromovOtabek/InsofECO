@@ -1,124 +1,115 @@
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Polygon, Text as SvgText } from 'react-native-svg';
-import { Callout, Card, Select, Skeleton, Txt, fmtNum } from '@/design/primitives';
-import { ChipGroup, HeroCard, SegmentedControl, StickyActionBar } from '@/design/blocks';
+import Svg, { Text as SvgText } from 'react-native-svg';
+import { Callout, Card, Select, Txt, fmtNum } from '@/design/primitives';
+import { ChipGroup, HeroCard, Reveal, StickyActionBar } from '@/design/blocks';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { radius, shadow, size, space, type as typeScale } from '@/design/tokens';
+import { alpha, elevation, radius, size, space, type as typeScale } from '@/design/tokens';
 import { useShopCatalog } from '@/features/shop/api';
+import { IsoBox } from '@/features/shop/art';
 
 /**
- * Beton kalkulyatori — "qancha beton kerak?" savoliga javob. Mijoz shakl va o'lchamni
- * kiritadi → hajm (zaxira bilan, 0.5 m³ ga yuqoriga yaxlitlangan — mikser shunday yuklaydi)
- * → tanlangan marka narxi bilan taxminiy summa → "Shu hajmda buyurtma" mahsulot formasini
- * hajm to'ldirilgan holda ochadi (pastdagi doimiy tugma). Hisob faqat ilovada, serverga hech narsa ketmaydi.
+ * Beton kalkulyatori — demo CLIENT[3]: konstruksiya chiplari, izometrik chizma (kiritilgan o'lchamlar
+ * bilan), 3 ta o'lcham katakchasi, to'q natija kartasi (hajm, mikserlar, +5% zaxira, taxminiy narx) va
+ * pastda "N m³ ni buyurtma qilish" (mahsulot sahifasini hajm to'ldirilgan holda ochadi).
+ * Hisob faqat telefonda — serverga hech narsa ketmaydi.
  */
-type Shape = 'slab' | 'strip' | 'column' | 'volume';
+type Shape = 'strip' | 'slab' | 'column' | 'floor';
+type Unit = 'm' | 'sm' | 'dona';
+interface Field { key: 'a' | 'b' | 'c'; label: string; unit: Unit; placeholder: string }
+interface Fig { ox: number; oy: number; w: number; d: number; h: number; labels: [number, number, number, number, number, number] }
 
-/** `mark` — chizmadagi harf (A, B, C / H) */
-interface Field { key: string; label: string; unit: 'm' | 'sm' | 'dona' | 'm³'; placeholder: string; mark?: string }
-const SHAPES: Record<Shape, { label: string; hint: string; tip: string; fields: Field[]; box: [number, number, number] }> = {
-  slab: {
-    label: 'Plita', hint: 'Pol, qavat orasidagi plita, maydoncha', tip: 'Plita uchun odatda M300 (B22.5) olinadi',
-    box: [7, 5, 0.8],
-    fields: [
-      { mark: 'A', key: 'a', label: 'Uzunligi', unit: 'm', placeholder: '10' },
-      { mark: 'B', key: 'b', label: 'Eni', unit: 'm', placeholder: '6' },
-      { mark: 'C', key: 'c', label: 'Qalinligi', unit: 'sm', placeholder: '20' },
-    ],
-  },
+const SHAPES: Record<Shape, { label: string; fields: [Field, Field, Field]; fig: Fig }> = {
   strip: {
-    label: 'Poydevor', hint: 'Lenta poydevor — devorlar ostidagi tasma', tip: 'Uy poydevori uchun odatda M250–M300',
-    box: [9, 1.2, 2.6],
+    label: 'Lenta poydevor',
     fields: [
-      { mark: 'A', key: 'a', label: 'Umumiy uzunligi (perimetr)', unit: 'm', placeholder: '40' },
-      { mark: 'B', key: 'b', label: 'Eni', unit: 'sm', placeholder: '40' },
-      { mark: 'C', key: 'c', label: 'Balandligi', unit: 'sm', placeholder: '80' },
+      { key: 'a', label: 'Uzunlik', unit: 'm', placeholder: '48' },
+      { key: 'b', label: 'Kenglik', unit: 'm', placeholder: '0,4' },
+      { key: 'c', label: 'Balandlik', unit: 'm', placeholder: '0,6' },
     ],
+    // Demo `isoBox(40,24,150,16,26)` + yorliqlar: uzunlik (80,86), kenglik (200,40), balandlik (12,34)
+    fig: { ox: 40, oy: 24, w: 150, d: 16, h: 26, labels: [80, 86, 200, 40, 12, 34] },
+  },
+  slab: {
+    label: 'Plita',
+    fields: [
+      { key: 'a', label: 'Uzunlik', unit: 'm', placeholder: '10' },
+      { key: 'b', label: 'Eni', unit: 'm', placeholder: '6' },
+      { key: 'c', label: 'Qalinlik', unit: 'm', placeholder: '0,2' },
+    ],
+    fig: { ox: 92, oy: 12, w: 96, d: 52, h: 10, labels: [150, 86, 22, 70, 214, 30] },
   },
   column: {
-    label: 'Ustun', hint: "To'rtburchak ustunlar", tip: 'Ustunlar uchun odatda M300 va undan yuqori',
-    box: [1.4, 1.4, 6],
+    label: 'Ustun',
     fields: [
-      { key: 'n', label: 'Soni', unit: 'dona', placeholder: '8' },
-      { mark: 'A', key: 'a', label: 'Kesim tomoni A', unit: 'sm', placeholder: '40' },
-      { mark: 'B', key: 'b', label: 'Kesim tomoni B', unit: 'sm', placeholder: '40' },
-      { mark: 'H', key: 'c', label: 'Balandligi', unit: 'm', placeholder: '3' },
+      { key: 'a', label: 'Soni', unit: 'dona', placeholder: '8' },
+      { key: 'b', label: 'Kesim', unit: 'm', placeholder: '0,4' },
+      { key: 'c', label: 'Balandlik', unit: 'm', placeholder: '3' },
     ],
+    fig: { ox: 130, oy: 72, w: 16, d: 16, h: 62, labels: [176, 30, 176, 84, 60, 50] },
   },
-  volume: {
-    label: 'Hajm', hint: 'Hajmni bilsangiz — to\'g\'ridan-to\'g\'ri', tip: '',
-    box: [4, 4, 4],
-    fields: [{ key: 'v', label: 'Hajm', unit: 'm³', placeholder: '12' }],
+  floor: {
+    label: 'Pol',
+    fields: [
+      { key: 'a', label: 'Uzunlik', unit: 'm', placeholder: '12' },
+      { key: 'b', label: 'Eni', unit: 'm', placeholder: '8' },
+      { key: 'c', label: 'Qalinlik', unit: 'sm', placeholder: '10' },
+    ],
+    fig: { ox: 92, oy: 16, w: 100, d: 56, h: 5, labels: [150, 86, 22, 70, 214, 30] },
   },
 };
 
-const RESERVES = [0, 5, 10] as const;
-const num = (s: string | undefined) => { const n = Number((s ?? '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; };
-/** O'lcham birligi → metr */
-const toM = (v: number, unit: Field['unit']) => (unit === 'sm' ? v / 100 : v);
-
-function rawVolume(shape: Shape, v: Record<string, string>): number {
-  const m = Object.fromEntries(SHAPES[shape].fields.map((x) => [x.key, toM(num(v[x.key]), x.unit)]));
-  const f = (k: string) => m[k] ?? 0;
-  switch (shape) {
-    case 'slab': case 'strip': return f('a') * f('b') * f('c');
-    case 'column': return f('n') * f('a') * f('b') * f('c');
-    case 'volume': return f('v');
-  }
-}
-
-/** Bitta mikser (avtobetonaralashtirgich) odatda shuncha m³ olib keladi — reyslar soni taxminiy. */
+const RESERVE = 0.05;
+/** Bitta mikser odatda shuncha m³ olib keladi — reyslar soni taxminiy. */
 const MIXER_M3 = 8;
+const num = (s: string | undefined) => { const n = Number((s ?? '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0; };
+const toM = (v: number, u: Unit) => (u === 'sm' ? v / 100 : v);
+const fmtQ = (n: number) => fmtNum(n, n % 1 ? 1 : 0);
 
-/** Shaklning kichik izometrik chizmasi — qaysi o'lcham qayerda ekanini ko'rsatadi (brend tusida). */
-function ShapeSketch({ shape }: { shape: Shape }) {
+function volumeOf(shape: Shape, v: Record<string, string>) {
+  const [fa, fb, fc] = SHAPES[shape].fields;
+  const a = toM(num(v.a), fa.unit), b = toM(num(v.b), fb.unit), c = toM(num(v.c), fc.unit);
+  return shape === 'column' ? a * b * b * c : a * b * c;
+}
+
+/** Demo `.calcfig`: brend tusidagi izometrik quti + kiritilgan o'lchamlar yozuvi. */
+function Figure({ shape, values }: { shape: Shape; values: Record<string, string> }) {
   const { c } = useTheme();
-  const [w, d, h] = SHAPES[shape].box;
-  const S = 11, W = 240, H = 120;
-  const cx = W / 2 - (w - d) * 0.866 * S / 2;
-  const cy = H / 2 - ((w + d) * 0.5 * S - h * S) / 2;
-  const P = (x: number, y: number, z: number) => `${(cx + (x - y) * 0.866 * S).toFixed(1)},${(cy + (x + y) * 0.5 * S - z * S).toFixed(1)}`;
-  const at = (x: number, y: number, z: number) => ({ x: cx + (x - y) * 0.866 * S, y: cy + (x + y) * 0.5 * S - z * S });
-  const L = (p: { x: number; y: number }, t: string, dx = 0, dy = 0) => (
-    <SvgText x={p.x + dx} y={p.y + dy} fill={c.brandInk} fontSize={typeScale.caption.fontSize} fontWeight="700" textAnchor="middle">{t}</SvgText>
-  );
-  const [l1, l2, l3] = shape === 'column' ? ['A', 'B', 'H'] : ['A', 'B', 'C'];
+  const { fig, fields } = SHAPES[shape];
+  const [x1, y1, x2, y2, x3, y3] = fig.labels;
+  const val = (f: Field) => `${values[f.key] || f.placeholder} ${f.unit}`;
+  const t = (x: number, y: number, s: string) => <SvgText x={x} y={y} fontSize={typeScale.caption.fontSize - 3} fill={c.textMuted} textAnchor="middle">{s}</SvgText>;
   return (
-    <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Polygon points={`${P(0, d, 0)} ${P(w, d, 0)} ${P(w, d, h)} ${P(0, d, h)}`} fill={c.brand} fillOpacity={0.35} />
-      <Polygon points={`${P(w, 0, 0)} ${P(w, d, 0)} ${P(w, d, h)} ${P(w, 0, h)}`} fill={c.brand} fillOpacity={0.55} />
-      <Polygon points={`${P(0, 0, h)} ${P(w, 0, h)} ${P(w, d, h)} ${P(0, d, h)}`} fill={c.brandSoft} />
-      {shape !== 'volume' ? (
-        <>
-          {L(at(w / 2, d, 0), l1, -8, 14)}
-          {L(at(w, d / 2, 0), l2, 10, 12)}
-          {L(at(w, 0, h / 2), l3, 12, 4)}
-        </>
-      ) : L(at(w / 2, d / 2, h), 'm³', 0, 4)}
-    </Svg>
+    <Card style={{ padding: space.md }}>
+      <Svg width="100%" height={size.driverTouch * 2.2} viewBox="0 0 260 90" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <IsoBox ox={fig.ox} oy={fig.oy} w={fig.w} d={fig.d} h={fig.h} fill={[c.brandSoft, alpha(c.brand, 0.35), alpha(c.brand, 0.55)]} />
+        {t(x1, y1, `${fields[0].label} ${val(fields[0])}`)}
+        {t(x2, y2, val(fields[1]))}
+        {t(x3, y3, val(fields[2]))}
+      </Svg>
+    </Card>
   );
 }
 
-/** O'lcham katakchasi (chizma "fld"): yorliq, katta raqam va birlik. */
-function FieldCell({ f, value, onChange, basis }: { f: Field; value: string; onChange: (t: string) => void; basis: `${number}%` }) {
+/** Demo `.fld`: yorliq (t-sm), katta qiymat + kichik birlik. */
+function FieldCell({ f, value, onChange }: { f: Field; value: string; onChange: (t: string) => void }) {
   const { c } = useTheme();
   return (
-    <View style={[{ flexBasis: basis, flexGrow: 1, backgroundColor: c.bgSurface, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.sm }, shadow.card]}>
-      <Txt v="caption" numberOfLines={1}>{f.mark ? `${f.mark} · ` : ''}{f.label}</Txt>
+    <View style={[{ flex: 1, backgroundColor: c.bgSurface, borderRadius: radius.xl, borderCurve: 'continuous', paddingHorizontal: space.md + 2, paddingVertical: space.tight, gap: 2 }, elevation(c).sh1]}>
+      <Txt v="tSm" numberOfLines={1}>{f.label}</Txt>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.xs }}>
         <TextInput
           value={value}
-          onChangeText={onChange}
+          onChangeText={(t) => onChange(t.replace(/[^0-9.,]/g, ''))}
           placeholder={f.placeholder}
           placeholderTextColor={c.textFaint}
           keyboardType={f.unit === 'dona' ? 'number-pad' : 'decimal-pad'}
           accessibilityLabel={`${f.label}, ${f.unit}`}
-          style={[typeScale.titleMd, { flex: 1, color: c.textStrong, padding: 0, minHeight: size.iconXl + space.xs }]}
+          style={[typeScale.kpiValue, { flexShrink: 1, minWidth: space.xl, color: c.textStrong, padding: 0 }]}
         />
-        <Txt v="caption">{f.unit}</Txt>
+        <Txt v="caption" color="body">{f.unit}</Txt>
       </View>
     </View>
   );
@@ -128,105 +119,83 @@ export default function Calculator() {
   const router = useRouter();
   const { c } = useTheme();
   const q = useShopCatalog();
-  const [shape, setShape] = useState<Shape>('slab');
+  const [shape, setShape] = useState<Shape>('strip');
   const [vals, setVals] = useState<Record<string, string>>({});
-  const [reserve, setReserve] = useState<(typeof RESERVES)[number]>(5);
 
-  // Faqat tayyor beton (m³) — kalkulyator hajm hisoblaydi
+  // Faqat tayyor beton (m³)
   const concrete = useMemo(() => (q.data?.items ?? []).filter((i) => i.unit === 'm3'), [q.data]);
   const [productId, setProductId] = useState<string | null>(null);
   const product = concrete.find((i) => i.id === productId) ?? concrete[0] ?? null;
 
   const def = SHAPES[shape];
-  // Har shaklning qiymatlari alohida saqlanadi — tur almashtirilsa kiritilgani yo'qolmaydi
-  const set = (k: string) => (t: string) => setVals((v) => ({ ...v, [`${shape}.${k}`]: t }));
-  const scoped = Object.fromEntries(def.fields.map((f) => [f.key, vals[`${shape}.${f.key}`] ?? '']));
-  const volume = rawVolume(shape, scoped);
-  // Mikser yarim kubdan yuklaydi — zaxira bilan yuqoriga yaxlitlaymiz
-  const qtyScoped = volume > 0 ? Math.ceil(volume * (1 + reserve / 100) * 2) / 2 : 0;
-  const minHit = !!product?.minQty && qtyScoped > 0 && qtyScoped < product.minQty;
-  const orderAmount = minHit ? product!.minQty! : qtyScoped;
-  const sum = product ? orderAmount * product.price : 0;
-  const mixers = orderAmount ? Math.ceil(orderAmount / MIXER_M3) : 0;
-  const fmtQ = (n: number) => fmtNum(n, n % 1 ? 1 : 0);
+  // Har shaklning qiymatlari alohida — tur almashtirilsa kiritilgani yo'qolmaydi
+  const scoped: Record<string, string> = Object.fromEntries(def.fields.map((f) => [f.key, vals[`${shape}.${f.key}`] ?? '']));
+  const volume = volumeOf(shape, scoped);
+  // Mikser yarim kubdan yuklaydi — +5% zaxira bilan yuqoriga yaxlitlanadi
+  const withReserve = volume > 0 ? Math.ceil(volume * (1 + RESERVE) * 2) / 2 : 0;
+  const minHit = !!product?.minQty && withReserve > 0 && withReserve < product.minQty;
+  const amount = minHit ? product!.minQty! : withReserve;
+  const sum = product ? amount * product.price : 0;
+  const mixers = amount ? Math.ceil(amount / MIXER_M3) : 0;
 
   const order = () => {
-    if (!product || !orderAmount) return;
-    router.push(`/(shop)/${product.id}?qty=${orderAmount}` as never);
+    if (!product || !amount) return;
+    router.push(`/(shop)/${product.id}?qty=${amount}` as never);
   };
 
-  const basis = def.fields.length === 4 ? '40%' : def.fields.length === 1 ? '100%' : '28%';
-
+  const muted = { color: c.textOnInverseMuted };
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={size.topBar}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.xxl, gap: space.lg }} keyboardShouldPersistTaps="handled">
-        <ChipGroup<Shape> value={shape} onChange={setShape} items={(Object.keys(SHAPES) as Shape[]).map((k) => ({ key: k, label: SHAPES[k].label }))} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
+        <Reveal gap={space.md + 2}>
+          <ChipGroup<Shape> value={shape} onChange={setShape} items={(Object.keys(SHAPES) as Shape[]).map((k) => ({ key: k, label: SHAPES[k].label }))} />
+          <Figure shape={shape} values={scoped} />
+          <View style={{ flexDirection: 'row', gap: space.tight }}>
+            {def.fields.map((f) => (
+              <FieldCell key={`${shape}.${f.key}`} f={f} value={scoped[f.key] ?? ''} onChange={(t) => setVals((v) => ({ ...v, [`${shape}.${f.key}`]: t }))} />
+            ))}
+          </View>
 
-        <Card style={{ paddingVertical: space.md, gap: space.xs }}>
-          <ShapeSketch shape={shape} />
-          <Txt v="caption" align="center">{def.hint}</Txt>
-        </Card>
+          <HeroCard label="Kerakli hajm" value={volume > 0 ? fmtNum(volume, 1) : '—'} unit="m³">
+            {volume > 0 ? (
+              <View style={{ gap: space.sm }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 }}>
+                    <Icon name="truck" size={size.iconSm} color={c.textOnInverseMuted} />
+                    <Txt v="tSm" style={muted}>{mixers} ta mikser</Txt>
+                  </View>
+                  <Txt v="tSm" style={muted} numberOfLines={1}>+5% zaxira bilan {fmtQ(withReserve)} m³</Txt>
+                </View>
+                {product ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.md }}>
+                    <Txt v="tSm" style={[muted, { flexShrink: 1 }]} numberOfLines={1}>Taxminiy narx, {product.strengthClass ?? product.code}</Txt>
+                    <Txt v="titleMd" style={{ color: c.textOnInverse }}>{fmtNum(sum)} so&apos;m</Txt>
+                  </View>
+                ) : null}
+              </View>
+            ) : <Txt v="tSm" style={muted}>O&apos;lchamlarni kiriting — natija shu yerda chiqadi</Txt>}
+          </HeroCard>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-          {def.fields.map((f) => (
-            <FieldCell key={`${shape}.${f.key}`} f={f} value={scoped[f.key] ?? ''} onChange={set(f.key)} basis={basis} />
-          ))}
-        </View>
-
-        {/* Zaxira — to'kilish, notekis tuproq, qolip kengayishi uchun */}
-        <View style={{ gap: space.sm }}>
-          <Txt v="label">Zaxira · 5% tavsiya qilinadi</Txt>
-          <SegmentedControl
-            value={String(reserve) as `${(typeof RESERVES)[number]}`}
-            onChange={(k) => setReserve(Number(k) as (typeof RESERVES)[number])}
-            items={RESERVES.map((r) => ({ key: String(r) as `${(typeof RESERVES)[number]}`, label: r ? `+${r}%` : "Yo'q" }))}
-          />
-        </View>
-
-        {q.isLoading ? <Skeleton height={size.input} radius={radius.sm} /> : concrete.length ? (
-          <View>
+          {concrete.length > 1 ? (
             <Select
               label="Beton markasi"
               value={product?.id ?? null}
               options={concrete.map((i) => ({ value: i.id, label: i.name, hint: `${fmtNum(i.price)} so'm / m³` }))}
               onChange={(v) => setProductId(v)}
+              containerStyle={{ marginBottom: 0 }}
             />
-            {def.tip ? <Txt v="caption" style={{ marginTop: -space.sm }}>{def.tip}</Txt> : null}
-          </View>
-        ) : null}
-
-        {/* Natija — to'q karta */}
-        <HeroCard label="Kerakli hajm" value={qtyScoped ? fmtQ(qtyScoped) : '—'} unit="m³">
-          {volume > 0 ? (
-            <View style={{ gap: space.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-                  <Icon name="truck" size={size.iconSm} color={c.textOnInverseMuted} />
-                  <Txt v="caption" style={{ color: c.textOnInverseMuted }}>~{mixers} ta mikser</Txt>
-                </View>
-                <Txt v="caption" style={{ color: c.textOnInverseMuted }} numberOfLines={1}>
-                  {fmtNum(volume, 2)} m³{reserve ? ` + ${reserve}%` : ''}, 0,5 ga yaxlit
-                </Txt>
-              </View>
-              {product ? (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.md }}>
-                  <Txt v="caption" style={{ color: c.textOnInverseMuted, flexShrink: 1 }} numberOfLines={1}>Taxminiy narx, {product.strengthClass ?? product.code}</Txt>
-                  <Txt v="titleSm" style={{ color: c.textOnInverse }}>{fmtNum(sum)} so&apos;m</Txt>
-                </View>
-              ) : null}
-            </View>
-          ) : <Txt v="caption" style={{ color: c.textOnInverseMuted }}>O&apos;lchamlarni kiriting — natija shu yerda chiqadi</Txt>}
-        </HeroCard>
-        {minHit ? <Callout tone="info">{`Eng kam buyurtma — ${fmtNum(product!.minQty!)} m³, buyurtma shu hajm bilan ochiladi`}</Callout> : null}
-        <Txt v="caption" align="center">Yetkazish va nasos narxini sotuv bo&apos;limi aniqlaydi</Txt>
+          ) : null}
+          {minHit ? <Callout tone="info">{`Eng kam buyurtma — ${fmtNum(product!.minQty!)} m³, buyurtma shu hajm bilan ochiladi`}</Callout> : null}
+          <Txt v="caption" align="center">Yetkazish va nasos narxini sotuv bo&apos;limi aniqlaydi</Txt>
+        </Reveal>
       </ScrollView>
 
       <StickyActionBar
         primary={{
-          title: orderAmount ? `${fmtQ(orderAmount)} m³ ni buyurtma qilish` : 'Buyurtma qilish',
+          title: amount ? `${fmtQ(amount)} m³ ni buyurtma qilish` : 'Buyurtma qilish',
           icon: 'shopping-cart',
           onPress: order,
-          disabled: !product || !orderAmount,
+          disabled: !product || !amount,
           disabledReason: !product ? "Do'konda beton mahsuloti topilmadi" : "Avval o'lchamlarni kiriting",
         }}
       />

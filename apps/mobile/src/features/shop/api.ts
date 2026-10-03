@@ -48,7 +48,7 @@ export interface ShopOrderInput { productId: string; qty: number; name: string; 
 
 export const photoUrl = (p: string | null) => (p ? `${config.erpUrl}${p}` : null);
 
-async function shopFetch<T>(path: string, init?: { method?: 'POST'; body?: unknown }): Promise<T> {
+export async function shopFetch<T>(path: string, init?: { method?: 'POST'; body?: unknown }): Promise<T> {
   const res = await fetch(`${config.erpUrl}/api/public/shop${path}`, {
     method: init?.method ?? 'GET',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -66,8 +66,8 @@ export const useShopCatalog = () =>
 
 /**
  * Buyurtma javobi. Hozirgi ERP faqat `{ ok, message }` qaytaradi; raqam (`number`/`id`) keyinchalik
- * qo'shilsa muvaffaqiyat ekrani uni ko'rsatadi. Savat, to'lov va kuzatish API'si hali yo'q —
- * bitta so'rov = bitta mahsulot, narx va yetkazishni sotuv bo'limi qo'ng'iroqda kelishadi.
+ * qo'shilsa muvaffaqiyat ekrani uni ko'rsatadi. Savat va to'lov API'si yo'q — savat telefonda
+ * (`cart.ts`), tasdiqlanganda har qator alohida `POST /order` bo'lib ketadi (`orders.ts`).
  */
 export interface ShopOrderResult { ok: true; message: string; id?: string | number; number?: string | number }
 

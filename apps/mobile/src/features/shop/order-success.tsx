@@ -1,91 +1,64 @@
 import React from 'react';
-import { Linking, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, Txt, fmtNum } from '@/design/primitives';
-import { Icon } from '@/design/icons';
-import { Appear, stagger } from '@/design/motion';
+import { Button, Card, IconButton, Timeline, Txt, fmtNum, fmtTime } from '@/design/primitives';
+import { Reveal } from '@/design/blocks';
 import { SuccessCheck } from '@/design/success';
+import { copyText } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { radius, size, space } from '@/design/tokens';
-import type { ShopItem, ShopOrderResult } from './api';
-
-export interface PlacedOrder { item: ShopItem; qty: number; total: number; address?: string; result: ShopOrderResult }
+import { size, space } from '@/design/tokens';
+import type { SentOrder } from './cart';
 
 /**
- * Keyingi qadamlar — HAQIQIY jarayon: ariza ERP'ga tushadi, sotuv bo'limi qo'ng'iroq qilib
- * narx/yetkazishni kelishadi. Ilovada kuzatish hali yo'q, shuning uchun "jonli xarita" va'da qilinmaydi.
+ * "Buyurtma qabul qilindi" — demo ekran 25: katta ptichka, sarlavha, raqam (faqat server qaytarsa) + nusxa,
+ * buyurtma kartasi (mahsulot · hajm, vaqt · manzil, taxminiy summa) va HAQIQIY keyingi qadamlar:
+ * ariza ERP'ga tushdi → sotuv bo'limi qo'ng'iroq qiladi → yetkazish tasdiqdan so'ng. Soxta kuzatish yo'q.
  */
-const STEPS = [
-  { title: 'Ariza qabul qilindi', sub: "ERP'da sotuv bo'limiga tushdi" },
-  { title: "Sotuv bo'limi qo'ng'iroq qiladi", sub: 'Ish vaqtida — narx, marka va hajmni aniqlashtiradi' },
-  { title: 'Yetkazish vaqti kelishiladi', sub: "Manzil, sana va to'lov usuli telefonda" },
-  { title: 'Obyektga yetkaziladi', sub: "Qabul qilib, hujjatga imzo qo'yasiz" },
-];
-
-/**
- * "Buyurtma qabul qilindi" — mahsulot buyurtmasidan keyingi to'liq ekran (toast + orqaga o'rniga).
- * Raqam faqat server qaytarsa ko'rinadi.
- */
-export function OrderSuccess({ order, phone, onDone }: { order: PlacedOrder; phone: string | null; onDone: () => void }) {
+export function OrderSuccess({ orders, onOrders, onDone }: { orders: SentOrder[]; onOrders: () => void; onDone: () => void }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const no = order.result.number ?? order.result.id;
+  const first = orders[0];
+  if (!first) return null;
+  const numbers = orders.map((o) => o.number).filter((x): x is string => !!x);
+  const total = orders.reduce((a, o) => a + o.total, 0);
+  const q = (o: SentOrder) => `${fmtNum(o.line.qty, o.line.qty % 1 ? 1 : 0)} ${o.line.unitLabel}`;
+  const title = orders.length > 1 ? `${first.line.name} · ${q(first)} va yana ${orders.length - 1} ta` : `${first.line.name} · ${q(first)}`;
+  const sub = [first.when, first.address].filter(Boolean).join(' · ');
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.xxl, paddingHorizontal: space.pageX, paddingBottom: space.xxl, gap: space.section }}>
-        <View style={{ alignItems: 'center', gap: space.sm }}>
-          <SuccessCheck size={size.avatarLg * 2} />
-          <Txt v="titleLg" align="center" accessibilityRole="header">Buyurtma qabul qilindi</Txt>
-          {no != null ? <Txt v="bodyStrong" color="brand" align="center">№ {String(no)}</Txt> : null}
-          <Txt v="body" color="muted" align="center">{order.result.message || "Sotuv bo'limi tez orada siz bilan bog'lanadi"}</Txt>
-        </View>
-
-        <Appear delay={stagger(1)}>
-          <Card style={{ gap: space.sm }}>
-            <Txt v="overline">Buyurtma</Txt>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-              <Txt v="bodyStrong" style={{ flex: 1 }} numberOfLines={2}>{order.item.name}</Txt>
-              <Txt v="bodyStrong">{fmtNum(order.qty, order.qty % 1 ? 1 : 0)} {order.item.unitLabel}</Txt>
-            </View>
-            {order.address ? <Txt v="caption" numberOfLines={2}>{order.address}</Txt> : null}
-            <View style={{ height: size.hairline, backgroundColor: c.borderSubtle }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Txt v="bodySm" color="muted">Taxminiy summa</Txt>
-              <Txt v="titleSm">{fmtNum(order.total)} so&apos;m</Txt>
-            </View>
-            <Txt v="caption">Yakuniy narx va yetkazish narxini sotuv bo&apos;limi aytadi</Txt>
-          </Card>
-        </Appear>
-
-        <Appear delay={stagger(2)}>
-          <View style={{ gap: space.md }}>
-            <Txt v="titleSm" accessibilityRole="header">Keyingi qadamlar</Txt>
-            <Card style={{ gap: 0 }}>
-              {STEPS.map((s, i) => {
-                const done = i === 0;
-                const last = i === STEPS.length - 1;
-                return (
-                  <View key={s.title} style={{ flexDirection: 'row', gap: space.md }}>
-                    <View style={{ alignItems: 'center', width: size.iconLg }}>
-                      <View style={{ width: size.iconLg, height: size.iconLg, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? c.successSolid : c.bgMuted }}>
-                        {done ? <Icon name="check" size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={3} /> : <Txt v="caption" color="body">{i + 1}</Txt>}
-                      </View>
-                      {last ? null : <View style={{ flex: 1, width: size.ring, minHeight: space.lg, backgroundColor: done ? c.successSolid : c.borderDefault }} />}
-                    </View>
-                    <View style={{ flex: 1, paddingBottom: last ? 0 : space.lg }}>
-                      <Txt v="bodyStrong" color={done ? 'strong' : 'body'}>{s.title}</Txt>
-                      <Txt v="caption">{s.sub}</Txt>
-                    </View>
-                  </View>
-                );
-              })}
-            </Card>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.xxxl, paddingHorizontal: space.pageX, paddingBottom: space.xxl }}>
+        <Reveal gap={space.lg}>
+          <View style={{ alignItems: 'center', gap: space.md }}>
+            <SuccessCheck size={size.avatarLg * 2} />
+            <Txt v="titleLg" align="center" accessibilityRole="header">Buyurtma qabul qilindi</Txt>
+            {numbers.length ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                <Txt v="body" color="muted">№ {numbers.join(', ')}</Txt>
+                <IconButton icon="copy" label="Raqamni nusxalash" tone="muted" size={size.iconTileSm} onPress={() => void copyText(numbers.join(', '))} />
+              </View>
+            ) : <Txt v="body" color="muted" align="center">{first.message || "Sotuv bo'limi tez orada siz bilan bog'lanadi"}</Txt>}
           </View>
-        </Appear>
+
+          <Card style={{ gap: space.sm }}>
+            <Txt v="listTitle" numberOfLines={2}>{title}</Txt>
+            {sub ? <Txt v="tSm" numberOfLines={2}>{sub}</Txt> : null}
+            <Txt v="titleLg" style={{ marginTop: space.xs }}>≈ {fmtNum(total)} so&apos;m</Txt>
+          </Card>
+
+          <Card>
+            <Timeline
+              steps={[
+                { title: 'Qabul qilindi', sub: fmtTime(first.at), state: 'done' },
+                { title: "Sotuv bo'limi qo'ng'iroq qiladi", sub: 'Ish vaqtida — narx va vaqtni aniqlashtiradi', state: 'now' },
+                { title: 'Yetkazish: tasdiqdan so\'ng', state: 'todo' },
+              ]}
+            />
+          </Card>
+        </Reveal>
       </ScrollView>
-      <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.md) + space.xs, gap: space.sm }}>
-        <Button title="Do'konga qaytish" size="lg" icon="store" onPress={onDone} />
-        {phone ? <Button title="Sotuv bo'limiga qo'ng'iroq" variant="ghost" icon="phone" onPress={() => void Linking.openURL(`tel:${phone}`)} /> : null}
+      <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.lg) + space.xs, gap: space.sm }}>
+        <Button title="Buyurtmalarim" size="sticky" onPress={onOrders} />
+        <Button title="Do'konga qaytish" variant="secondary" size="sticky" onPress={onDone} />
       </View>
     </View>
   );
