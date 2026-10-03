@@ -35,6 +35,14 @@ model User {
   deleteRequestedAt DateTime?
   /// Anonimlashtirilgan: phone = "deleted:<id>", ism/parol yo'q, a'zoliklar o'chiq. Qator tarix (reys, xabar) uchun qoladi
   deletedAt DateTime?
+  /// Platforma superadmini (dasturchi). Oddiy a'zolik roli EMAS: tashkilotga bog'lanmaydi va hech qanday
+  /// tashkilot ro'yxatida (xodimlar, kontaktlar, sanoqlar) ko'rinmaydi. Faqat `scripts/grant-superadmin.ts` beradi.
+  isSuperAdmin Boolean @default(false)
+  /// Superadmin bloklagan: kira olmaydi, mavjud tokenlari ham rad etiladi
+  blockedAt     DateTime?
+  blockedReason String?
+  /// Shu vaqtdan oldin berilgan access tokenlar yaroqsiz ("barcha seanslarni yopish", bloklash)
+  tokensValidAfter DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -54,6 +62,7 @@ model User {
   messages       Message[]
   reviewsReceived Review[]    @relation("reviewTarget")
   integrations   IntegrationClient[]
+  adminActions   AdminAuditLog[]
 }
 
 model Organization {
@@ -66,6 +75,9 @@ model Organization {
   externalRef String?        @unique
   /// Tashkilot darajasidagi biznes qoidalar (DEFAULT_RULES override), JSON
   settings  Json             @default("{}")
+  /// Superadmin bloklagan: a'zolari shu tashkilot nomidan so'rov yubora olmaydi (PolicyGuard)
+  blockedAt     DateTime?
+  blockedReason String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   deletedAt DateTime?
@@ -153,6 +165,37 @@ model Device {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, deviceId])
+}
+
+/// Superadmin amallari jurnali (append-only): har bir /admin/* so'rovi yoziladi.
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  /// "POST /admin/users/:id/block"
+  action     String
+  targetType String?
+  targetId   String?
+  /// So'rov tanasi (maxfiy maydonlarsiz) va natija
+  payload    Json     @default("{}")
+  status     Int?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+}
+
+/// Ilova sozlamalari / feature flag'lar (kalit → JSON). `isPublic` — ilovaga /app-config orqali beriladi.
+model AppConfig {
+  key         String   @id
+  value       Json
+  isPublic    Boolean  @default(false)
+  description String?
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 model OtpCode {

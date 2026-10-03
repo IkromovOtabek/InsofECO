@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { FinanceService } from '../finance/finance.service';
 
@@ -20,8 +21,8 @@ export class DashboardController {
       this.prisma.workOrder.count({ where: { organizationId: orgId, status: { in: ['ACCEPTED', 'WORKER_ASSIGNED', 'IN_PROGRESS', 'REVIEW'] } } }),
       this.prisma.workOrder.count({ where: { organizationId: orgId, status: 'NEW' } }),
       this.prisma.workOrder.count({ where: { organizationId: orgId, status: 'REVIEW' } }),
-      this.prisma.membership.count({ where: { organizationId: orgId, role: 'QURUVCHI', isActive: true } }),
-      this.prisma.membership.count({ where: { organizationId: orgId, role: 'HAYDOVCHI', isActive: true } }),
+      this.prisma.membership.count({ where: { organizationId: orgId, role: 'QURUVCHI', isActive: true, ...VISIBLE_MEMBER } }),
+      this.prisma.membership.count({ where: { organizationId: orgId, role: 'HAYDOVCHI', isActive: true, ...VISIBLE_MEMBER } }),
       this.prisma.material.findMany({ where: { organizationId: orgId }, include: { inventory: true } }),
       this.prisma.shipment.count({ where: { organizationId: orgId, status: { in: ['LOADING', 'EN_ROUTE'] } } }),
       this.prisma.workOrder.findMany({ where: { organizationId: orgId, status: 'IN_PROGRESS', workerUserId: { not: null } }, select: { workerUserId: true }, distinct: ['workerUserId'] }),

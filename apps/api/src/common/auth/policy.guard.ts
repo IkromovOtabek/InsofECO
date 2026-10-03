@@ -25,9 +25,11 @@ export class PolicyGuard implements CanActivate {
     if (req.auth.orgId) {
       const memberships = await this.prisma.membership.findMany({
         where: { userId: req.auth.userId, organizationId: req.auth.orgId, isActive: true },
-        select: { role: true },
+        select: { role: true, organization: { select: { blockedAt: true } } },
       });
       if (memberships.length === 0) throw new DomainError('NOT_MEMBER', 'Siz bu tashkilot a\'zosi emassiz');
+      // Superadmin bloklagan tashkilot nomidan hech qanday amal bajarilmaydi (API kalit bilan ham)
+      if (memberships[0]!.organization.blockedAt) throw DomainError.forbidden('Tashkilot bloklangan. Qo\'llab-quvvatlash xizmatiga murojaat qiling');
       // Bir tashkilotda bir nechta rol bo'lsa — eng yuqori imtiyozli (TADBIRKOR) tanlanadi
       const roles = memberships.map((m) => m.role as Role);
       req.auth.role = roles.includes('TADBIRKOR') ? 'TADBIRKOR' : roles[0] ?? null;

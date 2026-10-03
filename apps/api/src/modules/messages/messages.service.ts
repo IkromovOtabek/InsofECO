@@ -5,6 +5,7 @@ import { ConversationCreateSchema } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 
 @Injectable()
 export class MessagesService {
@@ -33,7 +34,9 @@ export class MessagesService {
 
   /** DIRECT: mavjud bo'lsa qaytaradi. */
   async create(a: AuthContext, input: z.infer<typeof ConversationCreateSchema>) {
-    const ids = Array.from(new Set([a.userId, ...input.participantUserIds]));
+    // Superadmin suhbatga qo'shilmaydi (id tasodifan ma'lum bo'lsa ham)
+    const hidden = await this.prisma.user.findMany({ where: { id: { in: input.participantUserIds }, isSuperAdmin: true }, select: { id: true } });
+    const ids = Array.from(new Set([a.userId, ...input.participantUserIds.filter((id) => !hidden.some((h) => h.id === id))]));
     if (input.type === 'DIRECT' && ids.length === 2) {
       const existing = await this.prisma.conversation.findFirst({ where: { organizationId: a.orgId!, type: 'DIRECT', AND: ids.map((id) => ({ participants: { some: { userId: id } } })) } });
       if (existing) return existing;
@@ -59,7 +62,7 @@ export class MessagesService {
 
   /** Suhbatdoshlar ro'yxati (tashkilot a'zolari). */
   contacts(a: AuthContext) {
-    return this.prisma.membership.findMany({ where: { organizationId: a.orgId!, isActive: true, userId: { not: a.userId } }, select: { role: true, user: { select: { id: true, fullName: true, phone: true } } }, orderBy: { role: 'asc' } });
+    return this.prisma.membership.findMany({ where: { organizationId: a.orgId!, isActive: true, userId: { not: a.userId }, ...VISIBLE_MEMBER }, select: { role: true, user: { select: { id: true, fullName: true, phone: true } } }, orderBy: { role: 'asc' } });
   }
 
   private async member(a: AuthContext, conversationId: string) {

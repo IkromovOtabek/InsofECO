@@ -13,6 +13,11 @@ import { MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent } from '../organiz
 
 const REFRESH_DAYS = Number(process.env.JWT_REFRESH_TTL_DAYS ?? 30);
 
+/** Superadmin bloklagan hisob — hech qaysi usul bilan kira olmaydi. */
+const assertNotBlocked = (u: { blockedAt: Date | null }) => {
+  if (u.blockedAt) throw DomainError.forbidden('Hisobingiz bloklangan. Qo\'llab-quvvatlash xizmatiga murojaat qiling');
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -41,6 +46,7 @@ export class AuthService {
       create: { phone, fullName },
       update: {},
     });
+    assertNotBlocked(user);
     await this.touchDevice(user.id, device);
     const tokens = await this.issueSession(user.id, device.deviceId, randomUUID());
     return { ...tokens, user: await this.profile(user.id) };
@@ -50,6 +56,7 @@ export class AuthService {
   async register(input: RegisterInput) {
     const exists = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (exists?.passwordHash) throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam allaqachon ro\'yxatdan o\'tgan');
+    if (exists) assertNotBlocked(exists);
     const passwordHash = await argon2.hash(input.password);
 
     // Tranzaksiyadan keyin ERP'ga xabar: haydovchi zavodga o'zi yozildi, yoki ERP'dan taklif qilingan mijoz ilovaga kirdi
@@ -119,6 +126,7 @@ export class AuthService {
     if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, input.password))) {
       throw new DomainError('AUTH_BAD_CREDENTIALS', 'Telefon yoki parol noto\'g\'ri');
     }
+    assertNotBlocked(user);
     await this.touchDevice(user.id, input.device);
     const tokens = await this.issueSession(user.id, input.device.deviceId, randomUUID());
     return { ...tokens, user: await this.profile(user.id) };
@@ -141,6 +149,7 @@ export class AuthService {
     await this.otp.verify(input.phone, input.code);
     const user = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (!user) throw new DomainError('AUTH_USER_NOT_FOUND', 'Bu raqam bilan hisob topilmadi');
+    assertNotBlocked(user);
 
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: await argon2.hash(input.password) } }),
@@ -180,8 +189,12 @@ export class AuthService {
   async refresh(refreshToken: string) {
     const [sessionId, secret] = refreshToken.split('.');
     if (!sessionId || !secret) throw new DomainError('AUTH_TOKEN_INVALID', 'Refresh yaroqsiz');
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId }, include: { user: { select: { blockedAt: true, deletedAt: true } } } });
     if (!session) throw new DomainError('AUTH_TOKEN_INVALID', 'Sessiya topilmadi');
+    if (session.user.blockedAt || session.user.deletedAt) {
+      await this.prisma.session.updateMany({ where: { userId: session.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      throw new DomainError('AUTH_TOKEN_INVALID', 'Hisob faol emas');
+    }
 
     if (session.revokedAt) {
       // Eski (allaqachon almashtirilgan) token qayta ishlatildi → o'g'irlangan bo'lishi mumkin → butun oilani o'chiramiz
@@ -226,6 +239,8 @@ export class AuthService {
       locale: user.locale,
       avatarUrl: avatarPath(user.avatarKey),
       deleteRequestedAt: user.deleteRequestedAt,
+      /** Faqat egasining o'ziga (/me, kirish javobi) qaytadi; ilova "Superadmin" bo'limini shu bilan ochadi. Server baribir har /admin so'rovida tekshiradi. */
+      isSuperAdmin: user.isSuperAdmin,
       memberships: user.memberships.map((m) => ({ role: m.role, isActive: m.isActive, organization: m.organization })),
     };
   }

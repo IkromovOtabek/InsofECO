@@ -44,8 +44,31 @@ function RoleCard({ role, org, pending }: { role: RoleKey; org: string; pending?
   );
 }
 
+/** Superadmin kartasi — rol kartasi bilan bir xil shakl, qizil qalqon plitkasi; tashkilotga bog'lanmagan. */
+function SuperAdminCard() {
+  const { c } = useTheme();
+  return (
+    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingVertical: space.xl }}>
+      <IconTile icon="shield-check" tone="danger" size={size.avatarLg} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Txt v="titleMd" numberOfLines={1}>Superadmin</Txt>
+        <Txt v="caption" color="muted" numberOfLines={2}>Server holati, tashkilotlar va foydalanuvchilarni boshqarish</Txt>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs }}>
+          <Icon name="activity" size={size.iconSm - 2} tone="faint" />
+          <Txt v="label" color="body" numberOfLines={1} style={{ flexShrink: 1 }}>Butun tizim</Txt>
+        </View>
+      </View>
+      <View style={{ width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.dangerBg, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="chevron-right" tone="danger" size={size.iconSm} />
+      </View>
+    </Card>
+  );
+}
+
 export default function SelectRole() {
-  const { user, selectMembership, signOut, setUser } = useSession();
+  const { user, selectMembership, selectAdmin, signOut, setUser } = useSession();
+  // Server tasdiqlagan bayroq (/me). Faqat menyu: /admin/* ni server baribir o'zi tekshiradi
+  const superAdmin = !!user?.isSuperAdmin;
   const list = user?.memberships ?? [];
   const active = list.filter((m) => m.isActive);
   const pending = list.filter((m) => !m.isActive);
@@ -68,12 +91,19 @@ export default function SelectRole() {
   return (
     <AuthScreen back={false}>
       <Appear delay={40} style={{ marginTop: space.lg }}>
-        <Txt v="overline" color="brand">{active.length ? `${active.length} ta hisob` : list.length ? 'Tasdiq kutilmoqda' : 'Xush kelibsiz'}</Txt>
-        <Txt v="titleLg" style={{ marginTop: space.xs }}>{active.length ? 'Korxonani tanlang' : list.length ? 'Tasdiq kutilmoqda' : 'Qanday davom etasiz?'}</Txt>
+        <Txt v="overline" color="brand">{superAdmin ? `${active.length + 1} ta bo'lim` : active.length ? `${active.length} ta hisob` : list.length ? 'Tasdiq kutilmoqda' : 'Xush kelibsiz'}</Txt>
+        <Txt v="titleLg" style={{ marginTop: space.xs }}>{superAdmin ? "Bo'limni tanlang" : active.length ? 'Korxonani tanlang' : list.length ? 'Tasdiq kutilmoqda' : 'Qanday davom etasiz?'}</Txt>
         <Txt v="bodySm" color="muted" style={{ marginTop: space.sm }}>{user?.fullName ?? user?.phone}</Txt>
       </Appear>
 
       <View style={{ marginTop: space.xxl, gap: space.md }}>
+        {superAdmin ? (
+          <Appear delay={60}>
+            <PressScale onPress={selectAdmin} scale={0.97} accessibilityRole="button" accessibilityLabel="Superadmin, tizim boshqaruvi">
+              <SuperAdminCard />
+            </PressScale>
+          </Appear>
+        ) : null}
         {active.map((m, i) => (
           <Appear key={`${m.organization.id}:${m.role}`} delay={80 + stagger(i, 60)}>
             <PressScale onPress={() => selectMembership(m)} scale={0.97} accessibilityRole="button" accessibilityLabel={`${ECO_ROLE_NAME[m.role].name}, ${m.organization.name}`}>
@@ -93,7 +123,7 @@ export default function SelectRole() {
           </Appear>
         ) : null}
 
-        {list.length === 0 ? (
+        {list.length === 0 && !superAdmin ? (
           <Appear delay={60} style={{ gap: space.md }}>
             <InfoCard icon="user-plus">
               Beton va temir-beton buyurtma qilmoqchimisiz? Mijoz sifatida davom eting. Haydovchi yoki tadbirkor bo&apos;lsangiz — tashkilotingiz sizni telefon raqamingiz orqali qo&apos;shadi.

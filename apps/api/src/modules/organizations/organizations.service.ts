@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrganizationType, Role } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 import { SmsPort } from '../../infra/sms/sms.port';
 import { MembershipChangedEvent, ORG_EVENTS, VehicleChangedEvent } from './organizations.events';
 
@@ -70,7 +71,7 @@ export class OrganizationsService {
 
   members(orgId: string) {
     return this.prisma.membership.findMany({
-      where: { organizationId: orgId },
+      where: { organizationId: orgId, ...VISIBLE_MEMBER },
       orderBy: [{ isActive: 'asc' }, { createdAt: 'desc' }],
       include: { user: { select: { id: true, phone: true, fullName: true, driverProfile: true } } },
     });

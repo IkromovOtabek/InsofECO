@@ -15,7 +15,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node prisma/seed.ts && ts-node prisma/seed-eco.ts",
     "plant:create": "ts-node prisma/create-plant.ts",
-    "integration:create": "ts-node prisma/create-integration.ts"
+    "integration:create": "ts-node prisma/create-integration.ts",
+    "superadmin": "ts-node scripts/grant-superadmin.ts"
   },
   "dependencies": {
     "@insof/shared": "0.1.0",

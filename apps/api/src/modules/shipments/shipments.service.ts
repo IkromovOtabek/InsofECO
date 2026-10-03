@@ -47,7 +47,7 @@ export class ShipmentsService {
     const contactUser = s.request?.requestedByUserId
       ? await this.prisma.user.findUnique({ where: { id: s.request.requestedByUserId }, select: { fullName: true, phone: true } })
       : null;
-    const fallback = contactUser ?? (await this.prisma.membership.findFirst({ where: { organizationId: s.organizationId, role: 'TADBIRKOR', isActive: true }, select: { user: { select: { fullName: true, phone: true } } } }))?.user ?? null;
+    const fallback = contactUser ?? (await this.prisma.membership.findFirst({ where: { organizationId: s.organizationId, role: 'TADBIRKOR', isActive: true, user: { isSuperAdmin: false } }, select: { user: { select: { fullName: true, phone: true } } } }))?.user ?? null;
     return { ...s, contact: fallback };
   }
 

@@ -25,7 +25,7 @@ const Over = ({ children }: { children: string }) => (
 export function Profile({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
   const { c } = useTheme();
-  const { user, active, selectMembership, signOut } = useSession();
+  const { user, active, selectMembership, selectAdmin, signOut } = useSession();
   const memberships = user?.memberships.filter((m) => m.isActive) ?? [];
 
   return (
@@ -54,6 +54,16 @@ export function Profile({ children }: { children?: React.ReactNode }) {
                   onPress={() => { selectMembership(m); router.replace('/'); }}
                 />
               ))}
+            </SetGroup>
+          </Appear>
+        ) : null}
+
+        {/* Superadmin (server tasdiqlagan /me bayrog'i) — o'z bo'limiga tezkor qaytish */}
+        {user?.isSuperAdmin ? (
+          <Appear delay={stagger(1)} style={{ gap: space.tight }}>
+            <Over>Superadmin</Over>
+            <SetGroup>
+              <SetRow icon="shield-check" module="brand" title="Superadmin" subtitle="Tizim holati va boshqaruv" onPress={() => { selectAdmin(); router.replace('/(superadmin)' as never); }} />
             </SetGroup>
           </Appear>
         ) : null}

@@ -5,6 +5,7 @@ import { ReviewCreateSchema, Specialty, WorkerProfileUpdateSchema } from '@insof
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
+import { VISIBLE_MEMBER, VISIBLE_USER } from '../../common/auth/superadmin';
 
 const D = Prisma.Decimal;
 
@@ -15,7 +16,7 @@ export class WorkersService {
   /** Tashkilot quruvchilari + hozirgi loyiha + faol ish. */
   async listWorkers(a: AuthContext, specialty?: Specialty) {
     const ms = await this.prisma.membership.findMany({
-      where: { organizationId: a.orgId!, role: 'QURUVCHI', isActive: true, ...(specialty ? { user: { workerProfile: { specialty } } } : {}) },
+      where: { organizationId: a.orgId!, role: 'QURUVCHI', isActive: true, user: { ...VISIBLE_USER, ...(specialty ? { workerProfile: { specialty } } : {}) } },
       include: {
         user: {
           select: {
@@ -35,7 +36,7 @@ export class WorkersService {
 
   async workerDetail(a: AuthContext, userId: string) {
     const u = await this.prisma.user.findFirst({
-      where: { id: userId, memberships: { some: { organizationId: a.orgId!, role: 'QURUVCHI' } } },
+      where: { id: userId, ...VISIBLE_USER, memberships: { some: { organizationId: a.orgId!, role: 'QURUVCHI' } } },
       include: {
         workerProfile: true,
         workOrders: { where: { organizationId: a.orgId! }, orderBy: { createdAt: 'desc' }, take: 30, include: { project: { select: { name: true } } } },
@@ -63,7 +64,7 @@ export class WorkersService {
   /** Haydovchilar: transport, joriy yuk, reyting. */
   async listDrivers(a: AuthContext) {
     const ms = await this.prisma.membership.findMany({
-      where: { organizationId: a.orgId!, role: 'HAYDOVCHI', isActive: true },
+      where: { organizationId: a.orgId!, role: 'HAYDOVCHI', isActive: true, ...VISIBLE_MEMBER },
       include: {
         user: {
           select: {

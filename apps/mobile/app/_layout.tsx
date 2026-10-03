@@ -37,7 +37,7 @@ const ROLE_GROUP = { TADBIRKOR: '(tadbirkor)', QURUVCHI: '(quruvchi)', HAYDOVCHI
  * qaysi biri ekanini `kind` aytadi, rol esa qaysi guruhga tushishini.
  */
 function Gate() {
-  const { status, kind, active, user, erp } = useSession();
+  const { status, kind, active, user, erp, admin } = useSession();
   const segments = useSegments();
   const router = useRouter();
 
@@ -51,6 +51,13 @@ function Gate() {
     // Kirgan holda ham ochiladigan auth ekranlari: xavfsizlik sozlamalari va yakun
     const security = group === '(auth)' && ['pin', 'change-password', 'done'].includes(segs[1] ?? '');
     if (security) return;
+    // Superadmin bo'limi — faqat serverda tasdiqlangan bayroq (/me → isSuperAdmin) bilan. Bu faqat UX:
+    // /admin/* ni server har so'rovda o'zi tekshiradi. Bayrog'i yo'qlar quyidagi oddiy qoidalar bilan
+    // o'z guruhiga qaytariladi ((superadmin) hech kimning "shared" ro'yxatida yo'q).
+    if (kind === 'eco' && admin && user?.isSuperAdmin) {
+      if (group !== '(superadmin)' && group !== 'settings') router.replace('/(superadmin)' as never);
+      return;
+    }
     // Sovuq start (`index` ekrani, guruh yo'q) — kirgan foydalanuvchi ham do'kon bilan ochiladi;
     // o'z bo'limiga vitrinadagi "Kabinet" tugmasi olib boradi. Hisob to'liq bo'lmasa
     // (ERP xodimi ma'lumoti yo'q / ECO rol tanlanmagan) — pastdagi qoidalar ishlaydi.
@@ -76,7 +83,7 @@ function Gate() {
     // `(shop)` — do'kon kirgan foydalanuvchiga ham ochiq (menyudan)
     const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker', '(shop)', 'settings'].includes(group ?? '');
     if (group !== target && !shared) router.replace(`/${target}` as never);
-  }, [status, kind, active, erp, segments, router]);
+  }, [status, kind, active, erp, admin, user?.isSuperAdmin, segments, router]);
 
   useEffect(() => {
     if (status !== 'authed') return;
@@ -142,6 +149,7 @@ function Nav() {
         <Stack.Screen name="(tadbirkor)" options={{ headerShown: false }} />
         <Stack.Screen name="(quruvchi)" options={{ headerShown: false }} />
         <Stack.Screen name="(haydovchi)" options={{ headerShown: false }} />
+        <Stack.Screen name="(superadmin)" options={{ headerShown: false }} />
         {/* Insof ERP — har bir bo'lim o'z guruhida */}
         {ERP_GROUPS.map((g) => <Stack.Screen key={g} name={g} options={{ headerShown: false }} />)}
         <Stack.Screen name="erp/[key]/[id]" options={{ title: 'Kartochka' }} />
@@ -185,7 +193,8 @@ export default function RootLayout() {
   useEffect(() => { void hydrate(); }, [hydrate]);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000 }}>
+      {/* Superadmin ma'lumoti (barcha foydalanuvchilar, telefonlar) diskka yozilmaydi — faqat xotirada */}
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000, dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.queryKey[0] !== 'admin' } }}>
         <ThemeProvider>
           <Gate />
           <PushRouting />

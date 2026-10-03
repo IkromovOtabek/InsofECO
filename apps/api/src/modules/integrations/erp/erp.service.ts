@@ -7,6 +7,7 @@ import { InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { DomainError } from '../../../common/errors/domain.error';
 import { AuthContext } from '../../../common/auth/decorators';
+import { VISIBLE_MEMBER, VISIBLE_USER } from '../../../common/auth/superadmin';
 import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { OrganizationsService } from '../../organizations/organizations.service';
 import { TrackingService, trackStats } from '../../tracking/tracking.service';
@@ -70,7 +71,7 @@ export class ErpService {
 
   async drivers(a: AuthContext) {
     const members = await this.prisma.membership.findMany({
-      where: { organizationId: a.orgId!, role: 'HAYDOVCHI' },
+      where: { organizationId: a.orgId!, role: 'HAYDOVCHI', ...VISIBLE_MEMBER },
       orderBy: { createdAt: 'asc' },
       include: {
         user: {
@@ -316,7 +317,7 @@ export class ErpService {
   // (`unlinkedCustomers` → `linkCustomer`), `ensureClient` esa telefon mos kelsa o'zi ulaydi.
 
   private readonly memberInclude = {
-    where: { role: 'QURUVCHI' as const },
+    where: { role: 'QURUVCHI' as const, ...VISIBLE_MEMBER },
     include: { user: { select: { id: true, phone: true, fullName: true, passwordHash: true, sessions: { where: { revokedAt: null }, orderBy: { createdAt: 'desc' as const }, take: 1, select: { createdAt: true } } } } },
   } satisfies Prisma.Organization$membershipsArgs;
 
@@ -392,7 +393,7 @@ export class ErpService {
     }
     const users = await this.prisma.user.findMany({
       where: {
-        passwordHash: { not: null }, deletedAt: null, integrations: { none: {} },
+        passwordHash: { not: null }, deletedAt: null, integrations: { none: {} }, ...VISIBLE_USER,
         ...(role ? { memberships: { some: { role } } } : {}),
         ...(or.length ? { OR: or } : {}),
       },

@@ -5,6 +5,7 @@ import { ACTIVE_DELIVERY_STATUSES, DeliveryStatus, splitVolumeIntoTrips } from '
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 import { OrdersService } from '../orders/orders.service';
 
 @Injectable()
@@ -76,7 +77,7 @@ export class DispatchService {
         orderBy: { plannedAt: 'asc' },
       }),
       this.prisma.membership.findMany({
-        where: { organizationId: a.orgId!, role: 'HAYDOVCHI', isActive: true },
+        where: { organizationId: a.orgId!, role: 'HAYDOVCHI', isActive: true, ...VISIBLE_MEMBER },
         include: { user: { select: { id: true, fullName: true, phone: true, driverProfile: { include: { deliveries: { where: { status: { in: ACTIVE_DELIVERY_STATUSES as DeliveryStatus[] } }, select: { id: true, status: true } } } } } } },
       }),
       this.prisma.vehicle.findMany({ where: { organizationId: a.orgId!, isActive: true } }),

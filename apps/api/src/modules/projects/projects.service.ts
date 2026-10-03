@@ -6,6 +6,7 @@ import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateS
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
+import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
 
 const D = Prisma.Decimal;
 
@@ -30,7 +31,7 @@ export class ProjectsService {
       where: { id, organizationId: a.orgId!, ...(a.role === 'QURUVCHI' ? { members: { some: { userId: a.userId } } } : {}) },
       include: {
         tasks: { orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }], include: { assignee: { select: { id: true, fullName: true } } } },
-        members: { include: { user: { select: { id: true, fullName: true, phone: true, workerProfile: true } } } },
+        members: { where: VISIBLE_MEMBER, include: { user: { select: { id: true, fullName: true, phone: true, workerProfile: true } } } },
         workOrders: { orderBy: { createdAt: 'desc' }, include: { worker: { select: { id: true, fullName: true } } } },
         materialRequests: { orderBy: { createdAt: 'desc' }, include: { material: true } },
         shipments: { orderBy: { createdAt: 'desc' }, take: 20, include: { driver: { select: { fullName: true } }, vehicle: true } },

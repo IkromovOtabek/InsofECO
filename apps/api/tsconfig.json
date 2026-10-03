@@ -13,5 +13,5 @@
     "declaration": false,
     "incremental": true
   },
-  "include": ["src", "prisma/seed.ts", "prisma/create-integration.ts"]
+  "include": ["src", "prisma/seed.ts", "prisma/create-integration.ts", "scripts"]
 }
