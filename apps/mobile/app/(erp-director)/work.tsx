@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpList } from '@/features/erp/screens';
+import { ErpTabRoute } from '@/features/erp/screens';
 
-/** Direktor — "Tasdiqlar": qarorini kutayotgan hujjatlar (`/api/mobile/list?key=approvals`). */
+/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
 export default function Work() {
-  return <ErpList listKey="approvals" />;
+  return <ErpTabRoute role="DIRECTOR" route="work" />;
 }

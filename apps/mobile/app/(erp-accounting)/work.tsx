@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpList } from '@/features/erp/screens';
+import { ErpTabRoute } from '@/features/erp/screens';
 
-/** Buxgalteriya — ishchi ro'yxat (`/api/mobile/list?key=invoices`). */
+/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
 export default function Work() {
-  return <ErpList listKey="invoices" />;
+  return <ErpTabRoute role="ACCOUNTING" route="work" />;
 }

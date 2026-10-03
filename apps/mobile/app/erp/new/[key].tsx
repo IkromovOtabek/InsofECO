@@ -3,7 +3,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'rea
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { Callout, EmptyState, Txt } from '@/design/primitives';
-import { StickyActionBar } from '@/design/blocks';
+import { PageHeader, StickyActionBar } from '@/design/blocks';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/design/icons';
 import { result } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -27,6 +28,7 @@ export default function ErpNew() {
   const { c } = useTheme();
   const router = useRouter();
   const nav = useNavigation();
+  const insets = useSafeAreaInsets();
   const headerH = React.useContext(HeaderHeightContext) ?? 0;
   const { data, isLoading, error } = useErpForm(key!);
   const create = useErpCreate();
@@ -37,11 +39,14 @@ export default function ErpNew() {
   /** Har maydonning forma ichidagi Y joyi — birinchi xatoga surish uchun. */
   const pos = useRef<Record<string, number>>({});
 
+  // Demo sarlavhasi (orqaga · nom) ekranning o'zida
+  useEffect(() => { nav.setOptions({ headerShown: false }); }, [nav]);
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
   // Forma bir marta to'ldiriladi: keshdan qayta kelganda foydalanuvchi kiritgani yo'qolmasin
   const seeded = React.useRef(false);
   useEffect(() => {
     if (!data) return;
-    nav.setOptions({ title: data.title });
     if (seeded.current) return;
     seeded.current = true;
     setValues(initialValues(data.fields));
@@ -82,12 +87,21 @@ export default function ErpNew() {
     }
   };
 
-  if (isLoading) return <Loader fill />;
-  if (error || !data) return <EmptyState title="Forma ochilmadi" hint={error instanceof ApiException ? error.message : 'Internetni tekshiring'} />;
+  const header = <PageHeader title={data?.title ?? 'Yangi hujjat'} onBack={back} style={{ paddingTop: insets.top + space.sm }} />;
+  if (isLoading) return <View style={{ flex: 1, backgroundColor: c.bgApp }}>{header}<Loader fill /></View>;
+  if (error || !data) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bgApp }}>
+        {header}
+        <EmptyState icon="cloud-off" title="Forma ochilmadi" hint={error instanceof ApiException ? error.message : 'Internetni tekshiring'} onRetry={back} retryLabel="Orqaga" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerH}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
+      {header}
+      <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
         {errorCount ? (
           <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
             <Pressable

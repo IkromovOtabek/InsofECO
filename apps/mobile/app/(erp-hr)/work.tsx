@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpList } from '@/features/erp/screens';
+import { ErpTabRoute } from '@/features/erp/screens';
 
-/** Otdel kadr — ishchi ro'yxat (`/api/mobile/list?key=employees`). */
+/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
 export default function Work() {
-  return <ErpList listKey="employees" />;
+  return <ErpTabRoute role="HR" route="work" />;
 }

@@ -6,7 +6,7 @@ import { Button, Card, IconButton, Input, Label, Select, Txt, type SelectOption 
 import { Toggle } from '@/design/blocks';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { radius, shadow, size, space, toneColors, type Tone } from '@/design/tokens';
+import { elevation, radius, size, space, toneColors, type Tone } from '@/design/tokens';
 import type { ErpDayCell, ErpFormField, ErpFormOption } from '@/core/erp';
 
 /**
@@ -164,7 +164,7 @@ export function FieldInput({ field, values, onChange, errors }: { field: ErpForm
   const body = () => {
     switch (field.type) {
       case 'switch': return (
-        <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card }, shadow.card]}>
+        <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card }, elevation(c).sh1]}>
           <Toggle value={value === 'true'} onChange={(v) => onChange(field.name, String(v))} label={field.label} />
         </View>
       );
@@ -219,7 +219,7 @@ function PhotoInput({ value, onChange, camera, cameraOnly }: { value: string; on
   return (
     <View style={{ gap: space.sm }}>
       {value ? (
-        <View style={[{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: c.bgMuted }, shadow.card]}>
+        <View style={[{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: c.bgMuted }, elevation(c).sh1]}>
           <Image source={{ uri: value }} style={{ width: '100%', aspectRatio: camera === 'front' ? 3 / 4 : 4 / 3 }} resizeMode="cover" accessibilityIgnoresInvertColors />
         </View>
       ) : null}
@@ -288,7 +288,7 @@ function ChoiceChip({ on, onPress, label, children }: { on: boolean; onPress: ()
       android_ripple={{ color: c.bgMuted }}
       style={({ pressed }) => [
         { minHeight: size.touch, paddingHorizontal: space.md + space.xs, paddingVertical: space.sm, borderRadius: radius.md, borderCurve: 'continuous', backgroundColor: on ? c.brand : c.bgSurface, alignItems: 'center', justifyContent: 'center' },
-        on ? null : shadow.card,
+        on ? null : elevation(c).sh1,
         pressed && !on && { backgroundColor: c.bgSubtle },
       ]}
     >

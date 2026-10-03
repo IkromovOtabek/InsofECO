@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { radius, shadow, size, space, toneColors } from '@/design/tokens';
+import { elevation, radius, size, space, toneColors } from '@/design/tokens';
 import type { ErpSectionChart } from '@/core/erp';
 
 type Progress = Extract<ErpSectionChart, { kind: 'progress' }>;
@@ -16,7 +16,7 @@ type Progress = Extract<ErpSectionChart, { kind: 'progress' }>;
 export function ProgressChart({ chart, onOpen }: { chart: Progress; onOpen?: (list: string) => void }) {
   const { c } = useTheme();
   return (
-    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card, paddingVertical: space.sm }, shadow.card]}>
+    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card, paddingVertical: space.xs }, elevation(c).sh1]}>
       {chart.items.map((it, i) => {
         const t = toneColors(c, it.tone);
         const w = it.pct == null ? null : Math.max(2, Math.min(100, it.pct));

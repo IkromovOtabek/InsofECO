@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpList } from '@/features/erp/screens';
+import { ErpTabRoute } from '@/features/erp/screens';
 
-/** Haydovchi — o'z reyslari (`/api/mobile/list?key=trips`, serverda faqat o'ziniki qoladi). */
+/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
 export default function Work() {
-  return <ErpList listKey="trips" />;
+  return <ErpTabRoute role="DRIVER" route="work" />;
 }

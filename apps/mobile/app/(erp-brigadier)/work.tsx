@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpList } from '@/features/erp/screens';
+import { ErpTabRoute } from '@/features/erp/screens';
 
-/** Brigadir — o'z brigadasining topshiriqlari (`/api/mobile/list?key=tasks`). */
+/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
 export default function Work() {
-  return <ErpList listKey="tasks" />;
+  return <ErpTabRoute role="BRIGADIER" route="work" />;
 }

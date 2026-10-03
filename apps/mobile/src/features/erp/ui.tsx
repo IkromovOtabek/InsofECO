@@ -1,10 +1,9 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Badge, Card, KPICard, ListGroup, ListItem, SectionHead, Skeleton, Txt, statusLabel } from '@/design/primitives';
+import { Badge, Card, ListGroup, ListItem, SectionHead, Skeleton, Txt, statusLabel } from '@/design/primitives';
 import type { IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { LIST_MODULE, ModuleTone, Tone, radius, size, space, toneColors } from '@/design/tokens';
-import { Appear, stagger } from '@/design/motion';
 import type { ErpCard, ErpRow } from '@/core/erp';
 
 /**
@@ -70,42 +69,6 @@ export function splitValue(v: string): { num: string; unit?: string } {
 /** Qiymat "nol"mi (0, 0 ta, —) — e'tibor ro'yxatiga tushmaydi. */
 export const isZero = (v: string) => /^(0([.,]0+)?|—|-)(\s|$)/.test(v.trim()) || v.trim() === '0%';
 
-// ───────────────────────── KPI to'ri ─────────────────────────
-
-export interface ErpKpi { card: ErpCard; module?: ModuleTone; onPress?: () => void }
-
-/**
- * 2 ustunli ixcham KPI plitkalari (ikonka chapda, yorliq + qiymat, o'zgarish va izoh) —
- * server kartalari uchun: qiymat tayyor matn bo'lib keladi, izoh (`hint`) yo'qolmaydi.
- */
-export function ErpKpiGrid({ items, offset = 0 }: { items: ErpKpi[]; offset?: number }) {
-  const rows: ErpKpi[][] = [];
-  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
-  return (
-    <View style={{ gap: space.grid }}>
-      {rows.map((r, ri) => (
-        <View key={ri} style={{ flexDirection: 'row', gap: space.grid }}>
-          {r.map((it, ci) => {
-            const h = parseHint(it.card.hint, it.card.key);
-            const tone = it.card.tone === 'danger' || it.card.tone === 'warning' ? it.card.tone : undefined;
-            return (
-              <Appear key={it.card.key} delay={stagger(offset + ri * 2 + ci)} style={{ flex: 1 }}>
-                <KPICard
-                  layout="inline" label={it.card.label} value={it.card.value} caption={h.rest}
-                  icon={it.card.icon ?? 'activity'} module={it.module} tone={tone}
-                  delta={h.delta ? { text: h.delta.text, tone: h.delta.tone } : undefined}
-                  onPress={it.onPress} style={{ flex: 1 }}
-                />
-              </Appear>
-            );
-          })}
-          {r.length < 2 ? <View style={{ flex: 1 }} /> : null}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 // ───────────────────────── Qatorlar ─────────────────────────
 
 /** O'ng ustun: summa/son (o'ngga tekislangan) va holat nishoni. */
@@ -122,15 +85,21 @@ function RowRight({ row }: { row: ErpRow }) {
   );
 }
 
-/** Bitta qator — `ListGroup` ichida: ikonka plitkasi, sarlavha + izoh, o'ngda qiymat va holat. */
+/**
+ * Bitta qator — demo `.li` (`ListGroup` ichida): plitka, sarlavha + izoh, o'ngda qiymat (qalin) va holat nishoni.
+ * Pul qatori (+kirim / −chiqim, nishonsiz) — summa yashil/qizil.
+ */
 export function ErpRowItem({ row, icon, module: m = 'brand', onPress }: { row: ErpRow; icon: IconName | string; module?: ModuleTone; onPress?: () => void }) {
   // Holat nishoni bo'lmagan xavfli qator — plitka ton rangida (masalan kam qolgan xomashyo)
   const tone = !row.status && (row.tone === 'danger' || row.tone === 'warning') ? row.tone : undefined;
+  const money = !!row.right && !row.status && (row.tone === 'success' || row.tone === 'danger');
   return (
     <ListItem
       title={row.title} subtitle={row.subtitle} subtitleLines={2}
       icon={icon} module={m} tone={tone}
-      right={<RowRight row={row} />}
+      value={money ? undefined : row.right}
+      badge={row.status ? { text: statusLabel(row.status), tone: row.tone ?? 'neutral' } : undefined}
+      right={money ? <RowRight row={row} /> : undefined}
       onPress={onPress}
     />
   );
@@ -171,33 +140,5 @@ export function ListSkeleton({ rows = 6 }: { rows?: number }) {
         </View>
       ))}
     </ListGroup>
-  );
-}
-
-/** Bosh sahifa yuklanmoqda — sarlavha, davr, hero, KPI va amallar shakli. */
-export function DashSkeleton({ topInset }: { topInset: number }) {
-  return (
-    <View style={{ paddingTop: topInset + space.sm, paddingHorizontal: space.pageX, gap: space.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <View style={{ flex: 1, gap: space.sm }}>
-          <Skeleton width="40%" height={space.md} />
-          <Skeleton width="65%" height={space.xxl} />
-        </View>
-        <Skeleton width={size.touch} height={size.touch} radius={radius.pill} />
-        <Skeleton width={size.avatar} height={size.avatar} radius={radius.pill} />
-      </View>
-      <Skeleton height={size.touch} radius={radius.pill} />
-      <Skeleton height={space.x12 * 4} radius={radius.card} />
-      {[0, 1].map((r) => (
-        <View key={r} style={{ flexDirection: 'row', gap: space.grid }}>
-          <View style={{ flex: 1 }}><Skeleton height={space.x12 + space.xxl} radius={radius.card} /></View>
-          <View style={{ flex: 1 }}><Skeleton height={space.x12 + space.xxl} radius={radius.card} /></View>
-        </View>
-      ))}
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
-        {[0, 1, 2, 3].map((i) => <View key={i} style={{ flex: 1 }}><Skeleton height={space.x12 * 2} radius={radius.card} /></View>)}
-      </View>
-      <ListSkeleton rows={3} />
-    </View>
   );
 }

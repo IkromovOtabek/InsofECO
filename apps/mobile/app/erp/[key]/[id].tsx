@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { Badge, Button, Card, EmptyState, IconTile, ListGroup, Txt, statusTone } from '@/design/primitives';
+import { Badge, Button, Card, EmptyState, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
 import { ReceiptBody, Sheet, dialog, receipt, result, toast, type IconName } from '@/design/ui';
-import { StickyActionBar } from '@/design/blocks';
+import { PageHeader, Reveal, SkeletonList, StickyActionBar } from '@/design/blocks';
 import { useTheme } from '@/design/theme';
-import { size, space, toneColors } from '@/design/tokens';
+import { space } from '@/design/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ErpField, ErpSection } from '@/core/erp';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
-import { ListSkeleton, ROW_ICON, RowsGroup, SectionEmpty, SectionHead, listModule, statusLabel } from '@/features/erp/ui';
-import { Appear, stagger } from '@/design/motion';
+import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, listModule, splitValue, statusLabel } from '@/features/erp/ui';
+import { useHeaderRaise } from '@/design/motion';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -55,9 +57,32 @@ const ACTION_ICON: Record<string, IconName> = {
   'issue.equipment': 'wrench', 'issue.material': 'package', 'issue.staff': 'user-plus', 'issue.other': 'triangle-alert', 'issue.resolve': 'circle-check',
 };
 
+/** Hujjat turi — kartochka ustki yozuvi (demo "BETON M300 · 12 M³" o'rnida tur nomi). */
+const KIND_LABEL: Record<string, string> = {
+  orders: 'Zayavka', approvals: 'Tasdiq', invoices: 'Schyot', payments: "To'lov", cashflow: 'Kirim-chiqim', trips: 'Reys',
+  supply: "Ta'minot", snabjeniye: "Ta'minot", receipts: 'Kirim', stock: 'Xomashyo', production: 'Zames', tasks: 'Topshiriq',
+  customers: 'Mijoz', leads: 'Ariza', employees: 'Xodim', drivers: 'Haydovchi', brigades: 'Brigada', suppliers: 'Yetkazuvchi',
+  'brig-issues': 'Muammo', 'brig-shifts': 'Smena', 'prod-report': 'Hisobot',
+};
+
+/** Katta summa qatori: "Summa", "Jami", "To'lov summasi"… — raqamli bo'lsa kartochka tepasida katta yoziladi. */
+const AMOUNT_RE = /^(jami|summa|umumiy summa|to'lov summasi|zayavka summasi|narxi?|qiymati|miqdori)\b/i;
+const pickAmount = (fields: ErpField[]) => fields.find((f) => AMOUNT_RE.test(f.label.trim()) && /\d/.test(f.value)) ?? null;
+
+/** "Jarayon" — tarix/bosqich bo'limi bo'lsa Timeline bo'lib chiziladi. */
+const PROCESS_RE = /^(jarayon|tarix|bosqich|holatlar|harakat tarixi|history)/i;
+const timelineSteps = (s: ErpSection) => s.rows.map((r) => ({
+  title: r.title,
+  sub: [r.subtitle, r.right].filter(Boolean).join(' · ') || undefined,
+  // Server toni: brand — joriy bosqich, qolgani o'tgan
+  state: (r.tone === 'brand' ? 'now' : 'done') as 'done' | 'now' | 'todo',
+}));
+
 export default function ErpDetail() {
   const { key, id } = useLocalSearchParams<{ key: string; id: string }>();
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const raise = useHeaderRaise();
   const nav = useNavigation();
   const router = useRouter();
   const { data, isLoading, error, refetch, isRefetching } = useErpDetail(key!, id!);
@@ -66,9 +91,9 @@ export default function ErpDetail() {
   const [formError, setFormError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
-  React.useEffect(() => {
-    if (data) nav.setOptions({ title: data.title });
-  }, [data, nav]);
+  // Demo sarlavhasi (orqaga · raqam · ko'proq) ekranning o'zida — navigator sarlavhasi yashiriladi
+  React.useEffect(() => { nav.setOptions({ headerShown: false }); }, [nav]);
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   /**
    * Amaldan keyingi ish — serverdagi `effect` aytadi (kuzatuv, marshrut, navigatsiya).
@@ -149,84 +174,88 @@ export default function ErpDetail() {
     void execute(a);
   };
 
-  if (isLoading) {
+  if (error && !data) {
     return (
-      <View style={{ flex: 1, backgroundColor: c.bgApp, padding: space.pageX, gap: space.md }}>
-        <ListSkeleton rows={2} />
-        <ListSkeleton rows={6} />
-      </View>
-    );
-  }
-  if (error || !data) {
-    return (
-      <View style={{ flex: 1, backgroundColor: c.bgApp, justifyContent: 'center' }}>
-        <EmptyState icon="cloud-off" title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void refetch()} />
+      <View style={{ flex: 1, backgroundColor: c.bgApp }}>
+        <PageHeader title="Kartochka" onBack={back} style={{ paddingTop: insets.top + space.sm }} />
+        <View style={{ flex: 1, justifyContent: 'center', padding: space.pageX }}>
+          <EmptyState icon="cloud-off" title="Kartochka ochilmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void refetch()} />
+        </View>
       </View>
     );
   }
 
   /** Amal tugmasi varianti — server toni bo'yicha. */
   const variantOf = (a: ErpAction) => (a.tone === 'danger' ? 'danger' : a.tone === 'success' ? 'success' : 'primary') as 'danger' | 'success' | 'primary';
-  // Birinchi amal — keyingi qadam (server tartibi): pastki panelda katta tugma. Ikkinchisi yonida,
-  // uchtadan ko'p bo'lsa qolganlari "Yana" varag'ida.
-  const [primary, ...others] = data.actions;
-  const secondary = others.length === 1 ? others[0] : undefined;
-  const sheetActions = others.length > 1 ? others : [];
+  // Birinchi amal — keyingi qadam (server tartibi). Demo `.sticky`: "…" (qolgan amallar) · ikkilamchi · asosiy.
+  const [primary, secondary, ...sheetActions] = data?.actions ?? [];
+  const amount = data && !data.receipt ? pickAmount(data.fields) : null;
+  const amountVal = amount ? splitValue(amount.value) : null;
+  const kv = data ? data.fields.filter((f) => f !== amount) : [];
+  const process = data?.sections.find((x) => PROCESS_RE.test(x.title) && x.rows.length) ?? null;
+  const sections = data?.sections.filter((x) => x !== process) ?? [];
+  const kind = KIND_LABEL[key!];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
+      <PageHeader
+        title={data?.title ?? kind ?? 'Kartochka'}
+        onBack={back}
+        raised={raise.raised}
+        actions={sheetActions.length ? [{ icon: 'ellipsis', label: 'Boshqa amallar', onPress: () => setMoreOpen(true) }] : undefined}
+        style={{ paddingTop: insets.top + space.sm }}
+      />
       <ScrollView
-        contentContainerStyle={{ padding: space.pageX, paddingBottom: space.x10 }}
+        onScroll={raise.onScroll}
+        scrollEventThrottle={raise.scrollEventThrottle}
+        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxl }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
       >
-        {data.receipt ? (
-          /* Pul hujjati — sarlavha va maydonlar o'rniga chek: server nima bersa shu chiziladi */
-          <Appear>
-            <Card>
+        <Reveal loading={isLoading || !data} skeleton={<View style={{ gap: space.stack }}><SkeletonList rows={2} /><SkeletonList rows={4} /></View>}>
+          {data?.receipt ? (
+            /* Pul hujjati — sarlavha va maydonlar o'rniga chek: server nima bersa shu chiziladi */
+            <Card key="receipt">
               <ReceiptBody data={data.receipt} compact />
             </Card>
-          </Appear>
-        ) : (
-          <>
-            <Appear>
-              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                <IconTile icon={ROW_ICON[key!] ?? 'file-text'} module={listModule(key)} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Txt v="titleMd" numberOfLines={2}>{data.title}</Txt>
-                  {data.subtitle ? <Txt v="bodySm" color="muted" style={{ marginTop: space.xs }}>{data.subtitle}</Txt> : null}
+          ) : data ? (
+            /* Demo xulosa kartasi: ustki yozuv + holat nishoni, katta summa, ostida izoh */
+            <Card key="sum" style={{ gap: space.sm }}>
+              {kind || data.status ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                  <Txt v="appbarOverline" numberOfLines={1} style={{ flex: 1 }}>{kind ?? ''}</Txt>
+                  {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
                 </View>
-                {data.status ? <Badge label={statusLabel(data.status)} tone={statusTone(data.status)} /> : null}
-              </Card>
-            </Appear>
+              ) : null}
+              {amountVal ? (
+                <Txt v="heroValue" numberOfLines={1} adjustsFontSizeToFit style={{ color: c.textStrong }}>
+                  {amountVal.num}
+                  {amountVal.unit ? <Txt v="heroUnit" color="muted">{` ${amountVal.unit}`}</Txt> : null}
+                </Txt>
+              ) : (
+                <Txt v="titleLg" numberOfLines={2}>{data.title}</Txt>
+              )}
+              {data.subtitle ? <Txt v="tSm" numberOfLines={2}>{data.subtitle}</Txt> : null}
+            </Card>
+          ) : null}
 
-            {data.fields.length ? (
-              <Appear delay={stagger(1)} style={{ marginTop: space.md }}>
-                <ListGroup>
-                  {data.fields.map((f, i) => (
-                    <View key={`${f.label}-${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingHorizontal: space.card, paddingVertical: space.md, borderTopWidth: i ? size.hairline : 0, borderTopColor: c.borderSubtle }}>
-                      <Txt v="bodySm" color="muted" style={{ flexBasis: '40%', flexShrink: 0 }}>{f.label}</Txt>
-                      <Txt v="bodyStrong" align="right" style={{ flex: 1, color: f.tone ? toneColors(c, f.tone).ink : c.textStrong }}>{f.value}</Txt>
-                    </View>
-                  ))}
-                </ListGroup>
-              </Appear>
-            ) : null}
-          </>
-        )}
+          {kv.length ? <KVList key="kv" rows={kv.map((f) => ({ label: f.label, value: f.value, tone: f.tone }))} /> : null}
 
-        {data.sections.map((s, i) => (
-          <Appear key={s.title} delay={stagger(i + 2)} style={{ marginTop: space.xxl }}>
-            <SectionHead title={s.title} count={s.rows.length || undefined} />
-            {s.rows.length === 0 ? <SectionEmpty text={s.empty} /> : (
+          {process ? <SectionHead key="tl-h" title="Jarayon" /> : null}
+          {process ? <Card key="tl"><Timeline steps={timelineSteps(process)} /></Card> : null}
+
+          {sections.flatMap((s) => [
+            <SectionHead key={`h-${s.title}`} title={s.title} count={s.rows.length || undefined} />,
+            s.rows.length === 0 ? <SectionEmpty key={`e-${s.title}`} text={s.empty} /> : (
               <RowsGroup
+                key={`r-${s.title}`}
                 rows={s.rows}
                 module={listModule(s.target)}
                 icon={s.icon ?? ROW_ICON[s.target ?? ''] ?? 'circle'}
                 onRow={(r) => (s.target ? () => router.push(`/erp/${s.target}/${r.id}` as never) : undefined)}
               />
-            )}
-          </Appear>
-        ))}
+            ),
+          ])}
+        </Reveal>
       </ScrollView>
 
       {/* Yopiq asosiy amal: sababi va qulfni ochishga urinish (joylashuvni qayta yuborish) — panel ustida */}
@@ -247,7 +276,7 @@ export default function ErpDetail() {
             loading: run.isPending,
             onPress: () => press(primary),
           }}
-          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : ACTION_ICON[secondary.id], onPress: () => press(secondary) } : undefined}
+          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : undefined, tone: secondary.tone === 'danger' ? 'danger' : undefined, onPress: () => press(secondary) } : undefined}
           more={sheetActions.length ? { label: 'Boshqa amallar', icon: 'ellipsis', onPress: () => setMoreOpen(true) } : undefined}
         />
       ) : null}
