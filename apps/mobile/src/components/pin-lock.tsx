@@ -4,13 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Txt } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
-import { radius, shadow, size, space } from '@/design/tokens';
+import { DEMO_SCALE, elevation, radius, size, space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
 import { Avatar, Icon, dialog } from '@/design/ui';
 import { PIN_LEN, pinStore } from '@/core/pin';
 import { useDisplayName, useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
-import { TextLink } from '@/features/auth/ui';
 
 /** Ilova orqa fonda shuncha turgach qaytsa — PIN qayta so'raladi. */
 const RELOCK_AFTER_MS = 60_000;
@@ -33,24 +32,32 @@ export const ShakeDots = React.forwardRef<PinDotsHandle, { filled: number; lengt
   const st = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const on = error ? c.dangerSolid : c.brand;
   return (
-    <Animated.View style={[{ flexDirection: 'row', justifyContent: 'center', gap: space.lg }, st]} accessibilityLabel={`${filled} ta raqam kiritildi, ${length} tadan`}>
+    <Animated.View style={[{ flexDirection: 'row', justifyContent: 'center', gap: DOT_GAP }, st]} accessibilityLabel={`${filled} ta raqam kiritildi, ${length} tadan`}>
       {Array.from({ length }, (_, i) => (
-        <View key={i} style={{ width: space.lg, height: space.lg, borderRadius: radius.pill, borderWidth: size.ring, borderColor: i < filled ? on : c.borderStrong, backgroundColor: i < filled ? on : 'transparent' }} />
+        <View key={i} style={{ width: DOT, height: DOT, borderRadius: radius.pill, borderWidth: size.ring, borderColor: i < filled ? on : c.borderStrong, backgroundColor: i < filled ? on : 'transparent' }} />
       ))}
     </Animated.View>
   );
 });
 
-const KEY = size.driverTouch + space.sm;
+/** Demo `.key` — 58 css doira; `.keypad` gap 10×18 css. */
+const KEY = Math.round(58 * DEMO_SCALE);
+const KEY_GAP_X = Math.round(18 * DEMO_SCALE);
+/** Demo `.pdots i` — 13 css, gap 14 css. */
+const DOT = Math.round(13 * DEMO_SCALE);
+const DOT_GAP = Math.round(14 * DEMO_SCALE);
 
-/** Dumaloq raqamli klaviatura — 3×4; chap pastki katak ixtiyoriy (`extra`), o'ng pastda o'chirish. */
+/**
+ * Dumaloq raqamli klaviatura — demo `.keypad`: 3×4, yuza doiralar (sh1), bosilganda brandSoft + 0.9.
+ * Chap pastki katak ixtiyoriy (`extra` — masalan Face ID; bo'lmasa bo'sh), o'ng pastda shaffof "orqaga" tugmasi.
+ */
 export function RoundKeypad({ onDigit, onDelete, extra }: { onDigit: (d: string) => void; onDelete: () => void; extra?: React.ReactNode }) {
   const { c } = useTheme();
   const rows = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['extra', '0', 'del']];
   return (
-    <View style={{ gap: space.md, alignItems: 'center' }}>
+    <View style={{ gap: space.stack, alignItems: 'center' }}>
       {rows.map((r) => (
-        <View key={r.join('')} style={{ flexDirection: 'row', gap: space.xl }}>
+        <View key={r.join('')} style={{ flexDirection: 'row', gap: KEY_GAP_X }}>
           {r.map((k) => {
             if (k === 'extra') return <View key={k} style={{ width: KEY, height: KEY, alignItems: 'center', justifyContent: 'center' }}>{extra}</View>;
             const del = k === 'del';
@@ -63,11 +70,11 @@ export function RoundKeypad({ onDigit, onDelete, extra }: { onDigit: (d: string)
                 android_ripple={{ color: c.bgMuted, borderless: true }}
                 style={({ pressed }) => [
                   { width: KEY, height: KEY, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-                  !del && [{ backgroundColor: c.bgSurface }, shadow.card],
-                  pressed && { backgroundColor: c.bgMuted, transform: [{ scale: 0.94 }] },
+                  !del && [{ backgroundColor: c.bgSurface }, elevation(c).sh1],
+                  pressed && { backgroundColor: del ? c.bgMuted : c.brandSoft, transform: [{ scale: 0.9 }] },
                 ]}
               >
-                {del ? <Icon name="delete" size={size.iconLg} tone="muted" /> : <Txt v="metric">{k}</Txt>}
+                {del ? <Icon name="chevron-left" size={size.iconXl} tone="muted" strokeWidth={1.75} /> : <Txt v="titleLg">{k}</Txt>}
               </Pressable>
             );
           })}
@@ -152,25 +159,42 @@ export function PinLock() {
   const first = name?.split(' ')[0];
 
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bgApp, paddingHorizontal: space.xxl, paddingTop: insets.top + space.x10, paddingBottom: insets.bottom + space.lg }]}>
-      <Appear style={{ alignItems: 'center' }}>
-        <Avatar name={name ?? undefined} uri={avatar} size={size.avatarLg + space.xs} tone="brand" />
-        <Txt v="titleLg" align="center" style={{ marginTop: space.lg }}>{first ? `Salom, ${first}` : 'Xush kelibsiz'}</Txt>
-        <Txt v="bodySm" color="muted" align="center" style={{ marginTop: space.xs }}>PIN kodni kiriting</Txt>
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bgApp, alignItems: 'center', paddingHorizontal: space.xxl, paddingTop: insets.top + space.x10, paddingBottom: insets.bottom + space.lg, gap: space.xl }]}>
+      <Appear style={{ alignItems: 'center', gap: space.xl }}>
+        {avatar ? <Avatar name={name ?? undefined} uri={avatar} size={AV} /> : (
+          <View accessibilityElementsHidden style={{ width: AV, height: AV, borderRadius: radius.pill, backgroundColor: c.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Txt v="titleLg" style={{ color: c.brandInk }}>{initials(name)}</Txt>
+          </View>
+        )}
+        <View style={{ alignItems: 'center' }}>
+          <Txt v="titleMd" align="center" accessibilityRole="header">{first ? `Salom, ${first}` : 'Xush kelibsiz'}</Txt>
+          <Txt v="tSm" align="center">PIN kodni kiriting</Txt>
+        </View>
       </Appear>
-      <Appear delay={60} style={{ marginTop: space.x7 }}>
+      <Appear delay={60} style={{ alignItems: 'center' }}>
         <ShakeDots ref={dots} filled={pin.length} length={PIN_LEN} error={!!error} />
+        {error ? <Txt v="caption" color="danger" accessibilityLiveRegion="polite" style={{ position: 'absolute', top: DOT + space.sm, width: KEY * 4 }} align="center">{error}</Txt> : null}
       </Appear>
-      <View style={{ minHeight: space.xl, marginTop: space.md, alignItems: 'center' }} accessibilityLiveRegion="polite">
-        <Txt v="caption" color={error ? 'danger' : 'faint'}>{error ?? (pin.length === PIN_LEN ? 'Tekshirilmoqda…' : ' ')}</Txt>
-      </View>
-      <Appear delay={120} style={{ marginTop: space.lg }}>
+      <Appear delay={120} style={{ marginTop: error ? space.md : 0 }}>
         <RoundKeypad onDigit={tap} onDelete={() => { setPin((p) => p.slice(0, -1)); setError(undefined); }} />
       </Appear>
-      <Appear delay={180} style={{ marginTop: 'auto', flexDirection: 'row', justifyContent: 'center', gap: space.xl, paddingTop: space.lg }}>
-        <TextLink onPress={forgot}>PIN esdan chiqdimi?</TextLink>
-        <TextLink onPress={() => { setLocked(false); void signOut(); }}>Boshqa hisob</TextLink>
+      <Appear delay={180} style={{ flexDirection: 'row', justifyContent: 'center', gap: KEY_GAP_X }}>
+        <LockLink onPress={forgot} tone="brand">PIN esdan chiqdimi?</LockLink>
+        <LockLink onPress={() => { setLocked(false); void signOut(); }} tone="muted">Boshqa hisob</LockLink>
       </Appear>
     </View>
+  );
+}
+
+/** Demo `.av` 58 css — qulf ekrani avatari. */
+const AV = Math.round(58 * DEMO_SCALE);
+const initials = (n?: string | null) => (n ?? '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
+/** Qulf pastidagi havola — 10.5 css 700: brandInk yoki textMuted. */
+function LockLink({ children, onPress, tone }: { children: string; onPress: () => void; tone: 'brand' | 'muted' }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="link" hitSlop={space.sm} style={({ pressed }) => [{ minHeight: size.touch, justifyContent: 'center' }, pressed && { opacity: 0.6 }]}>
+      <Txt v="bodyStrong" color={tone}>{children}</Txt>
+    </Pressable>
   );
 }

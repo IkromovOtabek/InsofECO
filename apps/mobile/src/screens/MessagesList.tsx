@@ -7,6 +7,7 @@ import { Appear } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
 import { Loader } from '@/design/loader';
+import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { Conversation, useAction, useContacts, useConversations } from '@/features/eco/api';
 
 const ROLE: Record<string, string> = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' };
@@ -37,10 +38,10 @@ function ConvRow({ x, onPress }: { x: Conversation; onPress: () => void }) {
       chevron={false}
       right={
         <View style={{ alignItems: 'flex-end', gap: space.xs }}>
-          <Txt v="caption" color={unread ? 'brand' : 'faint'}>{when(x.lastMessageAt)}</Txt>
+          <Txt v="tSm" color={unread ? 'brand' : 'muted'}>{when(x.lastMessageAt)}</Txt>
           {unread ? (
             <View accessibilityLabel={`${x.unread} ta yangi xabar`} style={{ minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs + 2, borderRadius: radius.pill, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }}>
-              <Txt v="caption" color="onBrand">{x.unread > 99 ? '99+' : x.unread}</Txt>
+              <Txt v="badge" color="onBrand">{x.unread > 99 ? '99+' : x.unread}</Txt>
             </View>
           ) : null}
         </View>
@@ -62,17 +63,17 @@ export function MessagesList() {
   const data = q.data ?? [];
 
   if (q.isLoading) return <Loader fill />;
+  if (q.isError && !data.length) return <View style={{ flex: 1, backgroundColor: c.bgApp }}><ErrorScreen error={q.error} title="Suhbatlar yuklanmadi" onRetry={() => void q.refetch()} /></View>;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
+      <OfflineBar offline={isNetworkError(q.error)} onRetry={() => void q.refetch()} />
       <FlatList
         data={data.length ? [data] : []}
         keyExtractor={() => 'all'}
         contentContainerStyle={{ padding: space.pageX, paddingBottom: size.buttonLg + space.x12, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.brand} />}
-        ListEmptyComponent={q.isError
-          ? <EmptyState icon="cloud-off" title="Suhbatlar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} />
-          : <EmptyState icon="messages-square" title="Suhbatlar yo'q" hint="Quruvchi yoki haydovchi bilan yozishing" action="Yangi suhbat" onAction={start} />}
+        ListEmptyComponent={<EmptyState icon="messages-square" title="Suhbatlar yo'q" hint="Quruvchi yoki haydovchi bilan yozishing" action="Yangi suhbat" onAction={start} />}
         renderItem={({ item }) => (
           <Appear>
             <ListGroup>

@@ -2,31 +2,34 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
-import { Callout, Gap, ListGroup, ListItem, Txt } from '@/design/primitives';
-import { SectionHead, SegmentedControl, Toggle } from '@/design/blocks';
-import { Avatar, Icon } from '@/design/ui';
+import { Txt } from '@/design/primitives';
+import { Toggle } from '@/design/blocks';
+import { Avatar, Icon, SegmentTrack } from '@/design/ui';
 import { Appear, haptic, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { SchemePref, usePrefs } from '@/design/prefs';
-import { PALETTE_NAMES, PaletteName, palettes, radius, shadow, size, space } from '@/design/tokens';
+import { PALETTE_NAMES, PaletteName, elevation, palettes, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import { avatarUri } from '@/features/auth/api';
+import { DeleteAccountRow } from '@/features/auth/delete-account';
+import { SetGroup, SetRow } from '@/components/set-row';
 
 /**
- * Sozlamalar — ko'rinish (mavzu + palitra), xavfsizlik, bildirishnomalar, til va yordam.
- * Mavzu va palitra `usePrefs` orqali butun ilovaga darhol qo'llanadi (MMKV'da saqlanadi).
- * Ekran ECO va ERP hisoblari uchun umumiy.
+ * Sozlamalar — demo "Sozlamalar" (docs/redesign/shots/26): profil kartasi, Ilova (til, mavzu mini-segment),
+ * Palitra, Xavfsizlik (PIN, parol), Bildirishnomalar (toggle), Yordam (+ "Hisobni o'chirish" — faqat ECO, API bor), versiya.
+ * Mavzu va palitra `usePrefs` orqali butun ilovaga darhol qo'llanadi (MMKV'da saqlanadi). ECO va ERP uchun umumiy.
+ * Face ID qatori yo'q: biometrik modul (expo-local-authentication) ilovada o'rnatilmagan.
  */
 
 /** App Store'dagi "Support URL" (docs/08-app-store-matnlari.md). */
 const SUPPORT_URL = 'https://insof-erp.uz';
 
-const SCHEMES: { key: SchemePref; label: string; icon: 'monitor' | 'sun' | 'moon' }[] = [
-  { key: 'system', label: 'Tizim', icon: 'monitor' },
-  { key: 'light', label: "Yorug'", icon: 'sun' },
-  { key: 'dark', label: "Qorong'i", icon: 'moon' },
+const SCHEMES: { key: SchemePref; label: string }[] = [
+  { key: 'system', label: 'Tizim' },
+  { key: 'light', label: "Yorug'" },
+  { key: 'dark', label: 'Tungi' },
 ];
 
 const PALETTE_HINT: Record<PaletteName, string> = {
@@ -34,14 +37,19 @@ const PALETTE_HINT: Record<PaletteName, string> = {
   marjon: 'Marjon brend, firuza aksent',
 };
 
-/** Bildirishnoma turlari — tanlov shu telefonda saqlanadi (server filtri hali yo'q, matnda aytiladi). */
+/** Bildirishnoma turlari — tanlov shu telefonda saqlanadi (server filtri hali yo'q, izohda aytiladi). */
 const NOTIF = [
-  { key: 'notif.trips', icon: 'truck', title: 'Reys va yetkazish', hint: 'Reys biriktirildi, yuk yetib keldi' },
-  { key: 'notif.payments', icon: 'wallet', title: "To'lovlar", hint: "To'lov qabul qilindi, qarzdorlik" },
-  { key: 'notif.chat', icon: 'message-circle', title: 'Chat xabarlari', hint: 'Yangi xabar kelganda' },
+  { key: 'notif.trips', icon: 'truck', module: 'logistics', title: 'Reys xabarlari' },
+  { key: 'notif.payments', icon: 'wallet', module: 'brand', title: "To'lov xabarlari" },
+  { key: 'notif.chat', icon: 'message-circle', module: 'production', title: 'Chat' },
 ] as const;
 
 const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' } as const;
+
+/** Demo `.t-over` — guruh ustidagi katta harfli yorliq. */
+const Over = ({ children }: { children: string }) => (
+  <Txt v="overline" accessibilityRole="header" style={{ marginTop: space.xs, marginLeft: space.xs }}>{children}</Txt>
+);
 
 /** Palitra kartasi — shu palitraning joriy rejimdagi brend / to'q / aksent ranglaridan mini namuna. */
 function PaletteCard({ name, label, selected, dark, onPress }: { name: PaletteName; label: string; selected: boolean; dark: boolean; onPress: () => void }) {
@@ -55,7 +63,7 @@ function PaletteCard({ name, label, selected, dark, onPress }: { name: PaletteNa
       accessibilityLabel={`${label} palitrasi`}
       style={({ pressed }) => [
         { flex: 1, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md, gap: space.md, borderWidth: size.ring, borderColor: selected ? c.brand : 'transparent' },
-        shadow.card,
+        elevation(c).sh1,
         pressed && { opacity: 0.85 },
       ]}
     >
@@ -85,7 +93,7 @@ function PaletteCard({ name, label, selected, dark, onPress }: { name: PaletteNa
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { dark } = useTheme();
+  const { c, dark } = useTheme();
   const scheme = usePrefs((s) => s.scheme);
   const palette = usePrefs((s) => s.palette);
   const setScheme = usePrefs((s) => s.setScheme);
@@ -106,32 +114,40 @@ export default function SettingsScreen() {
     ? [erp?.roleLabel, erp?.login].filter(Boolean).join(' · ')
     : [active ? ROLE[active.role] : null, user?.phone].filter(Boolean).join(' · ');
   const avatar = kind === 'erp' ? null : avatarUri(user?.avatarUrl);
-  const version = Constants.expoConfig?.version ?? '—';
+  const version = Constants.expoConfig?.version;
 
   const pickPalette = (p: PaletteName) => { if (p === palette) return; haptic.selection(); setPalette(p); };
 
   return (
     <>
       <Stack.Screen options={{ title: 'Sozlamalar' }} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 }}>
+      <ScrollView style={{ backgroundColor: c.bgApp }} contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12, gap: space.tight }}>
         {authed ? (
-          <Appear style={{ marginBottom: space.section }}>
-            <ListGroup>
-              <ListItem
-                leading={<Avatar name={name} uri={avatar} size={size.avatarLg} tone="brand" />}
-                title={name}
-                subtitle={sub || undefined}
-                chevron={false}
-              />
-            </ListGroup>
+          <Appear>
+            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md + 2, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md + 2 }, elevation(c).sh1]}>
+              <Avatar name={name} uri={avatar} size={size.avatarLg} tone="brand" />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Txt v="listTitle" numberOfLines={1}>{name}</Txt>
+                {sub ? <Txt v="tSm" numberOfLines={1}>{sub}</Txt> : null}
+              </View>
+            </View>
           </Appear>
         ) : null}
 
-        <Appear delay={stagger(1)}>
-          <SectionHead title="Ko'rinish" icon="sun-moon" />
-          <Txt v="label" style={{ marginBottom: space.sm }}>Mavzu</Txt>
-          <SegmentedControl items={SCHEMES} value={scheme} onChange={setScheme} />
-          <Txt v="label" style={{ marginTop: space.lg, marginBottom: space.sm }}>Palitra</Txt>
+        <Appear delay={stagger(1)} style={{ gap: space.tight }}>
+          <Over>Ilova</Over>
+          <SetGroup>
+            {/* Hozircha ilovaning yagona tili — tanlov yo'q, shuning uchun bosilmaydi */}
+            <SetRow icon="languages" module="logistics" title="Til" value="O'zbekcha" />
+            <SetRow
+              icon="moon" module="production" title="Mavzu"
+              right={<SegmentTrack<SchemePref> items={SCHEMES} value={scheme} onChange={setScheme} compact />}
+            />
+          </SetGroup>
+        </Appear>
+
+        <Appear delay={stagger(2)} style={{ gap: space.tight }}>
+          <Over>Palitra</Over>
           <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: space.md }}>
             {PALETTE_NAMES.map((p) => (
               <PaletteCard key={p.key} name={p.key} label={p.label} dark={dark} selected={palette === p.key} onPress={() => pickPalette(p.key)} />
@@ -140,64 +156,44 @@ export default function SettingsScreen() {
         </Appear>
 
         {authed ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.section }}>
-            <SectionHead title="Xavfsizlik" icon="shield-check" />
-            <ListGroup>
-              <ListItem
-                icon="grid-3x3" module="warehouse"
-                title="PIN kod"
-                subtitle={hasPin == null ? 'Tekshirilmoqda…' : hasPin ? "Yoqilgan — o'chirish uchun bosing" : 'Ilovani ochishda tez kirish'}
-                right={hasPin == null ? null : <Txt v="label" color={hasPin ? 'success' : 'muted'}>{hasPin ? 'Yoqilgan' : "O'chiq"}</Txt>}
+          <Appear delay={stagger(3)} style={{ gap: space.tight }}>
+            <Over>Xavfsizlik</Over>
+            <SetGroup>
+              <SetRow
+                icon="lock" module="warehouse" title="PIN kod"
+                value={hasPin == null ? undefined : hasPin ? 'Yoqilgan' : "O'chiq"}
+                chevron={false}
                 onPress={() => router.push(hasPin ? '/(auth)/pin?mode=off' : '/(auth)/pin')}
               />
-              <ListItem
-                icon="lock" module="warehouse"
-                title="Parolni o'zgartirish"
-                subtitle="Boshqa qurilmalardagi seanslar yopiladi"
-                onPress={() => router.push('/(auth)/change-password')}
-              />
-            </ListGroup>
+              <SetRow icon="key-round" module="brand" title="Parolni o'zgartirish" onPress={() => router.push('/(auth)/change-password')} />
+            </SetGroup>
           </Appear>
         ) : null}
 
-        <Appear delay={stagger(3)} style={{ marginTop: space.section }}>
-          <SectionHead title="Bildirishnomalar" icon="bell" />
-          <ListGroup>
+        <Appear delay={stagger(4)} style={{ gap: space.tight }}>
+          <Over>Bildirishnomalar</Over>
+          <SetGroup>
             {NOTIF.map((n) => (
-              <View key={n.key} style={{ paddingHorizontal: space.card }}>
-                <Toggle label={n.title} hint={n.hint} value={!!notif[n.key]} onChange={(v) => toggleNotif(n.key, v)} />
-              </View>
+              <SetRow
+                key={n.key} icon={n.icon} module={n.module} title={n.title}
+                right={<Toggle value={!!notif[n.key]} onChange={(v) => toggleNotif(n.key, v)} />}
+              />
             ))}
-            <ListItem icon="settings" module="logistics" title="Tizim sozlamalari" subtitle="Ovoz va ruxsatni telefon sozlamalarida o'zgartiring" onPress={() => void Linking.openSettings()} />
-          </ListGroup>
-          <Callout tone="neutral" icon="info" style={{ marginTop: space.md }}>
-            Bu tanlov shu telefonda saqlanadi. Xabarlarni butunlay o&apos;chirish uchun tizim sozlamalaridan foydalaning.
-          </Callout>
+            <SetRow icon="settings" module="logistics" title="Tizim sozlamalari" onPress={() => void Linking.openSettings()} />
+          </SetGroup>
+          <Txt v="caption" style={{ marginHorizontal: space.xs }}>Tanlov shu telefonda saqlanadi. Ovoz va ruxsat — telefon sozlamalarida.</Txt>
         </Appear>
 
-        <Appear delay={stagger(4)} style={{ marginTop: space.section }}>
-          <SectionHead title="Til" icon="languages" />
-          <ListGroup>
-            <ListItem
-              icon="languages" module="logistics"
-              title="O'zbekcha (lotin)"
-              subtitle="Hozircha ilovaning yagona tili"
-              right={<Icon name="check" size={size.iconMd} tone="brand" strokeWidth={2.25} />}
-              chevron={false}
-            />
-          </ListGroup>
+        <Appear delay={stagger(5)} style={{ gap: space.tight }}>
+          <Over>Yordam</Over>
+          <SetGroup>
+            <SetRow icon="circle-question-mark" module="brand" title="Yordam markazi" value="insof-erp.uz" onPress={() => void Linking.openURL(SUPPORT_URL)} />
+            <SetRow icon="shield-check" module="brand" title="Maxfiylik siyosati" onPress={() => void Linking.openURL(`${SUPPORT_URL}/maxfiylik`)} />
+            {authed && kind === 'eco' ? <DeleteAccountRow /> : null}
+          </SetGroup>
         </Appear>
 
-        <Appear delay={stagger(5)} style={{ marginTop: space.section }}>
-          <SectionHead title="Yordam" icon="circle-question-mark" />
-          <ListGroup>
-            <ListItem icon="circle-question-mark" title="Yordam markazi" subtitle="insof-erp.uz" onPress={() => void Linking.openURL(SUPPORT_URL)} />
-            <ListItem icon="shield-check" title="Maxfiylik siyosati" subtitle="Ma'lumotlaringiz qanday saqlanadi" onPress={() => void Linking.openURL(`${SUPPORT_URL}/maxfiylik`)} />
-          </ListGroup>
-        </Appear>
-
-        <Gap h={space.xl} />
-        <Txt v="caption" color="faint" align="center">{`Insof · versiya ${version}`}</Txt>
+        {version ? <Txt v="tSm" align="center" style={{ marginTop: space.xs }}>{`Versiya ${version}`}</Txt> : null}
       </ScrollView>
     </>
   );

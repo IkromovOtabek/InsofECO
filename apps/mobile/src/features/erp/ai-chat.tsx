@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useQuery } from '@tanstack/react-query';
-import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Button, Card, IconButton, IconTile, Skeleton, Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
 import { copyText, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { Appear, EASE_LOOP, haptic } from '@/design/motion';
-import { radius, shadow, size, space, type } from '@/design/tokens';
+import { Appear, haptic } from '@/design/motion';
+import { elevation, radius, size, space } from '@/design/tokens';
+import { BubbleShell, Composer, TypingDots } from '@/components/chat-ui';
 import { erpAuth, type ErpAiAnswer, type ErpAiTurn } from '@/core/erp';
 
 /**
@@ -91,7 +91,7 @@ export function ErpAiChat() {
   const canSend = !!text.trim() && !busy;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerH}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgSubtle }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerH}>
       <FlatList
         ref={list}
         data={msgs}
@@ -136,33 +136,23 @@ export function ErpAiChat() {
           </View>
         }
         renderItem={({ item: m }) => <Bubble m={m} onRetry={m.retry ? () => retry(m) : undefined} busy={busy} />}
-        ListFooterComponent={busy ? <TypingDots /> : null}
+        ListFooterComponent={busy ? <View style={{ marginTop: space.xs }}><TypingDots label="AI javob yozmoqda" /></View> : null}
       />
 
-      {msgs.length && suggestions.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.md, paddingVertical: space.xs }}>
-          {suggestions.map((q) => <SuggestionChip key={q.key} text={q.text} compact disabled={busy} onPress={() => quick(q.key, q.text)} />)}
-        </ScrollView>
-      ) : null}
-
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.md, backgroundColor: c.bgApp }}>
-        <View style={[{ flex: 1, minHeight: size.touch, justifyContent: 'center', paddingHorizontal: space.lg, borderRadius: radius.xl, borderCurve: 'continuous', backgroundColor: c.bgSurface }, shadow.card]}>
-          <TextInput
-            value={text} onChangeText={setText} placeholder="Savol yozing… masalan, bu hafta kim ko'p oldi?"
-            placeholderTextColor={c.textFaint}
-            accessibilityLabel="Savol matni" autoCorrect={false} spellCheck={false} multiline
-            onSubmitEditing={ask} blurOnSubmit
-            style={[type.body, { color: c.textStrong, maxHeight: 120, paddingTop: space.sm + 2, paddingBottom: space.sm + 2 }]}
-          />
-        </View>
-        <Pressable
-          onPress={ask} disabled={!canSend}
-          accessibilityRole="button" accessibilityLabel="Yuborish" accessibilityState={{ disabled: !canSend }}
-          style={({ pressed }) => [{ width: size.touch, height: size.touch, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: canSend ? c.brand : c.bgMuted }, pressed && { opacity: 0.85, transform: [{ scale: 0.94 }] }]}
-        >
-          <Icon name="send" size={size.iconMd} color={canSend ? c.textOnBrand : c.textFaint} strokeWidth={2} />
-        </Pressable>
-      </View>
+      <Composer
+        value={text}
+        onChangeText={setText}
+        onSend={ask}
+        canSend={canSend}
+        placeholder="Savol yozing… masalan, bu hafta kim ko'p oldi?"
+        bottom={space.md + 2}
+        inputProps={{ accessibilityLabel: 'Savol matni', autoCorrect: false, spellCheck: false, onSubmitEditing: ask, blurOnSubmit: true }}
+        top={msgs.length && suggestions.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.md + 2, paddingTop: space.sm, paddingBottom: space.xs }}>
+            {suggestions.map((q) => <SuggestionChip key={q.key} text={q.text} compact disabled={busy} onPress={() => quick(q.key, q.text)} />)}
+          </ScrollView>
+        ) : null}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -176,41 +166,13 @@ function SuggestionChip({ text, onPress, compact, disabled }: { text: string; on
       accessibilityRole="button" accessibilityLabel={text} accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: compact ? size.touch - space.md : size.touch - space.sm, paddingHorizontal: space.md, borderRadius: radius.pill, backgroundColor: pressed ? c.brandSoft : c.bgSurface },
-        shadow.card, disabled && { opacity: 0.5 },
+        elevation(c).sh1, disabled && { opacity: 0.5 },
       ]}
     >
       <Icon name="sparkles" size={size.iconSm - 2} tone="brand" />
       <Txt v="label" color="body" numberOfLines={1}>{text}</Txt>
     </Pressable>
   );
-}
-
-/** "Yozmoqda" — uch nuqta navbat bilan ko'tarilib yonadi. Harakat kamaytirilgan bo'lsa jim turadi. */
-function TypingDots() {
-  const { c } = useTheme();
-  return (
-    <Appear from={6} style={{ alignSelf: 'flex-start', marginTop: space.md }}>
-      <View
-        accessibilityLabel="AI javob yozmoqda" accessibilityLiveRegion="polite"
-        style={[{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.lg, height: size.touch - space.xs, borderRadius: radius.card, borderBottomLeftRadius: radius.xs, backgroundColor: c.bgSurface }, shadow.card]}
-      >
-        {[0, 1, 2].map((i) => <Dot key={i} i={i} />)}
-      </View>
-    </Appear>
-  );
-}
-
-function Dot({ i }: { i: number }) {
-  const { c } = useTheme();
-  const reduce = useReducedMotion();
-  const p = useSharedValue(reduce ? 0.6 : 0);
-  useEffect(() => {
-    if (reduce) return;
-    p.value = withDelay(i * 160, withRepeat(withSequence(withTiming(1, { duration: 360, easing: EASE_LOOP }), withTiming(0, { duration: 360, easing: EASE_LOOP })), -1, false));
-    return () => cancelAnimation(p);
-  }, [i, p, reduce]);
-  const s = useAnimatedStyle(() => ({ opacity: 0.3 + p.value * 0.7, transform: [{ translateY: -p.value * 3 }] }));
-  return <Animated.View style={[{ width: size.dot - 2, height: size.dot - 2, borderRadius: radius.pill, backgroundColor: c.textMuted }, s]} />;
 }
 
 /**
@@ -225,13 +187,10 @@ function Bubble({ m, onRetry, busy }: { m: Msg; onRetry?: () => void; busy: bool
 
   if (mine) {
     return (
-      <Appear from={8} style={{ alignItems: 'flex-end' }}>
-        <View
-          accessibilityLabel={`Siz: ${m.text}`}
-          style={{ maxWidth: '82%', backgroundColor: c.brand, paddingHorizontal: space.md + space.xs, paddingVertical: space.sm + 2, borderRadius: radius.card, borderBottomRightRadius: radius.xs, borderCurve: 'continuous' }}
-        >
+      <Appear from={8}>
+        <BubbleShell side="out" maxWidth="82%" label={`Siz: ${m.text}`}>
           <Txt v="body" color="onBrand">{m.text}</Txt>
-        </View>
+        </BubbleShell>
       </Appear>
     );
   }
@@ -256,11 +215,8 @@ function Bubble({ m, onRetry, busy }: { m: Msg; onRetry?: () => void; busy: bool
   };
 
   return (
-    <Appear from={8} style={{ alignItems: 'flex-start' }}>
-      <View
-        accessibilityLabel={`AI: ${m.text}`}
-        style={[{ maxWidth: '94%', gap: space.xs, backgroundColor: c.bgSurface, paddingHorizontal: space.card, paddingTop: space.md, paddingBottom: space.xs, borderRadius: radius.card, borderBottomLeftRadius: radius.xs, borderCurve: 'continuous' }, shadow.card]}
-      >
+    <Appear from={8}>
+      <BubbleShell side="in" maxWidth="94%" label={`AI: ${m.text}`} style={{ gap: space.xs, paddingHorizontal: space.card }}>
         <Markdown text={m.text} />
         {m.answer?.bullets?.map((b, i) => (
           <View key={i} style={{ flexDirection: 'row', gap: space.sm }}>
@@ -277,7 +233,7 @@ function Bubble({ m, onRetry, busy }: { m: Msg; onRetry?: () => void; busy: bool
             onPress={() => void copy()}
           />
         </View>
-      </View>
+      </BubbleShell>
     </Appear>
   );
 }

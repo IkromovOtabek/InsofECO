@@ -1,115 +1,82 @@
-import React, { useState } from 'react';
-import { ScrollView } from 'react-native';
+import React from 'react';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, Card, Gap, ListItem, Screen, Txt } from '@/design/primitives';
-import { Avatar, Confirm, toast } from '@/design/ui';
-import { size, space } from '@/design/tokens';
+import { Button, Screen, Txt } from '@/design/primitives';
+import { Avatar } from '@/design/ui';
+import { Appear, stagger } from '@/design/motion';
+import { useTheme } from '@/design/theme';
+import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { authApi, avatarUri } from '@/features/auth/api';
+import { DeleteAccountRow } from '@/features/auth/delete-account';
+import { SetGroup, SetRow } from '@/components/set-row';
 
 const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' } as const;
 
+/** Demo `.t-over` — guruh ustidagi katta harfli yorliq. */
+const Over = ({ children }: { children: string }) => (
+  <Txt v="overline" accessibilityRole="header" style={{ marginTop: space.xs, marginLeft: space.xs }}>{children}</Txt>
+);
+
+/**
+ * ECO profili — Sozlamalar bilan bir xil til: profil kartasi, guruhlar (`SetGroup`), pastda "Chiqish".
+ * Bir nechta a'zolik bo'lsa — rol almashtirish guruhi. "Hisobni o'chirish" — `DeleteAccountRow` (DELETE /me).
+ */
 export function Profile({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
-  const { user, active, selectMembership, setUser, signOut } = useSession();
+  const { c } = useTheme();
+  const { user, active, selectMembership, signOut } = useSession();
   const memberships = user?.memberships.filter((m) => m.isActive) ?? [];
-  // Hisobni o'chirish (App Store / Google Play talabi). Mijoz darhol o'chadi; zavod haydovchisi
-  // so'rov qoldiradi — direktor ERP'da tasdiqlagach hisob anonimlashadi.
-  const isDriver = memberships.some((m) => m.role === 'HAYDOVCHI');
-  const requested = !!user?.deleteRequestedAt;
-  const [ask, setAsk] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const deleteAccount = async () => {
-    setBusy(true);
-    try {
-      const r = await authApi.deleteAccount();
-      setAsk(false);
-      if (r.status === 'deleted') {
-        toast.success("Hisobingiz o'chirildi");
-        await signOut();
-      } else {
-        if (user) setUser({ ...user, deleteRequestedAt: new Date().toISOString() });
-        toast.info("So'rov zavod direktoriga yuborildi. Tasdiqlangach hisob o'chiriladi.", "So'rov qabul qilindi");
-      }
-    } catch (e) {
-      toast.error((e as Error).message, 'Xato');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const cancelRequest = async () => {
-    try {
-      await authApi.cancelDeletion();
-      if (user) setUser({ ...user, deleteRequestedAt: null });
-      toast.success("So'rov qaytarib olindi");
-    } catch (e) {
-      toast.error((e as Error).message, 'Xato');
-    }
-  };
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.pageX }}>
-        <Card style={{ alignItems: 'center', paddingVertical: space.xxl }}>
-          <Avatar name={user?.fullName} uri={avatarUri(user?.avatarUrl)} size={size.avatarLg + space.lg} />
-          <Gap h={space.md} />
-          <Txt v="titleMd">{user?.fullName ?? user?.phone}</Txt>
-          <Txt v="body" color="muted">{active ? `${ROLE[active.role]} · ${active.organization.name}` : ''}</Txt>
-          <Txt v="caption" mono style={{ marginTop: space.xs }}>{user?.phone}</Txt>
-        </Card>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12, gap: space.tight }}>
+        <Appear>
+          <View style={[{ alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingVertical: space.xxl, paddingHorizontal: space.card }, elevation(c).sh1]}>
+            <Avatar name={user?.fullName} uri={avatarUri(user?.avatarUrl)} size={size.avatarLg + space.lg} tone="brand" />
+            <Txt v="titleMd" align="center" style={{ marginTop: space.sm }}>{user?.fullName ?? user?.phone}</Txt>
+            {active ? <Txt v="tSm" align="center">{`${ROLE[active.role]} · ${active.organization.name}`}</Txt> : null}
+            {user?.fullName && user.phone ? <Txt v="tSm" align="center">{user.phone}</Txt> : null}
+          </View>
+        </Appear>
+
         {children}
+
         {memberships.length > 1 ? (
-          <>
-            <Gap />
-            <Card style={{ paddingVertical: space.xs }}>
-              {memberships.map((m, i, arr) => <ListItem key={`${m.organization.id}:${m.role}`} icon="arrow-left-right" title={ROLE[m.role]} subtitle={m.organization.name} onPress={() => { selectMembership(m); router.replace('/'); }} last={i === arr.length - 1} />)}
-            </Card>
-          </>
+          <Appear delay={stagger(1)} style={{ gap: space.tight }}>
+            <Over>Rolni almashtirish</Over>
+            <SetGroup>
+              {memberships.map((m) => (
+                <SetRow
+                  key={`${m.organization.id}:${m.role}`}
+                  icon="arrow-left-right" module="brand"
+                  title={ROLE[m.role]} subtitle={m.organization.name}
+                  onPress={() => { selectMembership(m); router.replace('/'); }}
+                />
+              ))}
+            </SetGroup>
+          </Appear>
         ) : null}
-        <Gap />
-        <Card style={{ paddingVertical: space.xs }}>
-          <ListItem icon="settings" title="Sozlamalar" subtitle="Mavzu, palitra, bildirishnomalar" onPress={() => router.push('/settings')} />
-          <ListItem icon="languages" title="Til" subtitle="O'zbek (lotin)" onPress={() => router.push('/settings')} />
-          <ListItem icon="shield-check" title="Xavfsizlik" subtitle="PIN kod va parol" onPress={() => router.push('/settings')} last />
-        </Card>
-        <Gap />
-        <Card style={{ paddingVertical: space.xs }}>
-          {requested ? (
-            <ListItem
-              icon="hourglass" tone="warning"
-              title="Hisobni o'chirish so'ralgan"
-              subtitle="Direktor tasdig'i kutilmoqda. Fikringiz o'zgarsa — bosing"
-              onPress={() => void cancelRequest()}
-              last
-            />
-          ) : (
-            <ListItem
-              icon="user-x" tone="danger"
-              title="Hisobni o'chirish"
-              subtitle={isDriver ? "So'rov zavod direktoriga boradi" : "Shaxsiy ma'lumotlar butunlay o'chiriladi"}
-              onPress={() => setAsk(true)}
-              last
-            />
-          )}
-        </Card>
-        <Gap h={space.xl} />
-        <Button title="Chiqish" variant="danger" icon="log-out" onPress={() => { void authApi.logout().catch(() => {}); void signOut(); }} />
-        <Gap h={space.xxxl} />
+
+        <Appear delay={stagger(2)} style={{ gap: space.tight }}>
+          <Over>Ilova</Over>
+          <SetGroup>
+            <SetRow icon="settings" module="logistics" title="Sozlamalar" subtitle="Mavzu, palitra, bildirishnomalar" onPress={() => router.push('/settings')} />
+            <SetRow icon="shield-check" module="warehouse" title="Xavfsizlik" subtitle="PIN kod va parol" onPress={() => router.push('/settings')} />
+          </SetGroup>
+        </Appear>
+
+        <Appear delay={stagger(3)} style={{ gap: space.tight }}>
+          <Over>Hisob</Over>
+          <SetGroup>
+            <DeleteAccountRow />
+          </SetGroup>
+        </Appear>
+
+        <Appear delay={stagger(4)} style={{ marginTop: space.lg }}>
+          <Button title="Chiqish" variant="secondary" icon="log-out" size="lg" textColor={c.danger} onPress={() => { void authApi.logout().catch(() => {}); void signOut(); }} />
+        </Appear>
       </ScrollView>
-      <Confirm
-        open={ask}
-        onClose={() => setAsk(false)}
-        onConfirm={() => void deleteAccount()}
-        danger
-        loading={busy}
-        title="Hisobni o'chirish"
-        confirmLabel={isDriver ? "So'rov yuborish" : "Ha, o'chirish"}
-        message={isDriver
-          ? "Siz zavod haydovchisisiz — hisobni direktor tasdiqlagach o'chiramiz. Shu vaqtgacha ilova ishlayveradi."
-          : "Telefon raqamingiz, ismingiz va kirish ma'lumotlaringiz butunlay o'chiriladi. Buyurtma tarixi shaxsga bog'lanmagan holda qoladi. Qaytarib bo'lmaydi."}
-      />
     </Screen>
   );
 }

@@ -3,6 +3,7 @@ import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { EmptyState, IconTile, ListGroup, Txt, fmtDate, fmtTime } from '@/design/primitives';
+import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { ChipGroup } from '@/design/blocks';
 import { IconName, toast } from '@/design/ui';
 import { Appear, haptic, stagger } from '@/design/motion';
@@ -32,9 +33,13 @@ export interface FeedItem {
   tone?: Tone;
   /** Bosilganda ochiladigan ekran (bo'lmasa faqat o'qildi bo'ladi). */
   onOpen?: () => void;
+  /** Filtr guruhi (xabar turidan) — chip faqat shu guruhdagi xabar bo'lsa chiqadi. */
+  group?: FeedGroup;
 }
 
-type Filter = 'all' | 'unread';
+export type FeedGroup = 'trips' | 'payments';
+const GROUP_LABEL: Record<FeedGroup, string> = { trips: 'Reyslar', payments: "To'lovlar" };
+type Filter = 'all' | 'unread' | FeedGroup;
 type Bucket = 'today' | 'yesterday' | 'older';
 const BUCKET_LABEL: Record<Bucket, string> = { today: 'Bugun', yesterday: 'Kecha', older: 'Oldinroq' };
 
@@ -58,11 +63,12 @@ function HeaderLink({ title, onPress, disabled }: { title: string; onPress: () =
       hitSlop={space.sm}
       style={({ pressed }) => [{ minHeight: size.touch, justifyContent: 'center', paddingHorizontal: space.sm }, pressed && { opacity: 0.6 }]}
     >
-      <Txt v="label" color={disabled ? 'faint' : 'brand'}>{title}</Txt>
+      <Txt v="bodyStrong" color={disabled ? 'faint' : 'brand'}>{title}</Txt>
     </Pressable>
   );
 }
 
+/** Demo bildirishnoma qatori: plitka, sarlavha (o'raladi) + 2 qator izoh, o'ngda vaqt va o'qilmagan nuqtasi (`.udot`). */
 function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean; first: boolean; onPress: () => void }) {
   const { c } = useTheme();
   const time = bucketOf(n.createdAt, new Date()) === 'older' ? fmtDate(n.createdAt) : fmtTime(n.createdAt);
@@ -72,17 +78,17 @@ function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean
       accessibilityRole="button"
       accessibilityLabel={`${unread ? 'Yangi. ' : ''}${n.title}. ${n.body}`}
       android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingHorizontal: space.card, paddingVertical: space.md }, pressed && { backgroundColor: c.bgSubtle }]}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingHorizontal: space.card, paddingVertical: space.lg }, pressed && { backgroundColor: c.bgSubtle }]}
     >
-      {!first ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card + size.iconTile + space.md, right: space.md, height: size.hairline, backgroundColor: c.borderSubtle }} /> : null}
-      <IconTile icon={n.icon} module={n.module} tone={n.tone} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt v="bodyStrong" color={unread ? 'strong' : 'body'} numberOfLines={2}>{n.title}</Txt>
-        {n.body ? <Txt v="bodySm" color="muted" numberOfLines={2} style={{ marginTop: 2 }}>{n.body}</Txt> : null}
+      {!first ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card + size.tile + space.md, right: space.card, height: size.hairline, backgroundColor: c.borderSubtle }} /> : null}
+      <IconTile icon={n.icon} module={n.module} tone={n.tone} size={size.tile} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Txt v="listTitle" numberOfLines={2}>{n.title}</Txt>
+        {n.body ? <Txt v="tSm" numberOfLines={2}>{n.body}</Txt> : null}
       </View>
-      <View style={{ alignItems: 'flex-end', gap: space.sm, paddingTop: 2 }}>
-        <Txt v="caption" color={unread ? 'brand' : 'faint'}>{time}</Txt>
-        {unread ? <View accessibilityElementsHidden style={{ width: size.dot, height: size.dot, borderRadius: radius.pill, backgroundColor: c.brand }} /> : null}
+      <View style={{ alignItems: 'flex-end', gap: space.sm }}>
+        <Txt v="tSm">{time}</Txt>
+        {unread ? <View accessibilityElementsHidden style={{ width: size.dot + 2, height: size.dot + 2, borderRadius: radius.pill, backgroundColor: c.brand }} /> : null}
       </View>
     </Pressable>
   );
@@ -92,10 +98,11 @@ function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean
  * Lenta: filtr (Hammasi / O'qilmagan), kun guruhlari, sarlavhada "Hammasi o'qildi".
  * `markRead(ids)` — bitta yoki bir nechta xabarni serverda o'qilgan deb belgilaydi.
  */
-export function NotificationFeed({ items, loading, error, refreshing, onRefresh, markRead }: {
+export function NotificationFeed({ items, loading, error, errorObj, refreshing, onRefresh, markRead }: {
   items: FeedItem[] | undefined;
   loading: boolean;
   /** Yuklashda xato va ko'rsatadigan ma'lumot yo'q. */ error: boolean;
+  /** So'rov xatosi (tarmoq / server) — oflayn tasma va xato ekrani matni uchun. */ errorObj?: unknown;
   refreshing: boolean;
   onRefresh: () => void;
   markRead: (ids: string[]) => Promise<unknown>;
@@ -140,54 +147,59 @@ export function NotificationFeed({ items, loading, error, refreshing, onRefresh,
 
   const sections = useMemo(() => {
     const now = new Date();
-    const list = (items ?? []).filter((n) => filter === 'all' || (!n.readAt && !localRead.has(n.id)));
+    const list = (items ?? []).filter((n) => filter === 'all' || (filter === 'unread' ? !n.readAt && !localRead.has(n.id) : n.group === filter));
     const map: Record<Bucket, FeedItem[]> = { today: [], yesterday: [], older: [] };
     list.forEach((n) => map[bucketOf(n.createdAt, now)].push(n));
     return (Object.keys(map) as Bucket[]).filter((b) => map[b].length).map((b) => ({ key: b, rows: map[b] }));
   }, [items, filter, localRead]);
 
-  if (loading && !items) return <Loader fill />;
+  // Faqat ro'yxatda haqiqatan bor guruhlar chip bo'ladi
+  const groups = useMemo(() => (Object.keys(GROUP_LABEL) as FeedGroup[]).filter((g) => (items ?? []).some((n) => n.group === g)), [items]);
 
-  const empty = error
-    ? <EmptyState icon="cloud-off" title="Ma'lumot yuklanmadi" hint="Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring." onRetry={onRefresh} />
-    : filter === 'unread'
-      ? <EmptyState icon="check-check" title="Hammasi o'qilgan" hint="Yangi xabar kelganda shu yerda chiqadi" />
-      : <EmptyState icon="bell" title="Bildirishnoma yo'q" hint="Yangi hodisalar shu yerda ko'rinadi" />;
+  if (loading && !items) return <Loader fill />;
+  if (error && !items?.length) return <View style={{ flex: 1, backgroundColor: c.bgApp }}><ErrorScreen error={errorObj} onRetry={onRefresh} /></View>;
+
+  const empty = filter === 'unread'
+    ? <EmptyState icon="check-check" title="Hammasi o'qilgan" hint="Yangi xabar kelganda shu yerda chiqadi" />
+    : <EmptyState icon="bell" title="Bildirishnoma yo'q" hint="Yangi hodisalar shu yerda ko'rinadi" />;
 
   return (
+    <View style={{ flex: 1, backgroundColor: c.bgApp }}>
+    <OfflineBar offline={isNetworkError(errorObj)} onRetry={onRefresh} />
     <FlatList
       data={sections}
       keyExtractor={(s) => s.key}
-      style={{ backgroundColor: c.bgApp }}
+      style={{ flex: 1 }}
       contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12, flexGrow: 1 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.brand} />}
       ListHeaderComponent={
         <ChipGroup<Filter>
-          items={[{ key: 'all', label: 'Hammasi' }, { key: 'unread', label: "O'qilmagan", count: unreadIds.length || undefined }]}
+          items={[{ key: 'all', label: 'Hammasi' }, { key: 'unread', label: "O'qilmagan", count: unreadIds.length || undefined }, ...groups.map((g) => ({ key: g, label: GROUP_LABEL[g] }))]}
           value={filter}
           onChange={setFilter}
-          style={{ alignSelf: 'flex-start', marginBottom: space.sm }}
+          scroll={groups.length > 0}
         />
       }
       ListEmptyComponent={empty}
       renderItem={({ item: s, index }) => (
         <Appear delay={stagger(index)} style={{ marginTop: space.lg }}>
-          <Txt v="overline" accessibilityRole="header" style={{ marginBottom: space.sm, marginLeft: space.xs }}>{BUCKET_LABEL[s.key]}</Txt>
+          <Txt v="overline" accessibilityRole="header" style={{ marginBottom: space.tight, marginLeft: space.xs }}>{BUCKET_LABEL[s.key]}</Txt>
           <ListGroup>
             {s.rows.map((n, i) => <NoticeRow key={n.id} n={n} unread={isUnread(n)} first={i === 0} onPress={() => open(n)} />)}
           </ListGroup>
         </Appear>
       )}
     />
+    </View>
   );
 }
 
 /** ECO xabar turi → ikonka va modul toni. */
-function ecoVisual(type: string): Pick<FeedItem, 'icon' | 'module' | 'tone'> {
+function ecoVisual(type: string): Pick<FeedItem, 'icon' | 'module' | 'tone' | 'group'> {
   if (type === 'SLA_BREACH' || type.endsWith('PROBLEM') || type.endsWith('REJECTED') || type.endsWith('DISPUTED')) return { icon: 'triangle-alert', tone: 'danger' };
   if (type === 'MESSAGE') return { icon: 'message-circle', module: 'brand' };
-  if (type.endsWith('PAID')) return { icon: 'banknote', tone: 'success' };
-  if (type.startsWith('DELIVERY') || type.startsWith('SHIPMENT')) return { icon: 'truck', module: 'logistics' };
+  if (type.endsWith('PAID')) return { icon: 'wallet', module: 'brand', group: 'payments' };
+  if (type.startsWith('DELIVERY') || type.startsWith('SHIPMENT')) return { icon: 'truck', module: 'logistics', group: 'trips' };
   if (type.startsWith('MATERIAL')) return { icon: 'package', module: 'warehouse' };
   if (type.startsWith('WORK_ORDER') || type.startsWith('TASK')) return { icon: 'hammer', module: 'production' };
   if (type.startsWith('ORDER')) return { icon: 'file-text', module: 'brand' };
@@ -217,6 +229,7 @@ export function NotificationsList() {
       items={items}
       loading={q.isLoading}
       error={q.isError && !q.data?.length}
+      errorObj={q.error}
       refreshing={q.isRefetching}
       onRefresh={() => void q.refetch()}
       markRead={markRead}

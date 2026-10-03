@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { IconName } from '@/design/ui';
 import { ModuleTone, Tone } from '@/design/tokens';
 import { useErpNotifications, useErpReadNotifications } from '@/features/erp/api';
-import { FeedItem, NotificationFeed } from '@/screens/NotificationsList';
+import { FeedGroup, FeedItem, NotificationFeed } from '@/screens/NotificationsList';
 
 /**
  * Insof ERP bildirishnomalari.
@@ -14,16 +14,16 @@ import { FeedItem, NotificationFeed } from '@/screens/NotificationsList';
  */
 
 /** Xabar turi bo'yicha ikonka va ton — bir qarashda nima bo'lganini ko'rsatadi. */
-const VISUAL: Record<string, { icon: IconName; module?: ModuleTone; tone?: Tone }> = {
-  TRIP_ASSIGNED: { icon: 'truck', module: 'logistics' },
-  TRIP_DELIVERED: { icon: 'flag', module: 'logistics' },
+const VISUAL: Record<string, { icon: IconName; module?: ModuleTone; tone?: Tone; group?: FeedGroup }> = {
+  TRIP_ASSIGNED: { icon: 'truck', module: 'logistics', group: 'trips' },
+  TRIP_DELIVERED: { icon: 'flag', module: 'logistics', group: 'trips' },
   ORDER_CONFIRMED: { icon: 'file-text' },
   ORDER_DELIVERED: { icon: 'check-check', tone: 'success' },
   ORDER_BLOCKED: { icon: 'lock', tone: 'danger' },
   ORDER_UNBLOCKED: { icon: 'lock-open', tone: 'success' },
   TASK_ASSIGNED: { icon: 'hammer', module: 'production' },
   TASK_DONE: { icon: 'square-check', module: 'production' },
-  PAYMENT_RECEIVED: { icon: 'banknote', tone: 'success' },
+  PAYMENT_RECEIVED: { icon: 'wallet', module: 'brand', group: 'payments' },
   LEAD_NEW: { icon: 'phone' },
   SUPPLY_NEW: { icon: 'shopping-cart', module: 'warehouse' },
   SUPPLY_PRICED: { icon: 'tag', module: 'warehouse' },
@@ -48,6 +48,7 @@ export default function ErpNotifications() {
       items={items}
       loading={q.isLoading}
       error={q.isError && !q.data?.rows.length}
+      errorObj={q.error}
       refreshing={q.isRefetching}
       onRefresh={() => void q.refetch()}
       // `ids` aniq beriladi: bo'sh qolsa server hammasini o'qilgan deb belgilaydi

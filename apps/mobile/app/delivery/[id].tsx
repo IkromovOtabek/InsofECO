@@ -11,11 +11,12 @@ import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Row, Scre
 import { dialog, toast } from '@/design/ui';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
-import { requestAcceptOtp, useDelivery, useDispute, useDriverTransition, useSignDelivery } from '@/features/deliveries/api';
+import { requestAcceptOtp, useDelivery, useDriverTransition, useSignDelivery } from '@/features/deliveries/api';
 import { useLivePosition } from '@/features/tracking/useLivePosition';
 import { startTracking, stopTracking } from '@/core/location';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
+import { AcceptDelivery } from '@/features/deliveries/accept';
 
 /**
  * Umumiy reys ekrani. Rolga qarab pastki qism:
@@ -41,6 +42,8 @@ export default function DeliveryScreen() {
       </Screen>
     );
   }
+  // Quruvchi / tadbirkor: beton tushirilayotganda — to'liq ekranli qabul (imzo, hajm, e'tiroz)
+  if (!isDriver && d.status === 'UNLOADING' && (role === 'QURUVCHI' || role === 'TADBIRKOR')) return <AcceptDelivery d={d} />;
   const dest = { latitude: d.order.lat, longitude: d.order.lng };
   const truck = live ? { latitude: live.lat, longitude: live.lng } : null;
 
@@ -68,7 +71,7 @@ export default function DeliveryScreen() {
         {live?.etaMin != null && d.status === 'EN_ROUTE' ? <Txt v="titleSm" color="brand" style={{ marginTop: space.sm }}>Taxminan {live.etaMin} daqiqada yetib keladi</Txt> : null}
         <Gap />
 
-        {isDriver ? <DriverPanel d={d} /> : <ClientPanel d={d} canSign={role === 'QURUVCHI' || role === 'TADBIRKOR'} />}
+        {isDriver ? <DriverPanel d={d} /> : <ClientPanel d={d} />}
 
         <Panel title="Tarix" icon="history">
           {d.events.length === 0 ? <EmptyState title="Hali voqea yo'q" hint="Reys boshlanishi bilan bu yerda ko'rinadi" icon="history" /> : null}
@@ -143,36 +146,15 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
   );
 }
 
-function ClientPanel({ d, canSign }: { d: NonNullable<ReturnType<typeof useDelivery>['data']>; canSign: boolean }) {
-  const sign = useSignDelivery(d.id);
-  const dispute = useDispute(d.id);
-  const [accepted, setAccepted] = useState(String(d.loadedM3 ?? d.plannedM3));
-  const err = (e: Error) => toast.error(e.message, 'Xato');
-  if (d.status !== 'UNLOADING' || !canSign) {
-    return (
-      <Card>
-        {d.driver ? (
-          <ListItem icon="truck" module="logistics" title={d.driver.user.fullName ?? d.driver.user.phone} subtitle={d.vehicle?.plateNumber ? `Mikser ${d.vehicle.plateNumber}` : 'Mashina hali biriktirilmagan'} last />
-        ) : (
-          <ListItem icon="user" tone="neutral" title="Haydovchi hali biriktirilmagan" subtitle="Zavod dispetcheri biriktirgach shu yerda ko'rinadi" last />
-        )}
-      </Card>
-    );
-  }
+/** Quruvchi / tadbirkor: haydovchi va mashina. Qabul (imzo) — `AcceptDelivery` (features/deliveries/accept.tsx). */
+function ClientPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['data']> }) {
   return (
     <Card>
-      <Txt v="titleSm">Qabul qilish</Txt>
-      <Gap h={space.sm} />
-      <Input label="Qabul qilingan hajm (m³)" value={accepted} onChangeText={setAccepted} keyboardType="decimal-pad" />
-      {/* MVP: imzo — tasdiq tugmasi; keyingi bosqich: react-native-signature-canvas → S3 presign */}
-      <Button title="Imzolash va qabul qilish" size="xl" icon="pencil" loading={sign.isPending} onPress={() => sign.mutate({ signatureKey: `signature/${d.id}/tap.png`, acceptedM3: Number(accepted) }, { onError: err })} />
-      <Gap />
-      <Button title="E'tiroz bildirish" variant="ghost" icon="circle-alert" onPress={() => dialog('E\'tiroz sababi', undefined, [
-        { text: 'Hajm kam', onPress: () => dispute.mutate({ reason: 'VOLUME' }) },
-        { text: 'Sifat', onPress: () => dispute.mutate({ reason: 'QUALITY' }) },
-        { text: 'Kech keldi', onPress: () => dispute.mutate({ reason: 'LATE' }) },
-        { text: 'Bekor', style: 'cancel' },
-      ])} />
+      {d.driver ? (
+        <ListItem icon="truck" module="logistics" title={d.driver.user.fullName ?? d.driver.user.phone} subtitle={d.vehicle?.plateNumber ? `Mikser ${d.vehicle.plateNumber}` : 'Mashina hali biriktirilmagan'} last />
+      ) : (
+        <ListItem icon="user" tone="neutral" title="Haydovchi hali biriktirilmagan" subtitle="Zavod dispetcheri biriktirgach shu yerda ko'rinadi" last />
+      )}
     </Card>
   );
 }
