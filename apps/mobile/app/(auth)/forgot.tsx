@@ -13,7 +13,7 @@ import { AuthScreen, ErrorBox, FooterLink, InfoCard, PrimaryButton, Title } from
 /**
  * Parolni tiklash — 1-qadam: raqamga kod yuborish.
  *
- * SMS va elektron pochta kanali bor; tizimda foydalanuvchining pochtasi
+ * Kod Telegram'ga (Telegram bo'lmasa SMS) yuboriladi; elektron pochta kanali ham bor, lekin tizimda foydalanuvchining pochtasi
  * saqlanmaydi, shuning uchun pochta varianti ko'rsatiladi-yu, tanlanmaydi —
  * uning o'rniga administratorga murojaat qilish yo'li yozilgan.
  */
@@ -56,8 +56,8 @@ export default function Forgot() {
       <Appear delay={130} style={{ marginTop: space.xxl }}>
         <Card style={{ paddingVertical: space.xs }}>
           <ListItem
-            leading={<IconTile icon="message-square" module="brand" />}
-            title="SMS orqali"
+            leading={<IconTile icon="send" module="brand" />}
+            title="Telegram yoki SMS orqali"
             subtitle={local ? `+998 ${local}` : '+998 …'}
             right={<Badge label="Tanlangan" tone="success" icon="check" />}
           />

@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next';
 /** MVP: uz (lotin). uz-Cyrl va ru — shu tuzilmaga qo'shiladi. */
 const uz = {
   common: { next: 'Davom etish', back: 'Orqaga', save: 'Saqlash', cancel: 'Bekor qilish', retry: 'Qayta urinish', loading: 'Yuklanmoqda…', offline: 'Internet yo\'q — o\'zgarishlar ulanganda yuboriladi' },
-  auth: { phoneTitle: 'Telefon raqamingiz', phoneHint: 'SMS orqali kod yuboramiz', otpTitle: 'SMS kodni kiriting', otpHint: '{{phone}} raqamiga yuborildi', roleTitle: 'Kim sifatida kirasiz?' },
+  auth: { phoneTitle: 'Telefon raqamingiz', phoneHint: 'Telegram yoki SMS orqali kod yuboramiz', otpTitle: 'Tasdiqlash kodini kiriting', otpHint: '{{phone}} raqamiga yuborildi', roleTitle: 'Kim sifatida kirasiz?' },
   roles: { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' },
   /** Umumiy komponentlar matni (src/design) — ekranlar kalit orqali oladi, matn kodga yozilmaydi. */
   ui: {

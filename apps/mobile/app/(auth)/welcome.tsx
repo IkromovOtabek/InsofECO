@@ -1,21 +1,25 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, Gap, IconTile, ListItem, Txt } from '@/design/primitives';
+import { Button, Gap, ListGroup, ListItem, Txt } from '@/design/primitives';
 import { IconName } from '@/design/icons';
+import type { ModuleTone } from '@/design/tokens';
 import { Appear, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
-import { size, space } from '@/design/tokens';
+import { space } from '@/design/tokens';
 
 /**
  * Welcome — ilova ochilganda birinchi oyna.
- * Brend belgisi + nom + qiymat taklifi, uchta afzallik qatori, pastda ikkita tugma.
+ * Brend logotipi + nom + qiymat taklifi, uchta afzallik qatori, pastda ikkita tugma.
  */
-const PERKS: { icon: IconName; title: string; desc: string }[] = [
-  { icon: 'briefcase', title: 'Loyihalar', desc: 'byudjet, progress, vazifalar, jamoa' },
-  { icon: 'package', title: 'Material', desc: "so'rov → tasdiq → yuk → obyekt" },
-  { icon: 'banknote', title: 'Hisob-kitob', desc: 'daromad, xarajat, foyda — real vaqtda' },
+const LOGO = require('../../assets/logo.png') as number;
+const LOGO_RATIO = 970 / 210;
+const LOGO_H = space.x12;
+const PERKS: { icon: IconName; module: ModuleTone; title: string; desc: string }[] = [
+  { icon: 'briefcase', module: 'production', title: 'Loyihalar', desc: 'byudjet, progress, vazifalar, jamoa' },
+  { icon: 'package', module: 'warehouse', title: 'Material', desc: "so'rov → tasdiq → yuk → obyekt" },
+  { icon: 'banknote', module: 'brand', title: 'Hisob-kitob', desc: 'daromad, xarajat, foyda — real vaqtda' },
 ];
 
 export default function Welcome() {
@@ -27,7 +31,7 @@ export default function Welcome() {
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingHorizontal: space.pageX, paddingTop: insets.top + space.x12, paddingBottom: insets.bottom + space.xl }}>
       <View style={{ flex: 1 }}>
         <Appear from={18}>
-          <IconTile icon="layers" module="brand" size={size.iconTile + space.lg} />
+          <Image source={LOGO} style={{ height: LOGO_H, width: LOGO_H * LOGO_RATIO }} resizeMode="contain" accessibilityLabel="Insof JBI logotipi" />
         </Appear>
         <Gap h={space.xxl} />
         <Appear delay={90}><Txt v="titleLg">Insof ECO</Txt></Appear>
@@ -37,13 +41,13 @@ export default function Welcome() {
         </Appear>
         <Gap h={space.xxxl} />
         <Appear delay={220}>
-          <Card style={{ paddingVertical: space.xs }}>
+          <ListGroup>
             {PERKS.map((p, i) => (
               <Appear key={p.title} delay={260 + stagger(i, 70)}>
-                <ListItem icon={p.icon} module="brand" title={p.title} subtitle={p.desc} last={i === PERKS.length - 1} />
+                <ListItem icon={p.icon} module={p.module} title={p.title} subtitle={p.desc} />
               </Appear>
             ))}
-          </Card>
+          </ListGroup>
         </Appear>
       </View>
 

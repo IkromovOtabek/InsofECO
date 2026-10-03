@@ -3,9 +3,9 @@ import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Card, IconTile, ListItem, Txt } from '@/design/primitives';
 import { StatusLine } from '@/design/ui';
-import { radius, size, space, type } from '@/design/tokens';
+import { radius, shadow, size, space, type } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
-import { Appear } from '@/design/motion';
+import { Appear, haptic } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
@@ -51,6 +51,7 @@ export default function OtpScreen() {
       const r = await authApi.verifyOtp(phone, value);
       await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
     } catch (e) {
+      haptic.error();
       setError(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');
       setDigits(Array(LEN).fill(''));
       refs.current[0]?.focus();
@@ -81,6 +82,7 @@ export default function OtpScreen() {
       setLeft(r.retryAfter ?? 60);
       if (r.channel) setVia(r.channel);
     } catch (e) {
+      haptic.error();
       setError(e instanceof ApiException ? e.message : 'Qayta yuborib bo\'lmadi');
     }
   };
@@ -122,11 +124,11 @@ export default function OtpScreen() {
               selectTextOnFocus
               accessibilityLabel={`${i + 1}-raqam`}
               style={[type.metric, {
-                flex: 1, height: size.driverTouch - space.sm, borderRadius: radius.sm, textAlign: 'center', paddingVertical: 0,
-                borderWidth: focused === i ? size.ring : size.hairline,
-                borderColor: error ? c.danger : focused === i ? c.brand : d ? c.borderStrong : c.borderDefault,
-                backgroundColor: c.bgSurface, color: c.textStrong,
-              }]}
+                flex: 1, height: size.driverTouch - space.sm, borderRadius: radius.md, borderCurve: 'continuous', textAlign: 'center', paddingVertical: 0,
+                borderWidth: size.ring,
+                borderColor: error ? c.danger : focused === i ? c.brand : 'transparent',
+                backgroundColor: d ? c.bgSurface : c.bgSubtle, color: c.textStrong,
+              }, shadow.card]}
             />
           ))}
         </View>

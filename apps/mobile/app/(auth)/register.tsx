@@ -132,7 +132,7 @@ export default function Register() {
         onBack={() => router.replace('/(auth)/login')}
         footer={<FooterLink text="Hisobingiz bormi?" action="Kirish" onPress={() => router.replace('/(auth)/login')} />}
       >
-        <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={0} />
+        <Steps labels={["Ma'lumotlar", "Kod tasdig'i", 'Tayyor']} current={0} />
         <Title hint="Keyinchalik bitta hisobga boshqa rollar ham qo'shiladi.">Kim sifatida ro&apos;yxatdan o&apos;tasiz?</Title>
         <View style={{ marginTop: space.xxl, gap: space.md }}>
           {ROLES.map((r, i) => (
@@ -183,7 +183,7 @@ export default function Register() {
       onBack={() => setRole(null)}
       footer={<FooterLink text="Hisobingiz bormi?" action="Kirish" onPress={() => router.replace('/(auth)/login')} />}
     >
-      <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={0} />
+      <Steps labels={["Ma'lumotlar", "Kod tasdig'i", 'Tayyor']} current={0} />
 
       <Appear delay={60} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xxl }}>
         <IconTile icon={meta.icon} module="brand" />

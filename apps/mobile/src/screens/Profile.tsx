@@ -5,7 +5,7 @@ import { Button, Card, Gap, ListItem, Screen, Txt } from '@/design/primitives';
 import { Avatar, Confirm, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
-import { authApi } from '@/features/auth/api';
+import { authApi, avatarUri } from '@/features/auth/api';
 
 const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' } as const;
 
@@ -53,7 +53,7 @@ export function Profile({ children }: { children?: React.ReactNode }) {
     <Screen padded={false}>
       <ScrollView contentContainerStyle={{ padding: space.pageX }}>
         <Card style={{ alignItems: 'center', paddingVertical: space.xxl }}>
-          <Avatar name={user?.fullName} size={size.avatarLg + space.lg} />
+          <Avatar name={user?.fullName} uri={avatarUri(user?.avatarUrl)} size={size.avatarLg + space.lg} />
           <Gap h={space.md} />
           <Txt v="titleMd">{user?.fullName ?? user?.phone}</Txt>
           <Txt v="body" color="muted">{active ? `${ROLE[active.role]} · ${active.organization.name}` : ''}</Txt>
@@ -70,9 +70,9 @@ export function Profile({ children }: { children?: React.ReactNode }) {
         ) : null}
         <Gap />
         <Card style={{ paddingVertical: space.xs }}>
-          <ListItem icon="languages" title="Til" subtitle="O'zbek (lotin)" />
-          <ListItem icon="shield-check" title="Xavfsizlik" subtitle="Parolni o'zgartirish" onPress={() => router.push('/(auth)/change-password')} />
-          <ListItem icon="circle-question-mark" title="Yordam" subtitle="+998 90 000 00 00" last />
+          <ListItem icon="settings" title="Sozlamalar" subtitle="Mavzu, palitra, bildirishnomalar" onPress={() => router.push('/settings')} />
+          <ListItem icon="languages" title="Til" subtitle="O'zbek (lotin)" onPress={() => router.push('/settings')} />
+          <ListItem icon="shield-check" title="Xavfsizlik" subtitle="PIN kod va parol" onPress={() => router.push('/settings')} last />
         </Card>
         <Gap />
         <Card style={{ paddingVertical: space.xs }}>

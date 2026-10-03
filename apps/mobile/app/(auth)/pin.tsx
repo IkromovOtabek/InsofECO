@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
-import { Badge, Button, Card, ListItem, Txt } from '@/design/primitives';
+import { Button, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
-import { Appear } from '@/design/motion';
+import { Appear, haptic } from '@/design/motion';
 import { SuccessCheck } from '@/design/success';
 import { PIN_LEN, pinStore } from '@/core/pin';
 import { useSession } from '@/core/session';
-import { AuthScreen, PinDots, PinKeypad, PrimaryButton } from '@/features/auth/ui';
+import { AuthScreen, PrimaryButton } from '@/features/auth/ui';
+import { PinDotsHandle, RoundKeypad, ShakeDots } from '@/components/pin-lock';
 import { dialog } from '@/design/ui';
 
 /**
@@ -32,6 +31,14 @@ export default function PinScreen() {
   const [first, setFirst] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
+  const dots = useRef<PinDotsHandle>(null);
+  /** Xato: tebranish + silkinish, nuqtalar silkinish tugagach bo'shaydi. */
+  const fail = (msg: string, after?: () => void) => {
+    haptic.error();
+    dots.current?.shake();
+    setError(msg);
+    setTimeout(() => { setPin(''); after?.(); }, 380);
+  };
 
   const stage = mode === 'set' ? (first ? 'confirm' : 'create') : mode;
 
@@ -45,7 +52,6 @@ export default function PinScreen() {
 
   const tap = async (d: string) => {
     if (pin.length >= PIN_LEN) return;
-    if (Platform.OS === 'ios') void Haptics.selectionAsync();
     const next = pin + d;
     setPin(next);
     setError(undefined);
@@ -55,26 +61,29 @@ export default function PinScreen() {
   const finish = async (code: string) => {
     if (mode === 'set') {
       if (!first) { setFirst(code); setPin(''); return; }
-      if (first !== code) { setFirst(null); setPin(''); setError('Kodlar mos kelmadi — qaytadan kiriting'); return; }
+      if (first !== code) { fail('Kodlar mos kelmadi — qaytadan kiriting', () => setFirst(null)); return; }
       await pinStore.set(code);
+      haptic.success();
       setSaved(true);
       setPin('');
       return;
     }
     const r = await pinStore.verify(code);
-    setPin('');
     if (r.ok) {
+      setPin('');
       if (mode === 'off') { await pinStore.clear(); router.back(); return; }
       router.back();
       return;
     }
     if (r.wiped) {
+      haptic.error();
+      setPin('');
       dialog('PIN o\'chirildi', 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
         { text: 'Kirish', onPress: () => void signOut() },
       ]);
       return;
     }
-    setError(`Kod xato — yana ${r.left} urinish qoldi`);
+    fail(`Kod xato — yana ${r.left} urinish qoldi`);
   };
 
   const del = () => { setPin((p) => p.slice(0, -1)); setError(undefined); };
@@ -104,7 +113,7 @@ export default function PinScreen() {
       </Appear>
 
       <Appear delay={110} style={{ marginTop: space.xxl }}>
-        <PinDots filled={pin.length} length={PIN_LEN} />
+        <ShakeDots ref={dots} filled={pin.length} length={PIN_LEN} error={!!error} />
       </Appear>
 
       <View style={{ minHeight: space.xl, marginTop: space.md, alignItems: 'center' }} accessibilityLiveRegion="polite">
@@ -114,19 +123,7 @@ export default function PinScreen() {
       </View>
 
       <Appear delay={160} style={{ marginTop: space.xl }}>
-        <PinKeypad onDigit={(d) => void tap(d)} onDelete={del} />
-      </Appear>
-
-      <Appear delay={220} style={{ marginTop: space.xl }}>
-        <Card style={{ paddingVertical: space.xs }}>
-          <ListItem
-            icon="fingerprint"
-            title="Face ID / barmoq izi"
-            subtitle="Ilovaning keyingi yig'ilishida yoqiladi"
-            right={<Badge label="Tez kunda" tone="neutral" icon="clock" />}
-            last
-          />
-        </Card>
+        <RoundKeypad onDigit={(d) => void tap(d)} onDelete={del} />
       </Appear>
 
       {mode === 'set' ? (

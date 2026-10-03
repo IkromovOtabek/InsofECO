@@ -23,7 +23,7 @@ export default function Done() {
 
   return (
     <AuthScreen back={false}>
-      <Steps labels={["Ma'lumotlar", 'SMS tasdiq', 'Tayyor']} current={2} />
+      <Steps labels={["Ma'lumotlar", "Kod tasdig'i", 'Tayyor']} current={2} />
 
       <Appear delay={80} style={{ alignItems: 'center', marginTop: space.x10 }}>
         <SuccessCheck size={size.driverTouch * 2} />
