@@ -238,7 +238,8 @@ export default function TripRoute() {
       // keldimi?") oxirgi saqlangan nuqtaga qaraydi — eski nuqta bilan rad etilmasin.
       const here = siteFixRef.current ?? fixRef.current;
       if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at }); else await flushErpGps();
-      const r = await run.mutateAsync({ action: 'trip.delivered', id: id!, payload });
+      // Koordinata amalning o'zida ham — ERP 300 m qoidasini shu nuqta bilan tekshiradi
+      const r = await run.mutateAsync({ action: 'trip.delivered', id: id!, payload: here ? { ...payload, lat: here.lat, lng: here.lng } : payload });
       setForm(null);
       await stopErpTracking(); // qolgan nuqtalar yuboriladi va kuzatuv to'xtaydi
       // Aniq nima bo'lganini aytamiz — umumiy "Bajarildi" emas. Server rad etsa bu yerga kelinmaydi (catch).

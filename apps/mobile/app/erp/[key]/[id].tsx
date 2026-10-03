@@ -81,7 +81,7 @@ const SUCCESS_TITLE: Record<string, string> = {
   'order.cancel': 'Zayavka bekor qilindi',
 };
 /** Haydovchi obyektda turgani tekshiriladigan amallar (server ham tekshiradi — bu darhol va tushunarli javob uchun). */
-const SITE_ACTIONS: Record<string, string> = { 'trip.arrived': 'Yetib keldim', 'trip.delivered': 'Yetkazdim' };
+const SITE_ACTIONS: Record<string, string> = { 'trip.arrived': 'Yetib keldim', 'trip.unloading': 'Tushirishni boshladim', 'trip.delivered': 'Yetkazdim' };
 
 /** Hujjat turi — kartochka ustki yozuvi (demo "BETON M300 · 12 M³" o'rnida tur nomi). */
 const KIND_LABEL: Record<string, string> = {
@@ -157,8 +157,12 @@ export default function ErpDetail() {
       // Reysni yopadigan amal (`track: 'stop'`) — avval yo'l izini yuboramiz: server
       // "obyektga yetib keldimi?" degan qoidani oxirgi saqlangan nuqta bo'yicha tekshiradi.
       if (a.effect?.track === 'stop') await flushErpGps();
+      // Obyekt yonida tasdiqlangan nuqta amalning o'zida ham ketadi: ERP 300 m qoidasini
+      // shu koordinata bilan tekshiradi (koordinatasiz yangi server "ilovani yangilang" deydi)
+      const at = SITE_ACTIONS[a.id] ? siteFixRef.current : null;
+      const body = at ? { ...(payload ?? {}), lat: at.lat, lng: at.lng } : payload;
       // `local` amal serverga bormaydi — u faqat ilova ichidagi ish (marshrutni ochish)
-      res = a.local ? null : await run.mutateAsync({ action: a.id, id: id!, payload });
+      res = a.local ? null : await run.mutateAsync({ action: a.id, id: id!, payload: body });
     } catch (e) {
       const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
       if (a.form?.length) setFormError(msg); else result.error('Bajarilmadi', msg);
@@ -180,18 +184,23 @@ export default function ErpDetail() {
     else if (message || SUCCESS_TITLE[a.id]) result.success(title, message || `${a.label} — qayd etildi`);
   };
 
+  /** `siteGate` tasdiqlagan nuqta — keyingi `execute` uni amal bilan birga yuboradi. */
+  const siteFixRef = useRef<{ lat: number; lng: number } | null>(null);
+
   /**
    * Haydovchining "Yetib keldim" / "Yetkazdim" — avval YANGI GPS nuqta bilan obyekt yonidami
    * (`SITE_RADIUS_M`). Obyekt nuqtasi marshrutdan olinadi; topilmasa (internet, eski server) —
    * tekshirib bo'lmaydi va qarorni server qiladi. `false` — haydovchi to'xtatdi.
    */
   const siteGate = async (a: ErpAction): Promise<boolean> => {
+    siteFixRef.current = null;
     if (!isDriver || key !== 'trips' || a.local || !SITE_ACTIONS[a.id]) return true;
     setChecking(true);
     try {
       const dest = await erpAuth.tripRoute(id!, undefined, true).then((r) => r.destination).catch(() => null);
       const here = await confirmAtSite(dest, SITE_ACTIONS[a.id]!);
       if (here === null) return false;
+      siteFixRef.current = here ? { lat: here.lat, lng: here.lng } : null;
       // Tasdiqlangan nuqta serverga — uning qoidasi oxirgi saqlangan nuqtaga qaraydi
       if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at }).catch(() => undefined);
       return true;
