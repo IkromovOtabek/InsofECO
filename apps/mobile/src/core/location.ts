@@ -15,13 +15,18 @@ const BUF = 'gps.buffer';
 const ACTIVE = 'gps.activeDeliveryId';
 
 interface Pt { lat: number; lng: number; speedKmh?: number; heading?: number; at: string }
+/** Buferdagi buzilgan JSON fon vazifasini har safar yiqitmasin. */
+const readBuf = (): Pt[] => { try { const v = JSON.parse(kv.getString(BUF) ?? '[]') as unknown; return Array.isArray(v) ? (v as Pt[]) : []; } catch { return []; } };
+
+// Import paytidagi YAGONA yon ta'sir — vazifani ro'yxatga olish (app/_layout.tsx sovuq startda import qiladi,
+// aks holda OS ilovani fonda uyg'otganda vazifa topilmaydi va nuqtalar yo'qoladi).
 
 TaskManager.defineTask(GPS_TASK, async ({ data, error }) => {
   if (error || !data) return;
   const deliveryId = kv.getString(ACTIVE);
   if (!deliveryId) return;
   const { locations } = data as { locations: Location.LocationObject[] };
-  const buf: Pt[] = JSON.parse(kv.getString(BUF) ?? '[]');
+  const buf = readBuf();
   for (const l of locations) {
     buf.push({ lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: l.coords.speed != null ? Math.max(0, l.coords.speed * 3.6) : undefined, heading: l.coords.heading ?? undefined, at: new Date(l.timestamp).toISOString() });
   }
@@ -31,7 +36,7 @@ TaskManager.defineTask(GPS_TASK, async ({ data, error }) => {
 
 export async function flushGps() {
   const deliveryId = kv.getString(ACTIVE);
-  const buf: Pt[] = JSON.parse(kv.getString(BUF) ?? '[]');
+  const buf = readBuf();
   if (!deliveryId || buf.length === 0) return;
   try {
     await api('/tracking/gps', { method: 'POST', body: { deliveryId, points: buf.slice(0, 200) } });

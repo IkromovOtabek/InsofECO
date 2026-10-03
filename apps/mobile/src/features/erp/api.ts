@@ -170,6 +170,8 @@ export async function downloadDailyReport(date: string): Promise<string> {
   const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
   if (!dir) throw new Error("Qurilmada fayl saqlash joyi topilmadi");
   const target = `${dir}kunlik-hisobot-${date}.xlsx`;
+  // Shu kunning eski fayli qolgan bo'lsa (avvalgi yuklash) — ustiga yozish iOS'da xato beradi
+  await FileSystem.deleteAsync(target, { idempotent: true }).catch(() => undefined);
   const res = await FileSystem.downloadAsync(`${config.erpUrl}/api/mobile/report/daily?date=${encodeURIComponent(date)}`, target, {
     headers: { authorization: `Bearer ${token ?? ''}`, accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json' },
   });

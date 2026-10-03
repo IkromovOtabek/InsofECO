@@ -1,5 +1,6 @@
 import React from 'react';
-import { Linking, Platform, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
+import { openInNavigator } from '@/core/navigate';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
@@ -70,7 +71,7 @@ export default function TrackDelivery() {
   const openMaps = () => {
     if (!d) return;
     const { lat, lng } = d.order;
-    void Linking.openURL(Platform.OS === 'ios' ? `maps:0,0?q=${lat},${lng}` : `geo:${lat},${lng}?q=${lat},${lng}`);
+    void openInNavigator({ lat, lng, label: d.order.address });
   };
 
   const eta = pos?.etaMin != null && d?.status === 'EN_ROUTE' ? `${pos.etaMin} daqiqa` : d?.arrivedAt ? 'Yetib keldi' : d ? `Reja ${fmtTime(d.plannedAt)}` : '';

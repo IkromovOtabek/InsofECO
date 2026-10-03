@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
@@ -11,7 +11,10 @@ import type { ErpField, ErpSection } from '@/core/erp';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
-import { flushErpGps, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
+import { flushErpGps, pushErpFix, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
+import { erpAuth } from '@/core/erp';
+import { useSession } from '@/core/session';
+import { confirmAtSite } from '@/features/address/site-check';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
@@ -62,6 +65,24 @@ const ACTION_ICON: Record<string, IconName> = {
   'order.invoice': 'receipt', 'problem.assign': 'send', 'problem.note': 'pencil',
 };
 
+/**
+ * Muvaffaqiyat oynasining sarlavhasi — umumiy "Bajarildi" emas, aniq nima bo'lgani.
+ * Faqat server amalni QABUL QILGANDAN keyin ko'rsatiladi (rad etsa — catch).
+ */
+const SUCCESS_TITLE: Record<string, string> = {
+  'trip.arrived': 'Obyektga yetib keldingiz',
+  'trip.delivered': 'Yetkazildi — reys yopildi',
+  'trip.unloading': 'Tushirish boshlandi',
+  'trip.loaded': 'Yuklandi',
+  'trip.onroad': "Yo'lga chiqdingiz",
+  'trip.returned': 'Zavodga qaytdingiz',
+  'trip.close': 'Reys yopildi',
+  'order.confirm': 'Zayavka tasdiqlandi',
+  'order.cancel': 'Zayavka bekor qilindi',
+};
+/** Haydovchi obyektda turgani tekshiriladigan amallar (server ham tekshiradi — bu darhol va tushunarli javob uchun). */
+const SITE_ACTIONS: Record<string, string> = { 'trip.arrived': 'Yetib keldim', 'trip.delivered': 'Yetkazdim' };
+
 /** Hujjat turi — kartochka ustki yozuvi (demo "BETON M300 · 12 M³" o'rnida tur nomi). */
 const KIND_LABEL: Record<string, string> = {
   orders: 'Zayavka', approvals: 'Tasdiq', invoices: 'Schyot', payments: "To'lov", cashflow: 'Kirim-chiqim', trips: 'Reys',
@@ -96,6 +117,10 @@ export default function ErpDetail() {
   const [form, setForm] = useState<ErpAction | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  /** Obyekt yonidami — tekshirilmoqda (GPS bir necha soniya oladi; tugma qayta bosilmasin). */
+  const [checking, setChecking] = useState(false);
+  const inFlight = useRef(false);
+  const isDriver = useSession((s) => s.kind === 'erp' && s.erp?.role === 'DRIVER');
 
   // Demo sarlavhasi (orqaga · raqam · ko'proq) ekranning o'zida — navigator sarlavhasi yashiriladi
   React.useEffect(() => { nav.setOptions({ headerShown: false }); }, [nav]);
@@ -124,24 +149,54 @@ export default function ErpDetail() {
   };
 
   const execute = async (a: ErpAction, payload?: Record<string, unknown>) => {
+    // Tez ikki marta bosish (forma "Saqlash"i `loading` bo'lib ulgurmasdan) amalni ikki marta yubormasin
+    if (inFlight.current) return;
+    inFlight.current = true;
+    let res: Awaited<ReturnType<typeof run.mutateAsync>> | null;
     try {
       // Reysni yopadigan amal (`track: 'stop'`) — avval yo'l izini yuboramiz: server
       // "obyektga yetib keldimi?" degan qoidani oxirgi saqlangan nuqta bo'yicha tekshiradi.
       if (a.effect?.track === 'stop') await flushErpGps();
       // `local` amal serverga bormaydi — u faqat ilova ichidagi ish (marshrutni ochish)
-      const res = a.local ? null : await run.mutateAsync({ action: a.id, id: id!, payload });
-      const message = res?.message ?? null;
-      setForm(null);
-      const note = await applyEffect(a);
-      // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
-      if (message && note) dialog('Bajarildi', `${message}\n\n${note}`);
-      // Muhim amal (zayavka qabul qilindi) — server chek yuborsa, katta chek oynasi
-      else if (res?.receipt) receipt.show(res.receipt);
-      else if (message) result.success('Bajarildi', message);
-      else if (note) dialog('Diqqat', note);
+      res = a.local ? null : await run.mutateAsync({ action: a.id, id: id!, payload });
     } catch (e) {
       const msg = e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring';
-      if (form) setFormError(msg); else result.error('Bajarilmadi', msg);
+      if (a.form?.length) setFormError(msg); else result.error('Bajarilmadi', msg);
+      return;
+    } finally {
+      inFlight.current = false;
+    }
+    // Shu yerdan pastda amal serverda BAJARILGAN. Effekt (kuzatuv, marshrut) xatosi "Bajarilmadi"
+    // deb ko'rsatilmasligi kerak — aks holda haydovchi tugmani qayta bosib, amalni takrorlaydi.
+    setForm(null);
+    let note: string | null = null;
+    try { note = await applyEffect(a); } catch { note = "Amal bajarildi, lekin joylashuv kuzatuvi yoki marshrut ochilmadi — kartochkani yangilang."; }
+    const message = res?.message ?? null;
+    const title = SUCCESS_TITLE[a.id] ?? 'Bajarildi';
+    // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
+    if (note) dialog(message || SUCCESS_TITLE[a.id] ? title : 'Diqqat', message ? `${message}\n\n${note}` : note);
+    // Muhim amal (zayavka qabul qilindi) — server chek yuborsa, katta chek oynasi
+    else if (res?.receipt) receipt.show(res.receipt);
+    else if (message || SUCCESS_TITLE[a.id]) result.success(title, message || `${a.label} — qayd etildi`);
+  };
+
+  /**
+   * Haydovchining "Yetib keldim" / "Yetkazdim" — avval YANGI GPS nuqta bilan obyekt yonidami
+   * (`SITE_RADIUS_M`). Obyekt nuqtasi marshrutdan olinadi; topilmasa (internet, eski server) —
+   * tekshirib bo'lmaydi va qarorni server qiladi. `false` — haydovchi to'xtatdi.
+   */
+  const siteGate = async (a: ErpAction): Promise<boolean> => {
+    if (!isDriver || key !== 'trips' || a.local || !SITE_ACTIONS[a.id]) return true;
+    setChecking(true);
+    try {
+      const dest = await erpAuth.tripRoute(id!, undefined, true).then((r) => r.destination).catch(() => null);
+      const here = await confirmAtSite(dest, SITE_ACTIONS[a.id]!);
+      if (here === null) return false;
+      // Tasdiqlangan nuqta serverga — uning qoidasi oxirgi saqlangan nuqtaga qaraydi
+      if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at }).catch(() => undefined);
+      return true;
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -156,9 +211,9 @@ export default function ErpDetail() {
     if (!ok) toast.error("GPS yoqilganini va ilovaga joylashuv ruxsati berilganini tekshiring.", 'Joylashuv topilmadi');
   };
 
-  const press = (a: ErpAction) => {
+  const press = async (a: ErpAction) => {
     // Bitta amal bajarilayotganda ikkinchisi (yonidagi tugma) ishga tushmasin
-    if (run.isPending) return;
+    if (run.isPending || checking) return;
     setFormError(null);
     // Yopiq tugma bosilsa sababini aytamiz va qulfni ochishga urinib ko'ramiz —
     // xabarni o'qib, hech narsa qila olmay qolish eng yomoni
@@ -169,6 +224,7 @@ export default function ErpDetail() {
       ]);
       return;
     }
+    if (!(await siteGate(a))) return;
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       dialog(a.label, a.confirm, [
@@ -291,10 +347,10 @@ export default function ErpDetail() {
             variant: variantOf(primary),
             disabled: primary.disabled,
             disabledReason: primary.hint ?? "Hozir bajarib bo'lmaydi",
-            loading: run.isPending,
-            onPress: () => press(primary),
+            loading: run.isPending || checking,
+            onPress: () => void press(primary),
           }}
-          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : ACTION_ICON[secondary.id], tone: secondary.tone === 'danger' ? 'danger' : undefined, onPress: () => press(secondary) } : undefined}
+          secondary={secondary ? { title: secondary.label, icon: secondary.disabled ? 'lock' : ACTION_ICON[secondary.id], tone: secondary.tone === 'danger' ? 'danger' : undefined, onPress: () => void press(secondary) } : undefined}
           more={sheetActions.length ? { label: 'Yana amallar', icon: 'ellipsis', onPress: () => setMoreOpen(true) } : undefined}
         />
       ) : null}
@@ -309,8 +365,8 @@ export default function ErpDetail() {
                 title={a.label}
                 icon={a.disabled ? 'lock' : ACTION_ICON[a.id] ?? 'arrow-right'}
                 variant={a.disabled || a.tone === 'warning' ? 'secondary' : variantOf(a)}
-                disabled={run.isPending}
-                onPress={() => { setMoreOpen(false); press(a); }}
+                disabled={run.isPending || checking}
+                onPress={() => { setMoreOpen(false); void press(a); }}
               />
               {a.disabled && a.hint ? <Txt v="caption" align="center">{a.hint}</Txt> : null}
             </View>

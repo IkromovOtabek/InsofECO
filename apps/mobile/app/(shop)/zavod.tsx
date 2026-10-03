@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Linking, Platform, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
+import { Image, Linking, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Rect } from 'react-native-svg';
@@ -9,6 +9,8 @@ import { PressScale } from '@/design/motion';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { alpha, radius, size, space } from '@/design/tokens';
+import { toast } from '@/design/ui';
+import { openInNavigator } from '@/core/navigate';
 import { useShopCatalog } from '@/features/shop/api';
 import { IsoBox } from '@/features/shop/art';
 import { FloatingButton, LOGO_MARK, ProductGrid } from '@/features/shop/ui';
@@ -73,8 +75,8 @@ export default function SellerProfile() {
   const openMap = () => {
     if (s?.location) {
       const { lat, lng } = s.location;
-      void Linking.openURL(Platform.OS === 'ios' ? `maps:0,0?q=${lat},${lng}` : `geo:${lat},${lng}?q=${lat},${lng}`);
-    } else if (address) void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`);
+      void openInNavigator({ lat, lng, label: address ?? undefined });
+    } else if (address) Linking.openURL(`https://yandex.uz/maps/?text=${encodeURIComponent(address)}`).catch(() => toast.error('Xarita ochilmadi', 'Manzil'));
   };
   const hoursText = s?.workingHours ?? st?.hoursLabel ?? null;
 

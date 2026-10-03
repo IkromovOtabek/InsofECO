@@ -70,7 +70,7 @@ type NavResult = 'opened' | 'cancelled' | 'failed';
 
 async function choose(t: NavTarget): Promise<NavResult> {
   if (!validTarget(t)) {
-    toast.warning('Obyekt nuqtasi belgilanmagan — dispetcherdan manzilni aniqlang', 'Navigator');
+    toast.warning("Manzilning xaritadagi nuqtasi belgilanmagan — yo'lni qurib bo'lmaydi", 'Navigator');
     return 'failed';
   }
   const mine = platformApps();

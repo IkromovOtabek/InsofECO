@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Linking, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Callout, EmptyState, IconButton, KVList, ListGroup, ListItem, Txt, fmtUnit } from '@/design/primitives';
 import { ChipGroup, PageHeader, SectionHead, SkeletonList } from '@/design/blocks';
@@ -8,7 +9,7 @@ import { Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
-import { MapView, Marker, type MapHandle } from '@/core/map';
+import { MapUnavailable, MapView, Marker, type MapHandle } from '@/core/map';
 import { config } from '@/core/config';
 import { openInNavigator } from '@/core/navigate';
 import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
@@ -54,7 +55,9 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const router = useRouter();
   const raise = useHeaderRaise();
   const { height } = useWindowDimensions();
-  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useErpFleet();
+  // Ekran stekda ostda qolganda (reys kartochkasi ochilgan) 12 s so'rovlar to'xtaydi — qaytganda darhol yangilanadi
+  const focused = useIsFocused();
+  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useErpFleet(focused);
   const mapRef = useRef<MapHandle | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [selected, setSelected] = useState<string | null>(null);
@@ -97,8 +100,8 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const navigate = async (t: ErpFleetItem) => {
     const p = t.dest ?? (t.gps ? { lat: t.gps.lat, lng: t.gps.lng } : null);
     if (!p) { toast.warning("Na obyekt nuqtasi, na GPS bor — navigatorga yo'nalish berib bo'lmaydi"); return; }
-    const ok = await openInNavigator({ lat: p.lat, lng: p.lng, label: t.dest ? `${t.customer}${t.address ? ` · ${t.address}` : ''}` : `${t.plate} · ${t.driver}` });
-    if (!ok) toast.error('Navigatsiya ilovasi topilmadi');
+    // "Bekor" ham `false` qaytaradi, xato holatini esa `openInNavigator` o'zi aytadi — bu yerda qo'shimcha toast yo'q
+    await openInNavigator({ lat: p.lat, lng: p.lng, label: t.dest ? `${t.customer}${t.address ? ` · ${t.address}` : ''}` : `${t.plate} · ${t.driver}` });
   };
 
   const mapH = Math.round(Math.min(420, Math.max(260, height * 0.45)));
@@ -138,9 +141,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
             {all.length > 1 ? <ChipGroup items={chips} value={filter} onChange={(k) => { setFilter(k); setSelected(null); }} /> : null}
 
             {!config.mapsEnabled ? (
-              <Callout tone="warning" icon="map">
-                {"Xarita bu ilova nusxasida o'chirilgan (Yandex MapKit kaliti yo'q). Reyslar quyida ro'yxatda — har biri bosiladi.\nAdministrator uchun: EXPO_PUBLIC_YANDEX_MAPKIT_KEY ni sozlab, ilovani qayta yig'ing."}
-              </Callout>
+              <MapUnavailable compact hint="Bu versiyaga Yandex xarita kaliti ulanmagan — telefoningizda nuqson yo'q. Reyslar quyida ro'yxatda: har birini bosib, «Navigatorda» orqali joyini ko'ring. Xaritani yoqish uchun administratorga ayting." />
             ) : initial.current ? (
               <View style={{ height: mapH, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
                 <MapView

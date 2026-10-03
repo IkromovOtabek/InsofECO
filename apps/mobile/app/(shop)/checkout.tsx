@@ -3,7 +3,9 @@ import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, EmptyState, Input, ListItem, Txt, fmtNum } from '@/design/primitives';
-import { ChipGroup, ListGroup, PageHeader, Reveal, StickyActionBar } from '@/design/blocks';
+import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
+import { DayStrip, addDays, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
+import { ListGroup, PageHeader, Reveal, StickyActionBar } from '@/design/blocks';
 import { Icon, type IconName } from '@/design/icons';
 import { PressScale, haptic } from '@/design/motion';
 import { Sheet, fmtShort, toast } from '@/design/ui';
@@ -22,9 +24,13 @@ const PAYS: { key: string; label: string; icon: IconName }[] = [
   { key: 'Payme', label: 'Payme', icon: 'wallet' },
   { key: "Bank o'tkazma", label: "Bank o'tkazma", icon: 'receipt' },
 ];
-const DAYS = ['Bugun', 'Ertaga', 'Indinga'] as const;
-type Day = (typeof DAYS)[number];
 const SLOTS = ['08:00–10:00', '10:00–12:00', '12:00–14:00', '14:00–16:00', '16:00–18:00'];
+/** Kun lentasi — 2 hafta, kalendar — 2 oygacha (sotuv bo'limi uzoqroq rejani qabul qilmaydi). */
+const STRIP_DAYS = 14;
+const MAX_DAYS = 60;
+/** Bugun uchun: slot boshlanishi o'tib ketgan bo'lsa — yopiq. */
+const slotPast = (day: string, s: string) => day === ymd(startOfToday()) && Number(s.slice(0, 2)) <= new Date().getHours();
+const dayFull = (day: string) => SLOTS.every((s) => slotPast(day, s));
 
 const mln = (n: number) => fmtShort(n).replace('.', ',');
 
@@ -63,8 +69,9 @@ export default function Checkout() {
 
   const [name, setName] = useState(contact.name || sessionName);
   const [phone, setPhone] = useState(contact.phone || sessionPhone);
-  const [address, setAddress] = useState(contact.address);
-  const [day, setDay] = useState<Day>('Ertaga');
+  const [addr, setAddr] = useState<AddressValue>({ address: contact.address, lat: null, lng: null });
+  const address = addr.address;
+  const [day, setDay] = useState(() => ymd(addDays(startOfToday(), 1)));
   const [slot, setSlot] = useState<string | null>(null);
   const [pay, setPay] = useState<string>('Naqd');
   const [sheet, setSheet] = useState<null | 'address' | 'time' | 'contact'>(null);
@@ -80,7 +87,8 @@ export default function Checkout() {
   }
 
   const total = cartTotal(lines);
-  const when = slot ? `${day}, ${slot}` : null;
+  const when = slot && !slotPast(day, slot) ? `${dayLabelLong(day)}, ${slot}` : null;
+  const pickDay = (k: string) => { setDay(k); if (slot && slotPast(k, slot)) setSlot(null); };
   const digits = phone.replace(/\D/g, '');
   const phoneOk = digits.length === 9 || digits.length === 12;
   const nameOk = name.trim().length >= 2;
@@ -94,7 +102,10 @@ export default function Checkout() {
     if (!address.trim()) { haptic.warning(); toast.warning('Obyekt manzilini kiriting'); setSheet('address'); return; }
     if (!nameOk || !phoneOk) { haptic.warning(); toast.warning(!nameOk ? 'Ismingizni yozing' : 'Telefon: 90 123 45 67'); setSheet('contact'); return; }
     setContact({ name: name.trim(), phone: phone.trim(), address: address.trim() });
-    const note = [when ? `Yetkazish vaqti: ${when}` : null, `To'lov: ${pay}`].filter(Boolean).join('. ');
+    // Shop API'da sana va koordinata maydoni yo'q — sotuv bo'limi o'qiydigan izohga yoziladi
+    const point = addr.lat != null && addr.lng != null
+      ? `Obyekt nuqtasi: ${addr.lat.toFixed(6)}, ${addr.lng.toFixed(6)} (https://yandex.uz/maps/?pt=${addr.lng.toFixed(6)},${addr.lat.toFixed(6)}&z=17)` : null;
+    const note = [when ? `Yetkazish vaqti: ${when} (${day})` : null, point, `To'lov: ${pay}`].filter(Boolean).join('. ');
     if (inFlight.current) return;
     inFlight.current = true;
     setSending(0);
@@ -179,15 +190,18 @@ export default function Checkout() {
       )}
 
       <Sheet open={sheet === 'address'} onClose={() => setSheet(null)} title="Obyekt manzili" footer={<Button title="Saqlash" size="lg" onPress={() => setSheet(null)} />}>
-        <Input label="Manzil" value={address} onChangeText={setAddress} placeholder="Shahar, ko'cha, uy, mo'ljal" left="map-pin" autoFocus multiline containerStyle={{ marginBottom: 0 }} />
+        <AddressPicker label="Manzil" value={addr} onChange={setAddr} placeholder="Shahar, ko'cha, uy, mo'ljal" mapHeight={200} />
       </Sheet>
 
       <Sheet open={sheet === 'time'} onClose={() => setSheet(null)} title="Yetkazish vaqti" footer={<Button title="Tayyor" size="lg" onPress={() => setSheet(null)} />}>
         <View style={{ gap: space.lg }}>
-          <ChipGroup<Day> items={DAYS.map((d) => ({ key: d, label: d }))} value={day} onChange={setDay} />
+          <View style={{ gap: space.xs }}>
+            <DayStrip value={day} onChange={pickDay} days={STRIP_DAYS} maxDays={MAX_DAYS} isDisabled={dayFull} />
+            <Txt v="caption" color="muted">{dayLabelLong(day)}</Txt>
+          </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
             {SLOTS.map((s) => (
-              <Button key={s} title={s} full={false} variant={slot === s ? 'primary' : 'secondary'} onPress={() => setSlot(slot === s ? null : s)} />
+              <Button key={s} title={s} full={false} disabled={slotPast(day, s)} variant={slot === s ? 'primary' : 'secondary'} onPress={() => setSlot(slot === s ? null : s)} />
             ))}
           </View>
           <Txt v="caption">Bu — afzal vaqt. Aniq vaqtni sotuv bo&apos;limi mikserlar navbatiga qarab tasdiqlaydi.</Txt>

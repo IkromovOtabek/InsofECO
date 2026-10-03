@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Modal, ScrollView, View } from 'react-native';
 import { IconButton, Txt } from '@/design/primitives';
 import { Icon, Sheet } from '@/design/ui';
 import { PressScale, haptic } from '@/design/motion';
@@ -119,11 +119,16 @@ export function DayStrip({ value, onChange, days = 14, maxDays = 90, isDisabled 
           <Txt v="bodyStrong" style={{ color: !inStrip && value ? c.textOnBrand : c.brand }}>{!inStrip && value ? shortDate(value) : 'Kalendar'}</Txt>
         </PressScale>
       </ScrollView>
-      <CalendarSheet
-        open={calendar} value={value} maxDays={maxDays} isDisabled={isDisabled}
-        onClose={() => setCalendar(false)}
-        onPick={(k) => { setCalendar(false); pick(k); }}
-      />
+      {/* `Sheet` — absolute qatlam: DayStrip ScrollView/Card ichida turadi, shuning uchun kalendar
+          oyna darajasida (RN Modal) ochiladi, aks holda u kontent ichida qirqilib, ekran pastida emas,
+          scroll kontentining oxirida chiqardi. */}
+      <Modal visible={calendar} transparent animationType="none" statusBarTranslucent onRequestClose={() => setCalendar(false)}>
+        <CalendarSheet
+          open={calendar} value={value} maxDays={maxDays} isDisabled={isDisabled}
+          onClose={() => setCalendar(false)}
+          onPick={(k) => { setCalendar(false); pick(k); }}
+        />
+      </Modal>
     </>
   );
 }

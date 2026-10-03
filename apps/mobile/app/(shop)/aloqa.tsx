@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Linking, Platform, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
+import { openInNavigator } from '@/core/navigate';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Input, ListItem, Skeleton, Txt } from '@/design/primitives';
@@ -61,8 +62,8 @@ export default function ShopContact() {
   const openMap = () => {
     if (seller?.location) {
       const { lat, lng } = seller.location;
-      void Linking.openURL(Platform.OS === 'ios' ? `maps:0,0?q=${lat},${lng}` : `geo:${lat},${lng}?q=${lat},${lng}`);
-    } else if (address) void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`);
+      void openInNavigator({ lat, lng, label: address ?? undefined });
+    } else if (address) Linking.openURL(`https://yandex.uz/maps/?text=${encodeURIComponent(address)}`).catch(() => toast.error('Xarita ochilmadi', 'Manzil'));
   };
 
   return (

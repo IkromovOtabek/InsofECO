@@ -1,5 +1,6 @@
 import '@/core/i18n';
 import '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
+import '@/core/location'; // ECO reysining fon GPS vazifasi (TaskManager.defineTask) — xuddi shunday
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
