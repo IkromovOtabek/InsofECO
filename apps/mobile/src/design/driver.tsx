@@ -3,40 +3,54 @@
  * Ranglar va shakl umumiy tizimdan — faqat o'lcham kattaroq.
  */
 import React from 'react';
-import { Platform, Pressable, View, ViewStyle } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { ActivityIndicator, Platform, Pressable, View, ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
-import { Tone, radius, size, space, toneColors } from './tokens';
+import { Tone, radius, shadow, size, space, toneColors } from './tokens';
 import { Txt } from './primitives';
 import { Icon, IconName } from './icons';
 
-/** Asosiy harakat: 64 pt, titleMd matn, ikonka. */
+/** Asosiy harakat: 64 pt pill, titleMd matn, ikonka. Bosilganda prujina + o'rtacha haptika. */
 export function BigAction({ title, icon, onPress, tone = 'brand', loading, disabled, style }: { title: string; icon?: IconName; onPress: () => void; tone?: 'brand' | 'success' | 'danger' | 'dark'; loading?: boolean; disabled?: boolean; style?: ViewStyle }) {
   const { c } = useTheme();
   const bg = { brand: c.brand, success: c.successSolid, danger: c.dangerSolid, dark: c.textStrong }[tone];
   const fg = tone === 'brand' ? c.textOnBrand : tone === 'dark' ? c.bgSurface : c.textOnSolid;
+  const off = !!(disabled || loading);
+  const ps = usePressScale(0.96);
+  const glow: ViewStyle | null = off ? null : Platform.select<ViewStyle>({
+    ios: { shadowColor: bg, shadowOpacity: 0.34, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+    android: { elevation: 4, shadowColor: bg },
+    default: {},
+  })!;
   return (
-    <Pressable
-      accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: !!(disabled || loading) }} disabled={disabled || loading}
-      onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress(); }}
-      android_ripple={{ color: c.brandHover }}
-      style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.md, backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.xl, overflow: 'hidden' }, (disabled || loading) && { opacity: 0.5 }, pressed && { opacity: 0.9 }, style]}
-    >
-      {icon ? <Icon name={icon} size={size.iconXl} color={fg} /> : null}
-      <Txt v="titleMd" style={{ color: fg }} numberOfLines={1}>{loading ? '…' : title}</Txt>
-    </Pressable>
+    <Animated.View style={ps.style}>
+      <Pressable
+        accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: off, busy: !!loading }} disabled={off}
+        onPressIn={ps.onPressIn} onPressOut={ps.onPressOut}
+        onPress={() => { haptic.medium(); onPress(); }}
+        android_ripple={{ color: c.brandHover }}
+        style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.xl, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' }, glow, off && { opacity: 0.5 }, pressed && { opacity: 0.92 }, style]}
+      >
+        {loading ? <ActivityIndicator color={fg} /> : icon ? <Icon name={icon} size={size.iconXl} color={fg} strokeWidth={2} /> : null}
+        <Txt v="titleMd" style={{ color: fg }} numberOfLines={1}>{title}</Txt>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-/** Ikkilamchi katta tugma (qo'ng'iroq, navigatsiya): 64 pt, chegarali. */
+/** Ikkilamchi katta tugma (qo'ng'iroq, navigatsiya): 64 pt, yuza + yumshoq soya, chegarasiz. */
 export function BigSecondary({ title, icon, onPress, style }: { title: string; icon: IconName; onPress: () => void; style?: ViewStyle }) {
   const { c } = useTheme();
+  const ps = usePressScale(0.96);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => { void Haptics.selectionAsync(); onPress(); }} android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.md, backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, flex: 1 }, pressed && { backgroundColor: c.bgMuted }, style]}>
-      <Icon name={icon} size={size.iconLg} tone="strong" />
-      <Txt v="titleSm" numberOfLines={1}>{title}</Txt>
-    </Pressable>
+    <Animated.View style={[{ flex: 1 }, ps.style]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={title} onPressIn={ps.onPressIn} onPressOut={ps.onPressOut} onPress={() => { haptic.light(); onPress(); }} android_ripple={{ color: c.bgMuted }}
+        style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: c.bgSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: space.lg }, shadow.card, pressed && { backgroundColor: c.bgSubtle }, style]}>
+        <Icon name={icon} size={size.iconLg} tone="strong" />
+        <Txt v="titleSm" numberOfLines={1}>{title}</Txt>
+      </Pressable>
+    </Animated.View>
   );
 }
 

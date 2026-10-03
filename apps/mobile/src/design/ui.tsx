@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -12,8 +12,8 @@ import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { StatusMark, SuccessCheck } from './success';
-import { DUR, EASE_STATE } from './motion';
-import { Palette, Tone, duration, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
+import { DUR, EASE_STATE, SPRING_SLIDE, haptic } from './motion';
+import { FONT, Palette, Tone, duration, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
@@ -25,8 +25,22 @@ export function HeaderBack() {
   return <IconButton icon="arrow-left" label={i18n.t('ui.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('..'))} tone="strong" />;
 }
 
-/** Tab ikonkasi — Lucide; faol holatda chiziq qalinroq. */
-export const tabIcon = (name: IconName) => ({ color, focused }: { color: string; focused: boolean }) => <Icon name={name} size={size.iconLg} color={color} strokeWidth={focused ? 2 : 1.5} />;
+/** Tab ikonkasi glifi: faol tabda ikonka brandSoft pill ichida (pill tab panelining ikonka joyini to'ldiradi). */
+function TabGlyph({ name, color, focused, big }: { name: IconName; color: string; focused: boolean; big?: boolean }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ width: '100%', height: '100%', borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? c.brandSoft : 'transparent' }}>
+      <Icon name={name} size={big ? size.iconXl - 2 : size.iconMd + 2} color={focused ? c.brandInk : color} strokeWidth={focused ? 2 : 1.6} />
+    </View>
+  );
+}
+
+/**
+ * Tab ikonkasi — Lucide; faol holatda brandSoft pill ichida, chiziq qalinroq.
+ * Tab paneli faol/nofaol nusxalarni ustma-ust chizib opacity bilan almashtiradi — pill shu bilan silliq paydo bo'ladi.
+ * `{ driver: true }` — haydovchi rejimi (kattaroq ikonka; `tabsOptions(c, inset, { driver: true })` bilan birga).
+ */
+export const tabIcon = (name: IconName, opts?: { driver?: boolean }) => ({ color, focused }: { color: string; focused: boolean }) => <TabGlyph name={name} color={color} focused={focused} big={opts?.driver} />;
 
 export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: { name?: string | null; /** Profil rasmi — bo'lsa bosh harflar o'rniga */ uri?: string | null; size?: number; tone?: Tone }) {
   const { c } = useTheme();
@@ -40,26 +54,76 @@ export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: {
   );
 }
 
-/** Tabs — segment: bg-subtle yo'lak, faol segment surface + chegara. */
-export function Tabs<T extends string>({ value, onChange, items, style }: { value: T; onChange: (v: T) => void; items: { key: T; label: string; count?: number }[]; style?: StyleProp<ViewStyle> }) {
+export type SegmentVariant = 'surface' | 'brand' | 'inverse';
+export interface SegmentItem<T extends string> { key: T; label: string; count?: number; icon?: IconName }
+
+/**
+ * Segment yo'lagi — bitta trek ichida suzuvchi (prujinali) tanlov indikatori.
+ * `surface` — bgMuted trek + oq indikator (Tabs); `brand` — oq trek + brend indikator (ChipGroup);
+ * `inverse` — to'q karta ustida (HeroCard davrlari). 4 tadan ko'p bo'lsa gorizontal aylanadi va faol element ko'rinishga suriladi.
+ */
+export function SegmentTrack<T extends string>({ items, value, onChange, variant = 'surface', scroll: scrollProp, compact, style }: {
+  items: SegmentItem<T>[]; value: T; onChange: (v: T) => void; variant?: SegmentVariant;
+  /** Majburan aylanuvchi (standart: 4 tadan ko'p bo'lsa). */ scroll?: boolean;
+  /** Pastroq trek (HeroCard ichida) — 32 px. */ compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { c } = useTheme();
-  const scroll = items.length > 4;
-  const body = items.map((s) => {
-    const on = value === s.key;
-    return (
-      <Pressable
-        key={s.key} onPress={() => onChange(s.key)} accessibilityRole="tab" accessibilityState={{ selected: on }}
-        style={({ pressed }) => [{ flex: scroll ? undefined : 1, minHeight: size.touch - space.sm, paddingHorizontal: space.md, borderRadius: radius.md - 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, backgroundColor: on ? c.bgSurface : 'transparent', borderWidth: size.hairline, borderColor: on ? c.borderDefault : 'transparent' }, on && shadow.card, pressed && !on && { backgroundColor: c.bgMuted }]}
-      >
-        <Txt v="label" color={on ? 'strong' : 'muted'} numberOfLines={1} style={{ minWidth: textRoom(s.label, type.label.fontSize) }}>{s.label}</Txt>
-        {s.count != null ? <Txt v="caption" color={on ? 'body' : 'faint'}>{s.count}</Txt> : null}
-      </Pressable>
-    );
-  });
-  const track = { flexDirection: 'row' as const, gap: space.xs, padding: space.xs, borderRadius: radius.md, backgroundColor: c.bgSubtle, borderWidth: size.hairline, borderColor: c.borderSubtle };
+  const reduce = useReducedMotion();
+  const scroll = scrollProp ?? items.length > 4;
+  const lay = React.useRef<Partial<Record<string, { x: number; w: number }>>>({});
+  const sv = React.useRef<ScrollView>(null);
+  const x = useSharedValue(0);
+  const w = useSharedValue(0);
+  const placed = React.useRef(false);
+  const move = React.useCallback((key: T) => {
+    const l = lay.current[key];
+    if (!l) return;
+    if (!placed.current || reduce) { x.value = l.x; w.value = l.w; placed.current = true; }
+    else { x.value = withSpring(l.x, SPRING_SLIDE); w.value = withSpring(l.w, SPRING_SLIDE); }
+    if (scroll) sv.current?.scrollTo({ x: Math.max(0, l.x - space.xxl), animated: !reduce });
+  }, [reduce, scroll, w, x]);
+  useEffect(() => { move(value); }, [value, move]);
+  const ind = useAnimatedStyle(() => ({ width: w.value, opacity: w.value > 0 ? 1 : 0, transform: [{ translateX: x.value }] }));
+  const pal = {
+    surface: { track: c.bgMuted, ind: c.bgSurface, on: c.textStrong, off: c.textMuted },
+    brand: { track: c.bgSurface, ind: c.brand, on: c.textOnBrand, off: c.textMuted },
+    inverse: { track: c.bgInverseChip, ind: c.brand, on: c.textOnBrand, off: c.textOnInverseMuted },
+  }[variant];
+  const itemH = compact ? size.touch - space.md : size.touch - space.sm;
+  const pad = compact ? 3 : space.xs;
+  const body = (
+    <>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: pad, left: 0, height: itemH, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: pal.ind }, variant === 'surface' ? shadow.card : null, ind]} />
+      {items.map((s) => {
+        const on = value === s.key;
+        return (
+          <Pressable
+            key={s.key}
+            onPress={() => { if (!on) { haptic.selection(); onChange(s.key); } }}
+            onLayout={(e) => { const { x: lx, width } = e.nativeEvent.layout; lay.current[s.key] = { x: lx, w: width }; if (s.key === value) move(value); }}
+            accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={s.count != null ? `${s.label}, ${s.count}` : s.label}
+            hitSlop={{ top: pad, bottom: pad }}
+            style={{ flex: scroll ? undefined : 1, flexGrow: scroll ? 0 : 1, minHeight: itemH, paddingHorizontal: compact ? space.md - 2 : space.md + space.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs }}
+          >
+            {s.icon ? <Icon name={s.icon} size={size.iconSm} color={on ? pal.on : pal.off} /> : null}
+            <Txt v={compact ? 'caption' : 'label'} numberOfLines={1} style={{ color: on ? pal.on : pal.off, fontFamily: FONT[600], minWidth: textRoom(s.label, (compact ? type.caption : type.label).fontSize) }}>{s.label}</Txt>
+            {s.count != null ? <Txt v="caption" style={{ color: on ? pal.on : pal.off, opacity: 0.75 }}>{s.count}</Txt> : null}
+          </Pressable>
+        );
+      })}
+    </>
+  );
+  const track: ViewStyle = { flexDirection: 'row', padding: pad, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: pal.track };
+  const lift = variant === 'brand' ? shadow.card : null;
   return scroll
-    ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={style} contentContainerStyle={track}>{body}</ScrollView>
-    : <View style={[track, style]}>{body}</View>;
+    ? <ScrollView ref={sv} horizontal showsHorizontalScrollIndicator={false} style={[{ borderRadius: radius.pill, flexGrow: 0 }, lift, style]} contentContainerStyle={track}>{body}</ScrollView>
+    : <View accessibilityRole="tablist" style={[track, lift, style]}>{body}</View>;
+}
+
+/** Tabs — segment: bgMuted yo'lak, faol segment oq indikator (suzib o'tadi). Balandlik 44. */
+export function Tabs<T extends string>({ value, onChange, items, style }: { value: T; onChange: (v: T) => void; items: { key: T; label: string; count?: number }[]; style?: StyleProp<ViewStyle> }) {
+  return <SegmentTrack items={items} value={value} onChange={onChange} variant="surface" style={style} />;
 }
 
 // ───────────────────────── Jadval ─────────────────────────
@@ -70,15 +134,15 @@ export function Table<T>({ columns, rows, keyOf, onRowPress, empty, minWidth, st
   const { c } = useTheme();
   const cell = (col: TableColumn<T>): ViewStyle => ({ width: col.width, flex: col.width ? undefined : col.flex ?? 1, alignItems: col.align === 'right' ? 'flex-end' : 'flex-start', paddingHorizontal: space.md, justifyContent: 'center' });
   const inner = (
-    <View style={{ minWidth, borderRadius: radius.card, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgSurface, overflow: 'hidden' }}>
-      <View style={{ flexDirection: 'row', minHeight: size.row - space.sm, alignItems: 'center', backgroundColor: c.bgSubtle, borderBottomWidth: size.hairline, borderBottomColor: c.borderDefault }}>
+    <View style={{ minWidth, borderRadius: radius.card, borderCurve: 'continuous', backgroundColor: c.bgSurface, overflow: 'hidden' }}>
+      <View style={{ flexDirection: 'row', minHeight: size.row - space.sm, alignItems: 'center', backgroundColor: c.bgSubtle }}>
         {columns.map((col) => <View key={col.key} style={cell(col)}><Txt v="overline" numberOfLines={1}>{col.title}</Txt></View>)}
       </View>
       {rows.length === 0 ? (empty ?? <Txt v="bodySm" color="muted" style={{ padding: space.lg }} align="center">{i18n.t('ui.noData')}</Txt>) : rows.map((r, i) => (
         <Pressable
           key={keyOf(r)} onPress={onRowPress ? () => onRowPress(r) : undefined} disabled={!onRowPress}
           android_ripple={{ color: c.bgMuted }}
-          style={({ pressed }) => [{ flexDirection: 'row', minHeight: size.row, alignItems: 'center', borderBottomWidth: i === rows.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }, pressed && { backgroundColor: c.bgMuted }]}
+          style={({ pressed }) => [{ flexDirection: 'row', minHeight: size.row, alignItems: 'center', borderBottomWidth: i === rows.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }, pressed && { backgroundColor: c.bgSubtle }]}
         >
           {columns.map((col) => {
             const v = col.render(r);
@@ -133,7 +197,7 @@ function DialogFrame({ onDismiss, children }: { onDismiss?: () => void; children
         pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[StyleSheet.absoluteFill, { justifyContent: 'center', paddingHorizontal: space.lg, paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }]}
       >
-        <View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl * 2, width: '100%', maxWidth: 420, maxHeight: '100%', alignSelf: 'center', overflow: 'hidden' }, shadow.pop]}>
+        <View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl, borderCurve: 'continuous', width: '100%', maxWidth: 420, maxHeight: '100%', alignSelf: 'center', overflow: 'hidden' }, shadow.pop]}>
           <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.xxl, paddingTop: space.xxl + space.xs }}>
             {children}
           </ScrollView>
@@ -164,7 +228,7 @@ export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Scrim onPress={onClose} />
       <KeyboardAvoidingView pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
-        <View accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl * 2, borderTopRightRadius: radius.xl * 2, paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
+        <View accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
           <View style={{ alignSelf: 'center', width: space.x10, height: space.xs + 1, borderRadius: radius.pill, backgroundColor: c.bgMuted, marginTop: space.md }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xxl, paddingRight: space.lg, paddingTop: space.md, paddingBottom: space.sm }}>
             <Txt v="titleLg" style={{ flex: 1 }} numberOfLines={2}>{title}</Txt>
@@ -302,7 +366,7 @@ function ToastCard({ item }: { item: ToastItem }) {
   const ICON: Record<Tone, IconName> = { neutral: 'info', brand: 'info', success: 'circle-check', warning: 'triangle-alert', danger: 'circle-alert', info: 'info' };
   const icon = ICON[item.tone];
   return (
-    <Animated.View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderWidth: size.hairline, borderColor: c.borderDefault, padding: space.md, paddingRight: space.xs }, shadow.pop, s]}>
+    <Animated.View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md, paddingRight: space.xs }, shadow.pop, s]}>
       <View style={{ width: size.iconTileSm, height: size.iconTileSm, alignItems: 'center', justifyContent: 'center' }}>
         {item.tone === 'success' ? <SuccessCheck size={size.iconTileSm} /> : <Icon name={icon} color={item.tone === 'neutral' ? c.textBody : ink} />}
       </View>

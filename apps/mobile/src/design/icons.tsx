@@ -143,6 +143,14 @@ import Moon from 'lucide-react-native/dist/esm/icons/moon.mjs';
 import Minus from 'lucide-react-native/dist/esm/icons/minus.mjs';
 import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles.mjs';
 import HeartPulse from 'lucide-react-native/dist/esm/icons/heart-pulse.mjs';
+import ArrowUpRight from 'lucide-react-native/dist/esm/icons/arrow-up-right.mjs';
+import ArrowDownRight from 'lucide-react-native/dist/esm/icons/arrow-down-right.mjs';
+import ArrowDown from 'lucide-react-native/dist/esm/icons/arrow-down.mjs';
+import WifiOff from 'lucide-react-native/dist/esm/icons/wifi-off.mjs';
+import CloudOff from 'lucide-react-native/dist/esm/icons/cloud-off.mjs';
+import EllipsisVertical from 'lucide-react-native/dist/esm/icons/ellipsis-vertical.mjs';
+import Monitor from 'lucide-react-native/dist/esm/icons/monitor.mjs';
+import SunMoon from 'lucide-react-native/dist/esm/icons/sun-moon.mjs';
 
 export const ICONS = {
   plus: Plus, 'circle-plus': CirclePlus, minus: Minus,
@@ -168,6 +176,8 @@ export const ICONS = {
   'arrow-up-down': ArrowUpDown, clock: Clock, history: ClockArrowLeft, trash: Trash, 'trending-down': TrendingDown, 'trending-up': TrendingUp,
   wallet: Wallet, droplets: Droplets, camera: Camera, pencil: Pencil, 'key-round': KeyRound, funnel: Funnel, settings: Settings,
   warehouse: Warehouse, activity: Activity, radio: Radio, send: Send, image: Image, sun: Sun, moon: Moon, sparkles: Sparkles, 'heart-pulse': HeartPulse,
+  'arrow-up-right': ArrowUpRight, 'arrow-down-right': ArrowDownRight, 'arrow-down': ArrowDown, 'wifi-off': WifiOff, 'cloud-off': CloudOff,
+  'ellipsis-vertical': EllipsisVertical, monitor: Monitor, 'sun-moon': SunMoon,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
