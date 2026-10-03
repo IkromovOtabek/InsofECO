@@ -139,10 +139,13 @@ export default function SettingsScreen() {
           <SetGroup>
             {/* Hozircha ilovaning yagona tili — tanlov yo'q, shuning uchun bosilmaydi */}
             <SetRow icon="languages" module="logistics" title="Til" value="O'zbekcha" />
-            <SetRow
-              icon="moon" module="production" title="Mavzu"
-              right={<SegmentTrack<SchemePref> items={SCHEMES} value={scheme} onChange={setScheme} compact />}
-            />
+            {/* Tanlagich sarlavha ostida, to'liq kenglikda — yonida tursa "Mavzu" yozuvini siqib qo'yardi */}
+            <View style={{ paddingBottom: space.md }}>
+              <SetRow icon="moon" module="production" title="Mavzu" />
+              <View style={{ paddingHorizontal: space.card }}>
+                <SegmentTrack<SchemePref> items={SCHEMES} value={scheme} onChange={setScheme} compact />
+              </View>
+            </View>
           </SetGroup>
         </Appear>
 
