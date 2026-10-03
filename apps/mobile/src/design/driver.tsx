@@ -7,7 +7,7 @@ import { ActivityIndicator, Platform, Pressable, View, ViewStyle } from 'react-n
 import Animated from 'react-native-reanimated';
 import { haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
-import { Tone, radius, shadow, size, space, toneColors } from './tokens';
+import { Tone, elevation, radius, size, space, toneColors } from './tokens';
 import { Txt } from './primitives';
 import { Icon, IconName } from './icons';
 
@@ -18,22 +18,19 @@ export function BigAction({ title, icon, onPress, tone = 'brand', loading, disab
   const fg = tone === 'brand' ? c.textOnBrand : tone === 'dark' ? c.bgSurface : c.textOnSolid;
   const off = !!(disabled || loading);
   const ps = usePressScale(0.96);
-  const glow: ViewStyle | null = off ? null : Platform.select<ViewStyle>({
-    ios: { shadowColor: bg, shadowOpacity: 0.34, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
-    android: { elevation: 4, shadowColor: bg },
-    default: {},
-  })!;
+  // Demo `.btn.pri` nuri — `0 10px 20px -10px brand`; balandlik — `.sticky .btn.xl` 56 css → 76 dp.
+  const glow: ViewStyle | null = off ? null : elevation(c).glow(bg);
   return (
-    <Animated.View style={ps.style}>
+    <Animated.View style={[{ borderRadius: radius.pill }, glow, ps.style]}>
       <Pressable
         accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: off, busy: !!loading }} disabled={off}
         onPressIn={ps.onPressIn} onPressOut={ps.onPressOut}
         onPress={() => { haptic.medium(); onPress(); }}
         android_ripple={{ color: c.brandHover }}
-        style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.xl, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' }, glow, off && { opacity: 0.5 }, pressed && { opacity: 0.92 }, style]}
+        style={({ pressed }) => [{ height: size.stickyButtonXl, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.xl, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' }, off && { opacity: 0.5 }, pressed && { opacity: 0.92 }, style]}
       >
         {loading ? <ActivityIndicator color={fg} /> : icon ? <Icon name={icon} size={size.iconXl} color={fg} strokeWidth={2} /> : null}
-        <Txt v="titleMd" style={{ color: fg }} numberOfLines={1}>{title}</Txt>
+        <Txt v="buttonXl" style={{ color: fg }} numberOfLines={1}>{title}</Txt>
       </Pressable>
     </Animated.View>
   );
@@ -46,7 +43,7 @@ export function BigSecondary({ title, icon, onPress, style }: { title: string; i
   return (
     <Animated.View style={[{ flex: 1 }, ps.style]}>
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPressIn={ps.onPressIn} onPressOut={ps.onPressOut} onPress={() => { haptic.light(); onPress(); }} android_ripple={{ color: c.bgMuted }}
-        style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: c.bgSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: space.lg }, shadow.card, pressed && { backgroundColor: c.bgSubtle }, style]}>
+        style={({ pressed }) => [{ height: size.driverTouch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: c.bgSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: space.lg }, elevation(c).sh1, pressed && { backgroundColor: c.bgSubtle }, style]}>
         <Icon name={icon} size={size.iconLg} tone="strong" />
         <Txt v="titleSm" numberOfLines={1}>{title}</Txt>
       </Pressable>

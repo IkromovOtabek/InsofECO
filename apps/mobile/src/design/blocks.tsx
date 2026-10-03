@@ -1,38 +1,40 @@
 /**
  * Ekran bloklari — dashboard va kartochka sahifalari shu "g'ishtlar"dan yig'iladi.
- * Hammasi `useTheme().c` ranglari, `tokens` o'lchamlari va `<Txt v=…>` shriftlari bilan; ekran kodida
- * rang/o'lcham yozilmaydi. Grafiklarda matn faqat matn tokenlarida (seriya rangida emas).
+ * Manba: `docs/redesign/demo.html` (`.appbar .hero .kpi2 .qa .sh .group .li .badge` + barsG / hbarsG / sparkG).
+ * O'lchamlar demo css px × 1.38 (282 css → 390 dp), hammasi `tokens.ts` da (DEMO_SCALE izohlari).
  *
- * Yumshoq qatlam: chegara o'rniga soya, katta radius, pill tugmalar, ichki ajratuvchilar.
- * Harakat: bosish — prujina 0.96 + haptika; kirish — ketma-ket; raqamlar sanab chiqadi; ustunlar o'sadi.
+ * Yumshoq qatlam: chegara o'rniga soya (sh1), katta radius, pill tugmalar, ichki ajratuvchilar.
+ * Harakat (Animatsiya v2): kirish — `Stagger` (motion.tsx); raqamlar sanab chiqadi; sparkline chiziladi + pulse;
+ * ustunlar prujina bilan o'sadi; chiziqlar to'ladi; bosish — prujina 0.96 + haptika. Reduce motion — hammasi bir zumda.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, StyleProp, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import { Image, LayoutChangeEvent, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Svg, { Circle, Defs, Line, Path, Pattern, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
-import { Appear, DUR, EASE_STATE, PressScale, SPRING_SLIDE, haptic, stagger, useCountUp } from './motion';
-import { Badge, Button, Delta, IconButton, IconTile, KPICard, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
-import { Avatar, SegmentTrack, fmtShort, toast } from './ui';
-import { FONT, ModuleTone, Palette, Tone, TypeVariant, radius, shadow, size, space, toneColors } from './tokens';
+import { Appear, DUR, EASE_ENTER, PressScale, SPRING_GROW, SPRING_SLIDE, Shimmer, Stagger, haptic, useCountUp, useCountUpText, usePop, usePressScale } from './motion';
+import { Button, Delta, IconButton, IconTile, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
+import { SegmentTrack, fmtShort, toast } from './ui';
+import { DEMO_SCALE, FONT, ModuleTone, Palette, Tone, TypeVariant, elevation, radius, size, space, toneColors } from './tokens';
 
 export { SectionHead, ListGroup, Delta };
 
 // ───────────────────────── Yordamchilar ─────────────────────────
 
-/** Grafik o'qi uchun "chiroyli" maksimum: 1, 2, 2.5, 5, 10 × 10ⁿ. */
+/** Grafik o'qi uchun "chiroyli" maksimum — demo `niceMax`: 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 × 10ⁿ. */
 export function niceMax(v: number): number {
   if (!Number.isFinite(v) || v <= 0) return 1;
-  const exp = 10 ** Math.floor(Math.log10(v));
-  const f = v / exp;
-  const n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-  return n * exp;
+  const p = 10 ** Math.floor(Math.log10(v));
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
 }
 
 const CHART_KEYS = ['chart1', 'chart2', 'chart3', 'chart4'] as const;
 const seriesColor = (c: Palette, i: number) => c[CHART_KEYS[i % CHART_KEYS.length]!];
+/** Demo css px → dp. */
+const px = (v: number) => v * DEMO_SCALE;
 
 /** Element kengligini o'lchaydi (grafiklar, sparkline). */
 function useWidth(): [number, (e: LayoutChangeEvent) => void] {
@@ -40,33 +42,23 @@ function useWidth(): [number, (e: LayoutChangeEvent) => void] {
   return [w, (e) => { const n = Math.round(e.nativeEvent.layout.width); if (n !== w) setW(n); }];
 }
 
-/** 0 → 1 o'sish (kirishda bir marta, `deps` o'zgarsa qayta). Harakat kamaytirilgan bo'lsa darhol 1. */
-function useGrow(delay = 0, deps: unknown[] = []) {
+/** 0 → 1 (timing, demo `--ease`) kirishda bir marta, `deps` o'zgarsa qayta. Harakat kamaytirilgan bo'lsa darhol 1. */
+function useGrow(delay = 0, deps: unknown[] = [], dur: number = DUR.fill) {
   const reduce = useReducedMotion();
   const p = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
     if (reduce) { p.value = 1; return; }
     p.value = 0;
-    p.value = withDelay(delay, withTiming(1, { duration: DUR.enter + 280, easing: EASE_STATE }));
+    p.value = withDelay(delay, withTiming(1, { duration: dur, easing: EASE_ENTER }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduce, delay, ...deps]);
+  }, [reduce, delay, dur, ...deps]);
   return p;
 }
 
-/** Yumshoq karta yuzasi (chegarasiz, soya). */
-function Surface({ children, style, pad = space.card }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; pad?: number }) {
+/** Yumshoq karta yuzasi — demo `.card`: radius 28, padding 16, sh1, ichida ustun `gap`. */
+function Surface({ children, style, pad = space.card, gap = space.sm }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; pad?: number; gap?: number }) {
   const { c } = useTheme();
-  return <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: pad }, shadow.card, style]}>{children}</View>;
-}
-
-/** Karta sarlavhasi: nom + birlik izohi (o'ngda). */
-function CardTitle({ title, unit, right }: { title: string; unit?: string; right?: React.ReactNode }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginBottom: space.md }}>
-      <Txt v="titleSm" numberOfLines={1} style={{ flexShrink: 1 }}>{title}</Txt>
-      {right ?? (unit ? <Txt v="caption" color="muted">{unit}</Txt> : null)}
-    </View>
-  );
+  return <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: pad, gap }, elevation(c).sh1, style]}>{children}</View>;
 }
 
 // ───────────────────────── CountUp ─────────────────────────
@@ -88,137 +80,226 @@ export interface HeaderAction {
   icon: IconName;
   /** Ekran o'quvchisi uchun nom (majburiy). */ label: string;
   onPress: () => void;
-  /** Son yoki nuqta nishoni (bildirishnomalar). */ badge?: number | boolean;
+  /** Son yoki nuqta nishoni (bildirishnomalar). `true` — qizil nuqta. */ badge?: number | boolean;
+}
+
+/** Demo `.ib`: 44 dp shaffof doira, 20 dp ikonka; `badge` — qizil nuqta (8 dp, bgChrome halqa, "pop" bilan chiqadi). */
+function HeaderIcon({ icon, label, onPress, badge }: HeaderAction) {
+  const { c } = useTheme();
+  const ps = usePressScale(0.92);
+  const pop = usePop(badge ? 1 : 0, 600);
+  const num = typeof badge === 'number' && badge > 0;
+  return (
+    <Animated.View style={ps.style}>
+      <Pressable
+        onPress={() => { haptic.light(); onPress(); }} onPressIn={ps.onPressIn} onPressOut={ps.onPressOut}
+        accessibilityRole="button" accessibilityLabel={num ? `${label}, ${badge}` : label}
+        android_ripple={{ color: c.bgMuted, borderless: true }}
+        style={{ width: size.headerAvatar, height: size.headerAvatar, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Icon name={icon} size={size.iconMd} color={c.textBody} strokeWidth={1.75} />
+        {badge ? (
+          <Animated.View style={[{ position: 'absolute', top: num ? space.xs : space.sm - 2, right: num ? space.xs - 2 : space.sm, minWidth: num ? space.xl : size.bellDot + size.ring * 2, height: num ? space.xl : size.bellDot + size.ring * 2, paddingHorizontal: num ? 3 : 0, borderRadius: radius.pill, backgroundColor: c.dangerSolid, borderWidth: size.ring, borderColor: c.bgChrome, alignItems: 'center', justifyContent: 'center' }, pop]}>
+            {num ? <Txt v="badge" style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
+          </Animated.View>
+        ) : null}
+      </Pressable>
+    </Animated.View>
+  );
 }
 
 /**
- * Sahifa sarlavhasi — bgApp fonida (sticky uchun mos): tepada overline (sana/rol), ostida titleLg sarlavha;
- * o'ngda doira ikonka-tugmalar va avatar. Sarlavha sahifada bitta.
+ * Sahifa sarlavhasi — demo `.appbar`: chapda 44 dp avatar (brandSoft / brandInk bosh harflar), yonida overline
+ * (12.5 dp, katta harf, textMuted) + sarlavha (18 dp og'ir); o'ngda shaffof doira ikonkalar (qo'ng'iroq qizil nuqta bilan).
+ * Fon shaffof; `raised` bo'lsa (scroll — `useHeaderRaise()`) bgChrome + soya bilan ko'tariladi.
+ * `onBack` — avatar o'rnida orqaga tugmasi (ichki sahifalar).
  */
-export function PageHeader({ overline, title, avatar, onAvatar, actions, style }: {
-  /** Kichik ustki yozuv: "Dushanba, 3 oktyabr". */ overline?: string;
+export function PageHeader({ overline, title, avatar, onAvatar, actions, bell, raised, onBack, right, style }: {
+  /** Kichik ustki yozuv: "Insof Beton MChJ", "Direktor · Insof Beton". */ overline?: string;
   /** Sahifa nomi yoki salom. */ title: string;
   /** Profil: rasm yoki ism (bosh harflar). */ avatar?: { name?: string; uri?: string };
   /** Avatar bosilganda (profil). */ onAvatar?: () => void;
-  /** O'ngdagi tugmalar (ko'pi bilan 2 ta tavsiya). */ actions?: HeaderAction[];
+  /** O'ngdagi ikonka tugmalar (ko'pi bilan 2 ta). */ actions?: HeaderAction[];
+  /** Qo'ng'iroq (bildirishnomalar) — qisqa yo'l: `{ onPress, dot: true }` yoki `{ onPress, count: 3 }`. */
+  bell?: { onPress: () => void; dot?: boolean; count?: number; label?: string };
+  /** Scroll paytida ko'tarilgan holat (bgChrome + soya). */ raised?: boolean;
+  /** Orqaga tugmasi (avatar o'rnida). */ onBack?: () => void;
+  /** O'ng tomonga erkin element (masalan holat nishoni). */ right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
-  const av = avatar ? <Avatar name={avatar.name} uri={avatar.uri} size={size.avatar} tone="brand" /> : null;
+  const reduce = useReducedMotion();
+  const lift = useSharedValue(raised ? 1 : 0);
+  useEffect(() => { lift.value = reduce ? (raised ? 1 : 0) : withTiming(raised ? 1 : 0, { duration: 300, easing: EASE_ENTER }); }, [raised, reduce, lift]);
+  const bg = useAnimatedStyle(() => ({ opacity: lift.value }));
+  const initials = (avatar?.name ?? '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const av = avatar ? (
+    avatar.uri
+      ? <Image source={{ uri: avatar.uri }} accessibilityIgnoresInvertColors style={{ width: size.headerAvatar, height: size.headerAvatar, borderRadius: radius.pill, backgroundColor: c.bgMuted }} />
+      : (
+        <View style={{ width: size.headerAvatar, height: size.headerAvatar, borderRadius: radius.pill, backgroundColor: c.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Txt v="avatarInitials" style={{ color: c.brandInk }}>{initials}</Txt>
+        </View>
+      )
+  ) : null;
+  const all: HeaderAction[] = [
+    ...(actions ?? []),
+    ...(bell ? [{ icon: 'bell' as IconName, label: bell.label ?? 'Bildirishnomalar', onPress: bell.onPress, badge: bell.count ? bell.count : !!bell.dot }] : []),
+  ];
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.md, backgroundColor: c.bgApp }, style]}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        {overline ? <Txt v="overline" numberOfLines={1}>{overline}</Txt> : null}
-        <Txt v="titleLg" numberOfLines={1} adjustsFontSizeToFit accessibilityRole="header">{title}</Txt>
-      </View>
-      {actions?.map((a) => <IconButton key={a.label} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} variant="secondary" tone="strong" />)}
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md + 2, paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.md + 2, zIndex: 3 }, style]}>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: c.bgChrome }, elevation(c).raised, bg]} />
+      {onBack ? <IconButton icon="arrow-left" label="Orqaga" onPress={onBack} tone="strong" size={size.headerAvatar} /> : null}
       {av ? (onAvatar ? <PressScale onPress={onAvatar} accessibilityRole="button" accessibilityLabel={avatar?.name ?? 'Profil'} hitSlop={space.xs}>{av}</PressScale> : av) : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {overline ? <Txt v="appbarOverline" numberOfLines={1}>{overline}</Txt> : null}
+        <Txt v="appbarTitle" numberOfLines={1} accessibilityRole="header">{title}</Txt>
+      </View>
+      {right}
+      {all.map((a) => <HeaderIcon key={a.label} {...a} />)}
     </View>
   );
 }
 
 // ───────────────────────── HeroCard ─────────────────────────
 
-/** Sparkline: maydon (gradient) + chiziq + oxirgi nuqta. Masshtab — min..max, chap-o'ngga chiziladi. */
-function Sparkline({ data, color, height = 56 }: { data: number[]; color: string; height?: number }) {
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/**
+ * Sparkline — demo `sparkG`: min×0.9 … max×1.02 masshtab, to'g'ri chiziqlar; maydon brand 20%,
+ * chiziq 2.75 dp, oxirgi nuqta (inverse halqa) + pulse. Kirishda chiziq chiziladi (1.2 s), maydon keyin chiqadi.
+ */
+function Sparkline({ data, color, ring, height = size.heroSpark }: { data: number[]; color: string; ring: string; height?: number }) {
   const [w, onLayout] = useWidth();
-  const gid = `spark${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const reveal = useGrow(DUR.stagger * 2, [data.join(',')]);
-  const clip = useAnimatedStyle(() => ({ width: `${reveal.value * 100}%` }));
+  const reduce = useReducedMotion();
   const geo = useMemo(() => {
     if (w <= 0 || data.length < 2) return null;
-    const padX = 5, padTop = 6, padBottom = 4;
-    const min = Math.min(...data), max = Math.max(...data);
-    const span = max - min || 1;
-    const pts = data.map((v, i) => ({
-      x: padX + (i * (w - padX * 2)) / (data.length - 1),
-      y: padTop + (1 - (v - min) / span) * (height - padTop - padBottom),
-    }));
-    // Silliq egri: boshqaruv nuqtalari qo'shni nuqtalar o'rtasida (x), y — o'z qiymati: o'sish/tushish oshib ketmaydi
-    let line = `M${pts[0]!.x},${pts[0]!.y}`;
-    for (let i = 1; i < pts.length; i++) {
-      const a = pts[i - 1]!, b = pts[i]!;
-      const mx = (a.x + b.x) / 2;
-      line += ` C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`;
-    }
+    const pad = px(4);
+    const mn = Math.min(...data) * 0.9, mx = Math.max(...data) * 1.02 || 1;
+    const x = (i: number) => pad + (i * (w - 2 * pad)) / (data.length - 1);
+    const y = (v: number) => height - pad - ((v - mn) / (mx - mn || 1)) * (height - 2 * pad);
+    const pts = data.map((v, i) => ({ x: x(i), y: y(v) }));
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
     const last = pts[pts.length - 1]!;
-    const area = `${line} L${last.x},${height} L${pts[0]!.x},${height} Z`;
-    return { line, area, last };
+    const area = `M${pts[0]!.x},${height} ${pts.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} L${last.x},${height} Z`;
+    return { line, area, last, len: Math.ceil(len) + 1 };
   }, [w, data, height]);
+  const key = data.join(',');
+  const draw = useSharedValue(reduce ? 1 : 0);
+  const area = useSharedValue(reduce ? 1 : 0);
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    if (!geo) return;
+    if (reduce) { draw.value = 1; area.value = 1; pulse.value = 0; return; }
+    draw.value = 0; area.value = 0; pulse.value = 0;
+    draw.value = withDelay(DUR.drawDelay, withTiming(1, { duration: DUR.draw, easing: EASE_ENTER }));
+    area.value = withDelay(DUR.areaDelay, withTiming(1, { duration: DUR.area, easing: Easing.ease }));
+    pulse.value = withDelay(DUR.pulseDelay, withRepeat(withTiming(1, { duration: DUR.pulse, easing: Easing.out(Easing.ease) }), -1, false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, !!geo, reduce]);
+  const len = geo?.len ?? 1;
+  const lineProps = useAnimatedProps(() => ({ strokeDashoffset: len * (1 - draw.value) }));
+  const areaProps = useAnimatedProps(() => ({ fillOpacity: 0.2 * area.value }));
+  const r = px(4);
+  const pulseProps = useAnimatedProps(() => ({ r: r * (1 + 2.2 * pulse.value), fillOpacity: pulse.value === 0 ? 0 : 0.55 * (1 - pulse.value) }));
   return (
     <View onLayout={onLayout} style={{ height }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {geo ? (
-        <Animated.View style={[{ height, overflow: 'hidden' }, clip]}>
-          <Svg width={w} height={height}>
-            <Defs>
-              <LinearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={color} stopOpacity={0.32} />
-                <Stop offset="1" stopColor={color} stopOpacity={0} />
-              </LinearGradient>
-            </Defs>
-            <Path d={geo.area} fill={`url(#${gid})`} />
-            <Path d={geo.line} stroke={color} strokeWidth={2.25} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <Circle cx={geo.last.x} cy={geo.last.y} r={6} fill={color} fillOpacity={0.25} />
-            <Circle cx={geo.last.x} cy={geo.last.y} r={3.5} fill={color} />
-          </Svg>
-        </Animated.View>
+        <Svg width={w} height={height}>
+          <AnimatedPath d={geo.area} fill={color} animatedProps={areaProps} />
+          <AnimatedPath d={geo.line} stroke={color} strokeWidth={px(2)} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[len, len]} animatedProps={lineProps} />
+          {reduce ? null : <AnimatedCircle cx={geo.last.x} cy={geo.last.y} fill={color} animatedProps={pulseProps} />}
+          <Circle cx={geo.last.x} cy={geo.last.y} r={r} fill={color} stroke={ring} strokeWidth={px(2)} />
+        </Svg>
       ) : null}
     </View>
   );
 }
 
+/** Chizma palitrasi hero'si — 14 css (19 dp) katak, textOnInverse 8%. */
+function HeroGrid({ color }: { color: string }) {
+  const id = `hg${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const cell = Math.round(px(14));
+  return (
+    <Svg pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} width="100%" height="100%">
+      <Defs>
+        <Pattern id={id} x={0} y={0} width={cell} height={cell} patternUnits="userSpaceOnUse">
+          <Path d={`M0,0.5 H${cell} M0.5,0 V${cell}`} stroke={color} strokeOpacity={0.08} strokeWidth={1} />
+        </Pattern>
+      </Defs>
+      <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+function HeroValue({ value, unit, fmt, color }: { value: number | string; unit?: string; fmt: (n: number) => string; color: string }) {
+  const counted = useCountUp(typeof value === 'number' ? value : 0, { format: fmt });
+  const countedText = useCountUpText(typeof value === 'string' ? value : '');
+  const shown = typeof value === 'number' ? counted : countedText;
+  return (
+    <Txt v="heroValue" numberOfLines={1} adjustsFontSizeToFit style={{ color, flexShrink: 1 }}>
+      {shown}
+      {unit ? <Txt v="heroUnit" style={{ color }}>{` ${unit}`}</Txt> : null}
+    </Txt>
+  );
+}
+
 /**
- * Bosh ko'rsatkich kartasi — to'q (bgInverse) fon, aksent chiziqcha, sanab chiqadigan katta raqam,
- * o'zgarish nishoni, sparkline va davr tanlagich. Sahifada bitta.
+ * Bosh ko'rsatkich kartasi — demo `.hero`: bgInverse, radius 32, padding 18, inverse rangli soya;
+ * 20×4 aksent chiziqcha + overline (textOnInverseMuted); katta raqam 37 dp + birlik 17 dp (sanab chiqadi);
+ * o'zgarish pill (successSolid / dangerSolid / warningSolid, oq matn, strelka); sparkline (chiziladi + pulse);
+ * Chizma palitrasida xira katak fon; ixtiyoriy davr tanlagich (`.seg2`). Sahifada bitta.
  */
-export function HeroCard({ label, value, unit, format, delta, spark, periods, period = 0, onPeriod, children, style }: {
-  /** Ustki yozuv: "Bugungi tushum". */ label: string;
-  /** Raqam — sanab chiqadi; satr — o'zicha ko'rsatiladi. */ value: number | string;
-  /** Birlik: "so'm", "m³". */ unit?: string;
+export function HeroCard({ label, value, unit, format, delta, spark, periods, period = 0, onPeriod, children, style, grid, sparkHeight, loading }: {
+  /** Ustki yozuv: "Sof foyda". */ label: string;
+  /** Raqam — sanab chiqadi; satr ("74,2") — ichidagi raqam sanab chiqadi. */ value: number | string;
+  /** Birlik: "mln so'm", "m³". */ unit?: string;
   /** Raqam formati (standart `fmtNum`). */ format?: (n: number) => string;
-  /** O'zgarish: `{ text: '+12% kechagiga', dir: 'up', tone: 'success' }`. */ delta?: { text: string; dir: 'up' | 'down'; tone: Tone };
+  /** O'zgarish: `{ text: '12%', dir: 'up', tone: 'success' }`. */ delta?: { text: string; dir: 'up' | 'down'; tone: Tone };
   /** Sparkline nuqtalari (eng kamida 2). */ spark?: number[];
-  /** Davr nomlari: ['Kun', 'Hafta', 'Oy']. */ periods?: string[];
+  /** Davr nomlari (demo `.seg2`): ['Hafta', 'Oy', 'Yil']. */ periods?: string[];
   /** Tanlangan davr indeksi. */ period?: number;
   onPeriod?: (i: number) => void;
-  /** Karta ostiga qo'shimcha (masalan kichik statistikalar). */ children?: React.ReactNode;
+  /** Karta ostiga qo'shimcha (masalan marshrut, tugmalar). */ children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Katak fon (standart: Chizma palitrasida yoqiq). */ grid?: boolean;
+  /** Sparkline balandligi (standart 56 dp = 40 css). */ sparkHeight?: number;
+  /** Yuklanmoqda — shimmer qoplama. */ loading?: boolean;
 }) {
-  const { c } = useTheme();
+  const { c, paletteName } = useTheme();
   const fmt = format ?? ((n: number) => fmtNum(n));
-  const counted = useCountUp(typeof value === 'number' ? value : 0, { format: fmt, duration: 1000 });
-  const shown = typeof value === 'number' ? counted : value;
-  const lift = Platform.select<ViewStyle>({
-    ios: { shadowColor: c.bgInverse, shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 12 } },
-    android: { elevation: 6, shadowColor: c.bgInverse },
-    default: {},
-  })!;
-  const deltaCol = delta ? (delta.tone === 'neutral' ? c.textOnInverseMuted : c.textOnInverse) : c.textOnInverse;
+  const showGrid = grid ?? paletteName === 'chizma';
+  const solid = delta ? (delta.tone === 'danger' ? c.dangerSolid : delta.tone === 'warning' ? c.warningSolid : delta.tone === 'success' ? c.successSolid : delta.tone === 'info' ? c.infoSolid : c.bgInverseChip) : c.successSolid;
+  const a11y = `${label}: ${typeof value === 'number' ? fmt(value) : value}${unit ? ` ${unit}` : ''}${delta ? `, ${delta.dir === 'down' ? '−' : '+'}${delta.text}` : ''}`;
   return (
-    <View
-      style={[{ backgroundColor: c.bgInverse, borderRadius: radius.card + 4, borderCurve: 'continuous', padding: space.xl, gap: space.md }, lift, style]}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md }}>
-        <View style={{ flex: 1, gap: space.sm, paddingTop: space.xs }}>
-          <View style={{ width: space.x7, height: 3, borderRadius: radius.pill, backgroundColor: c.accent }} />
-          <Txt v="overline" numberOfLines={1} style={{ color: c.textOnInverseMuted }}>{label}</Txt>
+    <View style={[{ borderRadius: radius.hero, borderCurve: 'continuous', backgroundColor: c.bgInverse }, elevation(c).hero, style]}>
+      <View style={{ borderRadius: radius.hero, borderCurve: 'continuous', overflow: 'hidden', padding: space.lg + 2, gap: space.tight }}>
+        {showGrid ? <HeroGrid color={c.textOnInverse} /> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flex: 1, minWidth: 0 }}>
+            <View style={{ width: size.heroAccentW, height: size.heroAccentH, borderRadius: radius.pill, backgroundColor: c.accent }} />
+            <Txt v="appbarOverline" numberOfLines={1} style={{ color: c.textOnInverseMuted, flexShrink: 1 }}>{label}</Txt>
+          </View>
+          {periods?.length ? (
+            <SegmentTrack variant="inverse" scroll={false} items={periods.map((p, i) => ({ key: String(i), label: p }))} value={String(period)} onChange={(k) => onPeriod?.(Number(k))} />
+          ) : null}
         </View>
-        {periods?.length ? (
-          <SegmentTrack compact variant="inverse" scroll={false} items={periods.map((p, i) => ({ key: String(i), label: p }))} value={String(period)} onChange={(k) => onPeriod?.(Number(k))} />
-        ) : null}
-      </View>
-      <View accessible accessibilityLabel={`${label}: ${typeof value === 'number' ? fmt(value) : value}${unit ? ` ${unit}` : ''}${delta ? `, ${delta.text}` : ''}`} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, flexWrap: 'wrap' }}>
-        <Txt v="metricHero" numberOfLines={1} adjustsFontSizeToFit style={{ color: c.textOnInverse, flexShrink: 1 }}>{shown}</Txt>
-        {unit ? <Txt v="bodyStrong" style={{ color: c.textOnInverseMuted, marginBottom: space.xs }}>{unit}</Txt> : null}
-      </View>
-      {delta ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm, minHeight: space.xxl, borderRadius: radius.pill, backgroundColor: c.bgInverseChip }}>
-          <Icon name={delta.dir === 'down' ? 'arrow-down-right' : 'arrow-up-right'} size={size.iconSm - 2} color={delta.tone === 'danger' || delta.tone === 'warning' ? c.accent : deltaCol} strokeWidth={2.25} />
-          <Txt v="caption" style={{ color: deltaCol, fontFamily: FONT[600] }}>{delta.text}</Txt>
+        <View accessible accessibilityLabel={a11y} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.tight, flexWrap: 'wrap' }}>
+          <HeroValue value={value} unit={unit} fmt={fmt} color={c.textOnInverse} />
+          {delta ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm, paddingVertical: 3, marginBottom: space.xs, borderRadius: radius.sm - 4, backgroundColor: solid }}>
+              <Icon name={delta.dir === 'down' ? 'arrow-down' : 'arrow-up'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={2.25} />
+              <Txt v="heroDelta" style={{ color: c.textOnSolid }}>{delta.text}</Txt>
+            </View>
+          ) : null}
         </View>
-      ) : null}
-      {spark && spark.length > 1 ? <Sparkline data={spark} color={c.accent} /> : null}
-      {children}
+        {spark && spark.length > 1 ? <Sparkline data={spark} color={c.brand} ring={c.bgInverse} height={sparkHeight} /> : null}
+        {children}
+        {loading ? <Shimmer inverse /> : null}
+      </View>
     </View>
   );
 }
@@ -227,39 +308,53 @@ export function HeroCard({ label, value, unit, format, delta, spark, periods, pe
 
 export interface KpiItem {
   label: string;
-  /** Raqam — sanab chiqadi (`fmtNum`); satr — o'zicha. */ value: number | string;
-  delta?: { text: string; tone: Tone };
-  /** Qiymat rangi (xavf/ogohlantirish). */ tone?: Tone;
-  icon: IconName;
+  /** Raqam — sanab chiqadi (`fmtNum`); satr ("312 mln") — ichidagi raqam sanab chiqadi. */ value: number | string;
+  /** O'zgarish: `{ text: '+8%', tone: 'success' }` — ton rangida, 12.5 dp qalin. */ delta?: { text: string; tone: Tone };
+  /** Qiymat rangi (xavf/ogohlantirish). Standart — textStrong. */ tone?: Tone;
+  /** Plitka ikonkasi; berilmasa plitkasiz (demo direktor KPI). */ icon?: IconName;
   module?: ModuleTone;
   onPress?: () => void;
 }
 
-function KpiTile({ item, index }: { item: KpiItem; index: number }) {
-  const counted = useCountUp(typeof item.value === 'number' ? item.value : 0, { format: (n) => fmtNum(n), delay: stagger(index) });
+/** Demo `.card.kpi`: padding 12, chapda 40 dp plitka (radius 15), o'ngda yorliq / qiymat / o'zgarish. */
+function KpiCell({ item }: { item: KpiItem }) {
+  const { c } = useTheme();
+  const ps = usePressScale(0.96);
+  const counted = useCountUp(typeof item.value === 'number' ? item.value : 0, { format: (n) => fmtNum(n) });
+  const countedText = useCountUpText(typeof item.value === 'string' ? item.value : '');
+  const shown = typeof item.value === 'number' ? counted : countedText;
+  const valueColor = item.tone && item.tone !== 'neutral' && item.tone !== 'brand' ? toneColors(c, item.tone).ink : c.textStrong;
+  const deltaColor = item.delta ? (item.delta.tone === 'brand' ? c.brandInk : item.delta.tone === 'neutral' ? c.textMuted : toneColors(c, item.delta.tone).ink) : c.textMuted;
   return (
-    <KPICard
-      layout="inline" label={item.label} value={typeof item.value === 'number' ? counted : item.value}
-      icon={item.icon} module={item.module} tone={item.tone} delta={item.delta} onPress={item.onPress}
-      style={{ flex: 1 }}
-    />
+    <Animated.View style={[{ flex: 1 }, ps.style]}>
+      <Pressable
+        onPress={item.onPress ? () => { haptic.light(); item.onPress!(); } : undefined} disabled={!item.onPress}
+        onPressIn={item.onPress ? ps.onPressIn : undefined} onPressOut={item.onPress ? ps.onPressOut : undefined}
+        accessibilityRole={item.onPress ? 'button' : undefined}
+        accessibilityLabel={`${item.label}: ${typeof item.value === 'number' ? fmtNum(item.value) : item.value}${item.delta ? `, ${item.delta.text}` : ''}`}
+        style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm + 2, padding: item.icon ? space.md : space.md + 2, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1]}
+      >
+        {item.icon ? <IconTile icon={item.icon} module={item.module} size={size.tile} /> : null}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Txt v="tSm" numberOfLines={1}>{item.label}</Txt>
+          <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit style={{ color: valueColor }}>{shown}</Txt>
+          {item.delta ? <Txt v="kpiDelta" numberOfLines={1} style={{ color: deltaColor }}>{item.delta.text}</Txt> : null}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-/** 2 ustunli ixcham KPI plitkalari (ikonka chapda, yonida yorliq + qiymat). Ketma-ket kirib keladi. */
-export function KpiGrid({ items, style }: { items: KpiItem[]; style?: StyleProp<ViewStyle> }) {
+/** Demo `.kpi2`: 2 ustunli (yoki `columns={3}`) KPI kartalari, oraliq 11 dp. Kirish animatsiyasi — ota `Stagger`. */
+export function KpiGrid({ items, columns = 2, style }: { items: KpiItem[]; columns?: 2 | 3; style?: StyleProp<ViewStyle> }) {
   const rows: KpiItem[][] = [];
-  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  for (let i = 0; i < items.length; i += columns) rows.push(items.slice(i, i + columns));
   return (
-    <View style={[{ gap: space.grid }, style]}>
+    <View style={[{ gap: space.tight }, style]}>
       {rows.map((r, ri) => (
-        <View key={ri} style={{ flexDirection: 'row', gap: space.grid }}>
-          {r.map((it, ci) => (
-            <Appear key={it.label} delay={stagger(ri * 2 + ci)} style={{ flex: 1 }}>
-              <KpiTile item={it} index={ri * 2 + ci} />
-            </Appear>
-          ))}
-          {r.length < 2 ? <View style={{ flex: 1 }} /> : null}
+        <View key={ri} style={{ flexDirection: 'row', gap: space.tight, alignItems: 'stretch' }}>
+          {r.map((it) => <KpiCell key={it.label} item={it} />)}
+          {Array.from({ length: columns - r.length }).map((_, i) => <View key={`e${i}`} style={{ flex: 1 }} />)}
         </View>
       ))}
     </View>
@@ -268,38 +363,42 @@ export function KpiGrid({ items, style }: { items: KpiItem[]; style?: StyleProp<
 
 // ───────────────────────── ActionGrid ─────────────────────────
 
-export interface ActionItem { label: string; icon: IconName; module?: ModuleTone; onPress: () => void }
+export interface ActionItem { label: string; icon: IconName; module?: ModuleTone; onPress: () => void; /** Son nishoni. */ badge?: number }
 
-/** Tezkor amallar — 4 ustun; birinchisi asosiy (brend fon). Yorliq 2 qatorgacha. */
-export function ActionGrid({ items, style }: { items: ActionItem[]; style?: StyleProp<ViewStyle> }) {
+function ActionCell({ a, primary }: { a: ActionItem; primary: boolean }) {
   const { c } = useTheme();
+  const ps = usePressScale(0.96);
+  return (
+    <Animated.View style={[{ flex: 1 }, ps.style]}>
+      <Pressable
+        onPress={() => { haptic.light(); a.onPress(); }} onPressIn={ps.onPressIn} onPressOut={ps.onPressOut}
+        accessibilityRole="button" accessibilityLabel={a.badge ? `${a.label}, ${a.badge}` : a.label}
+        style={[{ flex: 1, alignItems: 'center', gap: space.sm - 1, paddingVertical: space.md - 1, paddingHorizontal: 3, borderRadius: radius.action, borderCurve: 'continuous', backgroundColor: primary ? c.brand : c.bgSurface }, elevation(c).sh1]}
+      >
+        <IconTile icon={a.icon} module={a.module} size={size.actionTile} bg={primary ? c.brandTile : undefined} ink={primary ? c.textOnBrand : undefined} />
+        <Txt v="actionLabel" align="center" numberOfLines={2} style={{ color: primary ? c.textOnBrand : c.textBody }}>{a.label}</Txt>
+        {a.badge ? (
+          <View style={{ position: 'absolute', top: space.xs + 2, right: space.sm, minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: c.dangerSolid, alignItems: 'center', justifyContent: 'center' }}>
+            <Txt v="badge" style={{ color: c.textOnSolid }}>{a.badge > 99 ? '99+' : a.badge}</Txt>
+          </View>
+        ) : null}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/**
+ * Tezkor amallar — demo `.qa`: 4 ustun, oraliq 8; karta radius 30, padding 11×3, 42 dp plitka + 12 dp yorliq markazda.
+ * BIRINCHI element asosiy: brend fon, textOnBrand yorliq, plitka foni oq 25% (`c.brandTile`). `primaryIndex={null}` — asosiysiz.
+ */
+export function ActionGrid({ items, primaryIndex = 0, style }: { items: ActionItem[]; primaryIndex?: number | null; style?: StyleProp<ViewStyle> }) {
   const rows: ActionItem[][] = [];
   for (let i = 0; i < items.length; i += 4) rows.push(items.slice(i, i + 4));
   return (
-    <View style={[{ gap: space.sm + 2 }, style]}>
+    <View style={[{ gap: space.sm }, style]}>
       {rows.map((r, ri) => (
-        <View key={ri} style={{ flexDirection: 'row', gap: space.sm + 2 }}>
-          {r.map((a, ci) => {
-            const primary = ri === 0 && ci === 0;
-            return (
-              <Appear key={a.label} delay={stagger(ri * 4 + ci)} style={{ flex: 1 }}>
-                <PressScale
-                  onPress={a.onPress} accessibilityRole="button" accessibilityLabel={a.label}
-                  style={[{ flex: 1, borderRadius: radius.card + 2, borderCurve: 'continuous', backgroundColor: primary ? c.brand : c.bgSurface }, shadow.card]}
-                >
-                  <View style={{ alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingHorizontal: space.xs, minHeight: size.driverTouch + space.lg }}>
-                    {primary ? (
-                      <View style={{ width: size.iconTile, height: size.iconTile, alignItems: 'center', justifyContent: 'center' }}>
-                        <View style={{ position: 'absolute', width: size.iconTile, height: size.iconTile, borderRadius: radius.lg, backgroundColor: c.textOnBrand, opacity: 0.2 }} />
-                        <Icon name={a.icon} size={size.iconMd} color={c.textOnBrand} strokeWidth={1.75} />
-                      </View>
-                    ) : <IconTile icon={a.icon} module={a.module} />}
-                    <Txt v="caption" align="center" numberOfLines={2} style={{ color: primary ? c.textOnBrand : c.textBody, fontFamily: FONT[600] }}>{a.label}</Txt>
-                  </View>
-                </PressScale>
-              </Appear>
-            );
-          })}
+        <View key={ri} style={{ flexDirection: 'row', gap: space.sm, alignItems: 'stretch' }}>
+          {r.map((a, ci) => <ActionCell key={a.label} a={a} primary={primaryIndex === ri * 4 + ci} />)}
           {Array.from({ length: 4 - r.length }).map((_, i) => <View key={`e${i}`} style={{ flex: 1 }} />)}
         </View>
       ))}
@@ -319,20 +418,16 @@ export interface AttentionItem {
   onPress?: () => void;
 }
 
-/** "Diqqat talab" ro'yxati — ListGroup ichida, ichki chiziqlar; o'ngda qiymat + nishon. */
+/** Demo "E'tibor talab qiladi": ListGroup qatorlari — plitka, sarlavha + izoh, o'ngda nishon YOKI qiymat YOKI chevron. */
 export function AttentionList({ items, style }: { items: AttentionItem[]; style?: StyleProp<ViewStyle> }) {
   return (
     <ListGroup style={style}>
       {items.map((it, i) => (
         <ListItem
-          key={`${it.title}-${i}`} title={it.title} subtitle={it.sub} subtitleLines={1}
+          key={`${it.title}-${i}`} title={it.title} subtitle={it.sub} subtitleLines={2}
           icon={it.icon} module={it.module} onPress={it.onPress}
-          right={it.value || it.badge ? (
-            <View style={{ alignItems: 'flex-end', gap: space.xs, maxWidth: '45%' }}>
-              {it.value ? <Txt v="bodyStrong" numberOfLines={1}>{it.value}</Txt> : null}
-              {it.badge ? <Badge label={it.badge.text} tone={it.badge.tone} /> : null}
-            </View>
-          ) : undefined}
+          badge={it.badge} value={it.badge ? undefined : it.value}
+          chevron={!it.badge && !it.value}
         />
       ))}
     </ListGroup>
@@ -341,74 +436,98 @@ export function AttentionList({ items, style }: { items: AttentionItem[]; style?
 
 // ───────────────────────── Grafiklar ─────────────────────────
 
+/** Demo legenda: 11 dp kvadrat (radius 4) + 13 dp yozuv textBody, oraliq 16. */
 function Legend({ items }: { items: { label: string; color: string }[] }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginBottom: space.md }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg, rowGap: space.xs }}>
       {items.map((l) => (
         <View key={l.label} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 }}>
-          <View style={{ width: size.dot + 2, height: size.dot + 2, borderRadius: radius.pill, backgroundColor: l.color }} />
-          <Txt v="caption" color="body">{l.label}</Txt>
+          <View style={{ width: size.legend, height: size.legend, borderRadius: radius.legend, backgroundColor: l.color }} />
+          <Txt v="legend">{l.label}</Txt>
         </View>
       ))}
     </View>
   );
 }
 
-function Bar({ h, color, width, delay }: { h: number; color: string; width: number; delay: number }) {
-  const p = useGrow(delay, [h]);
-  const s = useAnimatedStyle(() => ({ height: Math.max(h > 0 ? 3 : 0, h * p.value) }));
-  return <Animated.View style={[{ width, borderTopLeftRadius: width / 2, borderTopRightRadius: width / 2, borderBottomLeftRadius: 2, borderBottomRightRadius: 2, backgroundColor: color }, s]} />;
+/** Bitta ustun: yumaloq tepa (r), pastdan prujina bilan o'sadi (demo `grow .8s var(--spring)`). */
+function GrowBar({ x, base, h, bw, r, color, delay }: { x: number; base: number; h: number; bw: number; r: number; color: string; delay: number }) {
+  const reduce = useReducedMotion();
+  const p = useSharedValue(reduce ? 1 : 0);
+  useEffect(() => {
+    if (reduce) { p.value = 1; return; }
+    p.value = 0;
+    p.value = withDelay(delay, withSpring(1, SPRING_GROW));
+  }, [h, delay, reduce, p]);
+  const props = useAnimatedProps(() => {
+    const hgt = Math.max(0, h * p.value);
+    if (hgt < 0.5) return { d: `M${x},${base} Z` };
+    const rr = Math.min(r, hgt);
+    return { d: `M${x},${base} V${base - hgt + rr} q0,${-rr} ${rr},${-rr} h${bw - 2 * rr} q${rr},0 ${rr},${rr} V${base} Z` };
+  });
+  return <AnimatedPath fill={color} animatedProps={props} />;
 }
 
+/** Demo `barsG` o'q formati: 1000 dan katta — "1.5k". */
+const fmtAxis = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : String(+v.toFixed(1)));
+
 /**
- * Ustunli grafik kartasi — 1–2 seriya, legenda, "chiroyli" maksimumli setka (0, o'rta, maks),
- * yumaloq ustun uchlari, ustunlar pastdan o'sib chiqadi. Nuqtalarda raqam yo'q (o'q yozuvlari yetadi).
+ * Ustunli grafik kartasi — demo `barsG`: sarlavha + birlik (`.sh`), 2 seriyada legenda, setka 0 / o'rta / maks
+ * (0 dan boshqalari punktir), guruhlangan ustunlar (eni ≤ 10 css, tepasi radius 4, chart1 / chart2), x yozuvlari 8 css.
+ * Geometriya demo viewBox (252×112) ga mutanosib; ustunlar ketma-ket prujina bilan o'sadi.
  */
-export function BarChartCard({ title, unit, labels, series, height = 148, format = (n: number) => fmtShort(n), style }: {
+export function BarChartCard({ title, unit, labels, series, height, format = fmtAxis, highlight, style }: {
   title: string;
   /** Birlik izohi (o'ngda): "mln so'm", "m³". */ unit?: string;
-  /** X o'qi yozuvlari. */ labels: string[];
+  /** X o'qi yozuvlari (5 belgigacha). */ labels: string[];
   /** 1–2 seriya; `data` uzunligi `labels` bilan teng. */ series: { name: string; data: number[] }[];
-  height?: number;
-  /** Y o'qi formati (standart `fmtShort`). */ format?: (n: number) => string;
+  /** Grafik balandligi, dp (standart — eniga mutanosib, 112/252). */ height?: number;
+  /** Y o'qi formati (standart demo: 1.5k). */ format?: (n: number) => string;
+  /** Qalin x yozuvi (masalan bugun). */ highlight?: number;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
+  const [w, onLayout] = useWidth();
   const shown = series.slice(0, 2);
-  const max = niceMax(Math.max(0, ...shown.flatMap((s) => s.data)));
-  const ticks = [max, max / 2, 0];
-  const axisW = space.x10;
-  const pair = shown.length > 1;
-  const barW = pair ? space.sm + 2 : space.lg;
-  const every = labels.length > 8 ? Math.ceil(labels.length / 6) : 1;
+  const n = labels.length;
+  const max = niceMax(Math.max(0, ...shown.flatMap((s) => s.data.slice(0, n))));
+  const k = w / 252;
+  const H = height ?? 112 * k;
+  const l = 28 * k, b = 16 * k, t = 6 * k, ch = H - b - t, base = t + ch;
+  const gwc = (252 - 28 - 4) / Math.max(1, n);
+  const ns = Math.max(1, shown.length);
+  const bwc = Math.max(2, Math.min(10, (gwc - 6) / ns - 2));
+  const bw = bwc * k, gap = 2 * k, r = Math.min(4, bwc / 2) * k, gw = gwc * k;
+  const y = (v: number) => t + ch - (v / max) * ch;
+  const fs = 8 * k;
   const summary = shown.map((s) => `${s.name}: ${s.data.map((v, i) => `${labels[i]} ${format(v)}`).join(', ')}`).join('; ');
   return (
-    <Surface style={style}>
-      <CardTitle title={title} unit={unit} />
-      {pair || shown.length === 1 ? <Legend items={shown.map((s, i) => ({ label: s.name, color: seriesColor(c, i) }))} /> : null}
-      <View accessible accessibilityRole="image" accessibilityLabel={`${title}. ${summary}`}>
-        <View style={{ height, flexDirection: 'row' }}>
-          {/* Y o'qi yozuvlari */}
-          <View style={{ width: axisW, justifyContent: 'space-between' }}>
-            {ticks.map((t, i) => <Txt key={i} v="caption" color="faint" numberOfLines={1} style={{ marginTop: i === 0 ? -space.sm : 0, marginBottom: i === ticks.length - 1 ? -space.sm : 0 }}>{format(t)}</Txt>)}
-          </View>
-          <View style={{ flex: 1 }}>
-            {/* Setka: maks, o'rta, 0 */}
-            <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'space-between' }}>
-              {ticks.map((_, i) => <View key={i} style={{ height: size.hairline, backgroundColor: i === ticks.length - 1 ? c.borderDefault : c.chartGrid, opacity: i === ticks.length - 1 ? 1 : 0.6 }} />)}
-            </View>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end' }}>
-              {labels.map((l, i) => (
-                <View key={`${l}-${i}`} style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 3 }}>
-                  {shown.map((s, si) => <Bar key={s.name} h={(height * Math.max(0, s.data[i] ?? 0)) / max} color={seriesColor(c, si)} width={barW} delay={stagger(i, 35, 12)} />)}
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-        <View style={{ flexDirection: 'row', marginLeft: axisW, marginTop: space.sm }}>
-          {labels.map((l, i) => <Txt key={`${l}-${i}`} v="caption" color="muted" align="center" numberOfLines={1} style={{ flex: 1 }}>{i % every === 0 ? l : ''}</Txt>)}
-        </View>
+    <Surface style={style} gap={space.sm}>
+      <SectionHead title={title} unit={unit} />
+      {shown.length > 1 ? <Legend items={shown.map((s, i) => ({ label: s.name, color: seriesColor(c, i) }))} /> : null}
+      <View onLayout={onLayout} accessible accessibilityRole="image" accessibilityLabel={`${title}. ${summary}`} style={{ height: w ? H : 112 * ((390 - 72) / 252) }}>
+        {w > 0 && n > 0 ? (
+          <Svg width={w} height={H}>
+            {[0, max / 2, max].map((v) => (
+              <React.Fragment key={v}>
+                <Line x1={l} x2={w - 2 * k} y1={y(v)} y2={y(v)} stroke={c.chartGrid} strokeWidth={1} strokeDasharray={v ? [2 * k, 3 * k] : undefined} />
+                <SvgText x={l - 5 * k} y={y(v) + 3 * k} fontSize={fs} fontFamily={FONT[500]} fill={c.textMuted} textAnchor="end">{format(v)}</SvgText>
+              </React.Fragment>
+            ))}
+            {labels.map((lab, i) => {
+              const gx = l + i * gw + (gw - (ns * bw + (ns - 1) * gap)) / 2;
+              return (
+                <React.Fragment key={`${lab}-${i}`}>
+                  {shown.map((s, si) => {
+                    const v = Math.max(0, s.data[i] ?? 0);
+                    return <GrowBar key={s.name} x={gx + si * (bw + gap)} base={base} h={base - y(v)} bw={bw} r={r} color={seriesColor(c, si)} delay={DUR.barDelay + i * DUR.barStep} />;
+                  })}
+                  <SvgText x={l + i * gw + gw / 2} y={H - 4 * k} fontSize={fs} fontFamily={highlight === i ? FONT[700] : FONT[500]} fill={highlight === i ? c.textStrong : c.textMuted} textAnchor="middle">{String(lab).slice(0, 5)}</SvgText>
+                </React.Fragment>
+              );
+            })}
+          </Svg>
+        ) : null}
       </View>
     </Surface>
   );
@@ -420,7 +539,10 @@ function HBar({ pct, color, delay }: { pct: number; color: string; delay: number
   return <Animated.View style={[{ height: '100%', borderRadius: radius.pill, backgroundColor: color }, s]} />;
 }
 
-/** Gorizontal ustunlar ro'yxati — yorliq + qiymat, ostida eng kattasiga nisbatan chiziq (chart1). */
+/**
+ * Gorizontal ustunlar — demo `hbarsG`: qator = yorliq (108 dp) | 11 dp chiziq (chartTrack, chart1 to'ladi) | qalin qiymat.
+ * Qatorlar oralig'i 10 dp; chiziqlar 1.1 s da to'ladi.
+ */
 export function HBarList({ title, unit, items, format = (n: number) => fmtNum(n), style }: {
   title: string; unit?: string;
   items: { label: string; value: number }[];
@@ -430,18 +552,16 @@ export function HBarList({ title, unit, items, format = (n: number) => fmtNum(n)
   const { c } = useTheme();
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
-    <Surface style={style}>
-      <CardTitle title={title} unit={unit} />
-      <View style={{ gap: space.md }}>
+    <Surface style={style} gap={space.sm}>
+      <SectionHead title={title} unit={unit} />
+      <View style={{ gap: space.sm + 2 }}>
         {items.map((it, i) => (
-          <View key={`${it.label}-${i}`} accessible accessibilityLabel={`${it.label}: ${format(it.value)}${unit ? ` ${unit}` : ''}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.sm, marginBottom: space.xs + 2 }}>
-              <Txt v="bodySm" numberOfLines={1} style={{ flex: 1 }}>{it.label}</Txt>
-              <Txt v="bodyStrong">{format(it.value)}</Txt>
+          <View key={`${it.label}-${i}`} accessible accessibilityLabel={`${it.label}: ${format(it.value)}${unit ? ` ${unit}` : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space.tight }}>
+            <Txt v="chartRow" numberOfLines={1} style={{ width: Math.round(px(78)) }}>{it.label}</Txt>
+            <View style={{ flex: 1, height: size.hbar, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }}>
+              <HBar pct={(Math.max(0, it.value) / max) * 100} color={c.chart1} delay={DUR.fillDelay - 50 + i * 40} />
             </View>
-            <View style={{ height: size.progress + 2, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }}>
-              <HBar pct={(Math.max(0, it.value) / max) * 100} color={c.chart1} delay={stagger(i)} />
-            </View>
+            <Txt v="chartRow" style={{ fontFamily: FONT[600], color: c.textStrong, fontVariant: ['tabular-nums'] }}>{format(it.value)}</Txt>
           </View>
         ))}
       </View>
@@ -450,15 +570,16 @@ export function HBarList({ title, unit, items, format = (n: number) => fmtNum(n)
 }
 
 /**
- * Taqsimot kartasi — segmentli chiziq (4 rang + "Boshqa") va 2 ustunli legenda: nuqta, nom, ulush, qiymat.
- * Beshinchi rang yo'q: 4 tadan ortig'i "Boshqa"ga yig'iladi (kulrang).
+ * Taqsimot kartasi — demo breakdown: 14 dp segmentli chiziq (pill bo'laklar, 3 dp oraliq, chart1–4) va
+ * 2 ustunli legenda: kvadrat + nom (chap), qalin ulush % (o'ng). 4 tadan ortig'i "Boshqa"ga yig'iladi (textFaint).
  */
-export function BreakdownCard({ title, items, unit, format = (n: number) => fmtShort(n), otherLabel = 'Boshqa', style }: {
+export function BreakdownCard({ title, items, unit, format = (n: number) => fmtShort(n), otherLabel = 'Boshqa', showValue, style }: {
   title: string;
   items: { label: string; value: number }[];
   unit?: string;
-  /** Qiymat formati (standart `fmtShort`). */ format?: (n: number) => string;
+  /** Qiymat formati (`showValue` bilan). */ format?: (n: number) => string;
   otherLabel?: string;
+  /** Ulush yonida qiymat ham (standart — faqat %, demo kabi). */ showValue?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
@@ -468,27 +589,25 @@ export function BreakdownCard({ title, items, unit, format = (n: number) => fmtS
   const rows = rest > 0 ? [...top, { label: otherLabel, value: rest }] : top;
   const sum = rows.reduce((s, r) => s + r.value, 0) || 1;
   const color = (i: number) => (i < 4 ? seriesColor(c, i) : c.textFaint);
-  const grow = useGrow(DUR.stagger, [rows.map((r) => r.value).join(',')]);
+  const grow = useGrow(DUR.fillDelay, [rows.map((r) => r.value).join(',')]);
   const bar = useAnimatedStyle(() => ({ width: `${grow.value * 100}%` }));
+  const pct = (v: number) => Math.round((v / sum) * 100);
   return (
-    <Surface style={style}>
-      <CardTitle title={title} unit={unit} />
-      <View style={{ height: space.md, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }} accessibilityElementsHidden>
-        <Animated.View style={[{ flexDirection: 'row', height: '100%', gap: 2 }, bar]}>
-          {rows.map((r, i) => <View key={r.label} style={{ flex: r.value, backgroundColor: color(i), borderRadius: 2 }} />)}
+    <Surface style={style} gap={space.tight}>
+      <SectionHead title={title} unit={unit} />
+      <View style={{ height: size.breakdownBar }} accessibilityElementsHidden>
+        <Animated.View style={[{ flexDirection: 'row', height: '100%', gap: 3, overflow: 'hidden', borderRadius: radius.pill }, bar]}>
+          {rows.map((r, i) => <View key={r.label} style={{ flex: r.value, backgroundColor: color(i), borderRadius: radius.pill }} />)}
         </Animated.View>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: space.md, rowGap: space.md }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.xs + 2, columnGap: space.lg }}>
         {rows.map((r, i) => (
-          <View key={r.label} accessible accessibilityLabel={`${r.label}: ${Math.round((r.value / sum) * 100)}%, ${format(r.value)}`} style={{ width: '50%', flexDirection: 'row', gap: space.sm, paddingRight: space.sm }}>
-            <View style={{ width: size.dot + 2, height: size.dot + 2, borderRadius: radius.pill, backgroundColor: color(i), marginTop: space.xs + 1 }} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt v="caption" color="muted" numberOfLines={1}>{r.label}</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space.xs }}>
-                <Txt v="bodyStrong">{`${Math.round((r.value / sum) * 100)}%`}</Txt>
-                <Txt v="caption" color="faint" numberOfLines={1} style={{ flexShrink: 1 }}>{format(r.value)}</Txt>
-              </View>
+          <View key={r.label} accessible accessibilityLabel={`${r.label}: ${pct(r.value)}%`} style={{ width: '46%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 3, flex: 1, minWidth: 0 }}>
+              <View style={{ width: size.legend, height: size.legend, borderRadius: radius.legend, backgroundColor: color(i) }} />
+              <Txt v="chartRow" numberOfLines={1} style={{ flexShrink: 1 }}>{r.label}</Txt>
             </View>
+            <Txt v="chartRow" style={{ fontFamily: FONT[600], color: c.textStrong }}>{showValue ? `${pct(r.value)}% · ${format(r.value)}` : `${pct(r.value)}%`}</Txt>
           </View>
         ))}
       </View>
@@ -496,48 +615,110 @@ export function BreakdownCard({ title, items, unit, format = (n: number) => fmtS
   );
 }
 
-/** Reja bajarilishi kartasi — nom, katta foiz, o'sib chiqadigan chiziq, izoh. 100% — yashil. */
-export function ProgressCard({ title, value, caption, tone, style }: {
+/** Reja kartasi — demo progress: nom (16 dp qalin) ↔ foiz, 8 dp chiziq (chartTrack, chart1 to'ladi), izoh `t-sm`. */
+export function ProgressCard({ title, value, caption, tone, children, style }: {
   title: string;
   /** 0–100. */ value: number;
   /** Ostidagi izoh: "86 / 120 m³". */ caption?: string;
-  /** Rang (standart: 100% bo'lsa success, aks holda brand). */ tone?: Tone;
+  /** Rang (standart chart1). */ tone?: Tone;
+  /** Ostiga qo'shimcha (masalan `Timeline`). */ children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
   const pct = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  const t: Tone = tone ?? (pct >= 100 ? 'success' : 'brand');
-  const fill = t === 'brand' ? c.brand : toneColors(c, t).solid;
+  const fill = !tone || tone === 'brand' ? c.chart1 : toneColors(c, tone).solid;
   const shown = useCountUp(pct, { format: (n) => `${Math.round(n)}%` });
   return (
-    <Surface style={style}>
-      <View accessible accessibilityRole="progressbar" accessibilityLabel={title} accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }}>
+    <Surface style={style} gap={space.sm}>
+      <View accessible accessibilityRole="progressbar" accessibilityLabel={title} accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }} style={{ gap: space.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
-          <Txt v="titleSm" numberOfLines={1} style={{ flex: 1 }}>{title}</Txt>
-          <Txt v="metric" color={t === 'success' ? 'success' : t === 'danger' ? 'danger' : t === 'warning' ? 'warning' : 'strong'}>{shown}</Txt>
+          <Txt v="listTitle" numberOfLines={1} style={{ flex: 1 }}>{title}</Txt>
+          <Txt v="listValue" style={{ fontVariant: ['tabular-nums'] }}>{shown}</Txt>
         </View>
-        <View style={{ height: size.progress + 2, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden', marginTop: space.md }}>
-          <HBar pct={pct} color={fill} delay={DUR.stagger} />
+        <View style={{ height: size.progressLg, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }}>
+          <HBar pct={pct} color={fill} delay={DUR.fillDelay} />
         </View>
-        {caption ? <Txt v="caption" style={{ marginTop: space.sm }}>{caption}</Txt> : null}
+        {caption ? <Txt v="tSm">{caption}</Txt> : null}
       </View>
+      {children}
     </Surface>
+  );
+}
+
+// ───────────────────────── Skeleton (yuklanish) ─────────────────────────
+
+function SkBox({ h, r = radius.card, inverse, style }: { h: number; r?: number; inverse?: boolean; style?: StyleProp<ViewStyle> }) {
+  return <View style={[{ height: h, borderRadius: r, borderCurve: 'continuous', overflow: 'hidden' }, style]}><Shimmer inverse={inverse} /></View>;
+}
+
+/**
+ * Dashboard skeleti — demo `.screen.loading`: hero, KPI 2×2, tezkor amallar va ro'yxat shakllari shimmer bilan.
+ * Ma'lumot kelgach ekran `Stagger` bilan ketma-ket kiradi.
+ */
+export function SkeletonDashboard({ chips = false, hero = true, kpis = 4, actions = 4, rows = 3, style }: { chips?: boolean; hero?: boolean; kpis?: number; actions?: number; rows?: number; style?: StyleProp<ViewStyle> }) {
+  const kpiRows = Math.ceil(kpis / 2);
+  return (
+    <View style={[{ gap: space.stack }, style]} accessibilityLabel="Yuklanmoqda" accessibilityRole="progressbar">
+      {chips ? <SkBox h={size.chip + size.chipPad * 2} r={radius.pill} /> : null}
+      {hero ? <SkBox h={172} r={radius.hero} inverse /> : null}
+      {Array.from({ length: kpiRows }).map((_, i) => (
+        <View key={`k${i}`} style={{ flexDirection: 'row', gap: space.tight }}>
+          <SkBox h={80} style={{ flex: 1 }} />
+          <SkBox h={80} style={{ flex: 1 }} />
+        </View>
+      ))}
+      {actions ? (
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          {Array.from({ length: 4 }).map((_, i) => <SkBox key={i} h={88} r={radius.action} style={{ flex: 1, opacity: i < actions ? 1 : 0 }} />)}
+        </View>
+      ) : null}
+      {rows ? <SkBox h={rows * 64} /> : null}
+    </View>
+  );
+}
+
+/**
+ * Ekran tanasi (demo "Animatsiya v2"): `loading` paytida skelet (standart `SkeletonDashboard`), ma'lumot kelgach
+ * bolalar ketma-ket kiradi (opacity + translateY 14 + scale .98, 60 ms qadam). `replay` o'zgarsa (tab/davr) qayta o'ynaydi.
+ */
+export function Reveal({ loading, skeleton, children, gap = space.stack, replay, dx, style }: { loading?: boolean; skeleton?: React.ReactNode; children: React.ReactNode; gap?: number; replay?: unknown; /** Tab almashganda ±24. */ dx?: number; style?: StyleProp<ViewStyle> }) {
+  if (loading) return <View style={style}>{skeleton ?? <SkeletonDashboard />}</View>;
+  return <Stagger gap={gap} replay={replay} dx={dx} style={style}>{children}</Stagger>;
+}
+
+/** Ro'yxat skeleti — ListGroup shaklida `rows` qator (64 dp): plitka + ikki chiziq. */
+export function SkeletonList({ rows = 5, style }: { rows?: number; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
+  return (
+    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1, style]} accessibilityLabel="Yuklanmoqda">
+      {Array.from({ length: rows }).map((_, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, paddingHorizontal: space.card }}>
+          <SkBox h={size.tile} r={radius.tile} style={{ width: size.tile }} />
+          <View style={{ flex: 1, gap: space.sm }}>
+            <SkBox h={12} r={radius.pill} style={{ width: '62%' }} />
+            <SkBox h={10} r={radius.pill} style={{ width: '40%' }} />
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
 
 // ───────────────────────── Tanlagichlar ─────────────────────────
 
 /**
- * Filtr chiplari — oq trek (soya) ichida suzuvchi brend indikator. 4 tadan ko'p bo'lsa aylanadi.
- * `count` — chip yonidagi son.
+ * Davr / filtr chiplari — demo `.chips`: bitta yuza trek (bgSurface, sh1, pill, padding 4) ichida 40 dp shaffof chiplar
+ * (textMuted), faol yozuv textOnBrand — ostida brend indikator (nur bilan) prujina bilan suriladi.
+ * 4 tadan ko'p bo'lsa aylanadi. `count` — chip yonidagi son.
  */
-export function ChipGroup<K extends string>({ items, value, onChange, style }: {
+export function ChipGroup<K extends string>({ items, value, onChange, scroll, style }: {
   items: { key: K; label: string; count?: number }[];
   value: K;
   onChange: (k: K) => void;
+  /** Majburan aylanuvchi (standart: 4 tadan ko'p bo'lsa). */ scroll?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  return <SegmentTrack items={items} value={value} onChange={onChange} variant="brand" style={style} />;
+  return <SegmentTrack items={items} value={value} onChange={onChange} variant="brand" scroll={scroll} style={style} />;
 }
 
 /** Segment boshqaruvi (Sozlamalar: Tizim / Yorug' / Qorong'i) — to'liq enli, ikonka ixtiyoriy. */
@@ -572,7 +753,7 @@ export function Toggle({ value, onChange, label, hint, disabled, style }: {
   const sw = (
     <View style={{ width: W, height: H, borderRadius: radius.pill, backgroundColor: c.borderStrong, justifyContent: 'center' }}>
       <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H, borderRadius: radius.pill, backgroundColor: c.brand }, onTrack]} />
-      <Animated.View style={[{ width: K, height: K, borderRadius: radius.pill, backgroundColor: c.textOnSolid }, shadow.card, knob]} />
+      <Animated.View style={[{ width: K, height: K, borderRadius: radius.pill, backgroundColor: c.textOnSolid }, elevation(c).sh1, knob]} />
     </View>
   );
   return (
@@ -606,14 +787,15 @@ export interface StickyPrimary {
 }
 
 /**
- * Pastki amal paneli — ekran pastida (ScrollView'dan keyin, flex ustun ichida), bgApp ustida suzadi,
- * xavfsiz hududni hisobga oladi. Asosiy tugma katta pill; ikkilamchi — yonida; `more` — doira tugma.
- * Yopiq asosiy tugma o'rnida qoladi va bosilganda `disabledReason`ni toast'da aytadi (jim turmaydi).
+ * Pastki amal paneli — demo `.sticky`: fonsiz (ekran foni ko'rinadi), padding 12×16, pill tugmalar 60 dp (44 css):
+ * asosiy — brend + nur soyasi (flex 1.4); ikkilamchi — yuza + sh1 (flex 1); `more` — 60 dp doira.
+ * `xl` — haydovchi rejimi (76 dp, 56 css). Yopiq asosiy tugma bosilganda `disabledReason`ni toast'da aytadi (jim turmaydi).
  */
-export function StickyActionBar({ primary, secondary, more, style }: {
+export function StickyActionBar({ primary, secondary, more, xl, style }: {
   primary: StickyPrimary;
-  /** Ikkilamchi amal: "Bekor", "Qo'ng'iroq". */ secondary?: { title: string; icon?: IconName; onPress: () => void };
+  /** Ikkilamchi amal: "Rad etish", "Qo'ng'iroq". `tone: 'danger'` — matni qizil. */ secondary?: { title: string; icon?: IconName; onPress: () => void; tone?: 'danger' };
   /** Qo'shimcha amallar menyusi. */ more?: { label: string; icon?: IconName; onPress: () => void };
+  /** Haydovchi: bitta katta tugma (76 dp). */ xl?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
@@ -627,19 +809,21 @@ export function StickyActionBar({ primary, secondary, more, style }: {
     }
     primary.onPress();
   };
+  const sz = xl ? 'stickyXl' as const : 'sticky' as const;
+  const h = xl ? size.stickyButtonXl : size.stickyButton;
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.md) + space.xs, backgroundColor: c.bgApp }, style]}>
-      {more ? <IconButton icon={more.icon ?? 'ellipsis'} label={more.label} onPress={more.onPress} variant="secondary" size={size.buttonLg} tone="strong" /> : null}
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.tight, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Math.max(insets.bottom, space.lg) + space.xs }, style]}>
+      {more ? <IconButton icon={more.icon ?? 'ellipsis'} label={more.label} onPress={more.onPress} variant="secondary" size={h} tone="strong" /> : null}
       {secondary ? (
-        <View style={{ flexShrink: 1 }}>
-          <Button title={secondary.title} icon={secondary.icon} onPress={secondary.onPress} variant="secondary" size="lg" />
+        <View style={{ flex: 1 }}>
+          <Button title={secondary.title} icon={secondary.icon} onPress={secondary.onPress} variant="secondary" size={sz} textColor={secondary.tone === 'danger' ? c.danger : undefined} />
         </View>
       ) : null}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: secondary ? 1.4 : 1 }}>
         <Button
           title={primary.title}
           icon={locked ? 'lock' : primary.icon}
-          size="lg"
+          size={sz}
           variant={locked ? 'secondary' : primary.variant ?? 'primary'}
           loading={primary.loading}
           onPress={press}

@@ -12,8 +12,9 @@ import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { StatusMark, SuccessCheck } from './success';
-import { DUR, EASE_STATE, SPRING_SLIDE, haptic } from './motion';
-import { FONT, Palette, Tone, duration, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
+import { DUR, EASE_STATE, SPRING_SLIDE, SPRING_TAB, haptic, usePop } from './motion';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { FONT, Palette, Tone, duration, elevation, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
@@ -29,18 +30,26 @@ export function HeaderBack() {
 function TabGlyph({ name, color, focused, big }: { name: IconName; color: string; focused: boolean; big?: boolean }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: '100%', height: '100%', borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? c.brandSoft : 'transparent' }}>
-      <Icon name={name} size={big ? size.iconXl - 2 : size.iconMd + 2} color={focused ? c.brandInk : color} strokeWidth={focused ? 2 : 1.6} />
+    <View style={{ width: big ? size.tabPillWDriver : size.tabPillW, height: big ? size.tabPillHDriver : size.tabPillH, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? c.brandSoft : 'transparent' }}>
+      <Icon name={name} size={big ? size.tabIconDriver : size.tabIcon} color={focused ? c.brandInk : color} strokeWidth={1.75} />
     </View>
   );
 }
+
+/** `tabIcon` qaytargan funksiyaga ikonka nomi biriktiriladi — `FloatingTabBar` pill'ni o'zi chizadi. */
+export type TabIconFn = ((p: { color: string; focused: boolean }) => React.ReactElement) & { glyph?: IconName; driver?: boolean };
 
 /**
  * Tab ikonkasi — Lucide; faol holatda brandSoft pill ichida, chiziq qalinroq.
  * Tab paneli faol/nofaol nusxalarni ustma-ust chizib opacity bilan almashtiradi — pill shu bilan silliq paydo bo'ladi.
  * `{ driver: true }` — haydovchi rejimi (kattaroq ikonka; `tabsOptions(c, inset, { driver: true })` bilan birga).
  */
-export const tabIcon = (name: IconName, opts?: { driver?: boolean }) => ({ color, focused }: { color: string; focused: boolean }) => <TabGlyph name={name} color={color} focused={focused} big={opts?.driver} />;
+export const tabIcon = (name: IconName, opts?: { driver?: boolean }): TabIconFn => {
+  const fn: TabIconFn = ({ color, focused }) => <TabGlyph name={name} color={color} focused={focused} big={opts?.driver} />;
+  fn.glyph = name;
+  fn.driver = opts?.driver;
+  return fn;
+};
 
 export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: { name?: string | null; /** Profil rasmi — bo'lsa bosh harflar o'rniga */ uri?: string | null; size?: number; tone?: Tone }) {
   const { c } = useTheme();
@@ -49,7 +58,7 @@ export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: {
   const col = tone === 'neutral' ? { bg: c.bgMuted, ink: c.textBody } : toneColors(c, tone);
   return (
     <View accessibilityLabel={name ?? undefined} style={{ width: s, height: s, borderRadius: radius.pill, backgroundColor: col.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <Txt v={s >= size.avatarLg ? 'titleMd' : 'bodyStrong'} style={{ color: col.ink }}>{initials}</Txt>
+      <Txt v={s >= size.avatarLg ? 'titleMd' : 'avatarInitials'} style={{ color: col.ink }}>{initials}</Txt>
     </View>
   );
 }
@@ -58,14 +67,17 @@ export type SegmentVariant = 'surface' | 'brand' | 'inverse';
 export interface SegmentItem<T extends string> { key: T; label: string; count?: number; icon?: IconName }
 
 /**
- * Segment yo'lagi — bitta trek ichida suzuvchi (prujinali) tanlov indikatori.
- * `surface` — bgMuted trek + oq indikator (Tabs); `brand` — oq trek + brend indikator (ChipGroup);
- * `inverse` — to'q karta ustida (HeroCard davrlari). 4 tadan ko'p bo'lsa gorizontal aylanadi va faol element ko'rinishga suriladi.
+ * Segment yo'lagi — bitta trek ichida suzuvchi (prujinali) tanlov indikatori (demo `.chips` + `.chip-ind`).
+ * `brand` — demo chiplari: yuza trek (sh1, pill, padding 4), 40 dp shaffof chiplar textMuted, faol yozuv textOnBrand
+ *   brend indikator ustida (brend nuri bilan) — ChipGroup;
+ * `surface` — bgMuted trek + yuza indikator (Tabs, SegmentedControl);
+ * `inverse` — demo `.seg2`: to'q karta ichida, bgInverseChip trek (radius 12), brend indikator (HeroCard davrlari).
+ * 4 tadan ko'p bo'lsa gorizontal aylanadi va faol element ko'rinishga suriladi.
  */
 export function SegmentTrack<T extends string>({ items, value, onChange, variant = 'surface', scroll: scrollProp, compact, style }: {
   items: SegmentItem<T>[]; value: T; onChange: (v: T) => void; variant?: SegmentVariant;
   /** Majburan aylanuvchi (standart: 4 tadan ko'p bo'lsa). */ scroll?: boolean;
-  /** Pastroq trek (HeroCard ichida) — 32 px. */ compact?: boolean;
+  /** Ixcham trek (demo `.seg2` o'lchami — 28 dp element). `inverse` da doim ixcham. */ compact?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
@@ -85,16 +97,21 @@ export function SegmentTrack<T extends string>({ items, value, onChange, variant
   }, [reduce, scroll, w, x]);
   useEffect(() => { move(value); }, [value, move]);
   const ind = useAnimatedStyle(() => ({ width: w.value, opacity: w.value > 0 ? 1 : 0, transform: [{ translateX: x.value }] }));
+  const el = elevation(c);
   const pal = {
-    surface: { track: c.bgMuted, ind: c.bgSurface, on: c.textStrong, off: c.textMuted },
-    brand: { track: c.bgSurface, ind: c.brand, on: c.textOnBrand, off: c.textMuted },
-    inverse: { track: c.bgInverseChip, ind: c.brand, on: c.textOnBrand, off: c.textOnInverseMuted },
+    surface: { track: c.bgMuted, ind: c.bgSurface, on: c.textStrong, off: c.textMuted, indShadow: el.sh1 as ViewStyle, trackShadow: null },
+    brand: { track: c.bgSurface, ind: c.brand, on: c.textOnBrand, off: c.textMuted, indShadow: el.chipGlow(c.brand), trackShadow: el.sh1 as ViewStyle },
+    inverse: { track: c.bgInverseChip, ind: c.brand, on: c.textOnBrand, off: c.textOnInverseMuted, indShadow: null, trackShadow: null },
   }[variant];
-  const itemH = compact ? size.touch - space.md : size.touch - space.sm;
-  const pad = compact ? 3 : space.xs;
+  const mini = compact || variant === 'inverse';
+  const itemH = mini ? size.heroSeg : size.chip;
+  const pad = size.chipPad;
+  const trackR = mini ? radius.seg : radius.pill;
+  const itemR = mini ? radius.segItem : radius.pill;
+  const tv = mini ? 'heroSeg' as const : 'chip' as const;
   const body = (
     <>
-      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: pad, left: 0, height: itemH, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: pal.ind }, variant === 'surface' ? shadow.card : null, ind]} />
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: pad, left: 0, height: itemH, borderRadius: itemR, borderCurve: 'continuous', backgroundColor: pal.ind }, pal.indShadow, ind]} />
       {items.map((s) => {
         const on = value === s.key;
         return (
@@ -103,27 +120,120 @@ export function SegmentTrack<T extends string>({ items, value, onChange, variant
             onPress={() => { if (!on) { haptic.selection(); onChange(s.key); } }}
             onLayout={(e) => { const { x: lx, width } = e.nativeEvent.layout; lay.current[s.key] = { x: lx, w: width }; if (s.key === value) move(value); }}
             accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={s.count != null ? `${s.label}, ${s.count}` : s.label}
-            hitSlop={{ top: pad, bottom: pad }}
-            style={{ flex: scroll ? undefined : 1, flexGrow: scroll ? 0 : 1, minHeight: itemH, paddingHorizontal: compact ? space.md - 2 : space.md + space.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs }}
+            hitSlop={{ top: pad + (mini ? space.xs : 0), bottom: pad + (mini ? space.xs : 0) }}
+            style={{ flexGrow: 1, flexShrink: scroll ? 0 : 1, flexBasis: 'auto', height: itemH, paddingHorizontal: mini ? space.tight : space.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs + 2 }}
           >
             {s.icon ? <Icon name={s.icon} size={size.iconSm} color={on ? pal.on : pal.off} /> : null}
-            <Txt v={compact ? 'caption' : 'label'} numberOfLines={1} style={{ color: on ? pal.on : pal.off, fontFamily: FONT[600], minWidth: textRoom(s.label, (compact ? type.caption : type.label).fontSize) }}>{s.label}</Txt>
-            {s.count != null ? <Txt v="caption" style={{ color: on ? pal.on : pal.off, opacity: 0.75 }}>{s.count}</Txt> : null}
+            <Txt v={tv} numberOfLines={1} style={{ color: on ? pal.on : pal.off, minWidth: textRoom(s.label, type[tv].fontSize) }}>{s.label}</Txt>
+            {s.count != null ? <Txt v={tv} style={{ color: on ? pal.on : pal.off, opacity: 0.7 }}>{s.count}</Txt> : null}
           </Pressable>
         );
       })}
     </>
   );
-  const track: ViewStyle = { flexDirection: 'row', padding: pad, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: pal.track };
-  const lift = variant === 'brand' ? shadow.card : null;
+  const track: ViewStyle = { flexDirection: 'row', padding: pad, gap: mini ? space.xs - 1 : 0, borderRadius: trackR, borderCurve: 'continuous', backgroundColor: pal.track };
   return scroll
-    ? <ScrollView ref={sv} horizontal showsHorizontalScrollIndicator={false} style={[{ borderRadius: radius.pill, flexGrow: 0 }, lift, style]} contentContainerStyle={track}>{body}</ScrollView>
-    : <View accessibilityRole="tablist" style={[track, lift, style]}>{body}</View>;
+    ? <ScrollView ref={sv} horizontal showsHorizontalScrollIndicator={false} style={[{ borderRadius: trackR, flexGrow: 0 }, pal.trackShadow, style]} contentContainerStyle={[track, { flexGrow: 1 }]}>{body}</ScrollView>
+    : <View accessibilityRole="tablist" style={[track, pal.trackShadow, style]}>{body}</View>;
 }
 
 /** Tabs — segment: bgMuted yo'lak, faol segment oq indikator (suzib o'tadi). Balandlik 44. */
 export function Tabs<T extends string>({ value, onChange, items, style }: { value: T; onChange: (v: T) => void; items: { key: T; label: string; count?: number }[]; style?: StyleProp<ViewStyle> }) {
   return <SegmentTrack items={items} value={value} onChange={onChange} variant="surface" style={style} />;
+}
+
+// ───────────────────────── Suzuvchi tab paneli ─────────────────────────
+
+const flat = (st: unknown) => (StyleSheet.flatten(st as StyleProp<ViewStyle>) ?? {}) as ViewStyle;
+
+function TabCell({ label, glyph, focused, driver, badge, onPress, onLongPress, onLayout, renderIcon }: {
+  label: string; glyph?: IconName; focused: boolean; driver: boolean; badge?: string | number;
+  onPress: () => void; onLongPress: () => void; onLayout: (x: number, w: number) => void;
+  renderIcon?: (p: { focused: boolean; color: string; size: number }) => React.ReactNode;
+}) {
+  const { c } = useTheme();
+  const pop = usePop(focused ? 1 : 0);
+  const pillW = driver ? size.tabPillWDriver : size.tabPillW;
+  const pillH = driver ? size.tabPillHDriver : size.tabPillH;
+  const iconS = driver ? size.tabIconDriver : size.tabIcon;
+  const color = focused ? c.brandInk : c.textMuted;
+  return (
+    <Pressable
+      onPress={onPress} onLongPress={onLongPress}
+      onLayout={(e) => onLayout(e.nativeEvent.layout.x, e.nativeEvent.layout.width)}
+      accessibilityRole="tab" accessibilityState={{ selected: focused }} accessibilityLabel={badge != null ? `${label}, ${badge}` : label}
+      style={{ flex: 1, maxWidth: driver ? size.driverTouch + space.xl + space.lg : size.tabPillW + space.lg - 1, minHeight: driver ? size.driverTouch : size.touch, alignItems: 'center', justifyContent: 'center', gap: 3 }}
+    >
+      <Animated.View style={[{ width: pillW, height: pillH, alignItems: 'center', justifyContent: 'center' }, focused ? pop : null]}>
+        {glyph ? <Icon name={glyph} size={iconS} color={color} strokeWidth={1.75} /> : renderIcon?.({ focused: false, color, size: iconS })}
+        {badge != null ? (
+          <View style={{ position: 'absolute', top: -space.xs, right: space.sm - 2, minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: c.dangerSolid, alignItems: 'center', justifyContent: 'center', borderWidth: size.ring, borderColor: c.bgChrome }}>
+            <Txt v="badge" style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{badge}</Txt>
+          </View>
+        ) : null}
+      </Animated.View>
+      <Txt v={driver ? 'tabLabelDriver' : 'tabLabel'} numberOfLines={1} style={{ color: focused ? c.textStrong : c.textMuted, minWidth: textRoom(label, (driver ? type.tabLabelDriver : type.tabLabel).fontSize) }} maxFontSizeMultiplier={1.2}>{label}</Txt>
+    </Pressable>
+  );
+}
+
+/**
+ * Suzuvchi tab paneli — demo `.tabbar` / `.tab` / `.pill` / `.tab-ind`:
+ * kapsula chetlardan va pastdan 16 dp (12 css), radius 36 (26 css), padding 10×8, soya sh2, bgChrome;
+ * har tab — 60×32 pill ichida 22 dp ikonka + 12 dp yorliq; faol: ikonka brandInk, yorliq textStrong,
+ * brandSoft pill tablar orasida prujina bilan SURILADI. 4–5 tab. `driver` — kattaroq (64 pt nishon).
+ * Ishlatish: `<Tabs tabBar={floatingTabBar({ driver })} screenOptions={tabsOptions(c, insets.bottom, { driver })}>`.
+ */
+export function FloatingTabBar({ state, descriptors, navigation, insets, driver = false }: BottomTabBarProps & { driver?: boolean }) {
+  const { c } = useTheme();
+  const reduce = useReducedMotion();
+  const focusedKey = state.routes[state.index]?.key;
+  const focusedOpts = focusedKey ? descriptors[focusedKey]?.options : undefined;
+  const routes = state.routes.filter((r) => flat(descriptors[r.key]?.options.tabBarItemStyle).display !== 'none');
+  const lay = React.useRef<Record<string, { x: number; w: number }>>({});
+  const x = useSharedValue(-1);
+  const placed = React.useRef(false);
+  const pillW = driver ? size.tabPillWDriver : size.tabPillW;
+  const pillH = driver ? size.tabPillHDriver : size.tabPillH;
+  const padV = driver ? space.md : space.sm + 2;
+  const move = React.useCallback(() => {
+    const l = focusedKey ? lay.current[focusedKey] : undefined;
+    if (!l) return;
+    const to = l.x + (l.w - pillW) / 2;
+    if (!placed.current || reduce) { x.value = to; placed.current = true; }
+    else x.value = withSpring(to, SPRING_TAB);
+  }, [focusedKey, pillW, reduce, x]);
+  useEffect(() => { move(); }, [move]);
+  const ind = useAnimatedStyle(() => ({ opacity: x.value < 0 ? 0 : 1, transform: [{ translateX: x.value }] }));
+  if (flat(focusedOpts?.tabBarStyle).display === 'none') return null;
+  return (
+    <View style={{ backgroundColor: c.bgApp, paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: Math.max(insets.bottom, space.lg) }}>
+      <View style={[{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: padV, paddingHorizontal: space.sm, borderRadius: radius.tabBar, borderCurve: 'continuous', backgroundColor: c.bgChrome }, elevation(c).sh2]}>
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: padV, width: pillW, height: pillH, borderRadius: pillH / 2, backgroundColor: c.brandSoft }, ind]} />
+        {routes.map((route) => {
+          const opts = descriptors[route.key]!.options;
+          const focused = route.key === focusedKey;
+          const label = typeof opts.tabBarLabel === 'string' ? opts.tabBarLabel : opts.title ?? route.name;
+          const iconFn = opts.tabBarIcon as (TabIconFn | undefined);
+          const onPress = () => {
+            const ev = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!focused) haptic.selection();
+            if (!focused && !ev.defaultPrevented) navigation.navigate(route.name, route.params);
+          };
+          return (
+            <TabCell
+              key={route.key} label={label} glyph={iconFn?.glyph} focused={focused} driver={driver}
+              badge={opts.tabBarBadge}
+              renderIcon={iconFn && !iconFn.glyph ? (p) => (opts.tabBarIcon as (a: typeof p) => React.ReactNode)(p) : undefined}
+              onPress={onPress}
+              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onLayout={(lx, w) => { lay.current[route.key] = { x: lx, w }; if (focused) move(); }}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 // ───────────────────────── Jadval ─────────────────────────

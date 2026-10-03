@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import type { ViewStyle } from 'react-native';
 
 /**
  * Insof dizayn tizimi — yagona manba.
@@ -83,7 +83,7 @@ export const palettes = {
       moduleProductionBg: '#f2ecff', moduleLogistics: '#0d6e9c', moduleLogisticsBg: '#e6f4fb', moduleWarehouse: '#b5410f',
       moduleWarehouseBg: '#fff0e8', chart1: '#5266ee', chart2: '#e85033', chart3: '#0f9b8e',
       chart4: '#d81895', chartGrid: '#d7dbe7', chartTrack: '#e6e9f2', scrim: '#0e143099',
-      textOnSolid: '#ffffff',
+      textOnSolid: '#ffffff', brandTile: '#ffffff40',
     },
     dark: {
       bgApp: '#090c1d', bgSurface: '#121735', bgSubtle: '#181e40', bgMuted: '#1f274d',
@@ -98,7 +98,7 @@ export const palettes = {
       moduleProductionBg: '#251a45', moduleLogistics: '#5cc4f0', moduleLogisticsBg: '#0d2536', moduleWarehouse: '#ff9a6b',
       moduleWarehouseBg: '#2e1a12', chart1: '#8fa0ff', chart2: '#ff8a6b', chart3: '#23edd6',
       chart4: '#f474c6', chartGrid: '#29325c', chartTrack: '#181e40', scrim: '#000000b3',
-      textOnSolid: '#ffffff',
+      textOnSolid: '#ffffff', brandTile: '#ffffff40',
     },
   },
   /** Marjon — qizg'ish marjon, aksent firuza. */
@@ -116,7 +116,7 @@ export const palettes = {
       moduleProductionBg: '#f2ecff', moduleLogistics: '#0d6e9c', moduleLogisticsBg: '#e6f4fb', moduleWarehouse: '#b5410f',
       moduleWarehouseBg: '#fff0e8', chart1: '#dc3316', chart2: '#1570bc', chart3: '#0f8a6a',
       chart4: '#712ce8', chartGrid: '#e7dbd7', chartTrack: '#f2e9e6', scrim: '#1f140f99',
-      textOnSolid: '#ffffff',
+      textOnSolid: '#ffffff', brandTile: '#ffffff40',
     },
     dark: {
       bgApp: '#140e0b', bgSurface: '#201713', bgSubtle: '#281f1a', bgMuted: '#342823',
@@ -131,7 +131,7 @@ export const palettes = {
       moduleProductionBg: '#251a45', moduleLogistics: '#5cc4f0', moduleLogisticsBg: '#0d2536', moduleWarehouse: '#ff9a6b',
       moduleWarehouseBg: '#2e1a12', chart1: '#ff8a6e', chart2: '#6eb4ff', chart3: '#35efbb',
       chart4: '#b49bff', chartGrid: '#42352e', chartTrack: '#281f1a', scrim: '#000000b3',
-      textOnSolid: '#ffffff',
+      textOnSolid: '#ffffff', brandTile: '#ffffff40',
     },
   },
 } as const;
@@ -186,7 +186,17 @@ export const space = {
   none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, x7: 28, xxxl: 32, x10: 40, x12: 48,
   /** Ma'noli nomlar. */
   card: 16, panel: 20, grid: 12, section: 24, pageX: 20, pageY: 24,
+  /** Demo `.scroll` gap (10–12 css × 1.38): bloklar orasidagi vertikal bo'shliq. */
+  stack: 14,
+  /** Demo `.kpi2` / `.chips` gap 8 css → 11 dp. */
+  tight: 11,
 } as const;
+
+/**
+ * Demo masshtabi: HTML demo telefon ekrani 282 css px, haqiqiy telefon ~390 dp → 1.38×.
+ * Yangi tokenlar shu koeffitsient bilan hisoblangan (izohda demo qiymati).
+ */
+export const DEMO_SCALE = 390 / 282;
 
 export const radius = {
   xs: 6,
@@ -196,11 +206,24 @@ export const radius = {
   md: 14,
   /** Ikonka plitkasi. */
   lg: 14,
-  /** BARCHA kartalar — yumshoq, katta radius. */
-  card: 20,
+  /** BARCHA kartalar — demo `--rCard` 20 css → 28 dp. */
+  card: 28,
   /** Modal / sheet. */
   xl: 24,
   pill: 9999,
+  /** Hero karta — rCard + 4 css (24) → 32 dp. */
+  hero: 32,
+  /** Tezkor amal kartasi (`.qa .q`) — rCard + 2 css (22) → 30 dp. */
+  action: 30,
+  /** Ikonka plitkasi — rCard × .55 (11 css) → 15 dp. */
+  tile: 15,
+  /** Hero ichidagi davr tanlagich treki (`.seg2`) — 9 css → 12; elementi 7 css → 10. */
+  seg: 12,
+  segItem: 10,
+  /** Suzuvchi tab paneli (`.tabbar`) — 26 css → 36 dp. */
+  tabBar: 36,
+  /** Grafik legenda kvadrati — 3 css → 4 dp. */
+  legend: 4,
 } as const;
 
 export const size = {
@@ -224,22 +247,79 @@ export const size = {
   ring: 2,
   dot: 8,
   progress: 6,
+  // ── Demo 1:1 (css × 1.38) ──
+  /** Sarlavha avatari / qo'ng'iroq tugmasi (`.av`, `.ib`) — 32 css. */
+  headerAvatar: 44,
+  /** Qo'ng'iroqdagi qizil nuqta — 6 css. */
+  bellDot: 8,
+  /** Chip / segment elementi balandligi — 28 css. */
+  chip: 40,
+  /** Chip treki ichki paddingi — 3 css. */
+  chipPad: 4,
+  /** Hero aksent chizig'i — 14×3 css. */
+  heroAccentW: 20,
+  heroAccentH: 4,
+  /** Hero sparkline balandligi — 40 css. */
+  heroSpark: 56,
+  /** Hero davr tanlagichi elementi — ~20 css. */
+  heroSeg: 28,
+  /** KPI / ro'yxat qatori plitkasi — 28 css. */
+  tile: 40,
+  /** Tezkor amal plitkasi — 30 css. */
+  actionTile: 42,
+  /** Tab paneli pill'i — 44×24 css; ikonka 16 css. */
+  tabPillW: 60,
+  tabPillH: 32,
+  tabIcon: 22,
+  /** Haydovchi tab paneli — kattaroq nishon. */
+  tabPillWDriver: 72,
+  tabPillHDriver: 40,
+  tabIconDriver: 28,
+  /** Pastki amal paneli tugmasi — 44 css; haydovchi `xl` — 56 css. */
+  stickyButton: 60,
+  stickyButtonXl: 76,
+  /** Qidiruv maydoni — 38 css. */
+  search: 52,
+  /** Grafik legenda kvadrati — 8 css. */
+  legend: 11,
+  /** Gorizontal grafik chizig'i — 8 css; taqsimot chizig'i — 10 css; reja chizig'i — 6 css. */
+  hbar: 11,
+  breakdownBar: 14,
+  progressLg: 8,
+  /** Timeline nuqtasi — 10 css. */
+  timelineDot: 14,
 } as const;
 
 /** Ierarxiya chegara bilan emas, yumshoq soya bilan. Soya rangi palitraning to'q matnidan. */
-export const shadow = {
-  card: Platform.select({
-    ios: { shadowColor: palettes.chizma.light.textStrong, shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
-    android: { elevation: 2 },
-    default: {},
-  })!,
+export const shadow: Record<'card' | 'pop', ViewStyle> = {
+  /** Demo sh1 (yorug' Chizma rangida). Palitraga mos variant — `elevation(c).sh1`. */
+  card: { boxShadow: `0px 1.4px 2.8px 0px ${palettes.chizma.light.textStrong}0d, 0px 8px 25px -11px ${palettes.chizma.light.textStrong}24` },
   /** Dropdown / modal / suzuvchi tab bar. */
-  pop: Platform.select({
-    ios: { shadowColor: palettes.chizma.light.textStrong, shadowOpacity: 0.14, shadowRadius: 22, shadowOffset: { width: 0, height: 10 } },
-    android: { elevation: 10 },
-    default: {},
-  })!,
+  pop: { boxShadow: `0px 3px 8px 0px ${palettes.chizma.light.textStrong}0f, 0px 22px 44px -19px ${palettes.chizma.light.textStrong}38` },
 } as const;
+
+/** `#rrggbb` + shaffoflik → `#rrggbbaa` (demo `color-mix(… X%, transparent)`). */
+export const alpha = (hex: string, a: number) => `${hex.slice(0, 7)}${Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0')}`;
+
+/**
+ * Demo "Yumshoq qatlam" soyalari (CSS `box-shadow` × 1.38) — palitraga bog'liq (rangi `textStrong` dan).
+ * RN 0.76 New Architecture `boxShadow` — ko'p qatlamli, spread bilan, demo bilan 1:1.
+ *  sh1 — karta, chip treki, qidiruv; sh2 — suzuvchi tab paneli; hero — to'q karta;
+ *  raised — scroll paytida ko'tarilgan sarlavha; glow(rang) — asosiy tugma / faol chip nuri.
+ */
+export function elevation(c: Palette) {
+  const ink = c.textStrong;
+  return {
+    sh1: { boxShadow: `0px 1.4px 2.8px 0px ${alpha(ink, 0.05)}, 0px 8px 25px -11px ${alpha(ink, 0.14)}` },
+    sh2: { boxShadow: `0px 3px 8px 0px ${alpha(ink, 0.06)}, 0px 22px 44px -19px ${alpha(ink, 0.22)}` },
+    hero: { boxShadow: `0px 25px 50px -25px ${alpha(c.bgInverse, 0.7)}` },
+    raised: { boxShadow: `0px 11px 28px -19px ${alpha(ink, 0.4)}` },
+    /** Asosiy tugma: `0 10px 20px -10px brand`. */
+    glow: (color: string): ViewStyle => ({ boxShadow: `0px 14px 28px -14px ${color}` }),
+    /** Faol chip indikatori: `0 6px 14px -8px brand`. */
+    chipGlow: (color: string): ViewStyle => ({ boxShadow: `0px 8px 19px -11px ${color}` }),
+  } satisfies Record<string, ViewStyle | ((color: string) => ViewStyle)>;
+}
 
 // ───────────────────────── Tipografika ─────────────────────────
 
@@ -281,6 +361,57 @@ export const type = {
   metric: f(600, 22, 28),
   /** Tekislanadigan ustun (mono). */
   mono: { fontFamily: FONT.mono, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
+
+  // ── Demo 1:1 (css px × 1.38; Nunito: demo 600 → FONT[500], 700 → FONT[600], 800 → FONT[700]) ──
+  /** `.appbar .t-over` — 9 css, 700, .06em, katta harf. */
+  appbarOverline: f(600, 12.5, 16, 0.75, true),
+  /** `.appbar` sarlavhasi — 13 css, 800. */
+  appbarTitle: f(700, 18, 23, -0.18),
+  /** `.av` bosh harflar — 11 css, 700. */
+  avatarInitials: f(600, 15, 19),
+  /** `.hero .big` — 27 css, 800, −.02em, lh 1.05. */
+  heroValue: f(700, 37, 39, -0.74),
+  /** Hero birligi — 12–13 css, 600. */
+  heroUnit: f(500, 17, 21),
+  /** `.delta` — 9.5 css, 700. */
+  heroDelta: f(600, 13, 17),
+  /** `.seg2 span` — 9 css, 600. */
+  heroSeg: f(500, 12.5, 16),
+  /** `.t-sm` — 10.5 css, 600: izoh, KPI yorlig'i, ro'yxat izohi. */
+  tSm: f(500, 14.5, 19),
+  /** `.kpi .v` — 13.5 css, 800, lh 1.1. */
+  kpiValue: f(700, 19, 21),
+  /** KPI o'zgarishi — 9 css, 700. */
+  kpiDelta: f(600, 12.5, 16),
+  /** `.qa .q` yorlig'i — 8.5 css, 600, lh 1.15. */
+  actionLabel: f(500, 12, 14),
+  /** `.sh b` — 12.5 css, 800. */
+  sectionTitle: f(700, 17, 22),
+  /** `.sh a` — 10 css, 600. */
+  sectionLink: f(500, 14, 18),
+  /** `.li .m b` — 11.5 css, 700. */
+  listTitle: f(600, 16, 21),
+  /** `.li .r b` — 11 css, 700. */
+  listValue: f(600, 15, 19),
+  /** `.badge` — 9 css, 700. */
+  badge: f(600, 12.5, 16),
+  /** `.chip` — 10 css, 600. */
+  chip: f(500, 14, 18),
+  /** `.tab` yorlig'i — 8.5 css, 600. */
+  tabLabel: f(500, 12, 15),
+  /** Haydovchi tab yorlig'i. */
+  tabLabelDriver: f(600, 14, 18),
+  /** Grafik legendasi — 9.5 css. */
+  legend: f(500, 13, 17),
+  /** Gorizontal grafik / taqsimot qatori — 10 css. */
+  chartRow: f(500, 14, 18),
+  /** `.btn` — 12 css, 800; `.btn.xl` — 14 css. */
+  button: f(700, 16.5, 21),
+  buttonXl: f(700, 19, 24),
+  /** `.search` — 11 css. */
+  search: f(500, 15, 20),
+  /** `.kv` — 10.5 css. */
+  kv: f(500, 14.5, 19),
 } as const;
 export type TypeVariant = keyof typeof type;
 
@@ -294,7 +425,21 @@ export const textRoom = (text: string, fontSize: number, extra = 0) => text.leng
 // ───────────────────────── Harakat ─────────────────────────
 
 /** Yagona tezliklar: mikro (hover/fokus), holat, ekran o'tishi, yuklanish sikli. */
-export const duration = { micro: 120, state: 220, screen: 320, loop: 1200, enter: 520, stagger: 55 } as const;
+export const duration = {
+  micro: 120, state: 220, screen: 320, loop: 1200,
+  /** Demo "Animatsiya v2": `enter .6s`, qadam 60 ms. */
+  enter: 600, stagger: 60,
+  /** Raqam sanash — 1 s (ease-out quart). */
+  count: 1000,
+  /** Sparkline chizilishi 1.2 s (+ .25 s kechikish); maydon .8 s (+ .9 s). */
+  draw: 1200, drawDelay: 250, areaDelay: 900, area: 800,
+  /** Pulse halqa — 1.8 s sikl, 1.4 s kechikish. */
+  pulse: 1800, pulseDelay: 1400,
+  /** Ustun o'sishi: kechikish 250 + i × 45 ms. */
+  barDelay: 250, barStep: 45,
+  /** Progress / gorizontal ustun to'lishi — 1.1 s (+ .35 s). */
+  fill: 1100, fillDelay: 350,
+} as const;
 
 // ───────────────────────── Rollar (kontent, dizayn emas) ─────────────────────────
 

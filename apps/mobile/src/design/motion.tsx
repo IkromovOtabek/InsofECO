@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from './theme';
@@ -20,6 +20,12 @@ export const EASE_LOOP = Easing.inOut(Easing.quad);
 export const SPRING_PRESS = { damping: 15, stiffness: 320, mass: 0.6 } as const;
 /** Suzuvchi indikator (tab, segment, chip) prujinasi — demo'dagi cubic-bezier(.34,1.3,.64,1) ga yaqin. */
 export const SPRING_SLIDE = { damping: 18, stiffness: 210, mass: 0.8 } as const;
+/** Demo `--ease` cubic-bezier(.2,.8,.2,1) — kirish, chizish, to'lish. */
+export const EASE_ENTER = Easing.bezier(0.2, 0.8, 0.2, 1);
+/** Tab indikatori — demo cubic-bezier(.34,1.45,.64,1) .5s: sezilarli sakrash. */
+export const SPRING_TAB = { damping: 14, stiffness: 190, mass: 0.9 } as const;
+/** Ustun o'sishi — demo `grow .8s var(--spring)` (cubic-bezier(.34,1.56,.64,1)): ~10% oshib qaytadi. */
+export const SPRING_GROW = { damping: 11, stiffness: 120, mass: 0.9 } as const;
 
 /** Ro'yxatda ketma-ketlik: har element oldingisidan shuncha kech chiqadi (ms). */
 export const STAGGER = duration.stagger;
@@ -50,19 +56,65 @@ export const haptic = {
 
 /** Ekran/blok kirishi: pastdan suzib, ozgina kattalashib chiqadi. `delay` — `stagger(i)`. */
 export function Appear({
-  children, delay = 0, from = 14, duration: dur = DUR.enter, scale = 0.98, style,
-}: { children: React.ReactNode; delay?: number; from?: number; duration?: number; /** Boshlang'ich masshtab (1 — o'zgarmaydi). */ scale?: number; style?: StyleProp<ViewStyle> }) {
+  children, delay = 0, from = 14, dx = 0, duration: dur = DUR.enter, scale = 0.98, style, replay,
+}: { children: React.ReactNode; delay?: number; from?: number; /** Gorizontal siljish (tab almashganda ±24). */ dx?: number; duration?: number; /** Boshlang'ich masshtab (1 — o'zgarmaydi). */ scale?: number; style?: StyleProp<ViewStyle>; /** O'zgarsa animatsiya qaytadan o'ynaydi (masalan davr tanlanganda). */ replay?: unknown }) {
   const reduce = useReducedMotion();
   const p = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
     if (reduce) { p.value = 1; return; }
-    p.value = withDelay(delay, withTiming(1, { duration: dur, easing: EASE_STATE }));
-  }, [delay, dur, p, reduce]);
+    p.value = 0;
+    p.value = withDelay(delay, withTiming(1, { duration: dur, easing: EASE_ENTER }));
+  }, [delay, dur, p, reduce, replay]);
   const s = useAnimatedStyle(() => ({
-    opacity: p.value,
-    transform: [{ translateY: (1 - p.value) * from }, { scale: scale + (1 - scale) * p.value }],
+    opacity: p.value < 0.002 ? 0.001 : p.value,
+    transform: [{ translateX: (1 - p.value) * dx }, { translateY: (1 - p.value) * from }, { scale: scale + (1 - scale) * p.value }],
   }));
   return <Animated.View style={[s, style]}>{children}</Animated.View>;
+}
+
+/**
+ * Demo `.screen.enter .scroll > *`: har bola ketma-ket kiradi (opacity + translateY 14 + scale .98, 60 ms qadam).
+ * Bolalar orasidagi bo'shliq — `gap` (standart `space.stack` = 14). `replay` o'zgarsa qayta o'ynaydi.
+ */
+export function Stagger({ children, gap = 14, step = STAGGER, dx = 0, replay, style }: { children: React.ReactNode; gap?: number; step?: number; dx?: number; replay?: unknown; style?: StyleProp<ViewStyle> }) {
+  const items = React.Children.toArray(children).filter(Boolean);
+  return (
+    <View style={[{ gap }, style]}>
+      {items.map((ch, i) => (
+        <Appear key={(ch as { key?: React.Key }).key ?? i} delay={stagger(i, step, 12)} dx={dx} replay={replay}>{ch}</Appear>
+      ))}
+    </View>
+  );
+}
+
+/** Element paydo bo'lganda "pop" (demo `pop`: .6 → 1.12 → 1, prujina). `trigger` o'zgarsa qayta. */
+export function usePop(trigger: unknown, delay = 0) {
+  const reduce = useReducedMotion();
+  const v = useSharedValue(1);
+  const first = useRef(true);
+  useEffect(() => {
+    if (reduce) { v.value = 1; return; }
+    if (first.current && delay === 0) { first.current = false; return; }
+    first.current = false;
+    v.value = 0.6;
+    v.value = withDelay(delay, withSequence(withTiming(1.12, { duration: 270, easing: EASE_ENTER }), withTiming(1, { duration: 180, easing: EASE_STATE })));
+  }, [trigger, reduce, v, delay]);
+  return useAnimatedStyle(() => ({ transform: [{ scale: v.value }] }));
+}
+
+/**
+ * Sarlavha scroll paytida ko'tariladi (demo `.appbar.raised`): `const raise = useHeaderRaise();`
+ * → `<ScrollView onScroll={raise.onScroll} scrollEventThrottle={16}>` + `<PageHeader raised={raise.raised} />`.
+ * Har qanday ScrollView / FlatList bilan ishlaydi.
+ */
+export function useHeaderRaise(threshold = 4) {
+  const [raised, setRaised] = useState(false);
+  const ref = useRef(false);
+  const onScroll = React.useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const r = e.nativeEvent.contentOffset.y > threshold;
+    if (r !== ref.current) { ref.current = r; setRaised(r); }
+  }, [threshold]);
+  return { raised, onScroll, scrollEventThrottle: 16 as const };
 }
 
 // ───────────────────────── Bosish ─────────────────────────
@@ -118,7 +170,7 @@ export function usePulse(dep: unknown) {
 // ───────────────────────── Raqam sanash ─────────────────────────
 
 export interface CountUpOpts {
-  /** Davomiylik, ms (standart 900). */
+  /** Davomiylik, ms (standart 1000, ease-out quart — demo `countUp`). */
   duration?: number;
   /** Kechikish, ms — `stagger(i)` bilan birga. */
   delay?: number;
@@ -131,7 +183,7 @@ export interface CountUpOpts {
  * Harakat kamaytirilgan bo'lsa darhol oxirgi qiymat. JS kadrlarida ishlaydi — matn uchun yetarli.
  */
 export function useCountUp(value: number, opts: CountUpOpts = {}): string {
-  const { duration: dur = 900, delay = 0, format } = opts;
+  const { duration: dur = DUR.count, delay = 0, format } = opts;
   const reduce = useReducedMotion();
   const target = Number.isFinite(value) ? value : 0;
   const [shown, setShown] = useState(reduce ? target : 0);
@@ -144,7 +196,7 @@ export function useCountUp(value: number, opts: CountUpOpts = {}): string {
     const tick = (t: number) => {
       if (!start) start = t;
       const k = Math.min(1, (t - start) / dur);
-      const v = k >= 1 ? target : a + (target - a) * (1 - (1 - k) ** 3);
+      const v = k >= 1 ? target : a + (target - a) * (1 - (1 - k) ** 4);
       from.current = v;
       setShown(v);
       if (k < 1) raf = requestAnimationFrame(tick);
@@ -153,6 +205,29 @@ export function useCountUp(value: number, opts: CountUpOpts = {}): string {
     return () => { clearTimeout(t0); cancelAnimationFrame(raf); };
   }, [target, dur, delay, reduce]);
   return format ? format(shown) : String(Math.round(shown));
+}
+
+/**
+ * Matndagi raqamni sanab chiqaradi (demo `countUp`): "312 mln" → 0…312 mln, "74,2" — kasr vergul bilan,
+ * "1 248" — minglar bo'shliq bilan. Raqam bo'lmasa matn o'zgarmaydi.
+ */
+export function useCountUpText(text: string, opts: Omit<CountUpOpts, 'format'> = {}): string {
+  const m = /^(\s*[^\d\s−-]*?[−-]?)(\d[\d\s\u00a0]*\d|\d)([.,]\d+)?(.*)$/s.exec(text ?? '');
+  const raw = m ? `${m[2]}${m[3] ?? ''}` : '';
+  const dec = m?.[3] ? m[3].length - 1 : 0;
+  const sepChar = m?.[3]?.[0] ?? ',';
+  const grouped = !!m && /\d[\s\u00a0]\d/.test(m[2]!);
+  const target = m ? Number(raw.replace(/[\s\u00a0]/g, '').replace(',', '.')) : 0;
+  const shown = useCountUp(Number.isFinite(target) ? target : 0, {
+    ...opts,
+    format: (v) => {
+      const [a, b] = v.toFixed(dec).split('.');
+      const ia = grouped ? a!.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : a!;
+      return `${ia}${b ? sepChar + b : ''}`;
+    },
+  });
+  if (!m || !Number.isFinite(target) || target === 0) return text;
+  return `${m[1]}${shown}${m[4]}`;
 }
 
 // ───────────────────────── Shimmer ─────────────────────────

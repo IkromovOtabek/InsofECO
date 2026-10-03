@@ -21,7 +21,7 @@ import Animated from 'react-native-reanimated';
 import { Shimmer, haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
 import { Icon, IconName, IconTone } from './icons';
-import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, moduleColors, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
+import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
 
 // ───────────────────────── Matn ─────────────────────────
 
@@ -35,6 +35,10 @@ const DEFAULT_COLOR: Record<TypeVariant, TxtColor> = {
   display: 'strong', titleLg: 'strong', titleMd: 'strong', titleSm: 'strong', metricHero: 'strong', metric: 'strong', bodyStrong: 'strong',
   body: 'body', bodySm: 'body', mono: 'body',
   label: 'muted', caption: 'muted', overline: 'muted', overlineXs: 'muted',
+  appbarOverline: 'muted', appbarTitle: 'strong', avatarInitials: 'brand', heroValue: 'strong', heroUnit: 'strong', heroDelta: 'onSolid', heroSeg: 'muted',
+  tSm: 'muted', kpiValue: 'strong', kpiDelta: 'muted', actionLabel: 'body', sectionTitle: 'strong', sectionLink: 'brand',
+  listTitle: 'strong', listValue: 'strong', badge: 'muted', chip: 'muted', tabLabel: 'muted', tabLabelDriver: 'muted', legend: 'body', chartRow: 'body',
+  button: 'strong', buttonXl: 'strong', search: 'strong', kv: 'muted',
 };
 const WEIGHT_FAMILY: Record<string, string> = { '400': FONT[400], normal: FONT[400], '500': FONT[500], '600': FONT[600], '700': FONT[700], bold: FONT[700], '800': FONT[700], '900': FONT[700] };
 
@@ -65,43 +69,46 @@ export function Screen({ children, style, padded = true, ...p }: ViewProps & { p
   );
 }
 
-/** Karta — yumshoq: chegarasiz, radius 20, padding 16, soya (`shadow.card`). Ierarxiya soya bilan. */
+/** Karta — demo `.card`: chegarasiz, radius 28 (rCard 20 css), padding 16, soya sh1. Ierarxiya soya bilan. */
 export function Card({ children, style, ...p }: ViewProps) {
   const { c } = useTheme();
   return (
-    <View {...p} style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card }, shadow.card, style]}>
+    <View {...p} style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card }, elevation(c).sh1, style]}>
       {children}
     </View>
   );
 }
 
-/** Bo'lim sarlavhasi — titleSm + ixtiyoriy son nishoni + o'ngda "Hammasi →" havolasi. */
-export function SectionHead({ title, action, onAction, count, icon, style }: {
+/**
+ * Bo'lim sarlavhasi — demo `.sh`: nom 17 dp (12.5 css) og'ir, o'ngda brandInk havola 14 dp (10 css), chevronsiz.
+ * Tashqi bo'shliq yo'q — ota `gap` (space.stack) beradi. `unit` — havola o'rnida kulrang izoh ("mln so'm").
+ */
+export function SectionHead({ title, action, onAction, count, icon, unit, style }: {
   /** Bo'lim nomi. */ title: string;
-  /** O'ngdagi havola matni ("Hammasi"). */ action?: string;
+  /** O'ngdagi havola matni ("Barchasi"). */ action?: string;
   onAction?: () => void;
   /** Sarlavha yonidagi son (masalan kutilayotganlar). */ count?: number;
   icon?: IconName;
+  /** O'ngdagi izoh (havola bo'lmasa): birlik yoki son ("2 ta"). */ unit?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm, gap: space.sm, minHeight: size.touch }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.sm }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flex: 1 }}>
         {icon ? <Icon name={icon} tone="muted" /> : null}
-        <Txt v="titleSm" numberOfLines={1} style={{ flexShrink: 1 }} accessibilityRole="header">{title}</Txt>
+        <Txt v="sectionTitle" numberOfLines={1} style={{ flexShrink: 1 }} accessibilityRole="header">{title}</Txt>
         {count != null ? (
           <View style={{ minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs + 2, borderRadius: radius.pill, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt v="caption" color="body" style={{ fontFamily: FONT[600] }}>{count > 99 ? '99+' : count}</Txt>
+            <Txt v="badge" color="body">{count > 99 ? '99+' : count}</Txt>
           </View>
         ) : null}
       </View>
       {action ? (
-        <Pressable onPress={onAction} hitSlop={space.sm} accessibilityRole="link" style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: size.touch, justifyContent: 'center', paddingLeft: space.sm }, pressed && { opacity: 0.6 }]}>
-          <Txt v="label" color="brand" style={{ minWidth: textRoom(action, type.label.fontSize) }}>{action}</Txt>
-          <Icon name="chevron-right" tone="brand" />
+        <Pressable onPress={onAction} hitSlop={{ top: space.md, bottom: space.md, left: space.sm, right: space.sm }} accessibilityRole="link" style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
+          <Txt v="sectionLink" color="brand" style={{ minWidth: textRoom(action, type.sectionLink.fontSize) }}>{action}</Txt>
         </Pressable>
-      ) : null}
+      ) : unit ? <Txt v="tSm">{unit}</Txt> : null}
     </View>
   );
 }
@@ -110,9 +117,9 @@ export function SectionHead({ title, action, onAction, count, icon, style }: {
 export function Panel({ title, action, onAction, children, style, icon }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode; style?: StyleProp<ViewStyle>; icon?: IconName }) {
   const { c } = useTheme();
   return (
-    <View style={[{ marginTop: space.section }, style]}>
+    <View style={[{ marginTop: space.section, gap: space.stack }, style]}>
       <SectionHead title={title} action={action} onAction={onAction} icon={icon} />
-      <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card, paddingVertical: space.xs }, shadow.card]}>
+      <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', paddingHorizontal: space.card, paddingVertical: space.xs }, elevation(c).sh1]}>
         {children}
       </View>
     </View>
@@ -129,37 +136,34 @@ export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
 // ───────────────────────── Tugma ─────────────────────────
 
 export type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
-export type BtnSize = 'md' | 'lg' | 'xl';
+/** `sticky` — demo `.sticky .btn` (44 css → 60 dp), `stickyXl` — `.btn.xl` (56 css → 76 dp). */
+export type BtnSize = 'md' | 'lg' | 'xl' | 'sticky' | 'stickyXl';
 
-/** Asosiy tugma ostidagi brend "nuri" — rangli soya (iOS); Android'da yengil elevation. */
-const glow = (color: string): ViewStyle => Platform.select<ViewStyle>({
-  ios: { shadowColor: color, shadowOpacity: 0.32, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  android: { elevation: 3, shadowColor: color },
-  default: {},
-})!;
+/** Asosiy tugma ostidagi brend "nuri" — demo `0 10px 20px -10px var(--brand)` (boxShadow). */
+const glow = (color: string): ViewStyle => ({ boxShadow: `0px 14px 28px -14px ${color}` });
 
 /**
  * Tugma — pill shakl, bosilganda prujina 0.96 + yengil haptika. `primary` — brend foni + nur soyasi,
  * `secondary` — yuza + yumshoq soya (chegarasiz), `ghost` — fonsiz.
  */
 export function Button({
-  title, variant = 'primary', size: sizeKey = 'md', icon, iconRight, loading, disabled, style, onPress, full = true, ...p
-}: PressableProps & { title: string; variant?: BtnVariant; size?: BtnSize; icon?: IconName; iconRight?: IconName; loading?: boolean; full?: boolean; style?: StyleProp<ViewStyle> }) {
+  title, variant = 'primary', size: sizeKey = 'md', icon, iconRight, loading, disabled, style, onPress, full = true, textColor, ...p
+}: PressableProps & { title: string; variant?: BtnVariant; size?: BtnSize; icon?: IconName; iconRight?: IconName; loading?: boolean; full?: boolean; style?: StyleProp<ViewStyle>; /** Matn/ikonka rangi (masalan ikkilamchi "Rad etish" — `c.danger`). */ textColor?: string }) {
   const { c } = useTheme();
   const bg = { primary: c.brand, secondary: c.bgSurface, ghost: 'transparent', danger: c.dangerSolid, success: c.successSolid }[variant];
-  const fg = { primary: c.textOnBrand, secondary: c.textStrong, ghost: c.textBody, danger: c.textOnSolid, success: c.textOnSolid }[variant];
-  const height = { md: size.button, lg: size.buttonLg, xl: size.driverTouch }[sizeKey];
-  const txt: TypeVariant = sizeKey === 'xl' ? 'titleMd' : 'bodyStrong';
-  const iconSize = sizeKey === 'xl' ? size.iconLg : sizeKey === 'lg' ? size.iconMd : size.iconSm;
+  const fg = textColor ?? { primary: c.textOnBrand, secondary: c.textStrong, ghost: c.textBody, danger: c.textOnSolid, success: c.textOnSolid }[variant];
+  const height = { md: size.button, lg: size.buttonLg, xl: size.driverTouch, sticky: size.stickyButton, stickyXl: size.stickyButtonXl }[sizeKey];
+  const txt: TypeVariant = sizeKey === 'xl' ? 'titleMd' : sizeKey === 'stickyXl' ? 'buttonXl' : sizeKey === 'md' ? 'bodyStrong' : 'button';
+  const iconSize = sizeKey === 'xl' || sizeKey === 'stickyXl' ? size.iconLg : sizeKey === 'md' ? size.iconSm : size.iconMd;
   const off = !!(disabled || loading);
   const ps = usePressScale(0.96);
   const lift: ViewStyle | null = off ? null
     : variant === 'primary' ? glow(c.brand)
     : variant === 'danger' ? glow(c.dangerSolid)
     : variant === 'success' ? glow(c.successSolid)
-    : variant === 'secondary' ? shadow.card : null;
+    : variant === 'secondary' ? elevation(c).sh1 : null;
   return (
-    <Animated.View style={[full ? null : { alignSelf: 'flex-start' }, ps.style]}>
+    <Animated.View style={[full ? null : { alignSelf: 'flex-start' }, { borderRadius: radius.pill }, lift, ps.style]}>
       <Pressable
         {...p}
         accessibilityRole="button"
@@ -172,7 +176,6 @@ export function Button({
         android_ripple={{ color: variant === 'primary' ? c.brandHover : c.bgMuted }}
         style={({ pressed }) => [
           { height, minHeight: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: sizeKey === 'md' ? space.lg + space.xs : space.xl, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
-          lift,
           off && { opacity: 0.5 },
           Platform.OS === 'ios' && pressed && { opacity: 0.88 },
           style,
@@ -210,7 +213,7 @@ export function IconButton({ icon, label, onPress, tone = 'body', variant = 'gho
         android_ripple={{ color: c.bgMuted, borderless: true }}
         style={({ pressed }) => [
           { width: s, height: s, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-          variant === 'secondary' && [{ backgroundColor: c.bgSurface }, shadow.card],
+          variant === 'secondary' && [{ backgroundColor: c.bgSurface }, elevation(c).sh1],
           active && { backgroundColor: c.brandSoft },
           pressed && !active && { backgroundColor: c.bgMuted },
           disabled && { opacity: 0.5 },
@@ -218,7 +221,7 @@ export function IconButton({ icon, label, onPress, tone = 'body', variant = 'gho
       >
         <Icon name={icon} size={size.iconMd} tone={active ? 'brand' : tone} />
         {badge ? (
-          <View style={{ position: 'absolute', top: num ? space.xs : space.sm, right: num ? space.xs : space.sm, minWidth: num ? space.lg : size.dot, height: num ? space.lg : size.dot, borderRadius: radius.pill, backgroundColor: c.dangerSolid, borderWidth: size.ring, borderColor: c.bgApp, alignItems: 'center', justifyContent: 'center', paddingHorizontal: num ? 3 : 0 }}>
+          <View style={{ position: 'absolute', top: num ? space.xs : space.sm, right: num ? space.xs : space.sm, minWidth: num ? space.lg : size.dot, height: num ? space.lg : size.dot, borderRadius: radius.pill, backgroundColor: c.dangerSolid, borderWidth: size.ring, borderColor: variant === 'secondary' ? c.bgSurface : c.bgChrome, alignItems: 'center', justifyContent: 'center', paddingHorizontal: num ? 3 : 0 }}>
             {num ? <Txt v="overlineXs" color="onSolid" style={{ letterSpacing: 0 }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
           </View>
         ) : null}
@@ -360,16 +363,17 @@ export const TONE_ICON: Record<Tone, IconName> = { neutral: 'circle', brand: 'ci
 export const statusTone = (s: string): Tone => STATUS_TONE[s] ?? 'neutral';
 export const statusLabel = (s: string) => STATUS_LABEL[s] ?? s;
 
-/** Nishon — ton fonida ikonka + so'z. Pill radius. */
-export function Badge({ label, tone = 'neutral', icon, style }: { label: string; tone?: Tone | string; icon?: IconName | null; style?: StyleProp<ViewStyle> }) {
+/**
+ * Nishon — demo `.badge`: pill, 12.5 dp (9 css) qalin, padding 3×10, toneBg / toneInk. Ikonka faqat `icon` berilsa.
+ */
+export function Badge({ label, tone = 'neutral', icon, style }: { label: string; tone?: Tone | string; /** Ixtiyoriy ikonka (standart — yo'q, demo kabi). */ icon?: IconName | null; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   const t = (['neutral', 'brand', 'success', 'warning', 'danger', 'info'] as Tone[]).includes(tone as Tone) ? (tone as Tone) : 'neutral';
   const { ink, bg } = toneColors(c, t);
-  const ic = icon === null ? null : icon ?? TONE_ICON[t];
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm, minHeight: 24, borderRadius: radius.pill, backgroundColor: bg, flexShrink: 0 }, style]}>
-      {ic ? <Icon name={ic} size={size.iconSm - 4} color={ink} /> : null}
-      <Txt v="caption" style={{ color: ink, fontFamily: FONT[600], minWidth: textRoom(label, type.caption.fontSize) }} numberOfLines={1}>{label}</Txt>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm + 2, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg, flexShrink: 0 }, style]}>
+      {icon ? <Icon name={icon} size={size.iconSm - 4} color={ink} strokeWidth={2} /> : null}
+      <Txt v="badge" style={{ color: ink, minWidth: textRoom(label, type.badge.fontSize) }} numberOfLines={1}>{label}</Txt>
     </View>
   );
 }
@@ -394,13 +398,14 @@ export function StatusDot({ tone = 'neutral', label, style }: { tone?: Tone; lab
  * Ikonka plitkasi — 40×40 (yoki `size`). `filled` (standart) — modul/ton foni, radius.lg;
  * `filled={false}` — fonsiz, faqat rangli ikonka (eski ko'rinish).
  */
-export function IconTile({ icon, module: m = 'brand', tone, size: s = size.iconTile, filled = true, style }: { icon: IconName | string; module?: ModuleTone; tone?: Tone; size?: number; /** Fonli plitka (standart true). */ filled?: boolean; style?: StyleProp<ViewStyle> }) {
+export function IconTile({ icon, module: m = 'brand', tone, size: s = size.tile, filled = true, style, bg, ink }: { icon: IconName | string; module?: ModuleTone; tone?: Tone; size?: number; /** Fonli plitka (standart true). */ filled?: boolean; style?: StyleProp<ViewStyle>; /** Fon/ikonka rangini almashtirish (masalan asosiy amal plitkasi). */ bg?: string; ink?: string }) {
   const { c } = useTheme();
   const col = tone ? toneColors(c, tone) : moduleColors(c, m);
-  const r = s >= size.avatarLg ? radius.card : s >= size.iconTile ? radius.lg : radius.sm;
+  // Demo `tileM`: radius rCard × .55, ikonka — plitkaning 55%.
+  const r = s >= size.avatarLg ? radius.card : radius.tile;
   return (
-    <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, filled && { backgroundColor: col.bg, borderRadius: r, borderCurve: 'continuous' }, style]}>
-      <Icon name={icon} size={s >= size.avatarLg ? size.iconXl : s >= size.iconTile ? size.iconMd : size.iconSm} color={col.ink} strokeWidth={filled ? 1.75 : 1.5} />
+    <View style={[{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }, filled && { backgroundColor: bg ?? col.bg, borderRadius: r, borderCurve: 'continuous' }, style]}>
+      <Icon name={icon} size={Math.round(s * 0.55)} color={ink ?? col.ink} strokeWidth={filled ? 1.75 : 1.5} />
     </View>
   );
 }
@@ -416,8 +421,8 @@ export function ListGroup({ children, style }: { children: React.ReactNode; styl
   const { c } = useTheme();
   const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, shadow.card, style]}>
-      <View style={{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden', paddingVertical: space.xs }}>
+    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1, style]}>
+      <View style={{ borderRadius: radius.card, borderCurve: 'continuous', overflow: 'hidden' }}>
         {items.map((ch, i) => <ListIndexCtx.Provider key={(ch as { key?: React.Key }).key ?? i} value={i}>{ch}</ListIndexCtx.Provider>)}
       </View>
     </View>
@@ -425,29 +430,46 @@ export function ListGroup({ children, style }: { children: React.ReactNode; styl
 }
 
 /**
- * Ro'yxat qatori — min 44, ikonka plitkasi/avatar, sarlavha + izoh, o'ng tomon, chevron.
- * Ajratuvchi chiziq — ichki (matn boshidan): `ListGroup` ichida qator tepasida, tashqarida — pastida (`last` bo'lmasa).
+ * Ro'yxat qatori — demo `.li`: padding 12×16, 40 dp plitka (28 css), sarlavha 16 dp bir qator, izoh `t-sm`;
+ * o'ngda ustun: qiymat (qalin) + nishon. Chevron — faqat bosiladigan va o'ng tomoni bo'sh qatorlarda.
+ * Ajratuvchi — ichki (matn boshidan, o'ngda 16): `ListGroup` ichida qator tepasida, tashqarida — pastida (`last` bo'lmasa).
  */
-export function ListItem({ title, subtitle, subtitleLines = 2, right, onPress, icon, module: m, tone, leading, last, style, chevron, size: sz = 'md' }: { title: string; subtitle?: string; subtitleLines?: number; /** `lg` — haydovchi rejimi, 64 px qator. */ size?: 'md' | 'lg'; right?: React.ReactNode; onPress?: () => void; icon?: IconName | string; module?: ModuleTone; tone?: Tone; leading?: React.ReactNode; last?: boolean; style?: StyleProp<ViewStyle>; chevron?: boolean }) {
+export function ListItem({ title, subtitle, subtitleLines = 2, right, value, badge, onPress, icon, module: m, tone, leading, last, style, chevron, size: sz = 'md' }: {
+  title: string; subtitle?: string; subtitleLines?: number;
+  /** `lg` — haydovchi rejimi, 64 px qator. */ size?: 'md' | 'lg';
+  /** O'ng tomon (to'liq erkin). */ right?: React.ReactNode;
+  /** O'ngdagi qiymat (demo `.li .r b`). */ value?: string;
+  /** O'ngdagi holat nishoni: `{ text, tone }`. */ badge?: { text: string; tone: Tone | string };
+  onPress?: () => void; icon?: IconName | string; module?: ModuleTone; tone?: Tone; leading?: React.ReactNode; last?: boolean; style?: StyleProp<ViewStyle>; chevron?: boolean;
+}) {
   const { c } = useTheme();
   const index = React.useContext(ListIndexCtx);
   const inGroup = index >= 0;
   const [tx, setTx] = useState<number | null>(null);
   const line = inGroup ? index > 0 : !last;
+  const lg = sz === 'lg';
+  const rightCol = value || badge ? (
+    <View style={{ alignItems: 'flex-end', gap: space.xs, maxWidth: '45%', flexShrink: 0 }}>
+      {value ? <Txt v="listValue" numberOfLines={1}>{value}</Txt> : null}
+      {badge ? <Badge label={badge.text} tone={badge.tone} /> : null}
+    </View>
+  ) : null;
+  const showChevron = chevron ?? (!!onPress && !right && !rightCol);
   return (
     <Pressable
       onPress={onPress ? () => { haptic.selection(); onPress(); } : undefined} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
       android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: sz === 'lg' ? size.driverTouch : size.row, paddingVertical: sz === 'lg' ? space.lg : space.md }, inGroup && { paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }, style]}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: lg ? size.driverTouch : size.row, paddingVertical: lg ? space.lg : space.md }, inGroup && { paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }, style]}
     >
-      {line ? <View pointerEvents="none" style={{ position: 'absolute', left: tx ?? (inGroup ? space.card : 0), right: inGroup ? space.md : 0, height: size.hairline, backgroundColor: c.borderSubtle, ...(inGroup ? { top: 0 } : { bottom: 0 }) }} /> : null}
-      {leading ?? (icon ? <IconTile icon={icon} module={m} tone={tone} /> : null)}
-      <View style={{ flex: 1 }} onLayout={(e) => { const x = Math.round(e.nativeEvent.layout.x); if (x !== tx) setTx(x); }}>
-        <Txt v={sz === 'lg' ? 'titleSm' : 'bodyStrong'} numberOfLines={1}>{title}</Txt>
-        {subtitle ? <Txt v={sz === 'lg' ? 'bodySm' : 'caption'} numberOfLines={subtitleLines}>{subtitle}</Txt> : null}
+      {line ? <View pointerEvents="none" style={{ position: 'absolute', left: tx ?? (inGroup ? space.card : 0), right: inGroup ? space.card : 0, height: size.hairline, backgroundColor: c.borderSubtle, ...(inGroup ? { top: 0 } : { bottom: 0 }) }} /> : null}
+      {leading ?? (icon ? <IconTile icon={icon} module={m} tone={tone} size={lg ? size.iconTile + space.sm : size.tile} /> : null)}
+      <View style={{ flex: 1, minWidth: 0 }} onLayout={(e) => { const x = Math.round(e.nativeEvent.layout.x); if (x !== tx) setTx(x); }}>
+        <Txt v={lg ? 'titleSm' : 'listTitle'} numberOfLines={1}>{title}</Txt>
+        {subtitle ? <Txt v={lg ? 'bodySm' : 'tSm'} numberOfLines={subtitleLines}>{subtitle}</Txt> : null}
       </View>
+      {rightCol}
       {right}
-      {(chevron ?? !!onPress) ? <Icon name="chevron-right" tone="faint" /> : null}
+      {showChevron ? <Icon name="chevron-right" size={size.iconMd - 1} tone="faint" strokeWidth={1.75} /> : null}
     </Pressable>
   );
 }
@@ -484,7 +506,7 @@ export function KPICard({ label, value, caption, icon = 'activity', module: m = 
         accessibilityLabel={`${label}: ${value}`}
         onPressIn={onPress ? ps.onPressIn : undefined}
         onPressOut={onPress ? ps.onPressOut : undefined}
-        style={[{ flexGrow: 1, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: inline ? space.md : space.card, gap: inline ? space.md : space.md }, inline && { flexDirection: 'row', alignItems: 'center' }, shadow.card]}
+        style={[{ flexGrow: 1, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: inline ? space.md : space.card, gap: inline ? space.md : space.md }, inline && { flexDirection: 'row', alignItems: 'center' }, elevation(c).sh1]}
       >
         {inline ? <IconTile icon={icon} module={m} tone={tone} size={size.iconTile} /> : (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
@@ -509,7 +531,7 @@ export function Callout({ tone = 'neutral', icon, children, style }: { tone?: To
   const col = tone === 'neutral' ? { ink: c.textMuted, bg: c.bgSurface } : toneColors(c, tone);
   const ic: IconName = icon ?? ({ neutral: 'info', brand: 'info', success: 'circle-check', warning: 'triangle-alert', danger: 'circle-alert', info: 'info' } as const)[tone];
   return (
-    <View accessibilityLiveRegion={tone === 'danger' ? 'assertive' : 'none'} style={[{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start', backgroundColor: col.bg, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md + space.xs }, tone === 'neutral' && shadow.card, style]}>
+    <View accessibilityLiveRegion={tone === 'danger' ? 'assertive' : 'none'} style={[{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start', backgroundColor: col.bg, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md + space.xs }, tone === 'neutral' && elevation(c).sh1, style]}>
       <Icon name={ic} color={col.ink} size={size.iconMd} />
       {typeof children === 'string' ? <Txt v="bodySm" color={tone === 'neutral' ? 'body' : tone} style={{ flex: 1 }}>{children}</Txt> : <View style={{ flex: 1 }}>{children}</View>}
     </View>
@@ -555,6 +577,81 @@ export function ProgressBar({ value, tone, height = size.progress, style }: { va
   return (
     <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: pct }} style={[{ height, borderRadius: radius.pill, backgroundColor: c.chartTrack, overflow: 'hidden' }, style]}>
       <View style={{ width: `${pct}%`, height, borderRadius: radius.pill, backgroundColor: fill }} />
+    </View>
+  );
+}
+
+// ───────────────────────── Qidiruv, kalit-qiymat, timeline (demo) ─────────────────────────
+
+/**
+ * Qidiruv maydoni — demo `.search`: pill, 52 dp (38 css), padding 0×20, chegarasiz, soya sh1, lupa textFaint.
+ * Matn kiritilsa o'ngda tozalash tugmasi chiqadi.
+ */
+export function SearchField({ value, onChangeText, placeholder = i18n.t('ui.search'), right, style, ...p }: Omit<TextInputProps, 'style'> & { value: string; onChangeText: (t: string) => void; /** O'ngdagi qo'shimcha (filtr tugmasi). */ right?: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
+  return (
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.tight, height: size.search, paddingLeft: space.xl, paddingRight: value ? space.sm : space.xl, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: c.bgSurface }, elevation(c).sh1, style]}>
+      <Icon name="search" size={size.iconMd} color={c.textFaint} strokeWidth={1.75} />
+      <TextInput
+        {...p}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={c.textFaint}
+        accessibilityLabel={p.accessibilityLabel ?? placeholder}
+        returnKeyType={p.returnKeyType ?? 'search'}
+        autoCorrect={p.autoCorrect ?? false}
+        style={[type.search, { flex: 1, color: c.textStrong, paddingVertical: 0, height: size.search }]}
+      />
+      {value ? <IconButton icon="x" label={i18n.t('ui.close')} onPress={() => onChangeText('')} tone="muted" size={size.touch - space.sm} /> : null}
+      {right}
+    </View>
+  );
+}
+
+/**
+ * Kalit-qiymat ro'yxati — demo `.kv` qatorlari: padding 11×16, kulrang kalit, qalin qiymat, ichki chiziqlar (16 dan 16 gacha).
+ * Yuza karta (sh1) ichida; `flat` — kartasiz (boshqa karta ichida).
+ */
+export function KVList({ rows, flat, style }: { rows: { label: string; value: React.ReactNode; tone?: Tone }[]; flat?: boolean; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
+  return (
+    <View style={[!flat && [{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1], style]}>
+      {rows.map((r, i) => (
+        <View key={`${r.label}-${i}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, paddingVertical: space.tight, paddingHorizontal: space.card }}>
+          {i > 0 ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card, right: space.card, height: size.hairline, backgroundColor: c.borderSubtle }} /> : null}
+          <Txt v="kv" numberOfLines={1} style={{ flexShrink: 1 }}>{r.label}</Txt>
+          {typeof r.value === 'string' || typeof r.value === 'number'
+            ? <Txt v="kv" align="right" numberOfLines={2} style={{ fontFamily: FONT[600], color: r.tone && r.tone !== 'neutral' ? toneColors(c, r.tone).ink : c.textStrong, flexShrink: 1 }}>{r.value}</Txt>
+            : r.value}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Bosqichlar (timeline) — demo `.tl`: 14 dp nuqta (10 css), vertikal chiziq; `done` — yashil to'la, `now` — brend halqa.
+ */
+export function Timeline({ steps, style }: { steps: { title: string; sub?: string; state?: 'done' | 'now' | 'todo' }[]; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
+  const d = size.timelineDot;
+  return (
+    <View style={style}>
+      {steps.map((st, i) => {
+        const state = st.state ?? 'todo';
+        const last = i === steps.length - 1;
+        return (
+          <View key={`${st.title}-${i}`} style={{ flexDirection: 'row', gap: space.md, paddingBottom: last ? 0 : space.md }}>
+            {!last ? <View style={{ position: 'absolute', left: d / 2 - 1, top: d + 2, bottom: 0, width: 2, backgroundColor: c.borderDefault }} /> : null}
+            <View style={{ width: d, height: d, marginTop: 3, borderRadius: radius.pill, borderWidth: 2.5, borderColor: state === 'done' ? c.successSolid : state === 'now' ? c.brand : c.borderStrong, backgroundColor: state === 'done' ? c.successSolid : state === 'now' ? c.brandSoft : c.bgSurface }} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt v="kv" style={{ fontFamily: FONT[600], color: state === 'todo' ? c.textMuted : c.textStrong }}>{st.title}</Txt>
+              {st.sub ? <Txt v="tSm">{st.sub}</Txt> : null}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
