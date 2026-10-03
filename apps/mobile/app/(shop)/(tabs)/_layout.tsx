@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design/theme';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 import { tabIcon } from '@/design/ui';
 import { useCartCount } from '@/features/shop/cart';
 
@@ -13,9 +14,10 @@ import { useCartCount } from '@/features/shop/cart';
 export default function ShopTabs() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const count = useCartCount();
   return (
-    <Tabs tabBar={floatingTabBar()} screenOptions={{ ...tabsOptions(c, insets.bottom), headerShown: false }}>
+    <Tabs tabBar={floatingTabBar()} screenOptions={{ ...tabsOptions(c, insets.bottom, { reduce }), headerShown: false }}>
       <Tabs.Screen name="index" options={{ title: 'Bosh', tabBarIcon: tabIcon('house') }} />
       <Tabs.Screen name="katalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('layers') }} />
       <Tabs.Screen name="savat" options={{ title: 'Savat', tabBarIcon: tabIcon('shopping-cart'), tabBarBadge: count > 0 ? count : undefined }} />

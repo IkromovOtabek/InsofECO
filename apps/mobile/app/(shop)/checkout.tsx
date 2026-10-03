@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, EmptyState, Input, ListItem, Txt, fmtNum } from '@/design/primitives';
 import { ChipGroup, ListGroup, PageHeader, Reveal, StickyActionBar } from '@/design/blocks';
 import { Icon, type IconName } from '@/design/icons';
-import { haptic } from '@/design/motion';
+import { PressScale, haptic } from '@/design/motion';
 import { Sheet, fmtShort, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
@@ -32,14 +32,14 @@ const mln = (n: number) => fmtShort(n).replace('.', ',');
 function PayOption({ label, icon, on, onPress }: { label: string; icon: IconName; on: boolean; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressScale
       accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label}
-      onPress={() => { haptic.selection(); onPress(); }}
-      style={({ pressed }) => [{ flex: 1, height: size.buttonLg, borderRadius: radius.md + 2, borderCurve: 'continuous', borderWidth: size.ring, borderColor: on ? c.brand : 'transparent', backgroundColor: on ? c.brandSoft : c.bgSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, opacity: pressed ? 0.8 : 1 }, elevation(c).sh1]}
+      haptic={false} onPress={() => { haptic.selection(); onPress(); }}
+      style={[{ flex: 1, height: size.buttonLg, borderRadius: radius.md + 2, borderCurve: 'continuous', borderWidth: size.ring, borderColor: on ? c.brand : 'transparent', backgroundColor: on ? c.brandSoft : c.bgSurface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm }, elevation(c).sh1]}
     >
       <Icon name={icon} size={size.iconMd - 1} tone={on ? 'brand' : 'strong'} strokeWidth={1.75} />
       <Txt v="bodyStrong" style={{ color: on ? c.brandInk : c.textStrong }} numberOfLines={1}>{label}</Txt>
-    </Pressable>
+    </PressScale>
   );
 }
 

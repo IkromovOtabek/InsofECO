@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { ListGroup, OfflineBanner, PageHeader, Reveal, SectionHead } from '@/design/blocks';
 import { Badge, EmptyState, ListItem, Screen, Txt, fmtUnit, statusLabel } from '@/design/primitives';
-import { haptic, useHeaderRaise, usePressScale, Animated } from '@/design/motion';
+import { Animated, PressScale, haptic, useHeaderRaise, usePressScale } from '@/design/motion';
 import { Icon, IconName, dialog, fmtShort, toast } from '@/design/ui';
 import { BigAction } from '@/design/driver';
 import { useTheme } from '@/design/theme';
@@ -38,7 +38,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
 /** Hero ichidagi tugma — demo `invChip`: to'q chip foni, och matn. */
 function InvChip({ title, icon, onPress }: { title: string; icon: IconName; onPress: () => void }) {
   const { c } = useTheme();
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   return (
     <Animated.View style={[{ flex: 1 }, ps.style]}>
       <Pressable
@@ -145,8 +145,8 @@ export default function DriverToday() {
             ) : null}
 
             {active ? (
-              <Pressable
-                onPress={() => router.push(`/shipment/${active.id}`)} accessibilityRole="button" accessibilityLabel={`Faol yuk №${active.number}, ${active.cargo}`}
+              <PressScale
+                onPress={() => router.push(`/shipment/${active.id}`)} accessibilityRole="button" accessibilityLabel={`Faol yuk №${active.number}, ${active.cargo}`} scale={0.985}
                 style={[{ borderRadius: radius.hero, borderCurve: 'continuous', backgroundColor: c.bgInverse, padding: space.lg + 2, gap: space.md + 2 }, elevation(c).hero]}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
@@ -166,7 +166,7 @@ export default function DriverToday() {
                     {phone ? <InvChip title="Mijoz" icon="phone" onPress={() => void Linking.openURL(`tel:${phone}`)} /> : null}
                   </View>
                 ) : null}
-              </Pressable>
+              </PressScale>
             ) : x ? (
               <ListGroup>
                 <EmptyState compact icon="coffee" title="Hozir faol yuk yo'q" hint={open.length ? 'Keyingi yuklardan birini qabul qiling' : 'Yangi yuk kelganda xabar keladi'} />

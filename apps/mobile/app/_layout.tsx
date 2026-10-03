@@ -17,7 +17,8 @@ import { PinLock } from '@/components/pin-lock';
 import { useFonts } from 'expo-font';
 import { APP_FONTS } from '@/design/fonts';
 import { DialogHost, ReceiptHost, ResultHost, ToastHost } from '@/design/ui';
-import { stackOptions } from '@/design/nav';
+import { modalScreen, sheetScreen, stackOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
 import { afterLogin } from '@/features/shop/after-login';
@@ -122,24 +123,25 @@ function PushRouting() {
 
 function Nav() {
   const { c, dark } = useTheme();
+  const reduce = useReducedMotion();
   return (
     <>
       <StatusBar style={dark ? 'light' : 'dark'} />
-      <Stack screenOptions={stackOptions(c)}>
+      <Stack screenOptions={stackOptions(c, { reduce })}>
         {/* Sessiya yuklanguncha ko'rinadigan ekran. E'lon qilinmasa standart sarlavha bilan
             chiziladi va Gate uni darhol `replace` qilganda react-native-screens yangi
             arxitekturada yiqiladi: "ScreenStackFragment added into a non-stack container". */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
         {/* E-commerce — mehmonning birinchi ekrani; o'z Stack'i bor (ro'yxat → mahsulot) */}
         <Stack.Screen name="(shop)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false, animation: reduce ? 'none' : 'fade' }} />
         <Stack.Screen name="(tadbirkor)" options={{ headerShown: false }} />
         <Stack.Screen name="(quruvchi)" options={{ headerShown: false }} />
         <Stack.Screen name="(haydovchi)" options={{ headerShown: false }} />
         {/* Insof ERP — har bir bo'lim o'z guruhida */}
         {ERP_GROUPS.map((g) => <Stack.Screen key={g} name={g} options={{ headerShown: false }} />)}
         <Stack.Screen name="erp/[key]/[id]" options={{ title: 'Kartochka' }} />
-        <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', presentation: 'modal' }} />
+        <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', ...modalScreen({ reduce }) }} />
         <Stack.Screen name="erp/list/[key]" options={{ title: "Ro'yxat" }} />
         <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar' }} />
         {/* Haydovchi marshruti — "Yo'lga chiqdim" dan keyin ochiladi */}
@@ -151,6 +153,8 @@ function Nav() {
         <Stack.Screen name="shipment/[id]" options={{ title: 'Yuk' }} />
         <Stack.Screen name="chat/[id]" options={{ title: 'Suhbat' }} />
         <Stack.Screen name="worker/[id]" options={{ title: 'Quruvchi' }} />
+        {/* Sozlamalar — modalga o'xshash: pastdan yumshoq ko'tariladi */}
+        <Stack.Screen name="settings" options={sheetScreen({ reduce })} />
       </Stack>
     </>
   );

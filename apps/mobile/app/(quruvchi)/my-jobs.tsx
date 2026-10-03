@@ -5,6 +5,7 @@ import { ChipGroup, KpiGrid, ListGroup, Reveal, SectionHead, SkeletonList } from
 import { EmptyState, ListItem, Screen, fmtDateFull, statusLabel, statusTone } from '@/design/primitives';
 import { Stars, fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { LiveItem, LiveList } from '@/design/motion';
 import { space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { WorkOrder, useWorkOrders, useWorker } from '@/features/eco/api';
@@ -52,17 +53,21 @@ export default function MyJobs() {
           ) : list.length === 0 ? (
             <EmptyState icon="briefcase" title={seg === 'cancelled' ? "Bekor qilingan ish yo'q" : "Tarix bo'sh"} hint="Tugallangan ishlar shu yerda ko'rinadi" />
           ) : (
+            <LiveList>
             <ListGroup>
               {list.map((o) => (
+                <LiveItem key={o.id}>
                 <ListItem
-                  key={o.id} icon="hammer" module="production" tone={o.status === 'CANCELLED' ? 'danger' : undefined}
+                  icon="hammer" module="production" tone={o.status === 'CANCELLED' ? 'danger' : undefined}
                   title={o.title} subtitle={`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateFull(o.createdAt)}`} subtitleLines={1}
                   onPress={() => router.push(`/work-order/${o.id}`)}
                   value={`${fmtShort(o.price)} so'm`}
                   badge={{ text: statusLabel(o.status), tone: statusTone(o.status) }}
                 />
+                </LiveItem>
               ))}
             </ListGroup>
+            </LiveList>
           )}
         </Reveal>
       </ScrollView>

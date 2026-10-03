@@ -5,6 +5,7 @@ import { ChipGroup, ListGroup, Reveal, SectionHead, SkeletonList } from '@/desig
 import { Badge, Button, EmptyState, Gap, IconButton, ListItem, Screen, SearchField, Txt } from '@/design/primitives';
 import { Avatar, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { LiveItem, LiveList } from '@/design/motion';
 import { size, space } from '@/design/tokens';
 import { api, uuid } from '@/core/api';
 
@@ -48,10 +49,12 @@ export default function MembersScreen() {
               {pending.length ? (
                 <Reveal gap={space.sm}>
                   <SectionHead title="Tasdiq kutmoqda" count={pending.length} icon="user-plus" />
+                  <LiveList>
                   <ListGroup>
                     {pending.map((m) => (
+                      <LiveItem key={m.id}>
                       <ListItem
-                        key={m.id} chevron={false}
+                        chevron={false}
                         leading={<Avatar name={m.user.fullName ?? m.user.phone} size={size.iconTile} tone="warning" />}
                         title={m.user.fullName ?? m.user.phone}
                         subtitle={`${roleName(m.role)} · ${m.user.phone}`}
@@ -62,8 +65,10 @@ export default function MembersScreen() {
                           </View>
                         )}
                       />
+                      </LiveItem>
                     ))}
                   </ListGroup>
+                  </LiveList>
                   <Gap h={space.section} />
                 </Reveal>
               ) : null}
@@ -80,17 +85,21 @@ export default function MembersScreen() {
                     <EmptyState compact icon={needle ? 'search' : 'users'} title={needle ? 'Hech kim topilmadi' : "Hozircha xodim yo'q"} hint={needle ? "Boshqa so'z bilan qidiring" : "Tasdiqlangan xodimlar shu yerda ko'rinadi"} />
                   </ListGroup>
                 ) : (
+                  <LiveList stagger>
                   <ListGroup>
-                    {active.map((m) => (
+                    {active.map((m, i) => (
+                      <LiveItem key={m.id} index={i}>
                       <ListItem
-                        key={m.id} chevron={false}
+                        chevron={false}
                         leading={<Avatar name={m.user.fullName ?? m.user.phone} size={size.iconTile} />}
                         title={m.user.fullName ?? m.user.phone}
                         subtitle={m.user.phone}
                         right={<Badge label={roleName(m.role)} tone={m.role === 'HAYDOVCHI' ? 'info' : m.role === 'TADBIRKOR' ? 'brand' : 'neutral'} icon={null} />}
                       />
+                      </LiveItem>
                     ))}
                   </ListGroup>
+                  </LiveList>
                 )}
                 {active.length ? <Txt v="caption" color="muted" align="center">{`${active.length} ta xodim`}</Txt> : null}
               </View>

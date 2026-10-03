@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Linking, Pressable, ScrollView, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Linking, ScrollView, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Button, Card, IconButton, IconTile, Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
 import { PressScale } from '@/design/motion';
@@ -140,15 +140,15 @@ export function CategoryTiles({ items, onPick }: { items: Category[]; onPick: (n
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.pageX, gap: space.tight, paddingVertical: space.xs }}>
       {items.map((g) => (
-        <Pressable
+        <PressScale
           key={g.name} accessibilityRole="button" accessibilityLabel={`${g.name}, ${g.count} ta mahsulot`} onPress={() => onPick(g.name)}
-          style={({ pressed }) => ({ alignItems: 'center', gap: space.sm - 2, width: tile, opacity: pressed ? 0.7 : 1 })}
+          style={{ alignItems: 'center', gap: space.sm - 2, width: tile }}
         >
           <View style={[{ width: tile, height: tile, borderRadius: radius.xl, borderCurve: 'continuous', backgroundColor: c.bgSurface, padding: space.sm }, elevation(c).sh1]}>
             <ProductImage item={g.sample} />
           </View>
           <Txt v="label" color="body" numberOfLines={1} align="center">{g.name}</Txt>
-        </Pressable>
+        </PressScale>
       ))}
     </ScrollView>
   );

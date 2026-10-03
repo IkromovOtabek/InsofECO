@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, Txt, fmtDateFull, fmtTime } from '@/design/primitives';
 import { Avatar, Icon, toast } from '@/design/ui';
-import { haptic } from '@/design/motion';
+import { Animated, ENTER_ITEM, haptic } from '@/design/motion';
 import { size, space } from '@/design/tokens';
 import { BubbleShell, Composer, DayChip } from '@/components/chat-ui';
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
@@ -50,8 +50,11 @@ function ChatHeader({ name, sub }: { name: string; sub?: string | null }) {
 
 function Bubble({ r }: { r: Extract<Row, { kind: 'msg' }> }) {
   const { m, mine, showName, pending } = r;
+  // Faqat yangi xabar (yuborilayotgan yoki hozirgina kelgan) pastdan prujina bilan chiqadi — tarix va
+  // scroll paytida qayta chizilgan qatorlar harakatsiz
+  const fresh = useRef(!!pending || (!mine && Date.now() - Date.parse(m.createdAt) < 15_000)).current;
   return (
-    <View style={{ marginTop: showName ? space.sm : 0 }}>
+    <Animated.View entering={fresh ? ENTER_ITEM : undefined} style={{ marginTop: showName ? space.sm : 0 }}>
       {showName ? <Txt v="caption" style={{ marginLeft: space.md, marginBottom: 2 }}>{m.sender.fullName ?? 'Suhbatdosh'}</Txt> : null}
       <BubbleShell
         side={mine ? 'out' : 'in'}
@@ -66,7 +69,7 @@ function Bubble({ r }: { r: Extract<Row, { kind: 'msg' }> }) {
       >
         <Txt v="body" color={mine ? 'onBrand' : 'strong'}>{m.text}</Txt>
       </BubbleShell>
-    </View>
+    </Animated.View>
   );
 }
 

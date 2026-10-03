@@ -6,7 +6,7 @@ import { EmptyState, IconTile, ListGroup, Txt, fmtDate, fmtTime } from '@/design
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { ChipGroup } from '@/design/blocks';
 import { IconName, toast } from '@/design/ui';
-import { Appear, haptic, stagger } from '@/design/motion';
+import { Animated, Appear, ENTER_FADE, EXIT_FADE, LiveItem, LiveList, haptic, stagger, usePressScale } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { ModuleTone, Tone, radius, size, space } from '@/design/tokens';
 import { Loader } from '@/design/loader';
@@ -72,15 +72,18 @@ function HeaderLink({ title, onPress, disabled }: { title: string; onPress: () =
 function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean; first: boolean; onPress: () => void }) {
   const { c } = useTheme();
   const time = bucketOf(n.createdAt, new Date()) === 'older' ? fmtDate(n.createdAt) : fmtTime(n.createdAt);
+  const ps = usePressScale(0.98);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { haptic.light(); onPress(); }}
+      onPressIn={ps.onPressIn} onPressOut={ps.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={`${unread ? 'Yangi. ' : ''}${n.title}. ${n.body}`}
       android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingHorizontal: space.card, paddingVertical: space.lg }, pressed && { backgroundColor: c.bgSubtle }]}
+      style={({ pressed }) => [{ paddingHorizontal: space.card, paddingVertical: space.lg }, pressed && { backgroundColor: c.bgSubtle }]}
     >
       {!first ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card + size.tile + space.md, right: space.card, height: size.hairline, backgroundColor: c.borderSubtle }} /> : null}
+      <Animated.View style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }, ps.style]}>
       <IconTile icon={n.icon} module={n.module} tone={n.tone} size={size.tile} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Txt v="listTitle" numberOfLines={2}>{n.title}</Txt>
@@ -88,8 +91,10 @@ function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean
       </View>
       <View style={{ alignItems: 'flex-end', gap: space.sm }}>
         <Txt v="tSm">{time}</Txt>
-        {unread ? <View accessibilityElementsHidden style={{ width: size.dot + 2, height: size.dot + 2, borderRadius: radius.pill, backgroundColor: c.brand }} /> : null}
+        {/* O'qildi deb belgilanganda nuqta yumshoq so'nadi */}
+        {unread ? <Animated.View entering={ENTER_FADE} exiting={EXIT_FADE} accessibilityElementsHidden style={{ width: size.dot + 2, height: size.dot + 2, borderRadius: radius.pill, backgroundColor: c.brand }} /> : null}
       </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -184,9 +189,12 @@ export function NotificationFeed({ items, loading, error, errorObj, refreshing, 
       renderItem={({ item: s, index }) => (
         <Appear delay={stagger(index)} style={{ marginTop: space.lg }}>
           <Txt v="overline" accessibilityRole="header" style={{ marginBottom: space.tight, marginLeft: space.xs }}>{BUCKET_LABEL[s.key]}</Txt>
-          <ListGroup>
-            {s.rows.map((n, i) => <NoticeRow key={n.id} n={n} unread={isUnread(n)} first={i === 0} onPress={() => open(n)} />)}
-          </ListGroup>
+          {/* Filtr almashganda (O'qilmagan) chiqib ketgan xabar so'nadi, qolganlari joyiga suriladi */}
+          <LiveList>
+            <ListGroup>
+              {s.rows.map((n, i) => <LiveItem key={n.id}><NoticeRow n={n} unread={isUnread(n)} first={i === 0} onPress={() => open(n)} /></LiveItem>)}
+            </ListGroup>
+          </LiveList>
         </Appear>
       )}
     />

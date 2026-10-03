@@ -12,7 +12,7 @@ import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { StatusMark, SuccessCheck } from './success';
-import { DUR, EASE_STATE, SPRING_SLIDE, SPRING_TAB, haptic, usePop } from './motion';
+import { DUR, EASE_STATE, ENTER_DIALOG, ENTER_SHEET, ENTER_TOAST, EXIT_DIALOG, EXIT_LAYER, EXIT_SHEET, EXIT_TOAST, MOVE_ITEM, SPRING_SLIDE, SPRING_TAB, haptic, usePop } from './motion';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { FONT, Palette, Tone, duration, elevation, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
@@ -152,7 +152,8 @@ function TabCell({ label, glyph, focused, driver, badge, onPress, onLongPress, o
   renderIcon?: (p: { focused: boolean; color: string; size: number }) => React.ReactNode;
 }) {
   const { c } = useTheme();
-  const pop = usePop(focused ? 1 : 0);
+  // Tanlanganda ikonka yengil sakraydi (.86 → 1.08 → 1); haptika — FloatingTabBar'da
+  const pop = usePop(focused ? 1 : 0, 0, true);
   const pillW = driver ? size.tabPillWDriver : size.tabPillW;
   const pillH = driver ? size.tabPillHDriver : size.tabPillH;
   const iconS = driver ? size.tabIconDriver : size.tabIcon;
@@ -273,8 +274,10 @@ export function Table<T>({ columns, rows, keyOf, onRowPress, empty, minWidth, st
 // Barcha oynalar bitta uslubda (Dribbble "Success modal" asosida): chegara chiziqlarisiz katta
 // yumaloq karta, tepada holat belgisi, markazda sarlavha, pastda to'liq enli katta tugmalar.
 //
-// MUHIM: faqat fon (parda) animatsiyalanadi. Tugmasi bor karta/varaq — oddiy `View`: Fabric'da
-// Reanimated uslubli konteyner ichidagi `Pressable` bosilmay qolardi yoki bosish fonga o'tib ketardi.
+// Harakat: parda so'nib chiqadi; karta/varaq Reanimated LAYOUT animatsiyasi (`entering`/`exiting`) bilan
+// prujinada kiradi va yumshoq chiqadi. `useAnimatedStyle` transformi ishlatilmaydi: Fabric'da u soya daraxtiga
+// yozilmay, ichidagi `Pressable` bosilish joyini noto'g'ri o'lchardi (tugma bosilmay qolardi). Layout animatsiyasi
+// tugagach ko'rinish React uslubida qoladi — bosish to'g'ri ishlaydi. Reduce motion — tizim sozlamasi bo'yicha bir zumda.
 
 /** Apparat "orqaga" tugmasi (Android) oynani yopadi. */
 function useBackClose(open: boolean, onClose: () => void) {
@@ -304,19 +307,19 @@ function DialogFrame({ onDismiss, children }: { onDismiss?: () => void; children
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+    <Animated.View exiting={EXIT_LAYER} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Scrim onPress={onDismiss} />
       <KeyboardAvoidingView
         pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[StyleSheet.absoluteFill, { justifyContent: 'center', paddingHorizontal: space.lg, paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }]}
       >
-        <View accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl, borderCurve: 'continuous', width: '100%', maxWidth: 420, maxHeight: '100%', alignSelf: 'center', overflow: 'hidden' }, shadow.pop]}>
+        <Animated.View entering={ENTER_DIALOG} exiting={EXIT_DIALOG} accessibilityViewIsModal accessibilityLiveRegion="polite" style={[{ backgroundColor: c.bgSurface, borderRadius: radius.xl, borderCurve: 'continuous', width: '100%', maxWidth: 420, maxHeight: '100%', alignSelf: 'center', overflow: 'hidden' }, shadow.pop]}>
           <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.xxl, paddingTop: space.xxl + space.xs }}>
             {children}
           </ScrollView>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -338,10 +341,10 @@ export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%
   useBackClose(open, onClose);
   if (!open) return null;
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+    <Animated.View exiting={EXIT_LAYER} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Scrim onPress={onClose} />
       <KeyboardAvoidingView pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
-        <View accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
+        <Animated.View entering={ENTER_SHEET} exiting={EXIT_SHEET} accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
           <View style={{ alignSelf: 'center', width: space.x10, height: space.xs + 1, borderRadius: radius.pill, backgroundColor: c.bgMuted, marginTop: space.md }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xxl, paddingRight: space.lg, paddingTop: space.md, paddingBottom: space.sm }}>
             <Txt v="titleLg" style={{ flex: 1 }} numberOfLines={2}>{title}</Txt>
@@ -349,9 +352,9 @@ export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: space.xxl, paddingVertical: space.sm }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
           {footer ? <View style={{ paddingHorizontal: space.xxl, paddingTop: space.md }}>{footer}</View> : null}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -464,22 +467,19 @@ export const toast = {
   info: (text: string, title?: string) => useToastStore.getState().push({ text, tone: 'info', title }),
 };
 
+/** Toast — tepadan prujina bilan tushadi, 3.2 s dan keyin yuqoriga so'nib ketadi; qolganlari joyiga suriladi. */
 function ToastCard({ item }: { item: ToastItem }) {
   const { c } = useTheme();
   const remove = useToastStore((s) => s.remove);
-  const reduce = useReducedMotion();
-  const p = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
-    p.value = reduce ? 1 : withTiming(1, { duration: DUR.state, easing: EASE_STATE });
-    const t = setTimeout(() => { p.value = withTiming(0, { duration: DUR.state, easing: EASE_STATE }); setTimeout(() => remove(item.id), DUR.state); }, 3200);
+    const t = setTimeout(() => remove(item.id), 3200);
     return () => clearTimeout(t);
-  }, [item.id, p, reduce, remove]);
-  const s = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ translateY: (1 - p.value) * -12 }] }));
+  }, [item.id, remove]);
   const { ink, solid } = toneColors(c, item.tone);
   const ICON: Record<Tone, IconName> = { neutral: 'info', brand: 'info', success: 'circle-check', warning: 'triangle-alert', danger: 'circle-alert', info: 'info' };
   const icon = ICON[item.tone];
   return (
-    <Animated.View accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md, paddingRight: space.xs }, shadow.pop, s]}>
+    <Animated.View entering={ENTER_TOAST} exiting={EXIT_TOAST} layout={MOVE_ITEM} accessibilityLiveRegion="polite" style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.md, paddingRight: space.xs }, shadow.pop]}>
       <View style={{ width: size.iconTileSm, height: size.iconTileSm, alignItems: 'center', justifyContent: 'center' }}>
         {item.tone === 'success' ? <SuccessCheck size={size.iconTileSm} /> : <Icon name={icon} color={item.tone === 'neutral' ? c.textBody : ink} />}
       </View>
@@ -497,7 +497,7 @@ function ToastCard({ item }: { item: ToastItem }) {
 export function ToastHost() {
   const items = useToastStore((s) => s.items);
   const insets = useSafeAreaInsets();
-  if (!items.length) return null;
+  // Konteyner doim turadi (bo'sh — balandligi 0): oxirgi toast ham chiqish animatsiyasi bilan ketadi
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + space.sm, left: space.lg, right: space.lg, gap: space.sm }}>
       {items.map((i) => <ToastCard key={i.id} item={i} />)}

@@ -12,7 +12,7 @@ import { SearchField } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
 import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom } from '@/design/tokens';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
-import { Appear, PressScale, stagger, useHeaderRaise } from '@/design/motion';
+import { Appear, PressScale, stagger, useHeaderRaise, useReducedMotion } from '@/design/motion';
 import { useSession } from '@/core/session';
 import MapView, { Marker } from 'react-native-maps';
 import { config } from '@/core/config';
@@ -52,12 +52,13 @@ const ownHeader = (t: ErpTabSpec) => t.screen.kind !== 'ai' && t.screen.kind !==
 export function ErpTabs({ role }: { role: ErpRole }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const cfg = erpRoleConfig(role);
   const driver = role === 'DRIVER';
   // Direktor: "Tasdiqlar" tabida kutayotganlar soni (bosh sahifadagi bilan bitta kesh)
   const approvals = useErpList(cfg.ai ? cfg.listKey : '').data?.rows.length ?? 0;
   return (
-    <Tabs tabBar={floatingTabBar({ driver })} screenOptions={tabsOptions(c, insets.bottom, { driver })}>
+    <Tabs tabBar={floatingTabBar({ driver })} screenOptions={tabsOptions(c, insets.bottom, { driver, reduce })}>
       {cfg.tabs.map((t) => (
         <Tabs.Screen
           key={t.route}
@@ -862,10 +863,13 @@ function ErpMapTab({ title }: { title: string }) {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={c.brand} />}
       >
-        {isLoading ? <SkeletonList rows={4} style={{ marginHorizontal: space.pageX }} />
-          : data?.fleet ? <FleetMap fleet={data.fleet} />
-          : data?.live?.length ? <LiveTrucks trucks={data.live} />
-          : <EmptyState icon="map" title="Yo'lda mashina yo'q" hint="Reys boshlanganda mashinalar shu yerda ko'rinadi" />}
+        {isLoading ? <SkeletonList rows={4} style={{ marginHorizontal: space.pageX }} /> : (
+          <Appear>
+            {data?.fleet ? <FleetMap fleet={data.fleet} />
+              : data?.live?.length ? <LiveTrucks trucks={data.live} />
+              : <EmptyState icon="map" title="Yo'lda mashina yo'q" hint="Reys boshlanganda mashinalar shu yerda ko'rinadi" />}
+          </Appear>
+        )}
       </ScrollView>
     </View>
   );

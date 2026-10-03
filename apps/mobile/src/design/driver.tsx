@@ -17,7 +17,7 @@ export function BigAction({ title, icon, onPress, tone = 'brand', loading, disab
   const bg = { brand: c.brand, success: c.successSolid, danger: c.dangerSolid, dark: c.textStrong }[tone];
   const fg = tone === 'brand' ? c.textOnBrand : tone === 'dark' ? c.bgSurface : c.textOnSolid;
   const off = !!(disabled || loading);
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   // Demo `.btn.pri` nuri — `0 10px 20px -10px brand`; balandlik — `.sticky .btn.xl` 56 css → 76 dp.
   const glow: ViewStyle | null = off ? null : elevation(c).glow(bg);
   return (
@@ -39,7 +39,7 @@ export function BigAction({ title, icon, onPress, tone = 'brand', loading, disab
 /** Ikkilamchi katta tugma (qo'ng'iroq, navigatsiya): 64 pt, yuza + yumshoq soya, chegarasiz. */
 export function BigSecondary({ title, icon, onPress, style }: { title: string; icon: IconName; onPress: () => void; style?: ViewStyle }) {
   const { c } = useTheme();
-  const ps = usePressScale(0.96);
+  const ps = usePressScale();
   return (
     <Animated.View style={[{ flex: 1 }, ps.style]}>
       <Pressable accessibilityRole="button" accessibilityLabel={title} onPressIn={ps.onPressIn} onPressOut={ps.onPressOut} onPress={() => { haptic.light(); onPress(); }} android_ripple={{ color: c.bgMuted }}

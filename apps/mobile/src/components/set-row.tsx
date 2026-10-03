@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
 import { IconTile, Txt } from '@/design/primitives';
 import { Icon, IconName } from '@/design/icons';
-import { haptic } from '@/design/motion';
+import { Animated, haptic, usePressScale } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { ModuleTone, Tone, elevation, radius, size, space } from '@/design/tokens';
 
@@ -38,14 +38,18 @@ export function SetRow({ icon, module: m, tone, title, subtitle, value, right, o
 }) {
   const { c } = useTheme();
   const showChevron = chevron ?? (!!onPress && !right);
+  // Bosilganda fon yorishadi, mazmuni prujina bilan ozgina kichrayadi (ListItem bilan bir xil)
+  const ps = usePressScale(0.98);
   return (
     <Pressable
       onPress={onPress ? () => { haptic.selection(); onPress(); } : undefined}
+      onPressIn={onPress ? ps.onPressIn : undefined} onPressOut={onPress ? ps.onPressOut : undefined}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
       android_ripple={{ color: c.bgMuted }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.driverTouch, paddingVertical: space.md, paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }]}
+      style={({ pressed }) => [{ minHeight: size.driverTouch, justifyContent: 'center', paddingVertical: space.md, paddingHorizontal: space.card }, pressed && { backgroundColor: c.bgSubtle }]}
     >
+      <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md }, ps.style]}>
       {leading ?? (icon ? <IconTile icon={icon} module={m} tone={tone} size={size.tile} /> : null)}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt v="listTitle" color={danger ? 'danger' : 'strong'} numberOfLines={1}>{title}</Txt>
@@ -54,6 +58,7 @@ export function SetRow({ icon, module: m, tone, title, subtitle, value, right, o
       {value ? <Txt v="tSm" numberOfLines={1}>{value}</Txt> : null}
       {right}
       {showChevron ? <Icon name="chevron-right" size={size.iconMd - 1} tone={value ? 'muted' : 'faint'} strokeWidth={1.75} /> : null}
+      </Animated.View>
     </Pressable>
   );
 }

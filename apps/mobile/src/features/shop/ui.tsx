@@ -152,14 +152,14 @@ export function MiniArt({ item }: { item: Parameters<typeof ProductImage>[0]['it
 export function MiniChip({ label, icon, active, onPress, hint }: { label: string; icon: IconName; active?: boolean; onPress: () => void; hint?: string }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressScale
       accessibilityRole="button" accessibilityLabel={label} accessibilityHint={hint} accessibilityState={{ selected: !!active }}
-      onPress={() => { haptic.selection(); onPress(); }} hitSlop={{ top: space.xs, bottom: space.xs }}
-      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, height: size.touch - space.sm, paddingHorizontal: space.md + 2, borderRadius: radius.pill, backgroundColor: active ? c.brandSoft : c.bgSurface, opacity: pressed ? 0.75 : 1 }, elevation(c).sh1]}
+      haptic={false} onPress={() => { haptic.selection(); onPress(); }} hitSlop={{ top: space.xs, bottom: space.xs }}
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: space.xs + 2, height: size.touch - space.sm, paddingHorizontal: space.md + 2, borderRadius: radius.pill, backgroundColor: active ? c.brandSoft : c.bgSurface }, elevation(c).sh1]}
     >
       <Icon name={icon} size={size.iconSm} tone={active ? 'brand' : 'body'} />
       <Txt v="label" color={active ? 'brand' : 'body'}>{label}</Txt>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -182,12 +182,13 @@ export function QtyStepper({ value, onChange, unit, min = 1, step = 1, compact }
   };
   const b = compact ? size.iconTileSm : size.tile;
   const btn = (icon: IconName, label: string, d: number, disabled?: boolean) => (
-    <Pressable
-      accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={() => bump(d)} hitSlop={(size.touch - b) / 2 + 2}
-      style={({ pressed }) => [{ width: b, height: b, borderRadius: radius.pill, backgroundColor: c.bgSurface, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }, elevation(c).sh1]}
+    <PressScale
+      accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} haptic={false} scale={0.9}
+      onPress={() => bump(d)} hitSlop={(size.touch - b) / 2 + 2}
+      style={[{ width: b, height: b, borderRadius: radius.pill, backgroundColor: c.bgSurface, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.45 : 1 }, elevation(c).sh1]}
     >
       <Icon name={icon} size={compact ? size.iconSm : size.iconMd - 2} tone="strong" strokeWidth={2.5} />
-    </Pressable>
+    </PressScale>
   );
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.xs, borderRadius: radius.pill, backgroundColor: c.bgMuted }}>

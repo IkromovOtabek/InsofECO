@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { CreateOrderSchema } from '@insof/shared';
 import { ChipGroup, HeroCard, ListGroup, SectionHead, StickyActionBar, Toggle } from '@/design/blocks';
 import { Callout, Card, Gap, IconButton, Input, ListItem, Screen, Select, Txt, fmtM3, fmtNum, fmtSum } from '@/design/primitives';
-import { haptic } from '@/design/motion';
+import { Appear, PressScale, haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, shadow, size, space } from '@/design/tokens';
@@ -142,107 +142,108 @@ export default function NewOrder() {
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
-          {step === 1 && (
-            <>
-              <SectionHead title="Zavod va marka" icon="factory" />
-              <Card>
-                <Select label="Zavod" required value={plantId ?? null} options={plantOptions} placeholder={plants.isLoading ? 'Yuklanmoqda…' : 'Zavodni tanlang'} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
-                <Select label="Marka" required value={mixId ?? null} options={mixOptions} placeholder={!plantId ? 'Avval zavodni tanlang' : mixes.isLoading ? 'Markalar yuklanmoqda…' : 'Markani tanlang'} onChange={(v) => setMixId(v)} containerStyle={{ marginBottom: 0 }} />
-              </Card>
-              <Gap h={space.section} />
-              <SectionHead title="Hajm va nasos" icon="layers" />
-              <Card>
-                <Input label="Hajm, m³" required hint="0,5 m³ qadam bilan" value={volume} onChangeText={setVolume} keyboardType="decimal-pad" mono error={volError} />
-                <Toggle label="Nasos kerak" hint="Beton nasos bilan quyiladi" value={needsPump} onChange={setNeedsPump} />
-              </Card>
-              {mix && vol > 0 && !volError ? (
-                <>
-                  <Gap h={space.grid} />
-                  <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
-                </>
-              ) : null}
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <SectionHead title="Obyekt" icon="map-pin" />
-              <Card>
-                <Select label="Obyekt" value={siteId ?? OTHER} options={siteOptions} onChange={(v) => setSiteId(v === OTHER ? undefined : v)} containerStyle={siteId ? { marginBottom: 0 } : undefined} />
-                {!siteId ? (
+          <Appear replay={step} from={10}>
+            {step === 1 && (
+              <>
+                <SectionHead title="Zavod va marka" icon="factory" />
+                <Card>
+                  <Select label="Zavod" required value={plantId ?? null} options={plantOptions} placeholder={plants.isLoading ? 'Yuklanmoqda…' : 'Zavodni tanlang'} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
+                  <Select label="Marka" required value={mixId ?? null} options={mixOptions} placeholder={!plantId ? 'Avval zavodni tanlang' : mixes.isLoading ? 'Markalar yuklanmoqda…' : 'Markani tanlang'} onChange={(v) => setMixId(v)} containerStyle={{ marginBottom: 0 }} />
+                </Card>
+                <Gap h={space.section} />
+                <SectionHead title="Hajm va nasos" icon="layers" />
+                <Card>
+                  <Input label="Hajm, m³" required hint="0,5 m³ qadam bilan" value={volume} onChangeText={setVolume} keyboardType="decimal-pad" mono error={volError} />
+                  <Toggle label="Nasos kerak" hint="Beton nasos bilan quyiladi" value={needsPump} onChange={setNeedsPump} />
+                </Card>
+                {mix && vol > 0 && !volError ? (
                   <>
-                    <Input label="Manzil" required value={address} onChangeText={setAddress} onBlur={() => setTouched(true)} placeholder="Tuman, ko'cha, mo'ljal" left="map-pin" error={addressError} />
-                    <ListItem
-                      icon={loc ? 'locate-fixed' : 'locate'} module="logistics" tone={loc ? 'success' : undefined} last
-                      title={locating ? 'Aniqlanmoqda…' : loc ? 'Joylashuv aniqlandi' : 'Joylashuvimni aniqlash'}
-                      subtitle={loc ? 'Haydovchi shu nuqtaga keladi · qayta aniqlash uchun bosing' : "Obyektda turgan bo'lsangiz — koordinata telefoningizdan olinadi"}
-                      onPress={locating ? undefined : () => void locate()}
-                    />
+                    <Gap h={space.grid} />
+                    <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
                   </>
-                ) : site ? <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>{site.address}</Txt> : null}
-              </Card>
+                ) : null}
+              </>
+            )}
 
-              <Gap h={space.section} />
-              <SectionHead title="Kun" icon="calendar-days" />
-              <ChipGroup items={Array.from({ length: DAYS }, (_, i) => ({ key: String(i), label: dayLabel(i) }))} value={String(day)} onChange={pickDay} />
+            {step === 2 && (
+              <>
+                <SectionHead title="Obyekt" icon="map-pin" />
+                <Card>
+                  <Select label="Obyekt" value={siteId ?? OTHER} options={siteOptions} onChange={(v) => setSiteId(v === OTHER ? undefined : v)} containerStyle={siteId ? { marginBottom: 0 } : undefined} />
+                  {!siteId ? (
+                    <>
+                      <Input label="Manzil" required value={address} onChangeText={setAddress} onBlur={() => setTouched(true)} placeholder="Tuman, ko'cha, mo'ljal" left="map-pin" error={addressError} />
+                      <ListItem
+                        icon={loc ? 'locate-fixed' : 'locate'} module="logistics" tone={loc ? 'success' : undefined} last
+                        title={locating ? 'Aniqlanmoqda…' : loc ? 'Joylashuv aniqlandi' : 'Joylashuvimni aniqlash'}
+                        subtitle={loc ? 'Haydovchi shu nuqtaga keladi · qayta aniqlash uchun bosing' : "Obyektda turgan bo'lsangiz — koordinata telefoningizdan olinadi"}
+                        onPress={locating ? undefined : () => void locate()}
+                      />
+                    </>
+                  ) : site ? <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>{site.address}</Txt> : null}
+                </Card>
 
-              <Gap h={space.section} />
-              <SectionHead title="Boshlanish vaqti" icon="clock" />
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }} accessibilityRole="radiogroup">
-                {SLOTS.map((h) => {
-                  const past = slotPast(day, h);
-                  const on = slot === h && !past;
-                  return (
-                    <Pressable
-                      key={h} disabled={past}
-                      onPress={() => { haptic.selection(); setSlot(h); }}
-                      accessibilityRole="radio" accessibilityState={{ selected: on, disabled: past }} accessibilityLabel={`${hh(h)}${past ? ", o'tib ketgan" : ''}`}
-                      style={({ pressed }) => [
-                        { flexBasis: '22%', flexGrow: 1, height: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : past ? c.bgMuted : c.bgSurface },
-                        !on && !past ? shadow.card : null,
-                        pressed && !on ? { backgroundColor: c.bgSubtle } : null,
-                      ]}
-                    >
-                      <Txt v="bodyStrong" mono style={{ color: on ? c.textOnBrand : past ? c.textFaint : c.textStrong, textDecorationLine: past ? 'line-through' : 'none' }}>{hh(h)}</Txt>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {day === 0 && SLOTS.every((h) => slotPast(0, h)) ? <Callout tone="info" icon="info" style={{ marginTop: space.md }}>Bugunga bo&apos;sh vaqt qolmadi — ertangi kunni tanlang</Callout> : null}
+                <Gap h={space.section} />
+                <SectionHead title="Kun" icon="calendar-days" />
+                <ChipGroup items={Array.from({ length: DAYS }, (_, i) => ({ key: String(i), label: dayLabel(i) }))} value={String(day)} onChange={pickDay} />
 
-              <Gap h={space.section} />
-              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                <View style={{ flex: 1 }}>
-                  <Txt v="bodyStrong">Mikserlar oralig&apos;i</Txt>
-                  <Txt v="caption">Har mashina orasidagi vaqt</Txt>
+                <Gap h={space.section} />
+                <SectionHead title="Boshlanish vaqti" icon="clock" />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }} accessibilityRole="radiogroup">
+                  {SLOTS.map((h) => {
+                    const past = slotPast(day, h);
+                    const on = slot === h && !past;
+                    return (
+                      <PressScale
+                        key={h} disabled={past} haptic={false}
+                        onPress={() => { haptic.selection(); setSlot(h); }}
+                        accessibilityRole="radio" accessibilityState={{ selected: on, disabled: past }} accessibilityLabel={`${hh(h)}${past ? ", o'tib ketgan" : ''}`}
+                        style={[
+                          { flexBasis: '22%', flexGrow: 1, height: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : past ? c.bgMuted : c.bgSurface },
+                          !on && !past ? shadow.card : null,
+                        ]}
+                      >
+                        <Txt v="bodyStrong" mono style={{ color: on ? c.textOnBrand : past ? c.textFaint : c.textStrong, textDecorationLine: past ? 'line-through' : 'none' }}>{hh(h)}</Txt>
+                      </PressScale>
+                    );
+                  })}
                 </View>
-                <IconButton icon="minus" label="Kamaytirish" variant="secondary" disabled={interval <= 0} onPress={() => setInterval((v) => Math.max(0, v - INTERVAL_STEP))} />
-                <Txt v="titleSm" align="center" style={{ minWidth: space.x12 + space.lg }}>{`${interval} daq`}</Txt>
-                <IconButton icon="plus" label="Ko'paytirish" variant="secondary" disabled={interval >= INTERVAL_MAX} onPress={() => setInterval((v) => Math.min(INTERVAL_MAX, v + INTERVAL_STEP))} />
-              </Card>
+                {day === 0 && SLOTS.every((h) => slotPast(0, h)) ? <Callout tone="info" icon="info" style={{ marginTop: space.md }}>Bugunga bo&apos;sh vaqt qolmadi — ertangi kunni tanlang</Callout> : null}
 
-              <Gap h={space.section} />
-              <SectionHead title="Izoh" icon="file-text" />
-              <Card>
-                <Input label="Izoh (ixtiyoriy)" value={note} onChangeText={setNote} placeholder="Kirish yo'li, mas'ul shaxs…" multiline maxLength={500} containerStyle={{ marginBottom: 0 }} />
-              </Card>
-            </>
-          )}
+                <Gap h={space.section} />
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Txt v="bodyStrong">Mikserlar oralig&apos;i</Txt>
+                    <Txt v="caption">Har mashina orasidagi vaqt</Txt>
+                  </View>
+                  <IconButton icon="minus" label="Kamaytirish" variant="secondary" disabled={interval <= 0} onPress={() => setInterval((v) => Math.max(0, v - INTERVAL_STEP))} />
+                  <Txt v="titleSm" align="center" style={{ minWidth: space.x12 + space.lg }}>{`${interval} daq`}</Txt>
+                  <IconButton icon="plus" label="Ko'paytirish" variant="secondary" disabled={interval >= INTERVAL_MAX} onPress={() => setInterval((v) => Math.min(INTERVAL_MAX, v + INTERVAL_STEP))} />
+                </Card>
 
-          {step === 3 && (
-            <>
-              <SectionHead title="Buyurtma" icon="clipboard-list" />
-              <ListGroup>
-                <ListItem icon="factory" module="production" title={mix?.grade ?? '—'} subtitle={`${fmtM3(vol)}${needsPump ? ' · nasos bilan' : ''}`} onPress={() => setStep(1)} />
-                <ListItem icon="map-pin" module="logistics" title={site?.name ?? 'Boshqa manzil'} subtitle={site?.address ?? address} onPress={() => setStep(2)} />
-                <ListItem icon="calendar-days" module="brand" title={scheduled ? `${dayLabel(day)}, ${hh(slot!)}` : '—'} subtitle={`Mikserlar oralig'i ${interval} daqiqa`} onPress={() => setStep(2)} />
-                {note.trim() ? <ListItem icon="file-text" title="Izoh" subtitle={note.trim()} /> : null}
-              </ListGroup>
-              <Gap h={space.grid} />
-              <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
-              <Txt v="caption" color="muted" style={{ marginTop: space.sm, marginLeft: space.xs }}>Yetkazish haqi zavod tasdiqlashda qo&apos;shiladi</Txt>
-            </>
-          )}
+                <Gap h={space.section} />
+                <SectionHead title="Izoh" icon="file-text" />
+                <Card>
+                  <Input label="Izoh (ixtiyoriy)" value={note} onChangeText={setNote} placeholder="Kirish yo'li, mas'ul shaxs…" multiline maxLength={500} containerStyle={{ marginBottom: 0 }} />
+                </Card>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <SectionHead title="Buyurtma" icon="clipboard-list" />
+                <ListGroup>
+                  <ListItem icon="factory" module="production" title={mix?.grade ?? '—'} subtitle={`${fmtM3(vol)}${needsPump ? ' · nasos bilan' : ''}`} onPress={() => setStep(1)} />
+                  <ListItem icon="map-pin" module="logistics" title={site?.name ?? 'Boshqa manzil'} subtitle={site?.address ?? address} onPress={() => setStep(2)} />
+                  <ListItem icon="calendar-days" module="brand" title={scheduled ? `${dayLabel(day)}, ${hh(slot!)}` : '—'} subtitle={`Mikserlar oralig'i ${interval} daqiqa`} onPress={() => setStep(2)} />
+                  {note.trim() ? <ListItem icon="file-text" title="Izoh" subtitle={note.trim()} /> : null}
+                </ListGroup>
+                <Gap h={space.grid} />
+                <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
+                <Txt v="caption" color="muted" style={{ marginTop: space.sm, marginLeft: space.xs }}>Yetkazish haqi zavod tasdiqlashda qo&apos;shiladi</Txt>
+              </>
+            )}
+          </Appear>
         </ScrollView>
 
         <StickyActionBar

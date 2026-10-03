@@ -5,6 +5,7 @@ import { Button, EmptyState, Skeleton, Txt } from '@/design/primitives';
 import { ChipGroup, Reveal, SegmentedControl, Toggle } from '@/design/blocks';
 import { Sheet } from '@/design/ui';
 import { useTheme } from '@/design/theme';
+import { Appear } from '@/design/motion';
 import { radius, size, space } from '@/design/tokens';
 import { useShopCatalog } from '@/features/shop/api';
 import { useCart } from '@/features/shop/cart';
@@ -96,7 +97,10 @@ export default function ShopCatalogScreen() {
               </View>
             </View>
             {items.length ? (
-              <ProductGrid items={items} onOpen={(id) => router.push(`/(shop)/${id}` as never)} />
+              // Toifa / saralash / filtr almashganda setka yumshoq qayta kiradi (birinchi yuklanishda — Reveal o'zi)
+              <Appear instant replay={`${group}|${sort}|${unit}|${onlyFav}`} from={10}>
+                <ProductGrid items={items} onOpen={(id) => router.push(`/(shop)/${id}` as never)} />
+              </Appear>
             ) : (
               <EmptyState
                 icon={filtered ? 'search' : 'store'}

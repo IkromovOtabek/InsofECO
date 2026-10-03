@@ -2,7 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/design/theme';
-import { stackOptions } from '@/design/nav';
+import { sheetScreen, stackOptions } from '@/design/nav';
+import { useReducedMotion } from '@/design/motion';
 import { LoginPrompt } from '@/features/shop/login-prompt';
 
 /**
@@ -14,17 +15,18 @@ import { LoginPrompt } from '@/features/shop/login-prompt';
  */
 export default function ShopLayout() {
   const { c } = useTheme();
+  const reduce = useReducedMotion();
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <Stack screenOptions={stackOptions(c)}>
+      <Stack screenOptions={stackOptions(c, { reduce })}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Mahsulot va zavod — surat/muqova ekran tepasigacha, orqaga tugmasi suzib turadi */}
         <Stack.Screen name="[id]" options={{ title: 'Mahsulot', headerShown: false }} />
         <Stack.Screen name="zavod" options={{ title: 'Zavod', headerShown: false }} />
         <Stack.Screen name="kalkulyator" options={{ title: 'Kalkulyator' }} />
-        <Stack.Screen name="checkout" options={{ title: 'Buyurtma', headerShown: false }} />
+        <Stack.Screen name="checkout" options={{ title: 'Buyurtma', headerShown: false, ...sheetScreen({ reduce }) }} />
         <Stack.Screen name="kuzatish/[id]" options={{ title: 'Kuzatish', headerShown: false }} />
-        <Stack.Screen name="aloqa" options={{ title: 'Aloqa', headerShown: false }} />
+        <Stack.Screen name="aloqa" options={{ title: 'Aloqa', headerShown: false, ...sheetScreen({ reduce }) }} />
       </Stack>
       <LoginPrompt />
     </View>
