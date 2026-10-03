@@ -6,7 +6,7 @@ import { tabsOptions } from '@/design/nav';
 import { HeaderBack, tabIcon } from '@/design/ui';
 
 /**
- * Tadbirkor — 5 tab: Bosh · Loyihalar · Buyurtmalar · Moliya · Menyu.
+ * Tadbirkor — 5 tab (roles/TADBIRKOR.json): Bosh · Loyihalar · Buyurtma · Moliya · Menyu.
  * Yashirin ekranlar: Quruvchilar, Haydovchilar, Materiallar, Transport, Xabarlar, Bildirishnomalar, Profil, Xodimlar.
  */
 export default function TadbirkorLayout() {
@@ -16,8 +16,8 @@ export default function TadbirkorLayout() {
   return (
     <Tabs screenOptions={tabsOptions(c, insets.bottom)}>
       <Tabs.Screen name="index" options={{ title: 'Bosh', headerShown: false, tabBarIcon: tabIcon('house') }} />
-      <Tabs.Screen name="projects" options={{ title: 'Loyihalar', tabBarIcon: tabIcon('building') }} />
-      <Tabs.Screen name="orders" options={{ title: 'Buyurtmalar', tabBarIcon: tabIcon('clipboard-list') }} />
+      <Tabs.Screen name="projects" options={{ title: 'Loyihalar', tabBarIcon: tabIcon('hard-hat') }} />
+      <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('clipboard-list') }} />
       <Tabs.Screen name="finance" options={{ title: 'Moliya', tabBarIcon: tabIcon('chart-column') }} />
       <Tabs.Screen name="menu" options={{ title: 'Menyu', tabBarIcon: tabIcon('menu') }} />
       <Tabs.Screen name="workers" options={{ ...hidden, title: 'Quruvchilar', headerLeft: HeaderBack }} />

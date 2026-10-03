@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { EXPENSE_LABEL, INCOME_LABEL } from '@insof/shared';
 import { Button, Card, Divider, Gap, Input, ListItem, Panel, Screen, Txt, TxtColor, fmtDateFull, fmtSum } from '@/design/primitives';
@@ -10,7 +11,10 @@ export default function Finance() {
   const f = useFinance();
   const ex = useExpenses();
   const inc = useIncomes();
+  const params = useLocalSearchParams<{ seg?: string }>();
   const [seg, setSeg] = useState<'overview' | 'income' | 'expense'>('overview');
+  // Bosh sahifadagi "Xarajat" tezkor amali — to'g'ridan-to'g'ri kiritish bo'limiga.
+  useEffect(() => { if (params.seg === 'expense' || params.seg === 'income' || params.seg === 'overview') setSeg(params.seg); }, [params.seg]);
   const [amt, setAmt] = useState(''); const [desc, setDesc] = useState('');
   const addExpense = useAction<{ amount: number; description: string; category: string }>((body) => ({ path: '/finance/expenses', body }), ['finance', 'dash']);
   const d = f.data;
