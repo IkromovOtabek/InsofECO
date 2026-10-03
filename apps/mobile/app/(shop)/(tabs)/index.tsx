@@ -51,7 +51,7 @@ export default function ShopHome() {
           </View>
         ) : (
           <Appear delay={stagger(2)}>
-            <CategoryTiles items={cats} onPick={(g) => toCatalog({ group: g })} />
+            <CategoryTiles items={cats} onPick={(g) => toCatalog({ group: g, t: String(Date.now()) })} />
           </Appear>
         )}
 

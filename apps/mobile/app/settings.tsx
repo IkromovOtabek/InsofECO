@@ -90,11 +90,13 @@ export default function SettingsScreen() {
   const palette = usePrefs((s) => s.palette);
   const setScheme = usePrefs((s) => s.setScheme);
   const setPalette = usePrefs((s) => s.setPalette);
-  const { kind, user, active, erp } = useSession();
+  const { status, kind, user, active, erp } = useSession();
+  // Mehmon (do'kon profilidan) — faqat ko'rinish, bildirishnoma, til va yordam; hisob/PIN/parol yo'q
+  const authed = status === 'authed';
 
   const [hasPin, setHasPin] = useState<boolean | null>(null);
   // PIN ekranidan qaytganda holat yangilansin
-  useFocusEffect(useCallback(() => { void pinStore.has().then(setHasPin); }, []));
+  useFocusEffect(useCallback(() => { if (authed) void pinStore.has().then(setHasPin); }, [authed]));
 
   const [notif, setNotif] = useState<Record<string, boolean>>(() => Object.fromEntries(NOTIF.map((n) => [n.key, kv.getBoolean(n.key) ?? true])));
   const toggleNotif = (key: string, v: boolean) => { kv.set(key, v); setNotif((s) => ({ ...s, [key]: v })); };
@@ -112,18 +114,20 @@ export default function SettingsScreen() {
     <>
       <Stack.Screen options={{ title: 'Sozlamalar' }} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 }}>
-        <Appear>
-          <ListGroup>
-            <ListItem
-              leading={<Avatar name={name} uri={avatar} size={size.avatarLg} tone="brand" />}
-              title={name}
-              subtitle={sub || undefined}
-              chevron={false}
-            />
-          </ListGroup>
-        </Appear>
+        {authed ? (
+          <Appear style={{ marginBottom: space.section }}>
+            <ListGroup>
+              <ListItem
+                leading={<Avatar name={name} uri={avatar} size={size.avatarLg} tone="brand" />}
+                title={name}
+                subtitle={sub || undefined}
+                chevron={false}
+              />
+            </ListGroup>
+          </Appear>
+        ) : null}
 
-        <Appear delay={stagger(1)} style={{ marginTop: space.section }}>
+        <Appear delay={stagger(1)}>
           <SectionHead title="Ko'rinish" icon="sun-moon" />
           <Txt v="label" style={{ marginBottom: space.sm }}>Mavzu</Txt>
           <SegmentedControl items={SCHEMES} value={scheme} onChange={setScheme} />
@@ -135,24 +139,26 @@ export default function SettingsScreen() {
           </View>
         </Appear>
 
-        <Appear delay={stagger(2)} style={{ marginTop: space.section }}>
-          <SectionHead title="Xavfsizlik" icon="shield-check" />
-          <ListGroup>
-            <ListItem
-              icon="grid-3x3" module="warehouse"
-              title="PIN kod"
-              subtitle={hasPin == null ? 'Tekshirilmoqda…' : hasPin ? "Yoqilgan — o'chirish uchun bosing" : 'Ilovani ochishda tez kirish'}
-              right={hasPin == null ? null : <Txt v="label" color={hasPin ? 'success' : 'muted'}>{hasPin ? 'Yoqilgan' : "O'chiq"}</Txt>}
-              onPress={() => router.push(hasPin ? '/(auth)/pin?mode=off' : '/(auth)/pin')}
-            />
-            <ListItem
-              icon="lock" module="warehouse"
-              title="Parolni o'zgartirish"
-              subtitle="Boshqa qurilmalardagi seanslar yopiladi"
-              onPress={() => router.push('/(auth)/change-password')}
-            />
-          </ListGroup>
-        </Appear>
+        {authed ? (
+          <Appear delay={stagger(2)} style={{ marginTop: space.section }}>
+            <SectionHead title="Xavfsizlik" icon="shield-check" />
+            <ListGroup>
+              <ListItem
+                icon="grid-3x3" module="warehouse"
+                title="PIN kod"
+                subtitle={hasPin == null ? 'Tekshirilmoqda…' : hasPin ? "Yoqilgan — o'chirish uchun bosing" : 'Ilovani ochishda tez kirish'}
+                right={hasPin == null ? null : <Txt v="label" color={hasPin ? 'success' : 'muted'}>{hasPin ? 'Yoqilgan' : "O'chiq"}</Txt>}
+                onPress={() => router.push(hasPin ? '/(auth)/pin?mode=off' : '/(auth)/pin')}
+              />
+              <ListItem
+                icon="lock" module="warehouse"
+                title="Parolni o'zgartirish"
+                subtitle="Boshqa qurilmalardagi seanslar yopiladi"
+                onPress={() => router.push('/(auth)/change-password')}
+              />
+            </ListGroup>
+          </Appear>
+        ) : null}
 
         <Appear delay={stagger(3)} style={{ marginTop: space.section }}>
           <SectionHead title="Bildirishnomalar" icon="bell" />

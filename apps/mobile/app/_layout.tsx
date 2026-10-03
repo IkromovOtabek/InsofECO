@@ -41,7 +41,8 @@ function Gate() {
     const segs = segments as unknown as string[];
     const group = segs[0];
     // Mehmon uchun birinchi ekran — do'kon (E-commerce), login emas. Kirish ekranlariga o'zi o'tadi.
-    if (status === 'anon') { if (group !== '(auth)' && group !== '(shop)') router.replace('/(shop)'); return; }
+    // Sozlamalar (mavzu, til) mehmonga ham ochiq — do'kon profilidan kiriladi
+    if (status === 'anon') { if (group !== '(auth)' && group !== '(shop)' && group !== 'settings') router.replace('/(shop)'); return; }
     // Kirgan holda ham ochiladigan auth ekranlari: xavfsizlik sozlamalari va yakun
     const security = group === '(auth)' && ['pin', 'change-password', 'done'].includes(segs[1] ?? '');
     if (security) return;

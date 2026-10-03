@@ -22,7 +22,7 @@ const NEXT_SORT: Record<Sort, Sort> = { default: 'cheap', cheap: 'expensive', ex
 export default function ShopCatalogScreen() {
   const router = useRouter();
   const { c } = useTheme();
-  const params = useLocalSearchParams<{ group?: string; focus?: string }>();
+  const params = useLocalSearchParams<{ group?: string; focus?: string; t?: string }>();
   const q = useShopCatalog();
   const { width } = useWindowDimensions();
   const colW = (width - space.pageX * 2 - space.md) / 2;
@@ -32,7 +32,8 @@ export default function ShopCatalogScreen() {
   const input = useRef<TextInput>(null);
 
   // Tab allaqachon ochiq bo'lsa ham bosh sahifadan kelgan toifa/qidiruv qo'llanadi
-  useEffect(() => { if (params.group) setGroup(params.group); }, [params.group]);
+  // `t` — har bosishda yangi: o'sha toifa qayta tanlansa ham (chip almashtirilgan bo'lsa) qo'llanadi
+  useEffect(() => { if (params.group) setGroup(params.group); }, [params.group, params.t]);
   useEffect(() => { if (params.focus) { const t = setTimeout(() => input.current?.focus(), 250); return () => clearTimeout(t); } }, [params.focus]);
 
   const groups = useMemo(() => Array.from(new Set((q.data?.items ?? []).map((i) => i.group).filter((g): g is string => !!g))), [q.data]);

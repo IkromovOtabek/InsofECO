@@ -126,6 +126,8 @@ export default function ErpDetail() {
   };
 
   const press = (a: ErpAction) => {
+    // Bitta amal bajarilayotganda ikkinchisi (yonidagi tugma) ishga tushmasin
+    if (run.isPending) return;
     setFormError(null);
     // Yopiq tugma bosilsa sababini aytamiz va qulfni ochishga urinib ko'ramiz —
     // xabarni o'qib, hech narsa qila olmay qolish eng yomoni
