@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
-import { Badge, Button, Card, EmptyState, Gap, IconTile, Input, ListItem, Panel, ProgressBar, Screen, StatusChip, Txt, fmtDateFull, fmtSum } from '@/design/primitives';
-import { dialog, Avatar, Stars, StatusLine, daysLeft, toast } from '@/design/ui';
+import { ListGroup, SectionHead, StickyActionBar, StickyPrimary } from '@/design/blocks';
+import { Badge, Button, Card, EmptyState, Gap, IconTile, Input, ListItem, ProgressBar, Screen, StatusChip, Txt, fmtDateFull, fmtSum } from '@/design/primitives';
+import { dialog, Avatar, IconName, Stars, daysLeft, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useWorkOrder, useWorkers } from '@/features/eco/api';
@@ -13,7 +14,22 @@ import { Loader } from '@/design/loader';
 const FLOW = ['NEW', 'ACCEPTED', 'WORKER_ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'DONE', 'PAID'];
 const FLOW_LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', WORKER_ASSIGNED: 'Quruvchi biriktirildi', IN_PROGRESS: 'Jarayonda', REVIEW: 'Tekshiruv', DONE: 'Tugallandi', PAID: "To'lov olindi" };
 
-/** Ish buyurtmasi: holat zanjiri + rolga qarab harakat tugmalari. */
+/** Kalit — qiymat qatori (ListGroup ichida; birinchisidan keyin ichki chiziq). */
+function KV({ k, v, first, tone }: { k: string; v: string; first?: boolean; tone?: 'brand' | 'danger' }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.row, paddingVertical: space.sm, paddingHorizontal: space.card }}>
+      {first ? null : <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: space.card, right: space.md, height: size.hairline, backgroundColor: c.borderSubtle }} />}
+      <Txt v="bodySm" color="muted" style={{ flexShrink: 0 }}>{k}</Txt>
+      <Txt v={tone ? 'bodyStrong' : 'body'} color={tone ?? 'strong'} align="right" style={{ flex: 1 }}>{v}</Txt>
+    </View>
+  );
+}
+
+/**
+ * Ish buyurtmasi: sarlavha kartasi (raqam, holat, to'lov, bosqich) → tafsilotlar → quruvchi → topshirilgan ish;
+ * rolga va holatga qarab bitta asosiy amal pastki panelda.
+ */
 export default function WorkOrderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -35,82 +51,151 @@ export default function WorkOrderScreen() {
   if (!o) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Ish buyurtmasi yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="circle-alert" title="Ish buyurtmasi yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }
   const idx = FLOW.indexOf(o.status); const dl = daysLeft(o.deadline);
   const isTadbirkor = role === 'TADBIRKOR'; const isWorker = role === 'QURUVCHI';
   const freeWorkers = (workers.data ?? []).filter((w) => !w.activeWork).slice(0, 8);
+  const late = dl !== null && dl < 0 && idx < 5;
+
+  // Pastki panel: rol va holatga qarab bitta asosiy amal.
+  let bar: { primary: StickyPrimary; secondary?: { title: string; icon?: IconName; onPress: () => void } } | null = null;
+  if (isTadbirkor && o.status === 'NEW') {
+    bar = {
+      primary: { title: 'Qabul qilish', icon: 'check', loading: accept.isPending, onPress: () => accept.mutate(undefined, { onError: err }) },
+      secondary: { title: 'Bekor', icon: 'x', onPress: () => dialog('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: "Yo'q", style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }], { tone: 'danger', icon: 'circle-x' }) },
+    };
+  } else if (isWorker && ['ACCEPTED', 'WORKER_ASSIGNED'].includes(o.status)) {
+    bar = { primary: { title: o.status === 'ACCEPTED' ? 'Qabul qilish va boshlash' : 'Ishni boshlash', icon: 'hammer', loading: start.isPending, onPress: () => start.mutate(undefined, { onError: err }) } };
+  } else if (isWorker && o.status === 'IN_PROGRESS') {
+    bar = { primary: { title: 'Ishni topshirish', icon: 'check-check', variant: 'success', loading: submit.isPending, onPress: () => submit.mutate(undefined, { onError: err }) } };
+  } else if (isTadbirkor && o.status === 'REVIEW') {
+    bar = {
+      primary: { title: 'Qabul va baho', icon: 'star', loading: review.isPending, onPress: () => dialog('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: 'Bekor', style: 'cancel' as const }]) },
+      secondary: { title: 'Qayta ishlash', icon: 'refresh-cw', onPress: () => review.mutate({ approve: false }, { onError: err }) },
+    };
+  } else if (isTadbirkor && o.status === 'DONE') {
+    bar = { primary: { title: `To'lash — ${fmtSum(o.price)}`, icon: 'wallet', variant: 'success', loading: pay.isPending, onPress: () => pay.mutate(undefined, { onError: err }) } };
+  }
+
+  const details: [string, string, ('brand' | 'danger')?][] = [
+    ['Loyiha', o.project?.name ?? 'Loyihasiz'],
+    ['Vazifa', o.description ?? '—'],
+    ['Manzil', o.address],
+    ['Muddat', `${fmtDateFull(o.deadline)}${dl === null || idx >= 5 ? '' : dl < 0 ? ` · ${-dl} kun kechikdi` : ` · ${dl} kun qoldi`}`, late ? 'danger' : undefined],
+    ["To'lov", fmtSum(o.price), 'brand'],
+  ];
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}><Txt v="overline" style={{ flex: 1 }} numberOfLines={1}>№{o.number} · {o.project?.name ?? 'Loyihasiz'}</Txt><StatusChip status={o.status} /></View>
-        <Txt v="titleMd" style={{ marginTop: 2 }}>{o.title}</Txt>
-        <Gap h={space.md} />
-        {o.status !== 'CANCELLED' ? (
-          <Card>
-            <ProgressBar value={((idx + 1) / FLOW.length) * 100} tone={o.status === 'PAID' ? 'success' : 'brand'} />
-            <View style={{ marginTop: space.sm }}>
-              {FLOW.map((s, i) => <StatusLine key={s} icon={i < idx ? 'circle-check' : i === idx ? 'circle-dot' : 'circle'} tone={i < idx ? 'success' : i === idx ? 'brand' : 'neutral'} text={i === idx ? `${FLOW_LABEL[s]} — hozir` : FLOW_LABEL[s]!} />)}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ padding: space.pageX, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isFetching && !q.isLoading} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}>
+          <Card style={{ padding: space.panel }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+              <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{`Ish №${o.number}`}</Txt>
+              <StatusChip status={o.status} />
             </View>
+            <Txt v="titleLg" style={{ marginTop: space.xs }}>{o.title}</Txt>
+            <Gap h={space.md} />
+            <Txt v="caption">To&apos;lov</Txt>
+            <Txt v="metric" color="brand" numberOfLines={1} adjustsFontSizeToFit>{fmtSum(o.price)}</Txt>
+            {o.status === 'CANCELLED' ? (
+              <Badge label="Bekor qilingan" tone="danger" icon="circle-x" style={{ alignSelf: 'flex-start', marginTop: space.md }} />
+            ) : (
+              <>
+                <Gap h={space.md} />
+                <ProgressBar value={((idx + 1) / FLOW.length) * 100} tone={o.status === 'PAID' ? 'success' : 'brand'} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: space.sm, gap: space.sm }}>
+                  <Txt v="caption">{`Bosqich ${idx + 1} / ${FLOW.length}`}</Txt>
+                  <Txt v="caption" color={o.status === 'PAID' ? 'success' : 'brand'} numberOfLines={1}>{FLOW_LABEL[o.status] ?? o.status}</Txt>
+                </View>
+                {idx >= 0 && idx < FLOW.length - 1 ? <Txt v="caption" color="muted" style={{ marginTop: space.xs }}>{`Keyingi: ${FLOW_LABEL[FLOW[idx + 1]!]}`}</Txt> : null}
+              </>
+            )}
           </Card>
-        ) : null}
-        <Panel title="Tafsilotlar" icon="clipboard-list">
-          <ListItem icon="file-text" title="Vazifa" subtitle={o.description ?? '—'} />
-          <ListItem icon="map-pin" title="Manzil" subtitle={o.address} />
-          <ListItem icon="banknote" tone="success" title="To'lov" subtitle={fmtSum(o.price)} />
-          <ListItem icon="calendar-days" tone={dl !== null && dl < 0 && idx < 5 ? 'danger' : 'brand'} title="Deadline" subtitle={`${fmtDateFull(o.deadline)}${dl !== null ? dl < 0 ? ` · ${-dl} kun kechikdi` : ` · ${dl} kun qoldi` : ''}`} last />
-        </Panel>
-        {o.worker ? (
-          <Panel title="Quruvchi" icon="hard-hat">
-            <ListItem leading={<Avatar name={o.worker.fullName} />} title={o.worker.fullName ?? o.worker.phone} subtitle={o.worker.workerProfile ? SPECIALTY_LABEL[o.worker.workerProfile.specialty as keyof typeof SPECIALTY_LABEL] : ''} right={o.worker.workerProfile ? <Stars value={o.worker.workerProfile.ratingAvg} /> : undefined} onPress={isTadbirkor ? () => router.push(`/worker/${o.worker!.id}`) : undefined} last />
-          </Panel>
-        ) : null}
-        {(o.photoKeys.length || o.workerComment) ? (
-          <Panel title="Topshirilgan ish" icon="image">
-            <View style={{ paddingVertical: space.sm }}>
-              {o.photoKeys.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>{o.photoKeys.map((k) => <IconTile key={k} icon="image" tone="neutral" size={size.driverTouch + space.sm} />)}</View> : null}
-              {o.workerComment ? <Txt v="body" style={{ marginTop: space.sm }}>{o.workerComment}</Txt> : null}
-              {o.reviewComment ? <Txt v="body" color="muted" style={{ marginTop: space.sm }}>Tadbirkor: {o.reviewComment}</Txt> : null}
-            </View>
-          </Panel>
-        ) : null}
 
-        <Gap h={space.xl} />
-        {/* ───── Harakatlar ───── */}
-        {isTadbirkor && o.status === 'NEW' ? <><Button title="Buyurtmani qabul qilish" icon="check" loading={accept.isPending} onPress={() => accept.mutate(undefined, { onError: err })} /><Gap h={space.sm} /><Button title="Bekor qilish" variant="ghost" size="md" onPress={() => dialog('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: 'Yo\'q', style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }])} /></> : null}
-        {isTadbirkor && o.status === 'ACCEPTED' ? (
-          <Card>
-            <Txt v="titleSm">Quruvchi biriktirish</Txt><Txt v="caption">Bo'sh qolsa — ochiq buyurtma, quruvchilar o'zi oladi</Txt><Gap h={space.sm} />
-            {freeWorkers.length === 0 ? <EmptyState icon="users" title="Bo'sh quruvchi yo'q" hint="Hozir hammasi band — buyurtma ochiq qoladi" /> : null}
-            {freeWorkers.map((w, i, arr) => <ListItem key={w.userId} leading={<Avatar name={w.fullName} />} title={w.fullName ?? ''} subtitle={w.profile ? SPECIALTY_LABEL[w.profile.specialty as keyof typeof SPECIALTY_LABEL] : ''} right={w.profile ? <Stars value={w.profile.ratingAvg} /> : undefined} onPress={() => assign.mutate(w.userId, { onError: err })} last={i === arr.length - 1} />)}
-          </Card>
-        ) : null}
-        {isWorker && ['ACCEPTED', 'WORKER_ASSIGNED'].includes(o.status) ? <Button title={o.status === 'ACCEPTED' ? 'Qabul qilish va boshlash' : 'Ishni boshlash'} size="xl" icon="hammer" loading={start.isPending} onPress={() => start.mutate(undefined, { onError: err })} /> : null}
-        {isWorker && o.status === 'IN_PROGRESS' ? (
-          <Card>
-            <Txt v="titleSm">Ish tugadi</Txt><Gap h={space.sm} />
-            <Button title="Foto yuklash" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — presigned S3 (keyingi versiya). Demo foto biriktiriladi.')} /><Gap h={space.sm} />
-            <Input value={comment} onChangeText={setComment} placeholder="Izoh" />
-            <Button title="Ishni topshirish" size="xl" icon="check-check" loading={submit.isPending} onPress={() => submit.mutate(undefined, { onError: err })} />
-          </Card>
-        ) : null}
-        {isTadbirkor && o.status === 'REVIEW' ? (
-          <Card>
-            <Txt v="titleSm">Tekshiruv</Txt><Gap h={space.sm} />
-            <Input value={comment} onChangeText={setComment} placeholder="Izoh (ixtiyoriy)" />
-            <View style={{ flexDirection: 'row', gap: space.md }}>
-              <Button title="Qayta ishlash" variant="ghost" size="md" icon="refresh-cw" style={{ flex: 1 }} onPress={() => review.mutate({ approve: false }, { onError: err })} />
-              <Button title="Qabul qilish va baholash" size="md" icon="star" style={{ flex: 2 }} loading={review.isPending} onPress={() => dialog('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: 'Bekor', style: 'cancel' as const }])} />
-            </View>
-          </Card>
-        ) : null}
-        {isTadbirkor && o.status === 'DONE' ? <Button title={`To'lash — ${fmtSum(o.price)}`} icon="wallet" loading={pay.isPending} onPress={() => pay.mutate(undefined, { onError: err })} /> : null}
-        {o.status === 'PAID' ? <View style={{ alignItems: 'center' }}><Badge label="To'lov amalga oshirilgan" tone="success" icon="circle-check" /></View> : null}
-        {o.status === 'CANCELLED' ? <View style={{ alignItems: 'center' }}><Badge label="Bekor qilingan" tone="danger" icon="circle-x" /></View> : null}
-      </ScrollView>
+          <Gap h={space.section} />
+          <SectionHead title="Tafsilotlar" />
+          <ListGroup>
+            {details.map(([k, v, tone], i) => <KV key={k} k={k} v={v} tone={tone} first={i === 0} />)}
+          </ListGroup>
+
+          {o.worker ? (
+            <>
+              <Gap h={space.section} />
+              <SectionHead title="Quruvchi" icon="hard-hat" />
+              <ListGroup>
+                <ListItem
+                  leading={<Avatar name={o.worker.fullName} />} title={o.worker.fullName ?? o.worker.phone}
+                  subtitle={o.worker.workerProfile ? SPECIALTY_LABEL[o.worker.workerProfile.specialty as keyof typeof SPECIALTY_LABEL] : undefined}
+                  right={o.worker.workerProfile ? <Stars value={o.worker.workerProfile.ratingAvg} /> : undefined}
+                  onPress={isTadbirkor ? () => router.push(`/worker/${o.worker!.id}`) : undefined}
+                />
+              </ListGroup>
+            </>
+          ) : null}
+
+          {isTadbirkor && o.status === 'ACCEPTED' ? (
+            <>
+              <Gap h={space.section} />
+              <SectionHead title="Quruvchi biriktirish" icon="users" />
+              <Txt v="caption" color="muted" style={{ marginBottom: space.sm }}>Bo&apos;sh qolsa — ochiq buyurtma, quruvchilar o&apos;zi oladi</Txt>
+              <ListGroup>
+                {freeWorkers.length === 0 ? <EmptyState compact icon="users" title="Bo'sh quruvchi yo'q" hint="Hozir hammasi band — buyurtma ochiq qoladi" /> : freeWorkers.map((w) => (
+                  <ListItem
+                    key={w.userId} leading={<Avatar name={w.fullName} />} title={w.fullName ?? ''}
+                    subtitle={w.profile ? SPECIALTY_LABEL[w.profile.specialty as keyof typeof SPECIALTY_LABEL] : undefined}
+                    right={w.profile ? <Stars value={w.profile.ratingAvg} /> : undefined}
+                    onPress={assign.isPending ? undefined : () => assign.mutate(w.userId, { onError: err })}
+                  />
+                ))}
+              </ListGroup>
+            </>
+          ) : null}
+
+          {(o.photoKeys.length || o.workerComment || o.reviewComment) ? (
+            <>
+              <Gap h={space.section} />
+              <SectionHead title="Topshirilgan ish" icon="image" />
+              <Card>
+                {o.photoKeys.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>{o.photoKeys.map((k) => <IconTile key={k} icon="image" tone="neutral" size={size.driverTouch + space.sm} />)}</View> : null}
+                {o.workerComment ? <Txt v="body" style={{ marginTop: o.photoKeys.length ? space.sm : 0 }}>{o.workerComment}</Txt> : null}
+                {o.reviewComment ? <Txt v="body" color="muted" style={{ marginTop: space.sm }}>{`Tadbirkor: ${o.reviewComment}`}</Txt> : null}
+              </Card>
+            </>
+          ) : null}
+
+          {isWorker && o.status === 'IN_PROGRESS' ? (
+            <>
+              <Gap h={space.section} />
+              <SectionHead title="Ishni topshirish" icon="camera" />
+              <Card>
+                <Button title="Foto yuklash" icon="camera" variant="secondary" onPress={() => dialog('Foto', 'Kamera — presigned S3 (keyingi versiya). Demo foto biriktiriladi.')} />
+                <Gap h={space.md} />
+                <Input label="Izoh" value={comment} onChangeText={setComment} placeholder="Nima qilindi, nimaga e'tibor berish kerak" multiline containerStyle={{ marginBottom: 0 }} />
+              </Card>
+            </>
+          ) : null}
+
+          {isTadbirkor && o.status === 'REVIEW' ? (
+            <>
+              <Gap h={space.section} />
+              <SectionHead title="Tekshiruv" icon="clipboard-check" />
+              <Card>
+                <Input label="Izoh (ixtiyoriy)" value={comment} onChangeText={setComment} placeholder="Quruvchiga izoh" multiline containerStyle={{ marginBottom: 0 }} />
+              </Card>
+            </>
+          ) : null}
+
+          {o.status === 'PAID' ? (
+            <View style={{ alignItems: 'center', marginTop: space.section }}><Badge label="To'lov amalga oshirilgan" tone="success" icon="circle-check" /></View>
+          ) : null}
+        </ScrollView>
+
+        {bar ? <StickyActionBar primary={bar.primary} secondary={bar.secondary} /> : null}
+      </KeyboardAvoidingView>
     </Screen>
   );
 }

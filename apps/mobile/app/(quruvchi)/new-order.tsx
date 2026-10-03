@@ -1,21 +1,50 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Switch, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { CreateOrderSchema } from '@insof/shared';
-import { Button, Card, Gap, Input, Row, Screen, Select, Txt, fmtM3, fmtSum } from '@/design/primitives';
+import { ChipGroup, HeroCard, ListGroup, SectionHead, StickyActionBar, Toggle } from '@/design/blocks';
+import { Callout, Card, Gap, IconButton, Input, ListItem, Screen, Select, Txt, fmtM3, fmtNum, fmtSum } from '@/design/primitives';
+import { haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { space } from '@/design/tokens';
+import { radius, shadow, size, space } from '@/design/tokens';
 import { useCreateOrder, useMixes, usePlants } from '@/features/orders/api';
 import { useSites } from '@/features/sites/api';
 import { ApiException } from '@/core/api';
 
 const OTHER = '__other';
 const STEP_TITLES = ['Beton', 'Obyekt va vaqt', 'Tasdiqlash'];
+/** Boshlanish vaqti slotlari (soat). Tushlik soati (12) yo'q. */
+const SLOTS = [7, 8, 9, 10, 11, 13, 14, 15, 16, 17];
+const DAYS = 7;
+/** Bugun uchun eng erta slot — hozirdan kamida shuncha soat keyin (zavod tayyorlanishi). */
+const LEAD_HOURS = 2;
+const WD = ['Ya', 'Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sha'];
+const MON = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+const INTERVAL_STEP = 5;
+const INTERVAL_MAX = 240;
+
+const dayAt = (offset: number, hour = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); d.setHours(hour, 0, 0, 0); return d; };
+const dayLabel = (offset: number) => { if (offset === 0) return 'Bugun'; if (offset === 1) return 'Ertaga'; const d = dayAt(offset); return `${WD[d.getDay()]}, ${d.getDate()}-${MON[d.getMonth()]}`; };
+const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+const slotPast = (offset: number, h: number) => dayAt(offset, h).getTime() < Date.now() + LEAD_HOURS * 3_600_000;
+
+/** Zod xatolarini odam tilida: maydon nomi bo'yicha. */
+const FIELD_MSG: Record<string, string> = {
+  plantOrgId: 'Zavodni tanlang',
+  address: "Manzil 5 dan 200 belgigacha bo'lsin",
+  location: 'Obyekt joylashuvi aniqlanmagan — ro\'yxatdan obyekt tanlang yoki "Joylashuvimni aniqlash"ni bosing',
+  items: 'Marka va hajmni tanlang (hajm 0,5 m³ qadam bilan, 500 m³ gacha)',
+  scheduledAt: 'Kun va boshlanish vaqtini tanlang',
+  intervalMinutes: "Mikserlar oralig'i 0–240 daqiqa bo'lsin",
+  note: 'Izoh 500 belgidan oshmasin',
+};
 
 /**
- * 3 qadamli wizard: (1) zavod + marka + hajm + nasos → (2) obyekt + vaqt + interval → (3) ko'rib chiqish.
- * Validatsiya — backend bilan bitta zod sxema (CreateOrderSchema).
+ * 3 qadamli wizard: (1) zavod + marka + hajm + nasos → (2) obyekt + kun + vaqt sloti + interval → (3) ko'rib chiqish.
+ * Validatsiya — backend bilan bitta zod sxema (CreateOrderSchema); xatolar odam tilida.
+ * "Boshqa manzil" uchun koordinata telefon joylashuvidan olinadi (soxta koordinata yuborilmaydi).
  */
 export default function NewOrder() {
   const { c } = useTheme();
@@ -30,96 +59,197 @@ export default function NewOrder() {
   const [needsPump, setNeedsPump] = useState(false);
   const [siteId, setSiteId] = useState<string>();
   const [address, setAddress] = useState('');
-  const [date, setDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0); return d.toISOString().slice(0, 16); });
-  const [interval, setInterval] = useState('30');
+  const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [day, setDay] = useState(1);
+  const [slot, setSlot] = useState<number | null>(8);
+  const [interval, setInterval] = useState(30);
   const [note, setNote] = useState('');
+  const [touched, setTouched] = useState(false);
   const create = useCreateOrder();
 
   const site = sites.data?.find((s) => s.id === siteId);
   const mix = mixes.data?.find((m) => m.id === mixId);
-  const estimate = mix ? Number(mix.unitPrice) * Number(volume || 0) : 0;
+  const vol = Number(volume.replace(',', '.'));
+  const estimate = mix ? Number(mix.unitPrice) * (vol || 0) : 0;
+  const scheduled = slot != null ? dayAt(day, slot) : null;
 
   const payload = useMemo(() => ({
-    plantOrgId: plantId, siteId, address: site?.address ?? address, location: site ? { lat: site.lat, lng: site.lng } : { lat: 41.0, lng: 71.8 },
-    items: mixId ? [{ mixId, volumeM3: Number(volume) }] : [], scheduledAt: new Date(date), intervalMinutes: Number(interval), needsPump, note: note || undefined,
-  }), [plantId, siteId, site, address, mixId, volume, date, interval, needsPump, note]);
+    plantOrgId: plantId, siteId, address: (site?.address ?? address).trim(), location: site ? { lat: site.lat, lng: site.lng } : loc ?? undefined,
+    items: mixId ? [{ mixId, volumeM3: vol }] : [], scheduledAt: scheduled ?? undefined, intervalMinutes: interval, needsPump, note: note.trim() || undefined,
+  }), [plantId, siteId, site, address, loc, mixId, vol, scheduled, interval, needsPump, note]);
+
+  // Qadam bo'yicha yopiq sabab — tugma jim turmaydi, sababni aytadi.
+  const volError = volume && !(vol > 0 && vol <= 500 && Number.isInteger(vol * 2)) ? "Hajm 0,5 m³ qadam bilan, 500 m³ gacha" : undefined;
+  const step1Block = !plantId ? 'Avval zavodni tanlang' : !mixId ? 'Markani tanlang' : !(vol > 0) || volError ? volError ?? 'Hajmni kiriting' : undefined;
+  const addressError = !siteId && touched && address.trim().length < 5 ? "Manzil kamida 5 belgi: tuman, ko'cha, mo'ljal" : undefined;
+  const step2Block = !siteId && address.trim().length < 5 ? 'Manzilni kiriting (kamida 5 belgi)'
+    : !siteId && !loc ? 'Obyekt joylashuvini aniqlang'
+    : slot == null ? 'Boshlanish vaqtini tanlang'
+    : scheduled && scheduled.getTime() < Date.now() + LEAD_HOURS * 3_600_000 ? 'Bu vaqt o\'tib ketgan — keyinroq slotni tanlang' : undefined;
+
+  const locate = async () => {
+    setLocating(true);
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== 'granted') { toast.warning("Joylashuvga ruxsat berilmadi — sozlamalardan yoqing yoki ro'yxatdan obyekt tanlang"); return; }
+      const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setLoc({ lat: p.coords.latitude, lng: p.coords.longitude });
+      haptic.success();
+      if (address.trim().length < 5) {
+        const g = (await Location.reverseGeocodeAsync({ latitude: p.coords.latitude, longitude: p.coords.longitude }).catch(() => []))[0];
+        const text = g ? [g.city ?? g.subregion, g.district, g.street, g.streetNumber].filter(Boolean).join(', ') : '';
+        if (text.length >= 5) setAddress(text);
+      }
+    } catch {
+      toast.error("Joylashuv aniqlanmadi — GPS yoqilganini tekshiring", 'Xato');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const submit = () => {
     const parsed = CreateOrderSchema.safeParse(payload);
-    if (!parsed.success) return toast.error(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n'), 'Tekshiring');
+    if (!parsed.success) {
+      const msgs = [...new Set(parsed.error.issues.map((i) => FIELD_MSG[String(i.path[0])] ?? "Ma'lumotlarni tekshiring"))];
+      return toast.error(msgs.join('\n'), 'Tekshiring');
+    }
     create.mutate(parsed.data, {
       onSuccess: (o) => { toast.success(`Buyurtma №${o.number} zavodga yuborildi. Tasdiqlanganda xabar keladi.`, 'Yuborildi'); router.replace(`/order/${o.id}`); },
-      onError: (e) => toast.error(e instanceof ApiException ? e.message : 'Tarmoq xatosi — internetni tekshirib qayta urinib ko\'ring', 'Xato'),
+      onError: (e) => toast.error(e instanceof ApiException ? e.message : "Tarmoq xatosi — internetni tekshirib qayta urinib ko'ring", 'Xato'),
     });
   };
 
   const plantOptions = (plants.data ?? []).map((p) => ({ value: p.id, label: p.name, hint: p.address ?? undefined }));
   const mixOptions = (mixes.data ?? []).map((m) => ({ value: m.id, label: m.grade, hint: `${fmtSum(m.unitPrice)} / m³` }));
-  const siteOptions = [...(sites.data ?? []).map((s) => ({ value: s.id, label: s.name, hint: s.address })), { value: OTHER, label: 'Boshqa manzil', hint: 'Manzilni qo\'lda kiritaman' }];
+  const siteOptions = [...(sites.data ?? []).map((s) => ({ value: s.id, label: s.name, hint: s.address })), { value: OTHER, label: 'Boshqa manzil', hint: "Manzilni qo'lda kiritaman" }];
+  const pickDay = (k: string) => { const d = Number(k); setDay(d); if (slot != null && slotPast(d, slot)) setSlot(null); };
+
+  const next = () => (step === 1 ? setStep(2) : step === 2 ? setStep(3) : submit());
+  const block = step === 1 ? step1Block : step === 2 ? step2Block : undefined;
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.pageX }} keyboardShouldPersistTaps="handled">
-        <Row style={{ gap: space.sm, marginBottom: space.lg }} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: step }}>
-          {STEP_TITLES.map((t, i) => <Txt key={t} v={step === i + 1 ? 'label' : 'caption'} color={step >= i + 1 ? 'brand' : 'muted'} align="center" style={{ flex: 1 }}>{i + 1}. {t}</Txt>)}
-        </Row>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.md }} accessible accessibilityRole="progressbar" accessibilityLabel={`${step}-qadam: ${STEP_TITLES[step - 1]}`} accessibilityValue={{ min: 1, max: 3, now: step }}>
+          <View style={{ flexDirection: 'row', gap: space.xs + 2 }}>
+            {STEP_TITLES.map((t, i) => <View key={t} style={{ flex: 1, height: size.progress, borderRadius: radius.pill, backgroundColor: step >= i + 1 ? c.brand : c.bgMuted }} />)}
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: space.sm }}>
+            <Txt v="overline">{STEP_TITLES[step - 1]}</Txt>
+            <Txt v="caption" color="muted">{step} / 3</Txt>
+          </View>
+        </View>
 
-        {step === 1 && (
-          <>
-            <Select label="Zavod" value={plantId ?? null} options={plantOptions} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
-            <Select label="Marka" value={mixId ?? null} options={mixOptions} placeholder={plantId ? 'Markani tanlang' : 'Avval zavodni tanlang'} onChange={(v) => setMixId(v)} />
-            {plantId && mixes.isLoading ? <Txt v="caption" style={{ marginBottom: space.lg }}>Markalar yuklanmoqda…</Txt> : null}
-            <Input label="Hajm" hint="m³, 0.5 qadam" value={volume} onChangeText={setVolume} keyboardType="decimal-pad" mono />
-            <Card>
-              <Row style={{ justifyContent: 'space-between', gap: space.sm }}>
-                <Txt v="bodyStrong">Nasos kerak</Txt>
-                <Switch value={needsPump} onValueChange={setNeedsPump} trackColor={{ true: c.brand }} accessibilityLabel="Nasos kerak" />
-              </Row>
-            </Card>
-            <Gap h={space.xl} />
-            <Button title="Davom etish" iconRight="arrow-right" size="lg" onPress={() => setStep(2)} disabled={!plantId || !mixId || !(Number(volume) > 0)} />
-          </>
-        )}
+        <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
+          {step === 1 && (
+            <>
+              <SectionHead title="Zavod va marka" icon="factory" />
+              <Card>
+                <Select label="Zavod" required value={plantId ?? null} options={plantOptions} placeholder={plants.isLoading ? 'Yuklanmoqda…' : 'Zavodni tanlang'} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
+                <Select label="Marka" required value={mixId ?? null} options={mixOptions} placeholder={!plantId ? 'Avval zavodni tanlang' : mixes.isLoading ? 'Markalar yuklanmoqda…' : 'Markani tanlang'} onChange={(v) => setMixId(v)} containerStyle={{ marginBottom: 0 }} />
+              </Card>
+              <Gap h={space.section} />
+              <SectionHead title="Hajm va nasos" icon="layers" />
+              <Card>
+                <Input label="Hajm, m³" required hint="0,5 m³ qadam bilan" value={volume} onChangeText={setVolume} keyboardType="decimal-pad" mono error={volError} />
+                <Toggle label="Nasos kerak" hint="Beton nasos bilan quyiladi" value={needsPump} onChange={setNeedsPump} />
+              </Card>
+              {mix && vol > 0 && !volError ? (
+                <>
+                  <Gap h={space.grid} />
+                  <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
+                </>
+              ) : null}
+            </>
+          )}
 
-        {step === 2 && (
-          <>
-            <Select label="Obyekt" value={siteId ?? OTHER} options={siteOptions} onChange={(v) => setSiteId(v === OTHER ? undefined : v)} />
-            {!siteId ? <Input label="Manzil" value={address} onChangeText={setAddress} placeholder="Tuman, MFY, mo'ljal" left="map-pin" /> : null}
-            <Input label="Sana va vaqt" hint="YYYY-MM-DDTHH:mm" value={date} onChangeText={setDate} placeholder="2026-09-18T08:00" mono left="calendar-days" />
-            <Input label="Mashinalar orasidagi interval" hint="daqiqa" value={interval} onChangeText={setInterval} keyboardType="number-pad" mono />
-            <Input label="Izoh (ixtiyoriy)" value={note} onChangeText={setNote} placeholder="Kirish yo'li, mas'ul shaxs…" />
-            <Row style={{ gap: space.md }}>
-              <Button title="Orqaga" variant="secondary" size="lg" icon="arrow-left" style={{ flex: 1 }} onPress={() => setStep(1)} />
-              <Button title="Davom etish" iconRight="arrow-right" size="lg" style={{ flex: 2 }} onPress={() => setStep(3)} disabled={!siteId && address.length < 5} />
-            </Row>
-          </>
-        )}
+          {step === 2 && (
+            <>
+              <SectionHead title="Obyekt" icon="map-pin" />
+              <Card>
+                <Select label="Obyekt" value={siteId ?? OTHER} options={siteOptions} onChange={(v) => setSiteId(v === OTHER ? undefined : v)} containerStyle={siteId ? { marginBottom: 0 } : undefined} />
+                {!siteId ? (
+                  <>
+                    <Input label="Manzil" required value={address} onChangeText={setAddress} onBlur={() => setTouched(true)} placeholder="Tuman, ko'cha, mo'ljal" left="map-pin" error={addressError} />
+                    <ListItem
+                      icon={loc ? 'locate-fixed' : 'locate'} module="logistics" tone={loc ? 'success' : undefined} last
+                      title={locating ? 'Aniqlanmoqda…' : loc ? 'Joylashuv aniqlandi' : 'Joylashuvimni aniqlash'}
+                      subtitle={loc ? 'Haydovchi shu nuqtaga keladi · qayta aniqlash uchun bosing' : "Obyektda turgan bo'lsangiz — koordinata telefoningizdan olinadi"}
+                      onPress={locating ? undefined : () => void locate()}
+                    />
+                  </>
+                ) : site ? <Txt v="caption" color="muted" style={{ marginTop: space.sm }}>{site.address}</Txt> : null}
+              </Card>
 
-        {step === 3 && (
-          <>
-            <Card>
-              <Txt v="overline">Beton</Txt>
-              <Txt v="titleSm">{mix?.grade} · {fmtM3(volume)}{needsPump ? ' · nasos' : ''}</Txt>
-              <Gap h={space.md} />
-              <Txt v="overline">Qayerga</Txt>
-              <Txt>{site?.name ? `${site.name} — ${site.address}` : address}</Txt>
-              <Gap h={space.md} />
-              <Txt v="overline">Qachon</Txt>
-              <Txt>{date.replace('T', ' ')} · har {interval} daqiqada</Txt>
-              <Gap h={space.md} />
-              <Txt v="overline">Taxminiy narx</Txt>
-              <Txt v="metric" color="brand">{fmtSum(estimate)}</Txt>
-              <Txt v="caption">Yetkazish haqi zavod tasdiqlashda qo&apos;shiladi</Txt>
-            </Card>
-            <Gap h={space.xl} />
-            <Row style={{ gap: space.md }}>
-              <Button title="Orqaga" variant="secondary" size="lg" icon="arrow-left" style={{ flex: 1 }} onPress={() => setStep(2)} />
-              <Button title="Yuborish" icon="send" size="lg" style={{ flex: 2 }} onPress={submit} loading={create.isPending} />
-            </Row>
-          </>
-        )}
-        <View style={{ height: space.xxxl }} />
-      </ScrollView>
+              <Gap h={space.section} />
+              <SectionHead title="Kun" icon="calendar-days" />
+              <ChipGroup items={Array.from({ length: DAYS }, (_, i) => ({ key: String(i), label: dayLabel(i) }))} value={String(day)} onChange={pickDay} />
+
+              <Gap h={space.section} />
+              <SectionHead title="Boshlanish vaqti" icon="clock" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }} accessibilityRole="radiogroup">
+                {SLOTS.map((h) => {
+                  const past = slotPast(day, h);
+                  const on = slot === h && !past;
+                  return (
+                    <Pressable
+                      key={h} disabled={past}
+                      onPress={() => { haptic.selection(); setSlot(h); }}
+                      accessibilityRole="radio" accessibilityState={{ selected: on, disabled: past }} accessibilityLabel={`${hh(h)}${past ? ", o'tib ketgan" : ''}`}
+                      style={({ pressed }) => [
+                        { flexBasis: '22%', flexGrow: 1, height: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : past ? c.bgMuted : c.bgSurface },
+                        !on && !past ? shadow.card : null,
+                        pressed && !on ? { backgroundColor: c.bgSubtle } : null,
+                      ]}
+                    >
+                      <Txt v="bodyStrong" mono style={{ color: on ? c.textOnBrand : past ? c.textFaint : c.textStrong, textDecorationLine: past ? 'line-through' : 'none' }}>{hh(h)}</Txt>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {day === 0 && SLOTS.every((h) => slotPast(0, h)) ? <Callout tone="info" icon="info" style={{ marginTop: space.md }}>Bugunga bo&apos;sh vaqt qolmadi — ertangi kunni tanlang</Callout> : null}
+
+              <Gap h={space.section} />
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <View style={{ flex: 1 }}>
+                  <Txt v="bodyStrong">Mikserlar oralig&apos;i</Txt>
+                  <Txt v="caption">Har mashina orasidagi vaqt</Txt>
+                </View>
+                <IconButton icon="minus" label="Kamaytirish" variant="secondary" disabled={interval <= 0} onPress={() => setInterval((v) => Math.max(0, v - INTERVAL_STEP))} />
+                <Txt v="titleSm" align="center" style={{ minWidth: space.x12 + space.lg }}>{`${interval} daq`}</Txt>
+                <IconButton icon="plus" label="Ko'paytirish" variant="secondary" disabled={interval >= INTERVAL_MAX} onPress={() => setInterval((v) => Math.min(INTERVAL_MAX, v + INTERVAL_STEP))} />
+              </Card>
+
+              <Gap h={space.section} />
+              <SectionHead title="Izoh" icon="file-text" />
+              <Card>
+                <Input label="Izoh (ixtiyoriy)" value={note} onChangeText={setNote} placeholder="Kirish yo'li, mas'ul shaxs…" multiline maxLength={500} containerStyle={{ marginBottom: 0 }} />
+              </Card>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <SectionHead title="Buyurtma" icon="clipboard-list" />
+              <ListGroup>
+                <ListItem icon="factory" module="production" title={mix?.grade ?? '—'} subtitle={`${fmtM3(vol)}${needsPump ? ' · nasos bilan' : ''}`} onPress={() => setStep(1)} />
+                <ListItem icon="map-pin" module="logistics" title={site?.name ?? 'Boshqa manzil'} subtitle={site?.address ?? address} onPress={() => setStep(2)} />
+                <ListItem icon="calendar-days" module="brand" title={scheduled ? `${dayLabel(day)}, ${hh(slot!)}` : '—'} subtitle={`Mikserlar oralig'i ${interval} daqiqa`} onPress={() => setStep(2)} />
+                {note.trim() ? <ListItem icon="file-text" title="Izoh" subtitle={note.trim()} /> : null}
+              </ListGroup>
+              <Gap h={space.grid} />
+              <HeroCard label="Taxminiy narx" value={estimate} format={(n) => fmtNum(Math.round(n))} unit="so'm" />
+              <Txt v="caption" color="muted" style={{ marginTop: space.sm, marginLeft: space.xs }}>Yetkazish haqi zavod tasdiqlashda qo&apos;shiladi</Txt>
+            </>
+          )}
+        </ScrollView>
+
+        <StickyActionBar
+          primary={{ title: step === 3 ? 'Yuborish' : 'Davom etish', icon: step === 3 ? 'send' : 'arrow-right', loading: create.isPending, disabled: !!block, disabledReason: block, onPress: next }}
+          secondary={step > 1 ? { title: 'Orqaga', icon: 'arrow-left', onPress: () => setStep(step - 1) } : undefined}
+        />
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
