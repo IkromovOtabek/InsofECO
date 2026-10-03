@@ -28,9 +28,10 @@ import { AuthScreen, ConsentCheck, Divider, GhostButton, ErrorBox, FooterLink, H
  */
 type RoleKey = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
 const ROLES: { key: RoleKey; icon: IconName; title: string; desc: string }[] = [
-  { key: 'TADBIRKOR', icon: 'briefcase', title: 'Tadbirkor', desc: 'Beton zavodi yoki qurilish kompaniyasi egasi' },
-  { key: 'QURUVCHI', icon: 'hard-hat', title: 'Quruvchi', desc: 'Prorab yoki xususiy quruvchi — beton buyurtma qiladi' },
-  { key: 'HAYDOVCHI', icon: 'truck', title: 'Haydovchi', desc: 'Mikser haydovchisi — reyslarni qabul qiladi' },
+  // Ro'yxatdan o'tishda ikki yo'l: mijoz (QURUVCHI roli — beton va material buyurtma qiladi) va haydovchi.
+  // Tadbirkor hisobini zavod/kompaniya ERP orqali ochadi — bu yerda tanlanmaydi (mavjud hisoblar kirishda ishlaydi).
+  { key: 'QURUVCHI', icon: 'shopping-cart', title: 'Mijoz', desc: 'Beton va qurilish materiallarini buyurtma qilaman, yetkazishni kuzataman' },
+  { key: 'HAYDOVCHI', icon: 'truck', title: 'Haydovchi', desc: 'Mikser haydovchisi — reyslarni qabul qilaman' },
 ];
 
 export default function Register() {
