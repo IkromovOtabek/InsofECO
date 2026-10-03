@@ -16,7 +16,7 @@ import { useTelegramLogin } from '@/features/auth/telegram';
 import { PhotoPicker, PickedPhoto } from '@/features/auth/photo-picker';
 import { copyText, toast } from '@/design/ui';
 import { afterLogin } from '@/features/shop/after-login';
-import { AuthScreen, ConsentCheck, Divider, GhostButton, ErrorBox, FooterLink, Hint, PrimaryButton, Steps, Strength, TextLink, Title, generatePassword } from '@/features/auth/ui';
+import { AuthScreen, ConsentCheck, Divider, GhostButton, ErrorBox, FooterLink, Hint, PhonePrefix, PrimaryButton, Steps, Strength, TextLink, Title, generatePassword } from '@/features/auth/ui';
 
 /**
  * Ro'yxatdan o'tish — uch qadamli oqim.
@@ -32,16 +32,6 @@ const ROLES: { key: RoleKey; icon: IconName; title: string; desc: string }[] = [
   { key: 'QURUVCHI', icon: 'hard-hat', title: 'Quruvchi', desc: 'Prorab yoki xususiy quruvchi — beton buyurtma qiladi' },
   { key: 'HAYDOVCHI', icon: 'truck', title: 'Haydovchi', desc: 'Mikser haydovchisi — reyslarni qabul qiladi' },
 ];
-
-/** "+998" prefiksi — input balandligida, fokus halqasi hisobga olingan. */
-function PhonePrefix() {
-  const { c } = useTheme();
-  return (
-    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
-      <Txt v="body" mono color="muted">+998</Txt>
-    </View>
-  );
-}
 
 export default function Register() {
   const router = useRouter();

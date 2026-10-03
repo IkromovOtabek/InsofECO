@@ -4,7 +4,7 @@ import { requireOptionalNativeModule } from 'expo';
 import type * as ImagePickerNS from 'expo-image-picker';
 import { Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
-import { radius, shadow, size, space } from '@/design/tokens';
+import { elevation, radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { TextLink } from '@/features/auth/ui';
 
@@ -56,7 +56,7 @@ export function PhotoPicker({ value, onChange, error }: { value: PickedPhoto | n
             : <Icon name="user" size={size.iconXl} tone="faint" />}
         </Pressable>
         {/* Kamera nishoni — doira burchagida brend tugmachasi (bezak, bosish butun doirada) */}
-        <View pointerEvents="none" style={[{ position: 'absolute', right: 0, bottom: 0, width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.brand, borderWidth: size.ring, borderColor: c.bgApp, alignItems: 'center', justifyContent: 'center' }, shadow.card]}>
+        <View pointerEvents="none" style={[{ position: 'absolute', right: 0, bottom: 0, width: size.iconTileSm, height: size.iconTileSm, borderRadius: radius.pill, backgroundColor: c.brand, borderWidth: size.ring, borderColor: c.bgApp, alignItems: 'center', justifyContent: 'center' }, elevation(c).sh1]}>
           <Icon name={value ? 'pencil' : 'camera'} size={size.iconSm} color={c.textOnBrand} strokeWidth={2} />
         </View>
       </View>

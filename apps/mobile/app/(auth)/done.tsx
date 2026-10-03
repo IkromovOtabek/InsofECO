@@ -1,8 +1,7 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Card, Row, Txt } from '@/design/primitives';
+import { KVList, Txt } from '@/design/primitives';
 import { size, space } from '@/design/tokens';
-import { useTheme } from '@/design/theme';
 import { Appear } from '@/design/motion';
 import { SuccessCheck } from '@/design/success';
 import { useSession } from '@/core/session';
@@ -11,7 +10,6 @@ import { AuthScreen, GhostButton, InfoCard, PrimaryButton, Steps } from '@/featu
 /** Ro'yxatdan o'tish yoki parol tiklash tugagach — xulosa va keyingi qadam. */
 export default function Done() {
   const router = useRouter();
-  const { c } = useTheme();
   const { user, erp, kind } = useSession();
   const name = kind === 'erp' ? erp?.fullName : user?.fullName;
   const rows: { label: string; value: string; mono?: boolean }[] = [
@@ -34,14 +32,7 @@ export default function Done() {
       </Appear>
 
       <Appear delay={150} style={{ marginTop: space.x7 }}>
-        <Card style={{ paddingVertical: space.xs }}>
-          {rows.map((r, i) => (
-            <Row key={r.label} style={{ justifyContent: 'space-between', gap: space.md, minHeight: size.row, paddingVertical: space.sm, borderBottomWidth: i === rows.length - 1 ? 0 : size.hairline, borderBottomColor: c.borderSubtle }}>
-              <Txt v="label">{r.label}</Txt>
-              <Txt v={r.mono ? 'mono' : 'bodyStrong'} color="strong" align="right" numberOfLines={1} style={{ flexShrink: 1 }}>{r.value}</Txt>
-            </Row>
-          ))}
-        </Card>
+        <KVList rows={rows.map((r) => ({ label: r.label, value: r.mono ? <Txt v="mono" color="strong" numberOfLines={1} style={{ flexShrink: 1 }}>{r.value}</Txt> : r.value }))} />
       </Appear>
 
       <Appear delay={210} style={{ marginTop: space.lg }}>

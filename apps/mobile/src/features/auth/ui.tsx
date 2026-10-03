@@ -6,7 +6,7 @@ import { Button, Callout, IconButton, IconTile, Input, Txt } from '@/design/prim
 export { Callout };
 import { Icon, IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
-import { Tone, radius, shadow, size, space, toneColors } from '@/design/tokens';
+import { Tone, elevation, radius, size, space, toneColors } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import i18n from '@/core/i18n';
 import { config } from '@/core/config';
@@ -40,7 +40,7 @@ export function AuthScreen({ children, back = true, onBack, footer }: { children
         <ScrollView contentContainerStyle={{ paddingHorizontal: space.xxl, paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xl, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           {back ? <Appear from={8}><IconButton icon="arrow-left" label={i18n.t('ui.back')} tone="strong" style={{ marginLeft: -space.md }} onPress={() => (onBack ? onBack() : router.back())} /></Appear> : null}
           {children}
-          {footer ? <View style={{ marginTop: 'auto', paddingTop: space.xl, borderTopWidth: size.hairline, borderTopColor: c.borderSubtle }}>{footer}</View> : null}
+          {footer ? <View style={{ marginTop: 'auto', paddingTop: space.xl }}>{footer}</View> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -127,14 +127,14 @@ export function Divider({ label = i18n.t('ui.or') }: { label?: string }) {
 export const ErrorBox = ({ text }: { text?: string }) => (text ? <Appear from={6} style={{ marginTop: space.lg }}><Callout tone="danger">{text}</Callout></Appear> : null);
 export const InfoCard = ({ icon = 'circle-question-mark', children, tone = 'neutral' }: { icon?: IconName; children: string; tone?: Tone; color?: string }) => <Callout icon={icon} tone={tone}>{children}</Callout>;
 
-/** Uch qadamli ro'yxatdan o'tish ko'rsatkichi. */
+/** Qadamlar ko'rsatkichi — demo `.steps`: 4 css (6 dp) pill chiziqlar, o'tilgan va joriy — brend, qolgani bgMuted. */
 export function Steps({ labels, current }: { labels: string[]; current: number }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.xxl }} accessibilityLabel={`${current + 1}-qadam, ${labels.length} tadan`}>
+    <View style={{ flexDirection: 'row', gap: space.sm - 2, marginTop: space.xxl }} accessibilityLabel={`${current + 1}-qadam, ${labels.length} tadan`}>
       {labels.map((l, i) => (
         <View key={l} style={{ flex: 1, gap: space.sm }}>
-          <View style={{ height: space.xs, borderRadius: radius.pill, backgroundColor: i < current ? c.successSolid : i === current ? c.brand : c.borderDefault }} />
+          <View style={{ height: size.progress, borderRadius: radius.pill, backgroundColor: i <= current ? c.brand : c.bgMuted }} />
           <Txt v="caption" color={i === current ? 'strong' : 'faint'}>{l}</Txt>
         </View>
       ))}
@@ -200,7 +200,7 @@ export function Requirements({ password }: { password: string }) {
     { label: 'Maxsus belgi (# $ % !)', ok: /[^A-Za-z0-9]/.test(password) },
   ];
   return (
-    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card, gap: space.sm }, shadow.card]}>
+    <View style={[{ backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous', padding: space.card, gap: space.sm }, elevation(c).sh1]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.xs }}>
         <Txt v="overline" style={{ flex: 1 }}>Talablar</Txt>
         <Txt v="caption" color={done === rules.length ? 'success' : 'faint'}>{done}/{rules.length}</Txt>
@@ -230,41 +230,4 @@ export function FooterLink({ text, action, onPress }: { text: string; action: st
 /** Matnli havola — 44 px bosish maydoni bilan. */
 export function TextLink({ children, onPress, style }: { children: string; onPress: () => void; style?: object }) {
   return <Pressable onPress={onPress} accessibilityRole="link" hitSlop={space.sm} style={[{ minHeight: size.touch, justifyContent: 'center' }, style]}><Txt v="label" color="brand">{children}</Txt></Pressable>;
-}
-
-// ───────────────────────── PIN bo'laklari ─────────────────────────
-
-export function PinDots({ filled, length }: { filled: number; length: number }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.lg }} accessibilityLabel={`${filled} ta raqam kiritildi, ${length} tadan`}>
-      {Array.from({ length }, (_, i) => (
-        <View key={i} style={{ width: space.lg, height: space.lg, borderRadius: radius.pill, borderWidth: size.ring, borderColor: i < filled ? c.brand : c.borderStrong, backgroundColor: i < filled ? c.brand : 'transparent' }} />
-      ))}
-    </View>
-  );
-}
-
-/** Raqamli klaviatura — 3×4, oxirgi qatorda o'chirish. */
-export function PinKeypad({ onDigit, onDelete }: { onDigit: (d: string) => void; onDelete: () => void }) {
-  const { c } = useTheme();
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md }}>
-      {keys.map((k, i) => {
-        if (!k) return <View key={i} style={{ flexBasis: '33.33%', height: size.driverTouch }} />;
-        const isDel = k === 'del';
-        return (
-          <View key={i} style={{ flexBasis: '33.33%', alignItems: 'center' }}>
-            <Pressable
-              onPress={() => (isDel ? onDelete() : onDigit(k))} accessibilityRole="button" accessibilityLabel={isDel ? "Oxirgi raqamni o'chirish" : k}
-              style={({ pressed }) => [{ width: size.driverTouch, height: size.driverTouch, borderRadius: radius.pill, backgroundColor: isDel ? 'transparent' : c.bgSurface, alignItems: 'center', justifyContent: 'center' }, isDel ? null : shadow.card, pressed && { backgroundColor: c.brandSoft, transform: [{ scale: 0.92 }] }]}
-            >
-              {isDel ? <Icon name="delete" size={size.iconLg} tone="muted" /> : <Txt v="metric">{k}</Txt>}
-            </Pressable>
-          </View>
-        );
-      })}
-    </View>
-  );
 }

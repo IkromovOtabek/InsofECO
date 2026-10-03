@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PhoneSchema } from '@insof/shared';
-import { Badge, Card, IconTile, Input, Label, ListItem, Txt } from '@/design/primitives';
-import { radius, size, space } from '@/design/tokens';
-import { useTheme } from '@/design/theme';
+import { Badge, IconTile, Input, Label, ListGroup, ListItem } from '@/design/primitives';
+import { space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { ApiException } from '@/core/api';
-import { AuthScreen, ErrorBox, FooterLink, InfoCard, PrimaryButton, Title } from '@/features/auth/ui';
+import { AuthScreen, ErrorBox, FooterLink, InfoCard, PhonePrefix, PrimaryButton, Title } from '@/features/auth/ui';
 
 /**
  * Parolni tiklash — 1-qadam: raqamga kod yuborish.
@@ -17,16 +16,6 @@ import { AuthScreen, ErrorBox, FooterLink, InfoCard, PrimaryButton, Title } from
  * saqlanmaydi, shuning uchun pochta varianti ko'rsatiladi-yu, tanlanmaydi —
  * uning o'rniga administratorga murojaat qilish yo'li yozilgan.
  */
-
-/** "+998" prefiksi — input balandligida, fokus halqasi hisobga olingan. */
-function PhonePrefix() {
-  const { c } = useTheme();
-  return (
-    <View style={{ height: size.input + size.ring * 2, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: size.hairline, borderColor: c.borderDefault, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center', marginTop: size.ring }}>
-      <Txt v="body" mono color="muted">+998</Txt>
-    </View>
-  );
-}
 
 export default function Forgot() {
   const router = useRouter();
@@ -54,7 +43,7 @@ export default function Forgot() {
       <Title hint="Tasdiqlash kodini qayerga yuboraylik?">Parolni tiklash</Title>
 
       <Appear delay={130} style={{ marginTop: space.xxl }}>
-        <Card style={{ paddingVertical: space.xs }}>
+        <ListGroup>
           <ListItem
             leading={<IconTile icon="send" module="brand" />}
             title="Telegram yoki SMS orqali"
@@ -66,9 +55,8 @@ export default function Forgot() {
             title="Elektron pochta orqali"
             subtitle="Hisobga pochta bog'lanmagan"
             right={<Badge label="Mavjud emas" tone="neutral" icon="ban" />}
-            last
           />
-        </Card>
+        </ListGroup>
       </Appear>
 
       <Appear delay={180} style={{ marginTop: space.xl }}>

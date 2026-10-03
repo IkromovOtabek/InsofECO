@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Card, IconTile, ListItem, Txt } from '@/design/primitives';
+import { IconTile, ListGroup, ListItem, Txt } from '@/design/primitives';
 import { StatusLine } from '@/design/ui';
-import { radius, shadow, size, space, type } from '@/design/tokens';
+import { elevation, radius, size, space, type } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { Appear, haptic } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
@@ -128,7 +128,7 @@ export default function OtpScreen() {
                 borderWidth: size.ring,
                 borderColor: error ? c.danger : focused === i ? c.brand : 'transparent',
                 backgroundColor: d ? c.bgSurface : c.bgSubtle, color: c.textStrong,
-              }, shadow.card]}
+              }, elevation(c).sh1]}
             />
           ))}
         </View>
@@ -146,16 +146,15 @@ export default function OtpScreen() {
       </Appear>
 
       <Appear delay={240} style={{ marginTop: space.lg }}>
-        <Card style={{ paddingVertical: space.xs }}>
+        <ListGroup>
           <ListItem
             icon="clock"
             title={left > 0 ? 'Qayta yuborish' : 'Kodni qayta yuborish'}
             subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : tg ? 'Telegram\'ga kelmagan bo\'lsa bosing' : 'SMS kelmagan bo\'lsa bosing'}
             onPress={left > 0 ? undefined : () => void resend()}
             right={left > 0 ? <Txt v="mono" color="strong">{mmss}</Txt> : null}
-            last
           />
-        </Card>
+        </ListGroup>
       </Appear>
     </AuthScreen>
   );
