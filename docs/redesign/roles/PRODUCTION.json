@@ -1,0 +1,53 @@
+{
+  "role": "PRODUCTION",
+  "name": "Ishlab chiqarish boshlig'i",
+  "group": "Ishlab chiqarish",
+  "overline": "Ishlab chiqarish · Insof Beton",
+  "title": "Sex",
+  "periods": ["Bugun", "Hafta", "Oy"],
+  "hero": { "label": "Ishlab chiqarildi", "value": "412", "unit": "m³",
+            "delta": { "text": "6%", "dir": "up", "tone": "success" },
+            "spark": [338, 361, 352, 384, 371, 398, 389, 412] },
+  "kpis": [
+    { "label": "Reja bajarildi", "value": "92%", "delta": "412/448 m³", "tone": "warning", "icon": "trend", "module": "Production" },
+    { "label": "Sement sarfi", "value": "318 kg/m³", "delta": "+8 normadan", "tone": "danger", "icon": "layers", "module": "Warehouse" },
+    { "label": "Brak", "value": "1,4%", "delta": "-0,3%", "tone": "success", "icon": "shield", "module": "Production" },
+    { "label": "To'xtash", "value": "75 daq", "delta": "2 nosozlik", "tone": "warning", "icon": "clock", "module": "Production" }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Reja va fakt", "unit": "m³",
+    "labels": ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"],
+    "series": [
+      { "name": "Reja", "data": [440, 440, 440, 440, 440, 360, 0] },
+      { "name": "Fakt", "data": [418, 452, 397, 431, 412, 344, 0] }
+    ]
+  },
+  "breakdown": { "title": "Mahsulot bo'yicha", "items": [
+    { "label": "Beton M300", "value": 42 },
+    { "label": "Beton M200–M250", "value": 21 },
+    { "label": "Gazoblok D500", "value": 23 },
+    { "label": "JBI (plita, ustun)", "value": 14 }
+  ] },
+  "progress": { "title": "Oylik reja", "value": 71, "caption": "8 120 / 11 400 m³ · 11 kun qoldi" },
+  "attention": [
+    { "title": "Brigada kutayotgan", "sub": "Zayavkaga topshiriq berilmagan", "badge": { "text": "4", "tone": "warning" }, "value": null, "icon": "hardhat", "module": "Production" },
+    { "title": "Muddati yaqin", "sub": "≤ 2 kun · 186 m³ qoldi", "badge": { "text": "3", "tone": "danger" }, "value": null, "icon": "calendar", "module": "Production" },
+    { "title": "Uskuna nosozligi", "sub": "RBU-2 mikser · 45 daq to'xtadi", "badge": { "text": "1", "tone": "danger" }, "value": null, "icon": "wrench", "module": "Production" }
+  ],
+  "quick": [
+    { "label": "Zames qayd", "icon": "plus", "module": "Production" },
+    { "label": "Topshiriq berish", "icon": "clipboard", "module": "Production" },
+    { "label": "Brak qayd", "icon": "shield", "module": "Production" },
+    { "label": "Kunlik hisobot", "icon": "file", "module": "Brand" }
+  ],
+  "tabs": [
+    { "label": "Sex", "icon": "home" },
+    { "label": "Zameslar", "icon": "package" },
+    { "label": "Topshiriq", "icon": "clipboard" },
+    { "label": "Xabarlar", "icon": "bell" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Boshliq har kuni reja-faktni m³ va dona bo'yicha, sement sarfini normaga nisbatan va brakni ko'rib, qaysi marka yoki sexga e'tibor berishni hal qiladi. Uskuna to'xtashi va brigada kutayotgan zayavkalar — bugun chora ko'rilmasa muddat buziladigan joylar, shuning uchun ular ogohlantirishda turadi.",
+  "data": "Ishlab chiqarilgan hajm, reja (ProductionPlan), brak (ProductDefect), brigada kutayotgan/muddati yaqin zayavkalar ERP /api/mobile/home da bor (lib/mobile/home.ts PRODUCTION va dashboard.ts production()). Sement sarfi kg/m³ normaga nisbatan (Recipe va StockMove PRODUCTION_CONSUME) hamda uskunalar bo'yicha to'xtash vaqti (hozir faqat BrigadeIssue.downtimeMin) uchun yangi hisob yoki endpoint kerak; Equipment modeli yo'q."
+}

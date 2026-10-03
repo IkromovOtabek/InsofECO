@@ -53,6 +53,10 @@ export const illus = {
   person: { skin: '#f2c29b', pants: '#1e3a8a', vest: '#f59e0b', vestAlt: '#22c55e', helmet: '#fde047' },
 } as const;
 
+/**
+ * Eski palitra — FAQAT ochilish sahnasi (`components/launch.tsx`) uchun saqlangan, u o'zgarmaydi.
+ * Ilova ekranlari `palettes` dan (useTheme().c) oladi.
+ */
 export const palette = {
   light: {
     bgApp: '#f5f6f8',
@@ -131,7 +135,87 @@ export const palette = {
     textOnSolid: '#ffffff',
   },
 } as const;
-export type Palette = Record<keyof typeof palette.light, string>;
+/**
+ * Ilova palitralari: foydalanuvchi Sozlamalarda tanlaydi (Chizma yoki Marjon) va har birida
+ * yorug'/qorong'i rejim alohida sozlangan. Yorug' rejimda fon sof oq emas — palitra tusidagi
+ * yumshoq rang (ko'z charchamaydi). Barcha matn juftliklari WCAG AA (4.5:1) dan o'tadi.
+ * Kalitlar ikkala palitrada bir xil — ekranlar faqat `c.*` ni biladi.
+ */
+export const palettes = {
+  /** Chizma — brend ko'k (logotip), aksent marjon. */
+  chizma: {
+    light: {
+      bgApp: '#f0f2f8', bgSurface: '#fafbfd', bgSubtle: '#f5f7fb', bgMuted: '#e6e9f2',
+      bgChrome: '#f8f9fc', borderSubtle: '#e9ecf3', borderDefault: '#d7dbe7', borderStrong: '#bcc1d2',
+      textStrong: '#0e1430', textBody: '#2d3554', textMuted: '#535c7a', textFaint: '#7a829c',
+      textOnBrand: '#ffffff', brand: '#5266ee', brandHover: '#394feb', brandSoft: '#e2e5fd',
+      brandInk: '#0b1c8e', brandRing: '#5266ee80', accent: '#ff7a52', bgInverse: '#0b1341',
+      bgInverseChip: '#131f68', textOnInverse: '#f2f4ff', textOnInverseMuted: '#aab4e6', success: '#087c48',
+      successBg: '#e7f7ef', successSolid: '#07854c', warning: '#914a09', warningBg: '#fff4e5',
+      warningSolid: '#bd580a', danger: '#d60e17', dangerBg: '#fdeeee', dangerSolid: '#ea0c15',
+      info: '#0a6f9f', infoBg: '#e6f4fb', infoSolid: '#097bb1', moduleProduction: '#7523ed',
+      moduleProductionBg: '#f2ecff', moduleLogistics: '#0d6e9c', moduleLogisticsBg: '#e6f4fb', moduleWarehouse: '#b5410f',
+      moduleWarehouseBg: '#fff0e8', chart1: '#5266ee', chart2: '#e85033', chart3: '#0f9b8e',
+      chart4: '#d81895', chartGrid: '#d7dbe7', chartTrack: '#e6e9f2', scrim: '#0e143099',
+      textOnSolid: '#ffffff',
+    },
+    dark: {
+      bgApp: '#090c1d', bgSurface: '#121735', bgSubtle: '#181e40', bgMuted: '#1f274d',
+      bgChrome: '#0a0e22', borderSubtle: '#181e40', borderDefault: '#29325c', borderStrong: '#3a4474',
+      textStrong: '#eef0fb', textBody: '#c6cbe6', textMuted: '#959cc0', textFaint: '#848bb0',
+      textOnBrand: '#0a0e22', brand: '#8fa0ff', brandHover: '#a9b6ff', brandSoft: '#1d2558',
+      brandInk: '#b7c2fb', brandRing: '#8fa0ff80', accent: '#ff8a6b', bgInverse: '#1c2a7a',
+      bgInverseChip: '#2a3a96', textOnInverse: '#f2f4ff', textOnInverseMuted: '#b2bcef', success: '#4fd59a',
+      successBg: '#0d2a22', successSolid: '#0f7a4a', warning: '#ffb35c', warningBg: '#2b1f10',
+      warningSolid: '#b45309', danger: '#ff8a8f', dangerBg: '#2d1520', dangerSolid: '#d42a31',
+      info: '#5cc4f0', infoBg: '#0d2536', infoSolid: '#0a6d9c', moduleProduction: '#c3a3ff',
+      moduleProductionBg: '#251a45', moduleLogistics: '#5cc4f0', moduleLogisticsBg: '#0d2536', moduleWarehouse: '#ff9a6b',
+      moduleWarehouseBg: '#2e1a12', chart1: '#8fa0ff', chart2: '#ff8a6b', chart3: '#23edd6',
+      chart4: '#f474c6', chartGrid: '#29325c', chartTrack: '#181e40', scrim: '#000000b3',
+      textOnSolid: '#ffffff',
+    },
+  },
+  /** Marjon — qizg'ish marjon, aksent firuza. */
+  marjon: {
+    light: {
+      bgApp: '#f8f2f0', bgSurface: '#fdfbfa', bgSubtle: '#fbf7f5', bgMuted: '#f2e9e6',
+      bgChrome: '#fcf9f8', borderSubtle: '#f3ece9', borderDefault: '#e7dbd7', borderStrong: '#d2c1bc',
+      textStrong: '#1f140f', textBody: '#483a32', textMuted: '#6b5e57', textFaint: '#90847f',
+      textOnBrand: '#ffffff', brand: '#dc3316', brandHover: '#bc2b13', brandSoft: '#fde6e2',
+      brandInk: '#8e1f0b', brandRing: '#dc331680', accent: '#58c6c2', bgInverse: '#320f09',
+      bgInverseChip: '#541e15', textOnInverse: '#fff2ee', textOnInverseMuted: '#e0b2a6', success: '#087c48',
+      successBg: '#e7f7ef', successSolid: '#07854c', warning: '#914a09', warningBg: '#fff4e5',
+      warningSolid: '#bd580a', danger: '#aa0b25', dangerBg: '#fdecef', dangerSolid: '#e90c31',
+      info: '#0a6f9f', infoBg: '#e6f4fb', infoSolid: '#097bb1', moduleProduction: '#7523ed',
+      moduleProductionBg: '#f2ecff', moduleLogistics: '#0d6e9c', moduleLogisticsBg: '#e6f4fb', moduleWarehouse: '#b5410f',
+      moduleWarehouseBg: '#fff0e8', chart1: '#dc3316', chart2: '#1570bc', chart3: '#0f8a6a',
+      chart4: '#712ce8', chartGrid: '#e7dbd7', chartTrack: '#f2e9e6', scrim: '#1f140f99',
+      textOnSolid: '#ffffff',
+    },
+    dark: {
+      bgApp: '#140e0b', bgSurface: '#201713', bgSubtle: '#281f1a', bgMuted: '#342823',
+      bgChrome: '#100c09', borderSubtle: '#281f1a', borderDefault: '#42352e', borderStrong: '#584941',
+      textStrong: '#f6f1ee', textBody: '#d9cec9', textMuted: '#aca09a', textFaint: '#9c918b',
+      textOnBrand: '#2a0c06', brand: '#ff8a6e', brandHover: '#ffa58f', brandSoft: '#3a1a13',
+      brandInk: '#faae9b', brandRing: '#ff8a6e80', accent: '#58c6c2', bgInverse: '#4a2219',
+      bgInverseChip: '#613024', textOnInverse: '#fff2ee', textOnInverseMuted: '#e8bcb0', success: '#4fd59a',
+      successBg: '#0d2a22', successSolid: '#0f7a4a', warning: '#ffb35c', warningBg: '#2b1f10',
+      warningSolid: '#b45309', danger: '#ff8aa0', dangerBg: '#2d1520', dangerSolid: '#b8142f',
+      info: '#5cc4f0', infoBg: '#0d2536', infoSolid: '#0a6d9c', moduleProduction: '#c3a3ff',
+      moduleProductionBg: '#251a45', moduleLogistics: '#5cc4f0', moduleLogisticsBg: '#0d2536', moduleWarehouse: '#ff9a6b',
+      moduleWarehouseBg: '#2e1a12', chart1: '#ff8a6e', chart2: '#6eb4ff', chart3: '#35efbb',
+      chart4: '#b49bff', chartGrid: '#42352e', chartTrack: '#281f1a', scrim: '#000000b3',
+      textOnSolid: '#ffffff',
+    },
+  },
+} as const;
+export type PaletteName = keyof typeof palettes;
+export const PALETTE_NAMES: { key: PaletteName; label: string }[] = [
+  { key: 'chizma', label: 'Chizma' },
+  { key: 'marjon', label: 'Marjon' },
+];
+
+export type Palette = Record<keyof typeof palettes.chizma.light, string>;
 export type ColorKey = keyof Palette;
 
 /** Holat toni — faqat holat uchun (grafikda ishlatilmaydi). */
@@ -166,7 +250,7 @@ export function onColor(hex: string): string {
   const n = parseInt(h.length === 3 ? h.split('').map((x) => x + x).join('') : h.slice(0, 6), 16);
   const lum = (v: number) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
   const L = 0.2126 * lum((n >> 16) & 255) + 0.7152 * lum((n >> 8) & 255) + 0.0722 * lum(n & 255);
-  return L > 0.4 ? palette.light.textStrong : palette.light.bgSurface;
+  return L > 0.4 ? palettes.chizma.light.textStrong : '#ffffff';
 }
 
 // ───────────────────────── O'lcham, shakl, soya ─────────────────────────
@@ -179,17 +263,17 @@ export const space = {
 } as const;
 
 export const radius = {
-  xs: 4,
+  xs: 6,
   /** Input. */
-  sm: 6,
-  /** Tugma. */
-  md: 8,
+  sm: 12,
+  /** Tugma (asosiy tugmalar pill — radius.pill). */
+  md: 14,
   /** Ikonka plitkasi. */
-  lg: 12,
-  /** BARCHA kartalar — tizimning imzosi. */
-  card: 14,
+  lg: 14,
+  /** BARCHA kartalar — yumshoq, katta radius. */
+  card: 20,
   /** Modal / sheet. */
-  xl: 16,
+  xl: 24,
   pill: 9999,
 } as const;
 
@@ -216,34 +300,37 @@ export const size = {
   progress: 6,
 } as const;
 
-/** Ierarxiya soya bilan emas, chegara bilan — soya juda yengil. */
+/** Ierarxiya chegara bilan emas, yumshoq soya bilan. Soya rangi palitraning to'q matnidan. */
 export const shadow = {
   card: Platform.select({
-    ios: { shadowColor: palette.light.textStrong, shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
-    android: { elevation: 1 },
+    ios: { shadowColor: palettes.chizma.light.textStrong, shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+    android: { elevation: 2 },
     default: {},
   })!,
-  /** Faqat dropdown / modal. */
+  /** Dropdown / modal / suzuvchi tab bar. */
   pop: Platform.select({
-    ios: { shadowColor: palette.light.textStrong, shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
-    android: { elevation: 8 },
+    ios: { shadowColor: palettes.chizma.light.textStrong, shadowOpacity: 0.14, shadowRadius: 22, shadowOffset: { width: 0, height: 10 } },
+    android: { elevation: 10 },
     default: {},
   })!,
 } as const;
 
 // ───────────────────────── Tipografika ─────────────────────────
 
-/** Plus Jakarta Sans (400/500/600/700). Mono — faqat tekislanadigan ustunlar uchun. */
+/**
+ * Nunito — yumshoq, yumaloq uchli shrift. Har bir vazn bir pog'ona qalinroq faylga ulanadi
+ * (400 → Medium, 700 → ExtraBold): matn yumshoq va o'qilishi oson. Mono — faqat tekislanadigan ustunlar.
+ */
 export const FONT = {
-  400: 'PlusJakartaSans_400Regular',
-  500: 'PlusJakartaSans_500Medium',
-  600: 'PlusJakartaSans_600SemiBold',
-  700: 'PlusJakartaSans_700Bold',
+  400: 'Nunito_500Medium',
+  500: 'Nunito_600SemiBold',
+  600: 'Nunito_700Bold',
+  700: 'Nunito_800ExtraBold',
   mono: 'IBMPlexMono_500Medium',
 } as const;
 export type FontWeight = 400 | 500 | 600 | 700;
 
-/** Shrift yuklanmasa tizim shrifti (Inter → system-ui) ishlaydi — ekran baribir chiziladi. */
+/** Shrift yuklanmasa tizim shrifti ishlaydi — ekran baribir chiziladi. */
 const f = (w: FontWeight, fontSize: number, lineHeight: number, letterSpacing = 0, upper = false) => ({
   fontFamily: FONT[w], fontSize, lineHeight, letterSpacing,
   ...(upper ? { textTransform: 'uppercase' as const } : null),
@@ -281,7 +368,7 @@ export const textRoom = (text: string, fontSize: number, extra = 0) => text.leng
 // ───────────────────────── Harakat ─────────────────────────
 
 /** Yagona tezliklar: mikro (hover/fokus), holat, ekran o'tishi, yuklanish sikli. */
-export const duration = { micro: 120, state: 200, screen: 280, loop: 1200 } as const;
+export const duration = { micro: 120, state: 220, screen: 320, loop: 1200, enter: 520, stagger: 55 } as const;
 
 // ───────────────────────── Rollar (kontent, dizayn emas) ─────────────────────────
 

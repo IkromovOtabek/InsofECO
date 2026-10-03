@@ -1,0 +1,61 @@
+{
+  "role": "LOGISTICS",
+  "name": "Logistika dispetcheri",
+  "group": "Logistika",
+  "overline": "Dispetcher · Insof Beton",
+  "title": "Dispetcherlik",
+  "periods": ["Bugun", "Hafta", "Oy"],
+  "hero": {
+    "label": "Bugungi reyslar",
+    "value": "46 / 58",
+    "unit": "reys",
+    "delta": { "text": "79% reja", "dir": "up", "tone": "info" },
+    "spark": [4, 9, 15, 21, 28, 34, 41, 46]
+  },
+  "kpis": [
+    { "label": "O'z vaqtida", "value": "91%", "delta": "+3%", "tone": "success", "icon": "clock", "module": "Logistics" },
+    { "label": "Aylanma vaqt", "value": "84 daq", "delta": "-6 daq", "tone": "success", "icon": "route", "module": "Logistics" },
+    { "label": "Bo'sh mashina", "value": "3 ta", "delta": "+1", "tone": "warning", "icon": "truck", "module": "Logistics" },
+    { "label": "Yoqilg'i", "value": "38 l/100", "delta": "+4%", "tone": "warning", "icon": "fuel", "module": "Logistics" }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Soatlik reyslar: reja va fakt",
+    "unit": "reys",
+    "labels": ["07", "08", "09", "10", "11", "12", "13", "14"],
+    "series": [
+      { "name": "Reja", "data": [5, 8, 9, 8, 7, 6, 8, 7] },
+      { "name": "Fakt", "data": [4, 7, 9, 6, 7, 5, 8, 0] }
+    ]
+  },
+  "breakdown": {
+    "title": "Park holati · 24 mashina",
+    "items": [
+      { "label": "Yo'lda", "value": 46 },
+      { "label": "Yuklash/tushirish", "value": 25 },
+      { "label": "Bo'sh", "value": 13 },
+      { "label": "Ta'mirda", "value": 16 }
+    ]
+  },
+  "progress": { "title": "Bugungi hajm", "value": 72, "caption": "412 / 570 m³ beton · 9 ta mikser yo'lda" },
+  "attention": [
+    { "title": "Beton yoshi kritik", "sub": "Yo'lda 75+ daqiqa · 2 mikser", "badge": { "text": "2", "tone": "danger" }, "value": "82 daq", "icon": "alert", "module": "Logistics" },
+    { "title": "Kechikish xavfi", "sub": "ETA reja soatidan oshdi", "badge": { "text": "4", "tone": "warning" }, "value": null, "icon": "clock", "module": "Logistics" },
+    { "title": "Haydovchisiz buyurtma", "sub": "Ertalabgi zayavkalar", "badge": { "text": "5", "tone": "info" }, "value": "64 m³", "icon": "clipboard", "module": "Logistics" }
+  ],
+  "quick": [
+    { "label": "Reys tayinlash", "icon": "plus", "module": "Logistics" },
+    { "label": "Jonli xarita", "icon": "map", "module": "Logistics" },
+    { "label": "Haydovchiga qo'ng'iroq", "icon": "phone", "module": "Logistics" },
+    { "label": "Muammolar", "icon": "alert", "module": "Logistics" }
+  ],
+  "tabs": [
+    { "label": "Asosiy", "icon": "home" },
+    { "label": "Xarita", "icon": "map" },
+    { "label": "Reyslar", "icon": "truck" },
+    { "label": "Xabarlar", "icon": "chat" },
+    { "label": "Menyu", "icon": "user" }
+  ],
+  "rationale": "Beton ~90 daqiqada qotadi, shuning uchun dispetcher birinchi navbatda yo'ldagi mikserlarning beton yoshini va kechikish xavfini ko'rishi kerak. Park holati, aylanma vaqt va soatlik reja/fakt bo'sh turgan mashinani darhol keyingi zayavkaga tayinlashga yordam beradi. Xarita alohida tab, chunki dispetcher kunining yarmini unda o'tkazadi.",
+  "data": "ERP /home (erpAuth.home) LOGISTICS uchun fleet[] (phase, delay, delayTone, gps.etaMin, openIssues) va live[] beradi; API'da dispatch/board, deliveries (DeliveryStatus LOADING/EN_ROUTE/UNLOADING) va tracking/deliveries/:id/track bor. Beton yoshi (yuklangandan beri daqiqa), soatlik reja/fakt, aylanma vaqt va yoqilg'i sarfi uchun yangi agregat endpoint kerak."
+}

@@ -1,0 +1,45 @@
+{
+  "role": "SUPERVISOR",
+  "name": "Ish boshqaruvchi",
+  "group": "Ishlab chiqarish",
+  "overline": "Sex master · Insof Beton",
+  "title": "Ishlar",
+  "periods": ["Bugun", "Hafta"],
+  "hero": { "label": "Bugun bajarildi", "value": "186", "unit": "m³",
+            "delta": { "text": "88% topshiriq", "dir": "up", "tone": "warning" },
+            "spark": [92, 118, 104, 131, 142, 159, 171, 186] },
+  "kpis": [
+    { "label": "Ochiq topshiriq", "value": "14", "delta": "5 yangi", "tone": "info", "icon": "clipboard", "module": "Production" },
+    { "label": "Kechikkan", "value": "3", "delta": "muddat o'tgan", "tone": "danger", "icon": "clock", "module": "Production" },
+    { "label": "Davomat", "value": "48 / 52", "delta": "2 kelmadi", "tone": "warning", "icon": "users", "module": "Production" },
+    { "label": "Brak", "value": "0,9%", "delta": "3 qayd", "tone": "success", "icon": "shield", "module": "Production" }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Brigadalar bajarilishi", "unit": "%",
+    "labels": ["Gazoblok-1", "Beton RBU", "JBI plita", "JBI ustun", "Gazoblok-2"],
+    "series": [ { "name": "Bajarilishi", "data": [104, 96, 88, 74, 61] } ]
+  },
+  "breakdown": null,
+  "progress": { "title": "Smena topshiriqlari", "value": 88, "caption": "186 / 210 m³ · 1 240 / 1 600 dona" },
+  "attention": [
+    { "title": "Kechikkan topshiriqlar", "sub": "JBI ustun · 2 kun o'tdi", "badge": { "text": "3", "tone": "danger" }, "value": null, "icon": "alert", "module": "Production" },
+    { "title": "Ochiq muammolar", "sub": "Material 1 · uskuna 1", "badge": { "text": "2", "tone": "warning" }, "value": null, "icon": "wrench", "module": "Production" },
+    { "title": "Davomat belgilanmagan", "sub": "Gazoblok-2 brigadasi", "badge": { "text": "4", "tone": "warning" }, "value": null, "icon": "users", "module": "Production" }
+  ],
+  "quick": [
+    { "label": "Topshiriq berish", "icon": "plus", "module": "Production" },
+    { "label": "Davomat", "icon": "check", "module": "Production" },
+    { "label": "Muammo hal", "icon": "wrench", "module": "Production" },
+    { "label": "Smena hisoboti", "icon": "file", "module": "Brand" }
+  ],
+  "tabs": [
+    { "label": "Ishlar", "icon": "home" },
+    { "label": "Topshiriq", "icon": "clipboard" },
+    { "label": "Brigada", "icon": "hardhat" },
+    { "label": "Muammolar", "icon": "alert" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Sex master smena davomida qaysi brigada ortda qolayotganini, kim kelmaganini va qaysi muammo ishni to'xtatib turganini bilib, odam va topshiriqni qayta taqsimlaydi. Brigadalar reytingi va kechikkan topshiriqlar unga kimga birinchi yordam berishni ko'rsatadi.",
+  "data": "Ochiq/kechikkan topshiriq, qolgan hajm, bugun bajarilgan (TaskProgress), brak va davomat ERP /api/mobile/home SUPERVISOR va dashboard.ts brigadeWork() hamda sex.ts (davomat) da bor. Brigada bo'yicha bajarilish % (TaskProgress / BrigadeTask.qty) va barcha brigadalarning ochiq BrigadeIssue ro'yxati uchun alohida grafik yoki endpoint kerak."
+}

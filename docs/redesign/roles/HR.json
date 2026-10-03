@@ -1,0 +1,197 @@
+{
+  "role": "HR",
+  "name": "Otdel kadr",
+  "group": "Rahbariyat va moliya",
+  "overline": "Kadrlar · Insof Beton",
+  "title": "Kadrlar",
+  "periods": [
+    "Bugun",
+    "Hafta",
+    "Oy"
+  ],
+  "hero": {
+    "label": "Bugun ishda",
+    "value": "214",
+    "unit": "/ 236 xodim",
+    "delta": {
+      "text": "90,7%",
+      "dir": "up",
+      "tone": "success"
+    },
+    "spark": [
+      88,
+      91,
+      89,
+      92,
+      90,
+      87,
+      93,
+      90.7
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Kechikkanlar",
+      "value": "11",
+      "delta": "o'rt. 18 daq",
+      "tone": "warning",
+      "icon": "clock",
+      "module": "Brand"
+    },
+    {
+      "label": "Kelmaganlar",
+      "value": "9",
+      "delta": "4 sababsiz",
+      "tone": "danger",
+      "icon": "alert",
+      "module": "Brand"
+    },
+    {
+      "label": "Ta'til / kasal",
+      "value": "13",
+      "delta": "8 / 5",
+      "tone": "info",
+      "icon": "calendar",
+      "module": "Brand"
+    },
+    {
+      "label": "Ochiq vakansiya",
+      "value": "6",
+      "delta": "2 haydovchi",
+      "tone": "info",
+      "icon": "search",
+      "module": "Brand"
+    }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Davomat bo'limlar kesimida",
+    "unit": "%",
+    "labels": [
+      "Beton sexi",
+      "Gazoblok sexi",
+      "JBI sexi",
+      "Avtopark",
+      "Ofis"
+    ],
+    "series": [
+      {
+        "name": "Davomat",
+        "data": [
+          94,
+          91,
+          88,
+          85,
+          97
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Xodimlar tarkibi",
+    "items": [
+      {
+        "label": "Ishlab chiqarish",
+        "value": 54
+      },
+      {
+        "label": "Haydovchilar",
+        "value": 22
+      },
+      {
+        "label": "Ombor/ta'minot",
+        "value": 9
+      },
+      {
+        "label": "Ofis",
+        "value": 15
+      }
+    ]
+  },
+  "progress": {
+    "title": "Oylik tabel",
+    "value": 68,
+    "caption": "Ish haqi 5-sanada · 1,12 mlrd so'm fond"
+  },
+  "attention": [
+    {
+      "title": "Selfi tekshiruvi",
+      "sub": "Yuz mos kelmagan yoki joy tashqarisida",
+      "badge": {
+        "text": "5",
+        "tone": "warning"
+      },
+      "value": null,
+      "icon": "scan",
+      "module": "Brand"
+    },
+    {
+      "title": "Hujjat muddati tugaydi",
+      "sub": "Haydovchilik guvohnomasi, tibbiy ko'rik",
+      "badge": {
+        "text": "4",
+        "tone": "danger"
+      },
+      "value": null,
+      "icon": "shield",
+      "module": "Logistics"
+    },
+    {
+      "title": "Ta'til arizalari",
+      "sub": "Bo'lim boshlig'i kelishgan",
+      "badge": {
+        "text": "3",
+        "tone": "info"
+      },
+      "value": null,
+      "icon": "calendar",
+      "module": "Brand"
+    }
+  ],
+  "quick": [
+    {
+      "label": "Davomat",
+      "icon": "scan",
+      "module": "Brand"
+    },
+    {
+      "label": "Yangi xodim",
+      "icon": "plus",
+      "module": "Brand"
+    },
+    {
+      "label": "Tabel",
+      "icon": "clipboard",
+      "module": "Brand"
+    },
+    {
+      "label": "Ta'til",
+      "icon": "calendar",
+      "module": "Brand"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Kadrlar",
+      "icon": "home"
+    },
+    {
+      "label": "Xodimlar",
+      "icon": "users"
+    },
+    {
+      "label": "Davomat",
+      "icon": "clock"
+    },
+    {
+      "label": "Tabel",
+      "icon": "clipboard"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "Zavod smenada ishlaydi: ertalabki davomat va kechikishlar sexlarga odam yetishini, kelmaganlar esa smena qayta taqsimotini hal qiladi. Selfi davomat shubhalari, haydovchi guvohnomasi va tibbiy ko'rik muddatlari huquqiy xavf, tabel esa 5-sanadagi ish haqi hisobiga to'g'ridan-to'g'ri ta'sir qiladi.",
+  "data": "ERP list key=employees va HR kartalari /api/mobile/home'da bor; selfi davomat ErpFormField photo (old kamera, jonli kadr) orqali yuboriladi. Bo'limlar kesimidagi davomat, kechikish daqiqalari, vakansiyalar va hujjat muddatlari uchun yangi /hr/attendance-summary endpointi kerak."
+}

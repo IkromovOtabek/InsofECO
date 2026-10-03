@@ -1,0 +1,46 @@
+{
+  "role": "PROCUREMENT",
+  "name": "Snabjeniye",
+  "group": "Sotuv va ta'minot",
+  "overline": "Ta'minotchi · Insof Beton",
+  "title": "Xaridlar",
+  "periods": ["Bugun", "Hafta", "Oy"],
+  "hero": { "label": "Oylik xarid / budjet", "value": "2,14", "unit": "mlrd so'm",
+            "delta": { "text": "4%", "dir": "up", "tone": "warning" },
+            "spark": [0.42, 0.61, 0.88, 1.05, 1.31, 1.58, 1.87, 2.14] },
+  "kpis": [
+    { "label": "Ochiq zayavkalar", "value": "11", "delta": "+3", "tone": "warning", "icon": "clipboard", "module": "Warehouse" },
+    { "label": "Bugun keladi", "value": "9 reys", "delta": "2 kechikdi", "tone": "danger", "icon": "truck", "module": "Logistics" },
+    { "label": "Sement narxi", "value": "1,18 mln/t", "delta": "+6%", "tone": "danger", "icon": "trend", "module": "Brand" },
+    { "label": "Yetkazuvchiga qarz", "value": "640 mln", "delta": "-9%", "tone": "success", "icon": "wallet", "module": "Brand" }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Xarajat materiallar bo'yicha",
+    "unit": "mln so'm",
+    "labels": ["Sement", "Armatura", "Shag'al", "Qum", "Qo'shimcha"],
+    "series": [ { "name": "Oy", "data": [1020, 540, 290, 180, 110] } ]
+  },
+  "breakdown": null,
+  "progress": { "title": "Oylik budjet", "value": 79, "caption": "2,14 / 2,70 mlrd so'm · 12 kun qoldi" },
+  "attention": [
+    { "title": "Sement 3 kunga yetadi", "sub": "Sklad: min. zaxiradan past", "badge": { "text": "Shoshilinch", "tone": "danger" }, "value": "86 t", "icon": "alert", "module": "Warehouse" },
+    { "title": "Kechikkan yetkazish", "sub": "Qum (Chirchiq), armatura (Bekobod)", "badge": { "text": "2", "tone": "warning" }, "value": null, "icon": "clock", "module": "Logistics" },
+    { "title": "Tasdiq kutayotgan to'lov", "sub": "Yetkazuvchi schyotlari direktorda", "badge": { "text": "4", "tone": "info" }, "value": "312 mln", "icon": "check", "module": "Brand" }
+  ],
+  "quick": [
+    { "label": "Xarid buyurtmasi", "icon": "plus", "module": "Brand" },
+    { "label": "Kirimni qabul", "icon": "scan", "module": "Warehouse" },
+    { "label": "Narx so'rovi", "icon": "receipt", "module": "Brand" },
+    { "label": "Yetkazuvchiga qo'ng'iroq", "icon": "phone", "module": "Brand" }
+  ],
+  "tabs": [
+    { "label": "Xaridlar", "icon": "home" },
+    { "label": "Zayavka", "icon": "clipboard" },
+    { "label": "Kirimlar", "icon": "package" },
+    { "label": "Yetkazuv", "icon": "users" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Ta'minotchi uchun asosiy xavf - sement yoki shag'al tugab, beton zavodi to'xtab qolishi, shuning uchun zaxira kunlari past materiallar va bugungi kelishi kerak bo'lgan reyslar birinchi chiqadi. Sement narxi o'zgarishi va budjet bajarilishi qayerdan, qancha hajmda olishni hal qiladi. Tablar zayavka - xarid - kirim - yetkazuvchi zanjirini kuzatadi.",
+  "data": "Kirimlar ro'yxati ERP `/api/mobile/list?key=receipts` (roles.ts PROCUREMENT) va `/api/mobile/home`dan; ECO `materials` modulida `minStock` va `material-requests` (approve/reject) bor. Yetkazuvchi reyslari bo'yicha ETA, narx tarixi, budjet va yetkazuvchiga qarz uchun ERP'da yangi endpoint kerak."
+}

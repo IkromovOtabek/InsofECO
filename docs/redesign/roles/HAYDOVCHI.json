@@ -1,0 +1,42 @@
+{
+  "role": "HAYDOVCHI",
+  "name": "Haydovchi (ECO)",
+  "group": "Logistika",
+  "overline": "Haydovchi · Insof ECO",
+  "title": "Bugun",
+  "periods": [],
+  "hero": {
+    "label": "Bugungi daromad",
+    "value": "840 000",
+    "unit": "so'm",
+    "delta": { "text": "4 yuk", "dir": "up", "tone": "success" },
+    "spark": null
+  },
+  "kpis": [
+    { "label": "Bajarildi", "value": "4 yuk", "delta": "6 dan", "tone": "success", "icon": "check", "module": "Logistics" },
+    { "label": "Yangi yuklar", "value": "3 ta", "delta": "yaqinda", "tone": "brand", "icon": "package", "module": "Logistics" },
+    { "label": "Yo'l", "value": "118 km", "delta": "bugun", "tone": "info", "icon": "route", "module": "Logistics" },
+    { "label": "Hafta", "value": "4,1 mln", "delta": "+12%", "tone": "success", "icon": "wallet", "module": "Logistics" }
+  ],
+  "chart": null,
+  "breakdown": null,
+  "progress": null,
+  "attention": [
+    { "title": "Faol yuk", "sub": "Gazoblok 12 paddon · Yunusobod", "badge": { "text": "Yo'lda", "tone": "brand" }, "value": "~22 daq", "icon": "truck", "module": "Logistics" },
+    { "title": "Imzo kutilmoqda", "sub": "Qabul OTP · oldingi yuk", "badge": { "text": "1", "tone": "warning" }, "value": null, "icon": "file", "module": "Logistics" }
+  ],
+  "quick": [
+    { "label": "Yetkazdim", "icon": "check", "module": "Logistics" },
+    { "label": "Yo'l", "icon": "nav", "module": "Logistics" },
+    { "label": "Mijozga qo'ng'iroq", "icon": "phone", "module": "Logistics" },
+    { "label": "Xabarlar", "icon": "chat", "module": "Logistics" }
+  ],
+  "tabs": [
+    { "label": "Bugun", "icon": "home" },
+    { "label": "Yuklar", "icon": "package" },
+    { "label": "Daromad", "icon": "wallet" },
+    { "label": "Men", "icon": "user" }
+  ],
+  "rationale": "'Bitta yuk, bitta tugma': ECO haydovchisi kabinada faqat bugungi daromadni, faol yukni va keyingi qadam tugmasini ko'rishi kerak. Birinchi tugma holatga qarab almashadi (Qabul qilish → Yuklashni boshladim → Yo'lga chiqdim → Yetkazdim). Yangi yuklar soni bo'sh vaqtda qo'shimcha daromad topishga undaydi.",
+  "data": "API dashboard/haydovchi allaqachon todayCount, doneToday, pending, active, vehicle, earnings (finance.myEarnings) va open[] qaytaradi; shipments/:id/transition va deliveries/:id/accept-otp mavjud. Kunlik km (tracking GPS yig'indisi) va haftalik daromad dinamikasi uchun endpointni kengaytirish kerak."
+}

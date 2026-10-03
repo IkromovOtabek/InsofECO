@@ -1,0 +1,42 @@
+{
+  "role": "DRIVER",
+  "name": "Haydovchi (ERP)",
+  "group": "Logistika",
+  "overline": "Haydovchi · Insof Beton",
+  "title": "Bugun",
+  "periods": [],
+  "hero": {
+    "label": "Bugungi reyslar",
+    "value": "5 / 7",
+    "unit": "reys",
+    "delta": { "text": "2 qoldi", "dir": "up", "tone": "brand" },
+    "spark": null
+  },
+  "kpis": [
+    { "label": "Yurilgan yo'l", "value": "142 km", "delta": "+18 km", "tone": "info", "icon": "route", "module": "Logistics" },
+    { "label": "Tashilgan", "value": "40 m³", "delta": "5 reys", "tone": "success", "icon": "truck", "module": "Logistics" },
+    { "label": "Bonus (oy)", "value": "1,2 mln", "delta": "+9%", "tone": "success", "icon": "wallet", "module": "Logistics" },
+    { "label": "Yoqilg'i", "value": "62 l", "delta": "limit 80", "tone": "warning", "icon": "fuel", "module": "Logistics" }
+  ],
+  "chart": null,
+  "breakdown": null,
+  "progress": { "title": "Joriy reys", "value": 60, "caption": "Yo'lda · Sergeli, 8 m³ M300 · ~18 daq" },
+  "attention": [
+    { "title": "Keyingi reys", "sub": "14:30 · Chilonzor 9-kv · 7 m³", "badge": { "text": "1", "tone": "info" }, "value": null, "icon": "calendar", "module": "Logistics" },
+    { "title": "Texnik ko'rik", "sub": "Baraban moyi · 3 kun qoldi", "badge": { "text": "!", "tone": "warning" }, "value": null, "icon": "wrench", "module": "Logistics" }
+  ],
+  "quick": [
+    { "label": "Holatni o'zgartirish", "icon": "check", "module": "Logistics" },
+    { "label": "Yo'l (navigator)", "icon": "nav", "module": "Logistics" },
+    { "label": "Dispetcherga qo'ng'iroq", "icon": "phone", "module": "Logistics" },
+    { "label": "Muammo / nosozlik", "icon": "alert", "module": "Logistics" }
+  ],
+  "tabs": [
+    { "label": "Bugun", "icon": "home" },
+    { "label": "Reyslarim", "icon": "truck" },
+    { "label": "Yo'l", "icon": "nav" },
+    { "label": "Menyu", "icon": "user" }
+  ],
+  "rationale": "Shtatdagi haydovchiga eng muhimi — joriy reys holati va keyingi yuk vaqti; beton kutmaydi, shuning uchun 'Holatni o'zgartirish' birinchi tugma. Km, m³ va yoqilg'i limiti kunlik putyovka va bonus hisobiga to'g'ridan-to'g'ri ta'sir qiladi. Ekran minimal, kabinada bir qarashda o'qiladi.",
+  "data": "ERP /home DRIVER roli (homeTitle 'Bugun', listKey 'trips'), useErpDetail('trips') har 30 s yangilanadigan 'Yurilgan yo'l' va useErpTripRoute (OSRM marshrut, core/erp-track GPS) mavjud. Kunlik km/m³ yig'indisi, oylik bonus, yoqilg'i limiti va texnik ko'rik eslatmasi uchun ERP /home ga yangi kartalar kerak."
+}

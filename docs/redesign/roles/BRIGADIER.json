@@ -1,0 +1,45 @@
+{
+  "role": "BRIGADIER",
+  "name": "Brigadir",
+  "group": "Ishlab chiqarish",
+  "overline": "Brigadir · Gazoblok-1",
+  "title": "Brigadam",
+  "periods": [],
+  "hero": { "label": "Smena bajarildi", "value": "42", "unit": "m³ / 60",
+            "delta": { "text": "70%", "dir": "up", "tone": "warning" },
+            "spark": [0, 6, 13, 19, 24, 31, 37, 42] },
+  "kpis": [
+    { "label": "Davomat", "value": "11 / 12", "delta": "1 kasal", "tone": "success", "icon": "users", "module": "Production" },
+    { "label": "Faol topshiriq", "value": "3", "delta": "1 bugun tugaydi", "tone": "info", "icon": "clipboard", "module": "Production" },
+    { "label": "Ochiq muammo", "value": "2", "delta": "35 daq to'xtash", "tone": "danger", "icon": "alert", "module": "Production" },
+    { "label": "Brak", "value": "0,6 m³", "delta": "1,4%", "tone": "warning", "icon": "shield", "module": "Production" }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Smena soatma-soat", "unit": "m³",
+    "labels": ["08", "10", "12", "14", "16", "18"],
+    "series": [ { "name": "Bajarildi", "data": [6, 8, 5, 9, 8, 6] } ]
+  },
+  "breakdown": null,
+  "progress": { "title": "Smena topshirig'i", "value": 70, "caption": "42 / 60 m³ · smena 20:00 da yopiladi" },
+  "attention": [
+    { "title": "Kesish mashinasi", "sub": "Uskuna muammosi · 35 daq", "badge": { "text": "Ochiq", "tone": "danger" }, "value": null, "icon": "wrench", "module": "Production" },
+    { "title": "Alyumin kukuni kam", "sub": "Material yetishmayapti", "badge": { "text": "Ochiq", "tone": "warning" }, "value": null, "icon": "box", "module": "Warehouse" },
+    { "title": "TB-118 bugun tugaydi", "sub": "D500 · 18 m³ qoldi", "badge": { "text": "Bugun", "tone": "warning" }, "value": null, "icon": "clock", "module": "Production" }
+  ],
+  "quick": [
+    { "label": "Bajarildi", "icon": "plus", "module": "Production" },
+    { "label": "Davomat", "icon": "users", "module": "Production" },
+    { "label": "Muammo", "icon": "alert", "module": "Production" },
+    { "label": "Brak qayd", "icon": "shield", "module": "Production" }
+  ],
+  "tabs": [
+    { "label": "Brigadam", "icon": "home" },
+    { "label": "Topshiriq", "icon": "clipboard" },
+    { "label": "Muammolar", "icon": "alert" },
+    { "label": "Smenalar", "icon": "calendar" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Brigadir faqat o'z smenasi bilan ishlaydi: kim keldi, bugungi topshiriq qancha qoldi va nima ishni to'xtatib turibdi. Bajarilgan hajm, muammo va brakni darhol qayd qilish master va boshliqqa real vaqtda ko'rinadi, shuning uchun ular tezkor amallarda turadi.",
+  "data": "Smena holati, davomat, faol topshiriqlar, muammolar (BrigadeIssue), brak va smena hisobotlari ERP /api/mobile/home BRIGADIER (lib/mobile/brigadier.ts brigadierHome) va dashboard.ts da bor; smenani ochish/yopish, issue.*, defect amallari /api/mobile/action orqali ishlaydi. Soatma-soat bajarilish grafigi uchun TaskProgress ni soat bo'yicha guruhlovchi hisob kerak."
+}

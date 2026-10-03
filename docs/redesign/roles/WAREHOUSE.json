@@ -1,0 +1,51 @@
+{
+  "role": "WAREHOUSE",
+  "name": "Sklad",
+  "group": "Sotuv va ta'minot",
+  "overline": "Omborchi · Insof Beton",
+  "title": "Ombor",
+  "periods": ["Bugun", "Hafta"],
+  "hero": { "label": "Sement zaxirasi", "value": "3,2", "unit": "kun",
+            "delta": { "text": "1,4 kun", "dir": "down", "tone": "danger" },
+            "spark": [6.1, 5.8, 5.2, 4.9, 4.6, 4.1, 3.7, 3.2] },
+  "kpis": [
+    { "label": "Mindan past", "value": "3 tur", "delta": "+1", "tone": "danger", "icon": "alert", "module": "Warehouse" },
+    { "label": "Bugungi kirim", "value": "6 reys", "delta": "184 t", "tone": "info", "icon": "package", "module": "Warehouse" },
+    { "label": "Bugungi chiqim", "value": "212 t", "delta": "+8%", "tone": "info", "icon": "truck", "module": "Logistics" },
+    { "label": "Tayyor gazoblok", "value": "1 460 m³", "delta": "-6%", "tone": "warning", "icon": "box", "module": "Production" }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Zaxira kunlari",
+    "unit": "kun",
+    "labels": ["Sement", "Qum", "Shag'al", "Armatura", "Plastifikator"],
+    "series": [ { "name": "Zaxira", "data": [3.2, 9.5, 6.8, 14, 4.1] } ]
+  },
+  "breakdown": { "title": "Tayyor mahsulot", "items": [
+    { "label": "Gazoblok", "value": 61 },
+    { "label": "Plita", "value": 22 },
+    { "label": "Bordyur", "value": 11 },
+    { "label": "Halqa", "value": 6 }
+  ] },
+  "progress": { "title": "Silos to'lishi", "value": 38, "caption": "Sement 228 / 600 t · 2 silos" },
+  "attention": [
+    { "title": "Kirim kutilmoqda", "sub": "Sement 2 vagon · tortib qabul qiling", "badge": { "text": "2", "tone": "warning" }, "value": "120 t", "icon": "scan", "module": "Warehouse" },
+    { "title": "Minimal zaxiradan past", "sub": "Sement, plastifikator, armatura 12", "badge": { "text": "3", "tone": "danger" }, "value": null, "icon": "alert", "module": "Warehouse" },
+    { "title": "Inventarizatsiya farqi", "sub": "Qum: hisob va fakt -14 t", "badge": { "text": "1", "tone": "info" }, "value": "-14 t", "icon": "clipboard", "module": "Warehouse" }
+  ],
+  "quick": [
+    { "label": "Kirim qilish", "icon": "scan", "module": "Warehouse" },
+    { "label": "Chiqim berish", "icon": "truck", "module": "Logistics" },
+    { "label": "Qoldiq tuzatish", "icon": "clipboard", "module": "Warehouse" },
+    { "label": "Xarid so'rovi", "icon": "cart", "module": "Warehouse" }
+  ],
+  "tabs": [
+    { "label": "Ombor", "icon": "home" },
+    { "label": "Xomashyo", "icon": "layers" },
+    { "label": "Tayyor", "icon": "box" },
+    { "label": "Harakat", "icon": "route" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Omborchi uchun eng muhim savol - zavod necha kun to'xtamasdan ishlaydi, shuning uchun sement, qum, shag'al va armatura zaxirasi tonnada emas, kunlarda ko'rsatiladi. Bugungi kirim va chiqim tarozi, yuk xati va inventarizatsiya farqini ushlab qolishga yordam beradi. Tayyor mahsulot qoldig'i sotuvga nima va qancha berish mumkinligini aytadi.",
+  "data": "Xomashyo ro'yxati ERP `/api/mobile/list?key=stock` va `/api/mobile/home`dan; ECO `materials` servisida `stock` va `low` (minStock), `materials/warehouses`, `inventory/adjust` hamda dashboard `lowMaterials` bor. Kunlik sarf asosida zaxira kunlari, tayyor mahsulot qoldig'i va kunlik kirim/chiqim yig'indisi uchun yangi endpoint kerak."
+}

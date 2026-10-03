@@ -1,0 +1,202 @@
+{
+  "role": "CASHIER",
+  "name": "Kassa / bank",
+  "group": "Rahbariyat va moliya",
+  "overline": "Kassir · Insof Beton",
+  "title": "Kassa",
+  "periods": [],
+  "hero": {
+    "label": "Kassa qoldig'i (naqd)",
+    "value": "38,4",
+    "unit": "mln so'm",
+    "delta": {
+      "text": "6,1 mln",
+      "dir": "up",
+      "tone": "success"
+    },
+    "spark": [
+      29,
+      31,
+      34,
+      27,
+      33,
+      36,
+      32,
+      38.4
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Bugun kirim",
+      "value": "126 mln",
+      "delta": "42 to'lov",
+      "tone": "success",
+      "icon": "cash",
+      "module": "Brand"
+    },
+    {
+      "label": "Bugun chiqim",
+      "value": "88 mln",
+      "delta": "17 to'lov",
+      "tone": "warning",
+      "icon": "wallet",
+      "module": "Brand"
+    },
+    {
+      "label": "Bank qoldig'i",
+      "value": "447 mln",
+      "delta": "2 hisob",
+      "tone": "info",
+      "icon": "layers",
+      "module": "Brand"
+    },
+    {
+      "label": "Click / Payme",
+      "value": "19 mln",
+      "delta": "9 o'tkazma",
+      "tone": "info",
+      "icon": "phone",
+      "module": "Brand"
+    }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Soatbay kirim-chiqim",
+    "unit": "mln so'm",
+    "labels": [
+      "8",
+      "10",
+      "12",
+      "14",
+      "16",
+      "18"
+    ],
+    "series": [
+      {
+        "name": "Kirim",
+        "data": [
+          14,
+          31,
+          22,
+          27,
+          19,
+          13
+        ]
+      },
+      {
+        "name": "Chiqim",
+        "data": [
+          6,
+          18,
+          24,
+          11,
+          21,
+          8
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Bugungi kirim usuli",
+    "items": [
+      {
+        "label": "Bank o'tkazma",
+        "value": 61
+      },
+      {
+        "label": "Naqd",
+        "value": 24
+      },
+      {
+        "label": "Click/Payme",
+        "value": 15
+      }
+    ]
+  },
+  "progress": {
+    "title": "Kassa limiti",
+    "value": 77,
+    "caption": "38,4 / 50 mln so'm · inkassatsiya 17:00"
+  },
+  "attention": [
+    {
+      "title": "Chiqim tasdiqlangan",
+      "sub": "Berilishi kerak: avans, yoqilg'i, xo'jalik",
+      "badge": {
+        "text": "7",
+        "tone": "warning"
+      },
+      "value": "24 mln",
+      "icon": "check",
+      "module": "Brand"
+    },
+    {
+      "title": "Bankdan noma'lum kirim",
+      "sub": "Mijozga bog'lanmagan to'lovlar",
+      "badge": {
+        "text": "4",
+        "tone": "danger"
+      },
+      "value": "31 mln",
+      "icon": "search",
+      "module": "Brand"
+    },
+    {
+      "title": "Haydovchi topshirmagan",
+      "sub": "Yetkazishda olingan naqd pul",
+      "badge": {
+        "text": "3",
+        "tone": "warning"
+      },
+      "value": "9,6 mln",
+      "icon": "truck",
+      "module": "Logistics"
+    }
+  ],
+  "quick": [
+    {
+      "label": "Kirim",
+      "icon": "plus",
+      "module": "Brand"
+    },
+    {
+      "label": "Chiqim",
+      "icon": "cash",
+      "module": "Brand"
+    },
+    {
+      "label": "Chek",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "Bank vypiska",
+      "icon": "file",
+      "module": "Brand"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Kassa",
+      "icon": "home"
+    },
+    {
+      "label": "To'lovlar",
+      "icon": "cash"
+    },
+    {
+      "label": "Bank",
+      "icon": "layers"
+    },
+    {
+      "label": "Chek",
+      "icon": "receipt"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "Kassir kun bo'yi ishlaydi, shuning uchun davr tanlovi yo'q: naqd qoldiq, bugungi kirim-chiqim va bank/naqd/Click-Payme bo'linishi smenani yopishda kassa hisobotiga tushadi. Bankdan noma'lum kirimni mijozga bog'lash debitorlikni to'g'ri yopadi, haydovchilardan olingan naqd nazorati esa yo'qotishning oldini oladi.",
+  "data": "ERP list key=payments va CASHIER kartalari /api/mobile/home'da bor; ECO billing POST /billing/invoices/:id/payments/cash va PaymentMethod (CASH, PAYME, CLICK, TRANSFER) usul bo'yicha bo'linishni beradi. Bank qoldig'i, vypiska importi va kassa limiti uchun yangi /cash/balance endpointi kerak."
+}

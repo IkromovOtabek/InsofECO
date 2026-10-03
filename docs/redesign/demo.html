@@ -1,0 +1,1017 @@
+<title>Insof ECO Redizayn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&family=Rubik:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&family=M+PLUS+Rounded+1c:wght@500;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: control bar → labelled rail of phone frames (before | after ×4) → palette + findings, two columns on desktop */
+:root{
+  --pg-bg:#eef0f4; --pg-surface:#ffffff; --pg-ink:#0b1630; --pg-muted:#56637c; --pg-line:#dde2ec; --pg-accent:#2f45d6; --pg-chip:#e4e8f0;
+  --f-ui:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-app:"Nunito",ui-rounded,"SF Pro Rounded",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#080d18;--pg-surface:#111a2e;--pg-ink:#eef2f8;--pg-muted:#94a1b8;--pg-line:#26344f;--pg-accent:#8fa0ff;--pg-chip:#1f2b45;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#080d18;--pg-surface:#111a2e;--pg-ink:#eef2f8;--pg-muted:#94a1b8;--pg-line:#26344f;--pg-accent:#8fa0ff;--pg-chip:#1f2b45;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--pg-bg);color:var(--pg-ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1680px;margin:0 auto;padding-block:28px 64px;display:flex;flex-direction:column;gap:28px}
+header.top{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-accent)}
+h1{font-size:clamp(26px,3.4vw,38px);line-height:1.1;margin:4px 0 6px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.lede{color:var(--pg-muted);max-width:62ch;margin:0}
+.controls{display:flex;flex-wrap:wrap;gap:12px}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--pg-chip);border-radius:12px;padding:4px;gap:2px}
+.seg button{font:600 13px var(--f-ui);border:0;background:transparent;color:var(--pg-muted);padding:9px 14px;border-radius:9px;cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--pg-surface);color:var(--pg-ink);box-shadow:0 1px 3px #0000001f}
+.seg button:focus-visible,.copy:focus-visible{outline:2px solid var(--pg-accent);outline-offset:2px}
+.dirnote{font-size:14px;color:var(--pg-muted);margin:0;max-width:80ch}
+.dirnote b{color:var(--pg-ink)}
+
+.rail{display:flex;gap:28px;overflow-x:auto;padding:4px 4px 18px;scroll-snap-type:x proximity}
+.slot{display:flex;flex-direction:column;gap:10px;scroll-snap-align:start;flex:0 0 auto}
+.slot h3{margin:0;font-size:14px;font-weight:700;display:flex;gap:8px;align-items:center}
+.slot p{margin:0;font-size:12.5px;color:var(--pg-muted);max-width:300px}
+.tag{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:6px;background:var(--pg-chip);color:var(--pg-muted)}
+.tag.new{background:var(--pg-accent);color:var(--pg-surface)}
+.divider{width:1px;background:var(--pg-line);flex:0 0 auto;margin:30px 0}
+
+/* ───────── phone ───────── */
+.phone{width:300px;height:640px;border-radius:40px;padding:9px;background:#0a0f1a;box-shadow:0 18px 40px -18px #0b163080,inset 0 0 0 1px #2a3346}
+.screen{position:relative;width:100%;height:100%;border-radius:32px;overflow:hidden;background:var(--bgApp);color:var(--textStrong);font-family:var(--f-app);font-weight:var(--wBody);display:flex;flex-direction:column}
+.sb{height:30px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:11px;font-weight:700;color:var(--textStrong);background:var(--sbBg,transparent)}
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:10px 14px 14px}
+.t-over{font-size:9px;font-weight:var(--wStrong);letter-spacing:.06em;text-transform:uppercase;color:var(--textMuted)}
+.t-title{font-size:17px;font-weight:var(--wHead);letter-spacing:-.01em}
+.t-sm{font-size:10.5px;color:var(--textMuted);font-weight:var(--wBody)}
+.t-body{font-size:11.5px;color:var(--textBody)}
+.num{font-variant-numeric:tabular-nums}
+.ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ib{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--textBody);position:relative}
+.ib.sec{background:var(--bgSurface);border:1px solid var(--borderDefault)}
+.ib .dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--dangerSolid);box-shadow:0 0 0 2px var(--bgChrome)}
+.row{display:flex;align-items:center;gap:8px}
+.between{justify-content:space-between}
+.card{background:var(--bgSurface);border:1px solid var(--borderDefault);border-radius:var(--rCard);padding:11px}
+.tile{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.tile.bare{background:transparent;width:auto;height:auto}
+.badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.chips{display:flex;gap:6px;overflow:hidden}
+.chip{font-size:10px;font-weight:600;padding:0 11px;height:28px;display:inline-flex;align-items:center;border-radius:99px;border:1px solid var(--borderDefault);background:var(--bgSurface);color:var(--textBody);white-space:nowrap}
+.chip.on{background:var(--textStrong);color:var(--bgSurface);border-color:var(--textStrong)}
+.chip .n{margin-left:5px;opacity:.7}
+
+/* chrome */
+.appbar{background:var(--bgChrome);padding:6px 14px 10px;border-bottom:1px solid var(--borderSubtle);display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.av{width:32px;height:32px;border-radius:50%;background:var(--brandSoft);color:var(--brandInk);display:grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 auto}
+.tabbar{flex:0 0 auto;background:var(--bgChrome);border-top:1px solid var(--borderSubtle);display:flex;justify-content:space-around;padding:6px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8.5px;font-weight:600;color:var(--textMuted);width:54px}
+.tab .pill{width:44px;height:24px;border-radius:12px;display:grid;place-items:center}
+.tab.on{color:var(--textStrong)}
+.tab.on .pill{background:var(--brandSoft);color:var(--brandInk)}
+.tabbar.old .tab.on{color:var(--brandInk)}
+.tabbar.old .tab.on .pill{background:transparent}
+
+/* hero */
+.hero{border-radius:calc(var(--rCard) + 2px);padding:13px;background:var(--inv);color:var(--onInv);display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.hero .t-over{color:var(--onInvMuted)}
+.hero .big{font-size:27px;font-weight:var(--wHead);letter-spacing:-.02em;line-height:1.05}
+.hero .seg2{display:flex;gap:3px;background:var(--invChip);padding:3px;border-radius:9px;align-self:flex-start}
+.hero .seg2 span{font-size:9px;font-weight:600;padding:4px 8px;border-radius:7px;color:var(--onInvMuted)}
+.hero .seg2 span.on{background:var(--brand);color:var(--textOnBrand)}
+.delta{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;display:inline-flex;gap:3px;align-items:center}
+.kpi2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{display:flex;gap:8px;align-items:center;padding:9px}
+.kpi .v{font-size:14.5px;font-weight:var(--wHead);line-height:1.1}
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.qa .q{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:8.5px;font-weight:600;color:var(--textBody);text-align:center;padding:8px 2px;background:var(--bgSurface);border:1px solid var(--borderSubtle);border-radius:12px}
+.qa .q.primary{background:var(--brand);color:var(--textOnBrand);border-color:var(--brand)}
+.qa .q.primary .tile{background:#ffffff40!important;color:var(--textOnBrand)!important}
+.sh{display:flex;justify-content:space-between;align-items:baseline}
+.sh b{font-size:12.5px;font-weight:var(--wHead)}
+.sh a{font-size:10px;font-weight:600;color:var(--brandInk);text-decoration:none}
+.group{background:var(--bgSurface);border:1px solid var(--borderDefault);border-radius:var(--rCard);overflow:hidden}
+.li{display:flex;gap:9px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--borderSubtle)}
+.li:last-child{border-bottom:0}
+.li .m{flex:1;min-width:0}
+.li .m b{display:block;font-size:11.5px;font-weight:var(--wStrong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.li .r b{font-size:11px}
+.prog{height:4px;border-radius:2px;background:var(--chartTrack);overflow:hidden;margin-top:5px}
+.prog i{display:block;height:100%;border-radius:2px;background:var(--chart1)}
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 11px;border-radius:10px;background:var(--bgSurface);border:1px solid var(--borderDefault);color:var(--textFaint);font-size:11px}
+.kv{display:flex;justify-content:space-between;padding:8px 11px;border-bottom:1px solid var(--borderSubtle);font-size:10.5px}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--textMuted)}
+.kv b{font-weight:600;color:var(--textStrong)}
+.sticky{flex:0 0 auto;background:var(--bgChrome);border-top:1px solid var(--borderDefault);padding:10px 14px 18px;display:flex;gap:8px}
+.btn{height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:var(--wHead);flex:1}
+.btn.pri{background:var(--brand);color:var(--textOnBrand)}
+.btn.sec{background:var(--bgSurface);color:var(--textStrong);border:1px solid var(--borderDefault);flex:0 0 40px}
+.btn.xl{height:54px;font-size:14px;border-radius:14px}
+.tl{display:flex;flex-direction:column;gap:0}
+.tl .s{display:flex;gap:9px;font-size:10.5px;padding-bottom:9px;position:relative}
+.tl .s:before{content:"";position:absolute;left:4px;top:10px;bottom:0;width:2px;background:var(--borderDefault)}
+.tl .s:last-child:before{display:none}
+.tl .d{width:10px;height:10px;border-radius:50%;background:var(--bgSurface);border:2px solid var(--borderStrong);flex:0 0 auto;margin-top:2px;position:relative;z-index:1}
+.tl .s.done .d{background:var(--successSolid);border-color:var(--successSolid)}
+.tl .s.now .d{border-color:var(--brand);background:var(--brandSoft)}
+.route{display:flex;gap:10px}
+.route .line{display:flex;flex-direction:column;align-items:center;padding-top:3px}
+.route .line i{width:9px;height:9px;border-radius:50%;border:2px solid var(--brand)}
+.route .line i.to{background:var(--brand)}
+.route .line u{flex:1;width:2px;background:repeating-linear-gradient(var(--borderStrong) 0 3px,transparent 3px 6px);min-height:20px}
+
+.screen[data-dir="D"] .hero{background-image:linear-gradient(color-mix(in srgb,var(--onInv) 8%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--onInv) 8%,transparent) 1px,transparent 1px);background-size:14px 14px}
+.hero .accentbar{height:3px;width:28px;border-radius:2px;background:var(--accent)}
+.t-title,.hero .big,.kpi .v,.sh b,.hdr-t{font-family:var(--f-head,inherit)}
+/* before-screen helpers (current app look) */
+.old-kpi{padding:12px;display:flex;flex-direction:column;gap:6px;min-height:84px}
+.old-kpi .v{font-size:15px;font-weight:600}
+
+/* lower section */
+.lower{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+@media (max-width:900px){.lower{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--pg-surface);border:1px solid var(--pg-line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel h2{margin:0;font-size:17px;font-weight:700}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.sw div{border:1px solid var(--pg-line);border-radius:10px;overflow:hidden;font-size:11px}
+.sw i{display:block;height:40px}
+.sw span{display:block;padding:6px 8px;font-family:var(--f-mono);font-size:10.5px;color:var(--pg-muted)}
+.sw b{display:block;padding:6px 8px 0;font-weight:600;font-size:11.5px}
+.contrast{font-family:var(--f-mono);font-size:12px;color:var(--pg-muted);margin:0}
+ol.find{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;font-size:14px}
+ol.find li::marker{color:var(--pg-accent);font-weight:700}
+ol.find code{font-family:var(--f-mono);font-size:12px;color:var(--pg-muted)}
+.keep{font-size:13.5px;color:var(--pg-muted);border-top:1px solid var(--pg-line);padding-top:12px;margin:0}
+@media (prefers-reduced-motion:no-preference){.screen{transition:background .25s}}
+
+/* ───────── Yumshoq qatlam: chegara o'rniga soya, katta radius, harakat ───────── */
+.screen{--sh1:0 1px 2px color-mix(in srgb,var(--textStrong) 5%,transparent),0 6px 18px -8px color-mix(in srgb,var(--textStrong) 14%,transparent);--sh2:0 2px 6px color-mix(in srgb,var(--textStrong) 6%,transparent),0 16px 32px -14px color-mix(in srgb,var(--textStrong) 22%,transparent);--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.56,.64,1)}
+.screen:not([data-dir="cur"]) .card,.screen:not([data-dir="cur"]) .group{border:0;box-shadow:var(--sh1);border-radius:var(--rCard)}
+.screen:not([data-dir="cur"]) .hero{border-radius:calc(var(--rCard) + 4px);box-shadow:0 18px 36px -18px color-mix(in srgb,var(--inv) 70%,transparent)}
+.screen:not([data-dir="cur"]) .tile{border-radius:calc(var(--rCard) * .55)}
+.screen:not([data-dir="cur"]) .ib{border-radius:50%}
+.screen:not([data-dir="cur"]) .chip{border:0;background:var(--bgSurface);box-shadow:var(--sh1);height:30px;transition:background .25s var(--ease),color .25s var(--ease),transform .2s var(--spring)}
+.screen:not([data-dir="cur"]) .chip.on{background:var(--brand);color:var(--textOnBrand)}
+.screen:not([data-dir="cur"]) .search{border:0;box-shadow:var(--sh1);border-radius:99px;height:38px;padding:0 14px}
+.screen:not([data-dir="cur"]) .qa .q{border:0;box-shadow:var(--sh1);border-radius:calc(var(--rCard) + 2px)}
+.screen:not([data-dir="cur"]) .li{border-bottom:0;position:relative}
+.screen:not([data-dir="cur"]) .li+.li:before{content:"";position:absolute;top:0;left:48px;right:12px;height:1px;background:var(--borderSubtle)}
+.screen:not([data-dir="cur"]) .kv{border-bottom:0;position:relative}
+.screen:not([data-dir="cur"]) .kv+.kv:before{content:"";position:absolute;top:0;left:11px;right:11px;height:1px;background:var(--borderSubtle)}
+.screen:not([data-dir="cur"]) .appbar{border-bottom:0;background:transparent}
+.screen:not([data-dir="cur"]) .btn{border-radius:99px}
+.screen:not([data-dir="cur"]) .btn.sec{border:0;box-shadow:var(--sh1)}
+.screen:not([data-dir="cur"]) .btn.pri{box-shadow:0 10px 20px -10px var(--brand)}
+.screen:not([data-dir="cur"]) .btn.xl{border-radius:22px}
+.screen:not([data-dir="cur"]) .prog,.screen:not([data-dir="cur"]) .prog i{border-radius:99px}
+.screen:not([data-dir="cur"]) .sticky{border-top:0;background:transparent;padding:8px 12px 14px}
+.screen:not([data-dir="cur"]) .sticky .btn{height:44px}
+.screen:not([data-dir="cur"]) .sticky .btn.xl{height:56px}
+/* suzuvchi tab bar */
+.screen:not([data-dir="cur"]) .tabbar{border-top:0;margin:0 12px 12px;border-radius:26px;padding:7px 6px;box-shadow:var(--sh2);position:relative}
+.screen:not([data-dir="cur"]) .tab{cursor:pointer;transition:color .25s var(--ease)}
+.screen:not([data-dir="cur"]) .tab .pill{transition:background .3s var(--ease),transform .3s var(--spring)}
+.screen:not([data-dir="cur"]) .tab.on .pill{transform:scale(1.06)}
+/* bosish va hover */
+.screen:not([data-dir="cur"]) :is(.card,.li,.q,.chip,.btn,.ib,.tab,.seg2 span,.kpi){transition:transform .22s var(--spring),box-shadow .25s var(--ease),background .25s var(--ease);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.screen:not([data-dir="cur"]) :is(.card,.q,.btn,.chip):hover{box-shadow:var(--sh2)}
+.screen:not([data-dir="cur"]) :is(.card,.q,.chip,.btn,.ib,.kpi):active,.screen .pressed{transform:scale(.96)}
+.screen:not([data-dir="cur"]) .li:active{background:var(--bgSubtle)}
+.hero .seg2 span{cursor:pointer;transition:background .25s var(--ease),color .25s var(--ease)}
+/* kirish animatsiyasi */
+@keyframes rise{from{opacity:.001;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fill{from{width:0}}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes ripple{from{opacity:.35;transform:scale(0)}to{opacity:0;transform:scale(2.4)}}
+.ripple{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;animation:ripple .55s var(--ease) forwards}
+@media (prefers-reduced-motion:no-preference){
+  .screen:not([data-dir="cur"]) .scroll>*{animation:rise .5s var(--ease) both;animation-delay:calc(var(--i,0) * 55ms)}
+  .screen:not([data-dir="cur"]) .bar{transform-box:fill-box;transform-origin:bottom;animation:grow .7s var(--ease) both;animation-delay:calc(var(--i,0) * 40ms + 150ms)}
+  .screen:not([data-dir="cur"]) .prog i{animation:fill 1s var(--ease) both .25s}
+  .screen:not([data-dir="cur"]) .ib .dot{animation:pop .5s var(--spring) both .6s}
+  .screen:not([data-dir="cur"]) .route .line i.to{animation:pop .5s var(--spring) both .5s}
+}
+@media (prefers-reduced-motion:reduce){.screen *{animation:none!important;transition:none!important}}
+.motion-note{font-size:13px;color:var(--pg-muted);margin:0}
+.scroll{overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:none;min-height:0}
+.scroll::-webkit-scrollbar{display:none}
+.scroll>*{flex-shrink:0}
+
+/* ───────── Animatsiya v2: skeleton → ketma-ket kirish, suzuvchi indikatorlar, raqam sanash ───────── */
+.screen:not([data-dir="cur"]) .scroll>*{animation:none}
+.screen:not([data-dir="cur"]) .bar,.screen:not([data-dir="cur"]) .prog i{animation:none}
+.screen:not([data-dir="cur"]) :is(.card,.group,.q){position:relative}
+.screen:not([data-dir="cur"]) :is(.card,.group,.hero,.q)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .45s var(--ease);background:linear-gradient(100deg,var(--bgMuted) 35%,var(--bgSubtle) 50%,var(--bgMuted) 65%);background-size:300% 100%;z-index:6}
+.screen:not([data-dir="cur"]) .hero::after{background:linear-gradient(100deg,var(--invChip) 35%,var(--inv) 50%,var(--invChip) 65%);background-size:300% 100%}
+.screen.loading :is(.card,.group,.hero,.q)::after{opacity:1;animation:shimmer 1.1s linear infinite}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+@keyframes enter{from{opacity:.001;transform:translate3d(var(--dx,0),14px,0) scale(.98);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes pulse{0%{transform:scale(1);opacity:.55}100%{transform:scale(3.2);opacity:0}}
+@media (prefers-reduced-motion:no-preference){
+  .screen.enter:not([data-dir="cur"]) .scroll>*{animation:enter .6s var(--ease) both;animation-delay:calc(var(--i,0) * 60ms)}
+  .screen.enter:not([data-dir="cur"]) .bar{transform-box:fill-box;transform-origin:bottom;animation:grow .8s var(--spring) both;animation-delay:calc(var(--i,0) * 45ms + 250ms)}
+  .screen.enter:not([data-dir="cur"]) .prog i,.screen.enter .hb{animation:fill 1.1s var(--ease) both .35s}
+  .screen.enter .spk{stroke-dasharray:1;animation:draw 1.2s var(--ease) both .25s}
+  .screen.enter .spk-area{animation:fadeIn .8s ease both .9s}
+  .screen .pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite 1.4s}
+}
+/* suzuvchi tab indikatori */
+.screen:not([data-dir="cur"]) .tabbar{position:relative}
+.screen:not([data-dir="cur"]) .tab.on .pill{background:transparent;transform:none}
+.screen:not([data-dir="cur"]) .tab.on{color:var(--brandInk)}
+.tab-ind{position:absolute;left:0;top:0;width:44px;height:24px;border-radius:12px;background:var(--brandSoft);z-index:0;transition:transform .5s cubic-bezier(.34,1.45,.64,1),width .3s var(--ease)}
+.tab .pill{position:relative;z-index:1}
+.tab.on .pill .ic{animation:pop .45s var(--spring)}
+/* segment chiplar: bitta trek ichida suzuvchi tanlov */
+.screen:not([data-dir="cur"]) .chips{position:relative;background:var(--bgSurface);box-shadow:var(--sh1);border-radius:99px;padding:3px;gap:0;overflow-x:auto;scrollbar-width:none;align-self:stretch}
+.screen:not([data-dir="cur"]) .chips::-webkit-scrollbar{display:none}
+.screen:not([data-dir="cur"]) .chips .chip{background:transparent!important;box-shadow:none!important;position:relative;z-index:1;flex:1 0 auto;justify-content:center;height:28px;color:var(--textMuted)}
+.screen:not([data-dir="cur"]) .chips .chip.on{color:var(--textOnBrand)}
+.chip-ind{position:absolute;top:3px;left:0;height:28px;border-radius:99px;background:var(--brand);z-index:0;box-shadow:0 6px 14px -8px var(--brand);transition:transform .5s cubic-bezier(.34,1.3,.64,1),width .45s cubic-bezier(.34,1.3,.64,1)}
+/* sarlavha scroll paytida ko'tariladi */
+.screen:not([data-dir="cur"]) .appbar{transition:box-shadow .3s var(--ease),background .3s var(--ease);position:relative;z-index:3}
+.screen:not([data-dir="cur"]) .appbar.raised{background:var(--bgChrome);box-shadow:0 8px 20px -14px color-mix(in srgb,var(--textStrong) 40%,transparent)}
+.replay{font:600 13px var(--f-ui);border:0;background:var(--pg-chip);color:var(--pg-ink);padding:9px 14px;border-radius:12px;cursor:pointer;min-height:40px}
+.replay:focus-visible{outline:2px solid var(--pg-accent);outline-offset:2px}
+.motion-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.kpi{gap:7px}.kpi>div{min-width:0;flex:1}.kpi .v{font-size:13.5px;overflow:hidden;text-overflow:ellipsis}
+.offbar{display:flex;align-items:center;gap:7px;padding:7px 14px;font-size:10px;font-weight:600;background:var(--warningBg);color:var(--warning)}
+.offbar b{font-weight:800}
+.err-ill{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:var(--bgMuted);color:var(--textMuted);box-shadow:0 0 0 10px var(--bgSubtle)}
+.steps{display:flex;gap:4px;padding:0 14px 6px}
+.steps i{flex:1;height:4px;border-radius:99px;background:var(--bgMuted)}
+.steps i.on{background:var(--brand)}
+.mapbox{position:relative;height:110px;border-radius:var(--rCard);overflow:hidden;background:var(--bgSubtle);box-shadow:var(--sh1)}
+.mapbox svg{width:100%;height:100%;display:block}
+.pin{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);width:30px;height:30px;border-radius:50% 50% 50% 0;rotate:-45deg;background:var(--brand);color:var(--textOnBrand);display:grid;place-items:center;box-shadow:0 8px 14px -6px var(--brand)}
+.pin .ic{rotate:45deg}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tslot{height:32px;border-radius:12px;display:grid;place-items:center;font-size:10.5px;font-weight:700;background:var(--bgSurface);box-shadow:var(--sh1);font-variant-numeric:tabular-nums;cursor:pointer}
+.tslot.on{background:var(--brand);color:var(--textOnBrand)}
+.tslot.off{opacity:.4;text-decoration:line-through}
+.stepper{display:flex;align-items:center;gap:6px;background:var(--bgMuted);border-radius:99px;padding:3px}
+.stepper span{width:26px;height:26px;border-radius:50%;background:var(--bgSurface);display:grid;place-items:center;font-weight:800;box-shadow:var(--sh1);cursor:pointer}
+.stepper b{font-size:10.5px;min-width:40px;text-align:center}
+.okc{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--successSolid);color:#fff;box-shadow:0 0 0 10px var(--successBg)}
+.tg{width:36px;height:22px;border-radius:99px;background:var(--borderStrong);position:relative;flex:0 0 auto;cursor:pointer;transition:background .25s}
+.tg i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.tg.on{background:var(--brand)}
+.tg.on i{transform:translateX(14px)}
+.miniseg{display:flex;background:var(--bgMuted);border-radius:99px;padding:2px;font-size:8.5px;font-weight:700}
+.miniseg span{padding:4px 7px;border-radius:99px;color:var(--textMuted);cursor:pointer}
+.miniseg span.on{background:var(--bgSurface);color:var(--textStrong);box-shadow:var(--sh1)}
+.photo{height:64px;border-radius:var(--rCard);border:1.5px dashed var(--borderStrong);display:flex;align-items:center;justify-content:center;gap:8px;color:var(--textMuted);font-size:11px;font-weight:600}
+.sign{border-radius:var(--rCard);background:var(--bgSurface);box-shadow:var(--sh1);padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.sign svg{width:100%;height:70px;display:block;border-bottom:1px dashed var(--borderDefault)}
+.udot{width:8px;height:8px;border-radius:50%;background:var(--brand);display:block}
+.daychip{align-self:center;font-size:9px;font-weight:700;color:var(--textMuted);background:var(--bgSurface);padding:3px 10px;border-radius:99px;box-shadow:var(--sh1)}
+.bub{max-width:78%;padding:8px 10px 6px;border-radius:16px;font-size:11px;line-height:1.35;display:flex;flex-direction:column;gap:2px;box-shadow:var(--sh1)}
+.bub small{font-size:8.5px;opacity:.7;align-self:flex-end}
+.bub.in{align-self:flex-start;background:var(--bgSurface);color:var(--textStrong);border-bottom-left-radius:5px}
+.bub.out{align-self:flex-end;background:var(--brand);color:var(--textOnBrand);border-bottom-right-radius:5px}
+.bub.ref{background:var(--brandSoft);color:var(--brandInk)}
+.tick{letter-spacing:-2px}
+.typing{align-self:flex-start;display:flex;gap:3px;padding:9px 11px;background:var(--bgSurface);border-radius:16px;box-shadow:var(--sh1)}
+.typing i{width:5px;height:5px;border-radius:50%;background:var(--textMuted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-2px)}}
+.composer{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 10px 16px;background:var(--bgChrome)}
+.cin{flex:1;height:34px;border-radius:99px;background:var(--bgMuted);display:flex;align-items:center;padding:0 12px;font-size:10.5px;color:var(--textFaint)}
+.send{width:34px;height:34px;border-radius:50%;background:var(--brand);color:var(--textOnBrand);display:grid;place-items:center;box-shadow:0 6px 12px -6px var(--brand)}
+.pdots{display:flex;gap:14px}
+.pdots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--borderStrong)}
+.pdots i.f{background:var(--brand);border-color:var(--brand)}
+.pdots.shake{animation:shake .45s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.keypad{display:grid;grid-template-columns:repeat(3,58px);gap:10px 18px}
+.key{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:20px;font-weight:var(--wHead);background:var(--bgSurface);box-shadow:var(--sh1);cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s}
+.key:active{transform:scale(.9);background:var(--brandSoft)}
+.key.ghost{background:transparent;box-shadow:none;color:var(--textMuted)}
+@media (prefers-reduced-motion:no-preference){.screen.enter .sig{stroke-dasharray:1;animation:draw 1.6s ease both .4s}}
+.viewnav{display:flex;gap:6px;background:var(--pg-chip);padding:5px;border-radius:14px;align-self:flex-start;flex-wrap:wrap}
+.viewnav button{font:700 14px var(--f-ui);border:0;background:transparent;color:var(--pg-muted);padding:10px 18px;border-radius:10px;cursor:pointer;min-height:44px}
+.viewnav button[aria-pressed="true"]{background:var(--pg-surface);color:var(--pg-ink);box-shadow:0 1px 3px #0000001f}
+.viewnav button:focus-visible{outline:2px solid var(--pg-accent);outline-offset:2px}
+.view{display:flex;flex-direction:column;gap:28px}
+.tbadge{position:absolute;top:-3px;right:6px;min-width:15px;height:15px;border-radius:99px;background:var(--dangerSolid);color:#fff;font-size:8.5px;font-weight:800;display:grid;place-items:center;padding:0 3px;box-shadow:0 0 0 2px var(--bgChrome)}
+.promo{min-height:132px;padding-right:110px}
+.promo-art{position:absolute;right:-6px;bottom:4px;width:130px;height:86px;opacity:.95}
+.dots3{display:flex;gap:4px}
+.dots3 i{width:6px;height:6px;border-radius:99px;background:color-mix(in srgb,var(--onInv) 35%,transparent)}
+.dots3 i.on{width:16px;background:var(--brand)}
+.today{display:flex;align-items:center;gap:10px;padding:10px}
+.live{width:10px;height:10px;border-radius:50%;background:var(--successSolid);box-shadow:0 0 0 4px var(--successBg);flex:0 0 auto}
+.cats{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;font-weight:600;color:var(--textBody);flex:0 0 auto;cursor:pointer}
+.catimg{width:52px;height:52px;border-radius:16px;background:var(--bgSurface);box-shadow:var(--sh1);padding:6px;display:block}
+.calcp{display:flex;align-items:center;gap:10px;padding:10px;background:color-mix(in srgb,var(--brandSoft) 70%,var(--bgSurface))}
+.hscroll{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:2px 14px 8px}
+.hscroll::-webkit-scrollbar{display:none}
+.pcard{background:var(--bgSurface);border-radius:var(--rCard);box-shadow:var(--sh1);overflow:hidden;display:flex;flex-direction:column;min-width:0;cursor:pointer}
+.pimg{position:relative;aspect-ratio:16/11;background:color-mix(in srgb,var(--bgMuted) 70%,var(--bgSurface));padding:6px}
+.ptag{position:absolute;left:7px;top:7px;font-size:8.5px;font-weight:800;padding:2px 7px;border-radius:99px;background:var(--brand);color:var(--textOnBrand)}
+.pbody{padding:8px 9px 9px;display:flex;flex-direction:column;gap:3px}
+.pname{font-size:10.5px;line-height:1.25;min-height:2.5em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pprice{font-size:12.5px;font-weight:var(--wHead);color:var(--textStrong)}
+.pprice small{font-size:8.5px;color:var(--textMuted);font-weight:500}
+.padd{width:26px;height:26px;border-radius:50%;background:var(--brand);color:var(--textOnBrand);display:grid;place-items:center;flex:0 0 auto;box-shadow:0 6px 12px -6px var(--brand)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pdhero{position:relative;height:200px;background:color-mix(in srgb,var(--bgMuted) 70%,var(--bgSurface));padding:20px 30px 30px;flex:0 0 auto}
+.pdback{position:absolute;top:8px;left:12px}.pdfav{position:absolute;top:8px;right:12px}
+.calcfig{border-radius:var(--rCard);background:var(--bgSurface);box-shadow:var(--sh1);padding:8px}
+.calcfig svg{width:100%;display:block}
+.fields{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.fld{background:var(--bgSurface);box-shadow:var(--sh1);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.fld b{font-size:15px}.fld small{font-size:10px;color:var(--textMuted)}
+.mini{width:40px;height:32px;border-radius:9px;background:var(--bgMuted);flex:0 0 auto;padding:2px;display:block}
+.paygrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pay{height:38px;border-radius:12px;background:var(--bgSurface);box-shadow:var(--sh1);display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:1.5px solid transparent}
+.pay.on{border-color:var(--brand);color:var(--brandInk);background:var(--brandSoft)}
+.trackmap{position:relative;height:250px;flex:0 0 auto}
+.trackmap svg{width:100%;height:100%;display:block}
+.sheet{margin-top:-24px;border-radius:24px 24px 0 0;background:var(--bgApp);position:relative;z-index:2;box-shadow:0 -10px 24px -14px color-mix(in srgb,var(--textStrong) 30%,transparent)}
+.grab{align-self:center;width:36px;height:4px;border-radius:99px;background:var(--borderStrong);display:block}
+.zcover{position:relative;height:130px;flex:0 0 auto}
+.zcover svg{width:100%;height:100%;display:block}
+.view[hidden]{display:none!important}
+
+.roles{display:flex;flex-direction:column;gap:18px}
+.roles-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.h2{font-size:clamp(22px,2.6vw,30px);font-weight:800;letter-spacing:-.02em;margin:4px 0 6px}
+.role-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:32px 24px;justify-items:center}
+.role-slot p{max-width:300px}
+.datanote{font-size:12px!important;border-top:1px dashed var(--pg-line);padding-top:8px}
+.datanote b{color:var(--pg-ink);font-weight:600}
+@media (prefers-reduced-motion:no-preference){.screen .hb{animation:fill 1s cubic-bezier(.2,.8,.2,1) both .3s}}
+</style>
+
+<div class="wrap">
+  <nav class="viewnav" id="viewNav" aria-label="Bo'lim"><button id="v-staff" data-v="staff" aria-pressed="true">Xodimlar ilovasi</button><button id="v-client" data-v="client" aria-pressed="false">Mijoz sahifalari</button></nav>
+  <header class="top">
+    <div>
+      <div class="eyebrow">Insof ECO · mobil ilova · dizayn takliflari</div>
+      <h1 id="pageTitle">Rang va joylashuv redizayni</h1>
+      <p class="lede" id="pageLede">Chapda ilovaning hozirgi ko'rinishi, o'ngda yangi joylashuv. Yorug' rejimda fon toza va yorug', lekin sof oq emas: palitra rangiga moslangan tiniq tus. Ko'zni charchatmaydi. Rang yo'nalishi va mavzuni almashtirsangiz, barcha ekranlar bir vaqtda yangilanadi. Ochilish animatsiyasi o'zgarmaydi.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Rang yo'nalishi" id="dirSeg">
+        <button id="d-D" data-d="D" aria-pressed="true">D · Chizma</button>
+        <button id="d-E" data-d="E" aria-pressed="false">E · Petrol</button>
+        <button id="d-F" data-d="F" aria-pressed="false">F · Olcha</button>
+        <button id="d-G" data-d="G" aria-pressed="false">G · Binafsha</button>
+        <button id="d-H" data-d="H" aria-pressed="false">H · Zaytun</button>
+        <button id="d-I" data-d="I" aria-pressed="false">I · Grafit</button>
+        <button id="d-J" data-d="J" aria-pressed="false">J · Marjon</button>
+      </div>
+      <div class="seg" role="group" aria-label="Shrift" id="fontSeg">
+        <button id="f-erp" data-f="erp" aria-pressed="false">ERP sayti</button>
+        <button id="f-nunito" data-f="nunito" aria-pressed="true">Nunito</button>
+        <button id="f-rubik" data-f="rubik" aria-pressed="false">Rubik</button>
+        <button id="f-rounded" data-f="rounded" aria-pressed="false">M PLUS Rounded</button>
+        <button id="f-jakarta" data-f="jakarta" aria-pressed="false">ERP paneli</button>
+      </div>
+      <div class="seg" role="group" aria-label="Mavzu" id="modeSeg">
+        <button id="m-light" data-m="light" aria-pressed="true">Yorug'</button>
+        <button id="m-dark" data-m="dark" aria-pressed="false">Qorong'i</button>
+      </div>
+    </div>
+  </header>
+  <p class="dirnote" id="dirNote"></p>
+
+  <div class="view" id="view-staff">
+  <div class="rail" id="rail"></div>
+  <div class="motion-row"><button class="replay" id="replay" type="button">↻ Animatsiyani qayta ko'rish</button><p class="motion-note">Yangi ekranlar jonli: kartalar, tugmalar va chiplarni bosib ko'ring. Ekran ochilganda avval skeleton yuklanish ko'rinadi, keyin bloklar ketma-ket xiralikdan tiniqlashib chiqadi. Grafik chizig'i chiziladi, ustunlar prujina effekti bilan o'sadi, raqamlar sanab chiqadi. Tab va filtr ko'rsatkichi joydan-joyga suzib o'tadi, tab almashganda kontent o'sha tomonga suriladi. Scroll qilganda sarlavha ko'tariladi. Ilovada bular Reanimated va expo-haptics orqali qilinadi.</p></div>
+
+
+  <section class="roles" id="dashboards">
+    <div class="roles-head">
+      <div><div class="eyebrow">Soha mutaxassislari tavsiyasi</div><h2 class="h2">Rollar bo'yicha dashboardlar</h2>
+      <p class="lede">Har bir rol uchun shu soha mutaxassisi agenti kodni va API'ni o'rganib, kunlik qaror uchun kerakli statistikalarni, tezkor amallarni va pastki bar tugmalarini tanladi. Yuqoridagi rang, shrift va mavzu tanlovi bu yerda ham ishlaydi.</p></div>
+      <div class="seg" role="group" aria-label="Soha" id="roleSeg"></div>
+    </div>
+    <div class="role-grid" id="roleGrid"></div>
+  </section>
+
+  <section class="roles" id="gaps">
+    <div class="roles-head"><div><div class="eyebrow">Kamchiliklar auditi</div><h2 class="h2">Yetishmayotgan ekranlar</h2>
+    <p class="lede">UI/UX auditor ilovaning qolgan qismini tekshirib, foydalanuvchiga eng ko'p ta'sir qiladigan kamchiliklarni topdi. Quyida ularning yangi dizayni. Har bir telefon ostida hozirgi muammo va kod manzili yozilgan.</p></div></div>
+    <div class="role-grid" id="gapRail"></div>
+  </section>
+
+  <section class="lower">
+    <div class="panel">
+      <h2 id="palTitle">Palitra</h2>
+      <div class="sw" id="swatches"></div>
+      <p class="contrast" id="contrast"></p>
+    </div>
+    <div class="panel">
+      <h2>UX auditidan asosiy topilmalar</h2>
+      <ol class="find">
+        <li><b>KPI devori.</b> Tadbirkor bosh sahifasida bir xil og'irlikdagi 13 ta karta bor, "Daromad" ikki marta chiqadi. Yangi tartib: bitta hero, 4 ta ixcham KPI, keyin bo'limlar. <code>(tadbirkor)/index.tsx:47</code></li>
+        <li><b>Asosiy amallar ko'milgan.</b> Detal sahifasida tugmalar scroll oxirida turadi. Yangi tartibda pastki sticky bar ishlatiladi. <code>erp/[key]/[id].tsx:210</code></li>
+        <li><b>Bug.</b> Faol bo'lmagan amalning sababi hech qachon ko'rsatilmaydi, chunki <code>disabled</code> holatda <code>onPress</code> ishlamaydi. <code>[id].tsx:223</code></li>
+        <li><b>IconTile foni yo'q.</b> Modul ranglari (ishlab chiqarish, logistika, sklad) deyarli ko'rinmaydi. <code>primitives.tsx:361</code></li>
+        <li><b>Har bir qator alohida karta.</b> Ro'yxatlar shovqinli. Yangi tartibda bitta guruh va bo'luvchi chiziqlar ishlatiladi. <code>erp/ui.tsx:110</code></li>
+        <li><b>Sarlavhalar har xil.</b> Rol sahifalarida, ERPda va do'konda uch xil sarlavha bor. Yangi tartibda yagona <code>PageHeader</code> bo'ladi.</li>
+        <li><b>Kichik bosish zonalari.</b> Chiplar va segmentlar 36px. Kamida 44px bo'lishi kerak, haydovchi uchun 64px.</li>
+        <li><b>Kontrast.</b> <code>successSolid</code> va <code>warningSolid</code> ustidagi oq matn 4.5:1 dan past. Yangi palitralarda tuzatilgan.</li>
+      </ol>
+      <p class="keep">Hamma o'zgarish <code>src/design/</code> tokenlari va primitivlari orqali qilinadi, design-lint qoidalari saqlanadi. <code>launch.tsx</code> va <code>launch-scene.tsx</code> fayllariga tegilmaydi.</p>
+    </div>
+  </section>
+</div>
+  <div class="view" id="view-client" hidden>
+    <section class="roles"><div class="roles-head"><div><div class="eyebrow">Insof do'koni · mijoz tomoni</div><h2 class="h2">Mijoz sahifalari shablonlari</h2>
+    <p class="lede">Quruvchi yoki xususiy mijoz ilovani ochganda ko'radigan sahifalar: bosh sahifa, katalog, mahsulot, kalkulyator, buyurtma, kuzatish, zavod va profil. Rang, shrift va mavzu tanlovi bu yerda ham ishlaydi. Narxlar namuna sifatida berilgan.</p></div></div>
+    <div class="role-grid" id="clientGrid"></div></section>
+  </div>
+</div>
+
+<script>
+const L = {
+  cur:{light:{bgApp:'#f5f6f8',bgSurface:'#ffffff',bgSubtle:'#f8fafc',bgMuted:'#f1f5f9',bgChrome:'#ffffff',borderSubtle:'#f1f5f9',borderDefault:'#e2e8f0',borderStrong:'#cad5e2',textStrong:'#0f172b',textBody:'#314158',textMuted:'#5f7088',textFaint:'#7f8da5',textOnBrand:'#0f172b',brand:'#f59e0b',brandSoft:'#fef3c7',brandInk:'#92400e',success:'#007a55',successBg:'#ecfdf5',successSolid:'#009966',warning:'#bb4d00',warningBg:'#fffbeb',danger:'#c10007',dangerBg:'#fef2f2',dangerSolid:'#e7000b',info:'#1447e6',infoBg:'#eff6ff',moduleProduction:'#7008e7',moduleProductionBg:'#f5f3ff',moduleLogistics:'#0069a8',moduleLogisticsBg:'#f0f9ff',moduleWarehouse:'#ca3500',moduleWarehouseBg:'#fff7ed',chart1:'#155dfc',chart2:'#d97706',chartTrack:'#f1f5f9'},
+       dark:{bgApp:'#0f172a',bgSurface:'#1e293b',bgSubtle:'#243044',bgMuted:'#2c3a50',bgChrome:'#0b1120',borderSubtle:'#243044',borderDefault:'#334155',borderStrong:'#42536c',textStrong:'#f1f5f9',textBody:'#cbd5e1',textMuted:'#94a3b8',textFaint:'#8794a9',textOnBrand:'#0f172b',brand:'#f59e0b',brandSoft:'#3b2a0c',brandInk:'#fbbf24',success:'#34d399',successBg:'#0f2a22',successSolid:'#009966',warning:'#fbbf24',warningBg:'#2a2110',danger:'#f87171',dangerBg:'#2b1517',dangerSolid:'#e7000b',info:'#60a5fa',infoBg:'#14213a',moduleProduction:'#a78bfa',moduleProductionBg:'#251b3d',moduleLogistics:'#38bdf8',moduleLogisticsBg:'#0f2436',moduleWarehouse:'#fb923c',moduleWarehouseBg:'#2e1a0e',chart1:'#155dfc',chart2:'#d97706',chartTrack:'#243044'}},
+  D:{"light":{"bgApp":"#f0f2f8","bgSurface":"#fafbfd","bgSubtle":"#f5f7fb","bgMuted":"#e6e9f2","bgChrome":"#f8f9fc","borderSubtle":"#e9ecf3","borderDefault":"#d7dbe7","borderStrong":"#bcc1d2","textStrong":"#0e1430","textBody":"#2d3554","textMuted":"#535c7a","textFaint":"#7a829c","textOnBrand":"#ffffff","brand":"#5266ee","brandHover":"#394feb","brandSoft":"#e2e5fd","brandInk":"#0b1c8e","success":"#087c48","successBg":"#e7f7ef","successSolid":"#07854c","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#d60e17","dangerBg":"#fdeeee","dangerSolid":"#ea0c15","info":"#0a6f9f","infoBg":"#e6f4fb","infoSolid":"#097bb1","moduleProduction":"#7523ed","moduleProductionBg":"#f2ecff","moduleLogistics":"#0d6e9c","moduleLogisticsBg":"#e6f4fb","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","chart1":"#5266ee","chart2":"#e85033","chart3":"#0f9b8e","chart4":"#d81895","chartTrack":"#e6e9f2","inv":"#0b1341","onInv":"#f2f4ff","onInvMuted":"#aab4e6","invChip":"#131f68","accent":"#ff7a52"},"dark":{"bgApp":"#090c1d","bgSurface":"#121735","bgSubtle":"#181e40","bgMuted":"#1f274d","bgChrome":"#0a0e22","borderSubtle":"#181e40","borderDefault":"#29325c","borderStrong":"#3a4474","textStrong":"#eef0fb","textBody":"#c6cbe6","textMuted":"#959cc0","textFaint":"#848bb0","textOnBrand":"#0a0e22","brand":"#8fa0ff","brandHover":"#a9b6ff","brandSoft":"#1d2558","brandInk":"#b7c2fb","success":"#4fd59a","successBg":"#0d2a22","successSolid":"#0f7a4a","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a8f","dangerBg":"#2d1520","dangerSolid":"#d42a31","info":"#5cc4f0","infoBg":"#0d2536","infoSolid":"#0a6d9c","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#5cc4f0","moduleLogisticsBg":"#0d2536","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","chart1":"#8fa0ff","chart2":"#ff8a6b","chart3":"#23edd6","chart4":"#f474c6","chartTrack":"#181e40","inv":"#1c2a7a","onInv":"#f2f4ff","onInvMuted":"#b2bcef","invChip":"#2a3a96","accent":"#ff8a6b"}},
+  E:{"light":{"bgApp":"#f0f8f5","bgSurface":"#fafdfc","bgSubtle":"#f5fbf9","bgMuted":"#e6f2ee","bgChrome":"#f8fcfb","borderSubtle":"#e9f3ef","borderDefault":"#d7e7e1","borderStrong":"#bcd2ca","textStrong":"#0c1b1d","textBody":"#2c3d40","textMuted":"#526366","textFaint":"#788789","textOnBrand":"#ffffff","brand":"#0d8187","brandHover":"#0b6d72","brandSoft":"#e2fcfd","brandInk":"#085e63","success":"#1b7d08","successBg":"#ecf7e8","successSolid":"#1b8607","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#d60e17","dangerBg":"#fdeeee","dangerSolid":"#ea0c15","info":"#0f48e4","infoBg":"#ebf0fd","infoSolid":"#376af4","moduleProduction":"#7523ed","moduleProductionBg":"#f2ecff","moduleLogistics":"#124ae1","moduleLogisticsBg":"#ebf0fd","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","chart1":"#0d8187","chart2":"#e7552b","chart3":"#184ddb","chart4":"#d81895","chartTrack":"#e6f2ee","inv":"#092f32","onInv":"#eef7f6","onInvMuted":"#9fbfbd","invChip":"#125257","accent":"#ff7a52"},"dark":{"bgApp":"#071214","bgSurface":"#0f1f22","bgSubtle":"#14282b","bgMuted":"#1b3337","bgChrome":"#061012","borderSubtle":"#14282b","borderDefault":"#24403f","borderStrong":"#345653","textStrong":"#ecf5f4","textBody":"#c2d3d1","textMuted":"#8fa6a3","textFaint":"#7f9794","textOnBrand":"#04191b","brand":"#6ef7ee","brandHover":"#66d6cf","brandSoft":"#0f3436","brandInk":"#59f6eb","success":"#7bd96a","successBg":"#132a12","successSolid":"#2e7d1f","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a8f","dangerBg":"#2d1520","dangerSolid":"#d42a31","info":"#8aa9ff","infoBg":"#141f3d","infoSolid":"#2a55c9","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#8aa9ff","moduleLogisticsBg":"#141f3d","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","chart1":"#6ef7ee","chart2":"#ff8a6b","chart3":"#8aa9ff","chart4":"#f474c6","chartTrack":"#14282b","inv":"#0e3a3d","onInv":"#ecf5f4","onInvMuted":"#9fc4c0","invChip":"#175157","accent":"#ff8a6b"}},
+  F:{"light":{"bgApp":"#f8f0f2","bgSurface":"#fdfafb","bgSubtle":"#fbf5f7","bgMuted":"#f2e6e9","bgChrome":"#fcf8f9","borderSubtle":"#f3e9ec","borderDefault":"#e7d7db","borderStrong":"#d2bcc1","textStrong":"#1d0f16","textBody":"#40313a","textMuted":"#66575f","textFaint":"#8a7c83","textOnBrand":"#ffffff","brand":"#df167c","brandHover":"#be136a","brandSoft":"#fde2f0","brandInk":"#8e0b4d","success":"#087c48","successBg":"#e7f7ef","successSolid":"#07854c","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#c4150c","dangerBg":"#fdeeec","dangerSolid":"#e6180c","info":"#0f48e4","infoBg":"#ebf0fd","infoSolid":"#376af4","moduleProduction":"#5c17ec","moduleProductionBg":"#f1ecff","moduleLogistics":"#0a7279","moduleLogisticsBg":"#e3f4f3","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","chart1":"#df167c","chart2":"#0f8b8d","chart3":"#c28516","chart4":"#184ddb","chartTrack":"#f2e6e9","inv":"#2f081d","onInv":"#fbf1f6","onInvMuted":"#d0a8bd","invChip":"#511436","accent":"#3fd1c6"},"dark":{"bgApp":"#120a0e","bgSurface":"#1e1218","bgSubtle":"#26171f","bgMuted":"#311e28","bgChrome":"#0e070b","borderSubtle":"#26171f","borderDefault":"#3e2733","borderStrong":"#553845","textStrong":"#f8eff3","textBody":"#dccbd3","textMuted":"#ab97a1","textFaint":"#9a8690","textOnBrand":"#22070f","brand":"#f872b3","brandHover":"#f59bc6","brandSoft":"#3d1529","brandInk":"#faa0cb","success":"#4fd59a","successBg":"#0d2a22","successSolid":"#0f7a4a","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a80","dangerBg":"#2d1516","dangerSolid":"#c9281f","info":"#8aa9ff","infoBg":"#141f3d","infoSolid":"#2a55c9","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#4fd6cc","moduleLogisticsBg":"#0d2c2c","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","chart1":"#f872b3","chart2":"#23edde","chart3":"#f2b84b","chart4":"#8aa9ff","chartTrack":"#26171f","inv":"#4a1630","onInv":"#fbf1f6","onInvMuted":"#e0b6ca","invChip":"#631e41","accent":"#3fd1c6"}},
+  G:{"light":{"bgApp":"#f4f0f8","bgSurface":"#fcfafd","bgSubtle":"#f8f5fb","bgMuted":"#ece6f2","bgChrome":"#faf8fc","borderSubtle":"#eee9f3","borderDefault":"#dfd7e7","borderStrong":"#c7bcd2","textStrong":"#150f1f","textBody":"#3a3248","textMuted":"#5e576b","textFaint":"#857f90","success":"#087c48","successBg":"#e7f7ef","successSolid":"#07854c","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#d60e17","dangerBg":"#fdeeee","dangerSolid":"#ea0c15","info":"#0a6f9f","infoBg":"#e6f4fb","infoSolid":"#097bb1","moduleProduction":"#b80fb0","moduleProductionBg":"#fbe9f9","moduleLogistics":"#0d6e9c","moduleLogisticsBg":"#e6f4fb","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","textOnBrand":"#ffffff","brand":"#8155ee","brandHover":"#6e3bec","brandSoft":"#eae2fd","brandInk":"#310b8e","chart1":"#8155ee","chart2":"#e86d33","chart3":"#0f9b8e","chart4":"#e5197a","inv":"#1a0b41","onInv":"#f4f0ff","onInvMuted":"#bdb0e6","invChip":"#2b1764","accent":"#ffb27a","chartTrack":"#ece6f2"},"dark":{"bgApp":"#0e0b14","bgSurface":"#181320","bgSubtle":"#1f1a28","bgMuted":"#292334","bgChrome":"#0c0910","borderSubtle":"#1f1a28","borderDefault":"#352e42","borderStrong":"#494158","textStrong":"#f1eef6","textBody":"#cfc9d9","textMuted":"#a19aac","textFaint":"#928b9c","success":"#4fd59a","successBg":"#0d2a22","successSolid":"#0f7a4a","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a8f","dangerBg":"#2d1520","dangerSolid":"#d42a31","info":"#5cc4f0","infoBg":"#0d2536","infoSolid":"#0a6d9c","moduleProduction":"#f08ae6","moduleProductionBg":"#3a1636","moduleLogistics":"#5cc4f0","moduleLogisticsBg":"#0d2536","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","textOnBrand":"#140a2e","brand":"#b49bff","brandHover":"#c8b6ff","brandSoft":"#2a1d55","brandInk":"#cbbcfb","chart1":"#b49bff","chart2":"#ff9a6b","chart3":"#23edd6","chart4":"#f476b3","inv":"#31206e","onInv":"#f4f0ff","onInvMuted":"#c3b6f0","invChip":"#432d90","accent":"#ffb27a","chartTrack":"#1f1a28"}},
+  H:{"light":{"bgApp":"#f6f8f0","bgSurface":"#fcfdfa","bgSubtle":"#f9fbf5","bgMuted":"#eff2e6","bgChrome":"#fbfcf8","borderSubtle":"#f1f3e9","borderDefault":"#e3e7d7","borderStrong":"#cdd2bc","textStrong":"#1c1f0f","textBody":"#454832","textMuted":"#646855","textFaint":"#8d907f","success":"#087a5a","successBg":"#e6f6f0","successSolid":"#078561","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#d60e17","dangerBg":"#fdeeee","dangerSolid":"#ea0c15","info":"#0a6f9f","infoBg":"#e6f4fb","infoSolid":"#097bb1","moduleProduction":"#7523ed","moduleProductionBg":"#f2ecff","moduleLogistics":"#0d6e9c","moduleLogisticsBg":"#e6f4fb","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","textOnBrand":"#ffffff","brand":"#667d0c","brandHover":"#576a0a","brandSoft":"#f8fde2","brandInk":"#4b5c07","chart1":"#667d0c","chart2":"#e65919","chart3":"#186ddb","chart4":"#c516a3","inv":"#202807","onInv":"#f5f7e8","onInvMuted":"#bcc49a","invChip":"#3d4a13","accent":"#e9c46a","chartTrack":"#eff2e6"},"dark":{"bgApp":"#12140b","bgSurface":"#1e2013","bgSubtle":"#26281a","bgMuted":"#313423","bgChrome":"#0f1009","borderSubtle":"#26281a","borderDefault":"#3f422e","borderStrong":"#545841","textStrong":"#f5f6ee","textBody":"#d7d9c9","textMuted":"#a9ac9a","textFaint":"#9a9c8b","success":"#4fd5b0","successBg":"#0d2a24","successSolid":"#0f7a5c","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a8f","dangerBg":"#2d1520","dangerSolid":"#d42a31","info":"#5cc4f0","infoBg":"#0d2536","infoSolid":"#0a6d9c","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#5cc4f0","moduleLogisticsBg":"#0d2536","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","textOnBrand":"#151a05","brand":"#e0f76e","brandHover":"#c9da7a","brandSoft":"#262e10","brandInk":"#dbf75d","chart1":"#e0f76e","chart2":"#ff9a6b","chart3":"#7cb4ff","chart4":"#f476dc","inv":"#2c3512","onInv":"#f5f7e8","onInvMuted":"#c4cca3","invChip":"#3d4a18","accent":"#e9c46a","chartTrack":"#26281a"}},
+  I:{"light":{"bgApp":"#f3f4f5","bgSurface":"#fbfcfc","bgSubtle":"#f7f8f9","bgMuted":"#ebedee","bgChrome":"#fafafb","borderSubtle":"#edefef","borderDefault":"#dde0e1","borderStrong":"#c4c8ca","textStrong":"#0f141f","textBody":"#323a48","textMuted":"#575e6b","textFaint":"#7f8490","success":"#087c48","successBg":"#e7f7ef","successSolid":"#07854c","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#d60e17","dangerBg":"#fdeeee","dangerSolid":"#ea0c15","info":"#0a6f9f","infoBg":"#e6f4fb","infoSolid":"#097bb1","moduleProduction":"#7523ed","moduleProductionBg":"#f2ecff","moduleLogistics":"#0d6e9c","moduleLogisticsBg":"#e6f4fb","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","textOnBrand":"#ffffff","brand":"#1f2329","brandHover":"#000000","brandSoft":"#e9ebee","brandInk":"#1f2329","chart1":"#1f2329","chart2":"#ea4348","chart3":"#1880db","chart4":"#3974e9","inv":"#16191d","onInv":"#f3f4f6","onInvMuted":"#a6abb4","invChip":"#2a2e35","accent":"#ff4d52","chartTrack":"#ebedee"},"dark":{"bgApp":"#0b0e14","bgSurface":"#131720","bgSubtle":"#1a1f28","bgMuted":"#232834","bgChrome":"#090c10","borderSubtle":"#1a1f28","borderDefault":"#2e3542","borderStrong":"#414958","textStrong":"#eef1f6","textBody":"#c9ced9","textMuted":"#9aa0ac","textFaint":"#8b919c","success":"#4fd59a","successBg":"#0d2a22","successSolid":"#0f7a4a","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8a8f","dangerBg":"#2d1520","dangerSolid":"#d42a31","info":"#5cc4f0","infoBg":"#0d2536","infoSolid":"#0a6d9c","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#5cc4f0","moduleLogisticsBg":"#0d2536","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","textOnBrand":"#111316","brand":"#eceef1","brandHover":"#ffffff","brandSoft":"#262a31","brandInk":"#eceef1","chart1":"#eceef1","chart2":"#ff6b70","chart3":"#6eb4ff","chart4":"#538ef1","inv":"#24282f","onInv":"#f3f4f6","onInvMuted":"#a9afb9","invChip":"#353a43","accent":"#ff6b70","chartTrack":"#1a1f28"}},
+  J:{"light":{"bgApp":"#f8f2f0","bgSurface":"#fdfbfa","bgSubtle":"#fbf7f5","bgMuted":"#f2e9e6","bgChrome":"#fcf9f8","borderSubtle":"#f3ece9","borderDefault":"#e7dbd7","borderStrong":"#d2c1bc","textStrong":"#1f140f","textBody":"#483a32","textMuted":"#6b5e57","textFaint":"#90847f","success":"#087c48","successBg":"#e7f7ef","successSolid":"#07854c","warning":"#914a09","warningBg":"#fff4e5","warningSolid":"#bd580a","danger":"#aa0b25","dangerBg":"#fdecef","dangerSolid":"#e90c31","info":"#0a6f9f","infoBg":"#e6f4fb","infoSolid":"#097bb1","moduleProduction":"#7523ed","moduleProductionBg":"#f2ecff","moduleLogistics":"#0d6e9c","moduleLogisticsBg":"#e6f4fb","moduleWarehouse":"#b5410f","moduleWarehouseBg":"#fff0e8","textOnBrand":"#ffffff","brand":"#dc3316","brandHover":"#bc2b13","brandSoft":"#fde6e2","brandInk":"#8e1f0b","chart1":"#dc3316","chart2":"#1570bc","chart3":"#0f8a6a","chart4":"#712ce8","inv":"#320f09","onInv":"#fff2ee","onInvMuted":"#e0b2a6","invChip":"#541e15","accent":"#58c6c2","chartTrack":"#f2e9e6"},"dark":{"bgApp":"#140e0b","bgSurface":"#201713","bgSubtle":"#281f1a","bgMuted":"#342823","bgChrome":"#100c09","borderSubtle":"#281f1a","borderDefault":"#42352e","borderStrong":"#584941","textStrong":"#f6f1ee","textBody":"#d9cec9","textMuted":"#aca09a","textFaint":"#9c918b","success":"#4fd59a","successBg":"#0d2a22","successSolid":"#0f7a4a","warning":"#ffb35c","warningBg":"#2b1f10","warningSolid":"#b45309","danger":"#ff8aa0","dangerBg":"#2d1520","dangerSolid":"#b8142f","info":"#5cc4f0","infoBg":"#0d2536","infoSolid":"#0a6d9c","moduleProduction":"#c3a3ff","moduleProductionBg":"#251a45","moduleLogistics":"#5cc4f0","moduleLogisticsBg":"#0d2536","moduleWarehouse":"#ff9a6b","moduleWarehouseBg":"#2e1a12","textOnBrand":"#2a0c06","brand":"#ff8a6e","brandHover":"#ffa58f","brandSoft":"#3a1a13","brandInk":"#faae9b","chart1":"#ff8a6e","chart2":"#6eb4ff","chart3":"#35efbb","chart4":"#b49bff","inv":"#4a2219","onInv":"#fff2ee","onInvMuted":"#e8bcb0","invChip":"#613024","accent":"#58c6c2","chartTrack":"#281f1a"}},
+};
+const NOTE = {
+  G:'<b>G · Binafsha</b> chuqur binafsha va shaftoli aksent. Zamonaviy texnologik ko\'rinish, AI yordamchi va tahlil ekranlariga ayniqsa mos.',
+  H:'<b>H · Zaytun</b> to\'q zaytun yashili va oltin aksent. Tabiiy, "ECO" ruhida, lekin oddiy yashildan farqli va jiddiy ko\'rinadi.',
+  I:'<b>I · Grafit</b> monoxrom: asosiy rang qora grafit, yagona signal rang qizil. Eng minimal va qat\'iy variant, Apple yoki Linear uslubida.',
+  J:'<b>J · Marjon</b> qizg\'ish marjon asosiy rang va firuza aksent. Issiq, energiyali va brendni darhol esda qoldiradi.',
+  D:'<b>D · Chizma</b> qurilish chizmasidan (blueprint) olingan g\'oya. To\'q ultramarin hero kartada nozik katak to\'r bor, CTA tugmalari yorqin ultramarin, aksent marjon rang. Rasmiy va texnik ko\'rinadi, ERP va direktor ekranlari uchun mos.',
+  E:'<b>E · Petrol</b> chuqur moviy-yashil (petrol) rang sovuq beton kulrangi ustida, aksent marjon. Ekologik va sanoat ruhi birga keladi, "muvaffaqiyat" yashili brenddan aniq ajralib turadi.',
+  F:'<b>F · Olcha</b> to\'q olcha (bordo) asosiy rang va firuza aksent. Eng premium va esda qoladigan variant, raqobatchilar orasida ajralib turadi. Qorong\'i rejimda pushti-olcha rangga o\'tadi.'
+};
+const R = {cur:14, D:20, E:22, F:24, G:24, H:22, I:18, J:22};
+
+const I = {
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  wallet:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  truck:'<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  factory:'<path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  home:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  list:'<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+  chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  down:'<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  chev:'<path d="m9 18 6-6-6-6"/>',
+  back:'<path d="m15 18-6-6 6-6"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  nav:'<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+  trend:'<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>'
+};
+const ic = (n,s=15)=>`<svg class="ic" viewBox="0 0 24 24" style="width:${s}px;height:${s}px">${I[n]}</svg>`;
+const tile = (n,m,s=28)=>`<span class="tile" style="width:${s}px;height:${s}px;background:var(--module${m}Bg);color:var(--module${m})">${ic(n,s*0.55)}</span>`;
+const sb = ()=>`<div class="sb"><span>9:41</span><span>●●● ▮</span></div>`;
+const badge = (t,tone)=>`<span class="badge" style="background:var(--${tone}Bg);color:var(--${tone})">${t}</span>`;
+const tabs = (items,on,old)=>`<div class="tabbar ${old?'old':''}">${items.map(([n,l],i)=>`<div class="tab ${i===on?'on':''}"><span class="pill">${ic(n,16)}</span>${l}</div>`).join('')}</div>`;
+
+/* sparkline drawn to scale: 8 weekly profit points, 0..max mapped to viewBox height */
+function spark(){
+  const d=[41,48,44,57,53,62,66,74], W=250, H=46, pad=4, max=80;
+  const x=i=>pad+i*(W-2*pad)/(d.length-1), y=v=>H-pad-(v/max)*(H-2*pad);
+  const pts=d.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const last=d.length-1;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:46px;display:block" role="img" aria-label="Haftalik foyda: 41 dan 74 mln gacha o'sish">
+    <polygon class="spk-area" points="${x(0)},${H-pad} ${pts} ${x(last)},${H-pad}" fill="var(--brand)" fill-opacity=".18"/>
+    <polyline class="spk" pathLength="1" points="${pts}" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle class="pulse" cx="${x(last)}" cy="${y(d[last])}" r="4" fill="var(--brand)"/><circle cx="${x(last)}" cy="${y(d[last])}" r="4" fill="var(--brand)" stroke="var(--inv)" stroke-width="2"/>
+  </svg>`;
+}
+
+const ROLE_TABS=[['home','Asosiy'],['list','Buyurtma'],['chat','Xabarlar'],['user','Profil']];
+
+const screens = [
+ {key:'before', tag:'Hozir', title:'Tadbirkor · bosh sahifa', note:'Sarlavha scroll bilan yo\'qoladi. KPI kartalari bir xil og\'irlikda, ikonkalarning foni yo\'q. Muhim kontent 900px pastda.', pal:'cur', html:()=>`
+   ${sb()}<div class="scroll">
+     <div class="row between"><div><div class="t-over">Insof Beton MChJ</div><div class="t-title">Salom, Otabek</div></div><span class="ib sec">${ic('bell')}</span></div>
+     <div class="card old-kpi"><div class="row"><span style="color:var(--brandInk)">${ic('wallet')}</span><span class="t-sm">Foyda</span></div><div class="num" style="font-size:24px;font-weight:600">74 200 000</div><span class="t-sm">so'm, shu oy</span></div>
+     <div class="kpi2">
+       ${[['wallet','Daromad','312 mln'],['trend','Umumiy daromad','312 mln'],['down','Xarajat','238 mln'],['down','Qarz','41 mln'],['box','Buyurtmalar','128'],['truck','Reyslar','46']].map(([n,l,v])=>`<div class="card old-kpi"><span style="color:var(--textMuted)">${ic(n)}</span><span class="t-sm">${l}</span><span class="old-kpi v num">${v}</span></div>`).join('')}
+     </div>
+   </div>${tabs(ROLE_TABS,0,true)}`},
+ {key:'home', tag:'Yangi', title:'Tadbirkor · bosh sahifa', note:'Sarlavha doim ko\'rinadi. Hero kartada davr filtri va trend bor, KPIlar 4 tagacha qisqartirilgan, tezkor amallar to\'g\'ridan-to\'g\'ri sahifada.', html:()=>`
+   ${sb()}<div class="appbar"><span class="av">OI</span><div style="flex:1;min-width:0"><div class="t-over">Insof Beton MChJ</div><div style="font-size:13px;font-weight:700">Salom, Otabek</div></div><span class="ib">${ic('bell')}<i class="dot"></i></span></div>
+   <div class="scroll">
+     <div class="hero">
+       <div class="row between"><span class="row" style="gap:6px"><i class="accentbar" style="display:inline-block;height:3px;width:14px;border-radius:2px;background:var(--accent,var(--brand))"></i><span class="t-over">Sof foyda</span></span><div class="seg2"><span>Hafta</span><span class="on">Oy</span><span>Yil</span></div></div>
+       <div class="row" style="align-items:flex-end;gap:8px"><span class="big num">74,2 <span style="font-size:13px;font-weight:600">mln so'm</span></span><span class="delta" style="background:var(--successSolid);color:#fff">${ic('up',10)}12%</span></div>
+       ${spark()}
+     </div>
+     <div class="kpi2">
+       ${[['wallet','Brand','Daromad','312 mln','+8%','success'],['down','Warehouse','Xarajat','238 mln','+3%','warning'],['box','Production','Buyurtma','128','+14','success'],['truck','Logistics','Reyslar','46','−2','danger']].map(([n,m,l,v,d,t])=>`<div class="card kpi">${m==='Brand'?`<span class="tile" style="background:var(--brandSoft);color:var(--brandInk)">${ic(n,15)}</span>`:tile(n,m)}<div style="min-width:0"><div class="t-sm">${l}</div><div class="v num">${v}</div><div style="font-size:9px;font-weight:700;color:var(--${t})">${d}</div></div></div>`).join('')}
+     </div>
+     <div class="qa">
+       <div class="q primary">${tile('plus','Production',30)}Buyurtma</div>
+       <div class="q">${tile('factory','Production',30)}Sex</div>
+       <div class="q">${tile('truck','Logistics',30)}Reys</div>
+       <div class="q">${tile('users','Warehouse',30)}Jamoa</div>
+     </div>
+     <div class="sh"><b>Loyihalar</b><a href="#" onclick="return false">Barchasi</a></div>
+     <div class="group">
+       ${[['Chilonzor 9-kvartal',72],['Sergeli ombor',38]].map(([t,p])=>`<div class="li"><div class="m"><b>${t}</b><div class="prog"><i style="width:${p}%"></i></div></div><span class="num" style="font-size:11px;font-weight:700">${p}%</span></div>`).join('')}
+     </div>
+   </div>${tabs(ROLE_TABS,0)}`},
+ {key:'dash', tag:'Yangi', title:'Direktor · Dashboard', note:'Avval asosiy raqamlar, keyin tafsilotlar: tushum va xarajat grafigi, mahsulotlar ulushi, oylik reja va e\'tibor talab qiladigan ishlar. Grafiklarda ustunga bosganda qiymati chiqadi.', html:()=>{
+   const days=['Du','Se','Ch','Pa','Ju','Sh','Ya'], inc=[182,204,176,231,248,196,214], exp=[140,152,149,170,176,151,160];
+   const W=252,H=118,l=26,b=18,t=8,max=250,ch=H-b-t,gw=(W-l-4)/7,bw=9;
+   const y=v=>t+ch-(v/max)*ch;
+   const ticks=[0,100,200].map(v=>`<line x1="${l}" x2="${W-2}" y1="${y(v)}" y2="${y(v)}" stroke="var(--borderDefault)" stroke-width="1" ${v?'stroke-dasharray="2 3"':''}/><text x="${l-5}" y="${y(v)+3}" text-anchor="end" font-size="8" fill="var(--textMuted)">${v}</text>`).join('');
+   const bar=(x,v,c,lab)=>{const top=y(v),hh=t+ch-top;return `<path class="bar" style="--i:${days.indexOf(lab.split(' ')[0])}" d="M${x},${t+ch} V${top+4} q0,-4 4,-4 h${bw-8} q4,0 4,4 V${t+ch} Z" fill="var(--${c})"><title>${lab}: ${v} mln so'm</title></path>`};
+   const bars=days.map((d,i)=>{const x0=l+i*gw+(gw-2*bw-2)/2;return bar(x0,inc[i],'chart1',d+' tushum')+bar(x0+bw+2,exp[i],'chart2',d+' xarajat')+`<text x="${l+i*gw+gw/2}" y="${H-5}" text-anchor="middle" font-size="8" fill="var(--textMuted)" ${i===4?'font-weight="700" style="fill:var(--textStrong)"':''}>${d}</text>`}).join('');
+   const share=[['Beton','chart1',52],['Gazoblok','chart2',27],['Plita','chart3',14],['Boshqa','chart4',7]];
+   return `${sb()}<div class="appbar"><span class="av">DR</span><div style="flex:1;min-width:0"><div class="t-over">Direktor · Insof Beton</div><div class="hdr-t" style="font-size:13px;font-weight:var(--wHead)">Dashboard</div></div><span class="ib">${ic('bell')}<i class="dot"></i></span></div>
+   <div class="scroll" style="gap:10px">
+     <div class="chips"><span class="chip">Bugun</span><span class="chip on">Hafta</span><span class="chip">Oy</span><span class="chip">Yil</span></div>
+     <div class="kpi2">
+       <div class="card" style="padding:10px;display:flex;flex-direction:column;gap:2px"><span class="t-sm">Tushum</span><span class="num kpi" style="padding:0"><span class="v">1,45 mlrd</span></span><span style="font-size:9px;font-weight:700;color:var(--success)">▲ 9% o'tgan haftaga</span></div>
+       <div class="card" style="padding:10px;display:flex;flex-direction:column;gap:2px"><span class="t-sm">Ishlab chiqarish</span><span class="num kpi" style="padding:0"><span class="v">3 480 m³</span></span><span style="font-size:9px;font-weight:700;color:var(--danger)">▼ 3% rejadan</span></div>
+     </div>
+     <div class="card" style="display:flex;flex-direction:column;gap:6px">
+       <div class="sh"><b>Tushum va xarajat</b><span class="t-sm">mln so'm</span></div>
+       <div class="row" style="gap:12px;font-size:9.5px;color:var(--textBody)"><span class="row" style="gap:4px"><i style="width:8px;height:8px;border-radius:2px;background:var(--chart1)"></i>Tushum</span><span class="row" style="gap:4px"><i style="width:8px;height:8px;border-radius:2px;background:var(--chart2)"></i>Xarajat</span></div>
+       <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" role="img" aria-label="Haftalik tushum 176–248, xarajat 140–176 mln so'm">${ticks}${bars}</svg>
+     </div>
+     <div class="card" style="display:flex;flex-direction:column;gap:8px">
+       <div class="sh"><b>Mahsulotlar ulushi</b><span class="t-sm">tushumdan</span></div>
+       <div style="display:flex;gap:2px;height:10px">${share.map(([n,c,v])=>`<i title="${n} ${v}%" style="flex:${v};background:var(--${c});border-radius:3px"></i>`).join('')}</div>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:10px">${share.map(([n,c,v])=>`<span class="row between"><span class="row" style="gap:5px;color:var(--textBody)"><i style="width:8px;height:8px;border-radius:2px;background:var(--${c})"></i>${n}</span><b class="num">${v}%</b></span>`).join('')}</div>
+     </div>
+     <div class="card" style="display:flex;flex-direction:column;gap:6px">
+       <div class="row between"><b style="font-size:11.5px">Oylik reja</b><span class="num" style="font-size:11px;font-weight:700">72%</span></div>
+       <div class="prog" style="height:6px;margin:0"><i style="width:72%"></i></div>
+       <span class="t-sm">10 400 / 14 500 m³ · 9 kun qoldi</span>
+     </div>
+     <div class="sh"><b>E'tibor talab qiladi</b></div>
+     <div class="group">
+       <div class="li">${tile('check','Production')}<div class="m"><b>Tasdiq kutmoqda</b><span class="t-sm">Buyurtma va to'lovlar</span></div>${badge('5','warning')}</div>
+       <div class="li">${tile('wallet','Warehouse')}<div class="m"><b>Muddati o'tgan qarz</b><span class="t-sm">3 ta mijoz</span></div><b class="num" style="font-size:11px;color:var(--danger)">41 mln</b></div>
+     </div>
+   </div>${tabs([['home','Asosiy'],['trend','Hisobot'],['check','Tasdiq'],['user','Profil']],0)}`}},
+ {key:'list', tag:'Yangi', title:'ERP · ro\'yxat', note:'Qatorlar bitta guruhga birlashtirilgan, holat belgisi va summa o\'ng tomonda. Chiplarda soni ko\'rsatiladi.', html:()=>`
+   ${sb()}<div class="appbar"><span class="ib">${ic('back')}</span><div style="flex:1;font-size:13px;font-weight:700">Buyurtmalar</div><span class="ib">${ic('plus')}</span></div>
+   <div class="scroll">
+     <div class="search">${ic('search',14)}Mijoz, raqam yoki manzil</div>
+     <div class="chips"><span class="chip on">Hammasi<span class="n">128</span></span><span class="chip">Yangi<span class="n">9</span></span><span class="chip">Yo'lda<span class="n">14</span></span><span class="chip">Yopilgan</span></div>
+     <div class="t-over">Bugun</div>
+     <div class="group">
+       ${[['#4812 · Beton M300','Chilonzor, 12 m³','Yangi','info','14,4 mln'],['#4809 · Gazoblok D500','Sergeli, 240 dona','Yo\'lda','warning','8,9 mln'],['#4805 · Beton M250','Yunusobod, 8 m³','Yetkazildi','success','8,1 mln']].map(([t,s,st,tone,sum])=>`<div class="li">${tile('box','Production')}<div class="m"><b>${t}</b><span class="t-sm">${s}</span></div><div class="r"><b class="num">${sum}</b>${badge(st,tone)}</div></div>`).join('')}
+     </div>
+     <div class="t-over">Kecha</div>
+     <div class="group">
+       ${[['#4799 · Beton M350','Olmazor, 16 m³','Qarz','danger','19,2 mln'],['#4796 · Qum','Bektemir, 2 reys','Yopilgan','neutral','2,4 mln']].map(([t,s,st,tone,sum])=>`<div class="li">${tile(tone==='danger'?'wallet':'truck',tone==='danger'?'Warehouse':'Logistics')}<div class="m"><b>${t}</b><span class="t-sm">${s}</span></div><div class="r"><b class="num">${sum}</b>${tone==='neutral'?`<span class="badge" style="background:var(--bgMuted);color:var(--textMuted)">${st}</span>`:badge(st,tone)}</div></div>`).join('')}
+     </div>
+   </div>${tabs(ROLE_TABS,1)}`},
+ {key:'detail', tag:'Yangi', title:'Buyurtma · detal', note:'Holat va summa yuqorida turadi. Asosiy amal pastki sticky barda, qo\'shimcha amallar "⋯" ichida. Faol bo\'lmagan tugma bosilganda sababini ko\'rsatadi.', html:()=>`
+   ${sb()}<div class="appbar"><span class="ib">${ic('back')}</span><div style="flex:1;font-size:13px;font-weight:700">#4812</div><span class="ib">${ic('more')}</span></div>
+   <div class="scroll">
+     <div class="card" style="display:flex;flex-direction:column;gap:6px">
+       <div class="row between"><span class="t-over">Beton M300 · 12 m³</span>${badge('Tasdiq kutmoqda','warning')}</div>
+       <div class="num" style="font-size:22px;font-weight:700;letter-spacing:-.01em">14 400 000 <span style="font-size:11px;color:var(--textMuted)">so'm</span></div>
+       <span class="t-sm">"Baraka Qurilish" MChJ · 2-okt, 14:20</span>
+     </div>
+     <div class="group">
+       <div class="kv"><span>Manzil</span><b>Chilonzor 9, 14-uy</b></div>
+       <div class="kv"><span>Yetkazish</span><b>3-okt, 08:00</b></div>
+       <div class="kv"><span>To'lov</span><b style="color:var(--warning)">Nasiya · 30 kun</b></div>
+       <div class="kv"><span>Menejer</span><b>Dilshod R.</b></div>
+     </div>
+     <div class="sh"><b>Jarayon</b></div>
+     <div class="card tl">
+       <div class="s done"><span class="d"></span><div><b>Buyurtma qabul qilindi</b><div class="t-sm">2-okt, 14:20</div></div></div>
+       <div class="s now"><span class="d"></span><div><b>Direktor tasdig'i</b><div class="t-sm">Kutilmoqda</div></div></div>
+       <div class="s"><span class="d"></span><div style="color:var(--textMuted)">Ishlab chiqarish → reys</div></div>
+     </div>
+   </div>
+   <div class="sticky"><span class="btn sec">${ic('more')}</span><span class="btn sec" style="flex:1;color:var(--danger)">Rad etish</span><span class="btn pri" style="flex:1.4">${ic('check',14)}Tasdiqlash</span></div>`},
+ {key:'driver', tag:'Yangi', title:'Haydovchi · kabina', note:'Bitta yuk va bitta katta tugma (64pt), u doim pastda turadi. Tab bar kattalashtirilgan, qo\'ng\'iroq tugmasi esa marshrut yonida.', html:()=>`
+   ${sb()}<div class="appbar"><span class="av">AK</span><div style="flex:1"><div class="t-over">Kabina · 01 A 777 BA</div><div style="font-size:13px;font-weight:700">Aziz K.</div></div><span class="badge" style="background:var(--successBg);color:var(--success)">● Onlayn</span></div>
+   <div class="scroll">
+     <div class="kpi2" style="grid-template-columns:1fr 1fr 1fr">
+       ${[['4','reys'],['46 km','bugun'],['620k','so\'m']].map(([v,l])=>`<div class="card" style="padding:9px;text-align:center"><div class="num" style="font-size:16px;font-weight:700">${v}</div><div class="t-sm">${l}</div></div>`).join('')}
+     </div>
+     <div class="hero" style="gap:10px">
+       <div class="row between"><span class="t-over">Faol yuk · #4809</span><span class="badge" style="background:var(--brand);color:var(--textOnBrand)">Yo'lda</span></div>
+       <div style="font-size:16px;font-weight:700">Gazoblok D500 · 240 dona</div>
+       <div class="route"><div class="line"><i></i><u></u><i class="to"></i></div><div style="display:flex;flex-direction:column;gap:14px;font-size:11px"><div><div style="color:var(--onInvMuted);font-size:9px">Olish</div><b>Insof zavodi, Sergeli</b></div><div><div style="color:var(--onInvMuted);font-size:9px">Yetkazish · 14 km</div><b>Chilonzor 9, 14-uy</b></div></div></div>
+       <div class="row" style="gap:6px"><span class="btn" style="background:var(--invChip);color:var(--onInv);height:36px;font-size:10.5px">${ic('nav',13)}Navigator</span><span class="btn" style="background:var(--invChip);color:var(--onInv);height:36px;font-size:10.5px">${ic('phone',13)}Mijoz</span></div>
+     </div>
+     <div class="sh"><b>Keyingi yuklar</b><span class="t-sm">2 ta</span></div>
+     <div class="group">
+       <div class="li">${tile('truck','Logistics')}<div class="m"><b>Beton M300 · 12 m³</b><span class="t-sm">Yunusobod · 11:30</span></div>${ic('chev',14)}</div>
+     </div>
+   </div>
+   <div class="sticky" style="padding-bottom:10px"><span class="btn pri xl">${ic('check',18)}Yetkazdim</span></div>
+   ${tabs([['home','Kabina'],['list','Tarix'],['chat','Chat']],0).replace('class="tabbar ','class="tabbar " style="padding:8px 6px 18px" data-x="')}`}
+];
+
+const FONTS={
+  erp:{fam:'"Onest",system-ui,sans-serif',head:'"Unbounded",system-ui,sans-serif',body:500,strong:600,head_w:600,note:'<b>ERP sayti to\'plami</b>: matn uchun Onest (500), sarlavha va katta raqamlar uchun Unbounded. Insof ERP saytidagi bilan bir xil, shuning uchun brend yagona bo\'ladi. Ikkalasi ham kirillni qo\'llaydi. Paketlar: @expo-google-fonts/onest, @expo-google-fonts/unbounded.'},
+  nunito:{fam:'"Nunito",ui-rounded,system-ui,sans-serif',body:600,strong:700,head:800,note:'<b>Nunito</b> eng yumshoq variant: harflarning uchlari yumaloq. Matn 600, sarlavhalar 800 qalinlikda. Expo uchun tayyor paket bor: @expo-google-fonts/nunito.'},
+  rubik:{fam:'"Rubik",system-ui,sans-serif',body:500,strong:600,head:700,note:'<b>Rubik</b> burchaklari biroz yumaloqlangan, zich va mustahkam ko\'rinadi. Raqamlar va KPIlar uchun juda yaxshi. Paket: @expo-google-fonts/rubik.'},
+  rounded:{fam:'"M PLUS Rounded 1c",ui-rounded,system-ui,sans-serif',body:500,strong:700,head:800,note:'<b>M PLUS Rounded 1c</b> butunlay yumaloq uchli, eng "do\'stona" ko\'rinish. Paket: @expo-google-fonts/m-plus-rounded-1c.'},
+  jakarta:{fam:'"Plus Jakarta Sans",system-ui,sans-serif',body:400,strong:600,head:700,note:'<b>Plus Jakarta Sans</b> ERP panelida va mobil ilovada hozir ishlatilayotgan shrift. Yumshoq emas, faqat qalinroq qilish mumkin.'}
+};
+let font='nunito';
+try{ font=localStorage.getItem('insof-font')||'nunito'; }catch(e){}
+if(!FONTS[font]) font='nunito';
+let dir='D', mode='light';
+try{ dir=localStorage.getItem('insof-dir2')||'D'; mode=localStorage.getItem('insof-mode')||'light'; }catch(e){}
+if(!L[dir]||dir==='cur') dir='D';
+
+function vars(p,r){ return Object.entries(p).map(([k,v])=>`--${k}:${v}`).join(';')+`;--rCard:${r}px;${p.inv?'':'--inv:'+p.bgSurface+';--onInv:'+p.textStrong+';--onInvMuted:'+p.textMuted+';--invChip:'+p.bgMuted}`; }
+
+function render(){
+  const rail=document.getElementById('rail');
+  rail.innerHTML = screens.map((s,i)=>{
+    const src = s.pal==='cur' ? 'cur' : dir;
+    const p = L[src][mode];
+    return `${i===1?'<div class="divider" aria-hidden="true"></div>':''}<div class="slot">
+      <h3><span class="tag ${s.tag==='Yangi'?'new':''}">${s.tag}</span>${s.title}</h3>
+      <div class="phone"><div class="screen" data-dir="${src}" style="${vars(p,R[src])}${s.pal==='cur'?';--f-app:Plus Jakarta Sans,sans-serif;--wBody:400;--wStrong:600;--wHead:700':''}">${s.html()}</div></div>
+      <p>${s.note}</p></div>`;
+  }).join('');
+  document.querySelectorAll('#dirSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.d===dir));
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===mode));
+  const F=FONTS[font], rail2=document.getElementById('rail');
+  rail2.style.setProperty('--f-app',F.fam); rail2.style.setProperty('--wBody',F.body); rail2.style.setProperty('--wStrong',F.strong); rail2.style.setProperty('--wHead',F.head_w||F.head); rail2.style.setProperty('--f-head',F.head_w?F.head:'inherit');
+  document.querySelectorAll('#fontSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===font));
+  document.getElementById('dirNote').innerHTML=NOTE[dir]+'<br>'+F.note;
+  const p=L[dir][mode];
+  document.getElementById('palTitle').textContent=`Palitra · ${dir} · ${mode==='light'?'yorug\'':'qorong\'i'}`;
+  const keys=[['accent','Aksent'],['bgApp','Fon'],['bgSurface','Karta'],['textStrong','Matn'],['textMuted','Ikkilamchi'],['brand','Brend'],['brandSoft','Brend foni'],['success','Muvaffaqiyat'],['warning','Ogohlantirish'],['danger','Xavf'],['info','Ma\'lumot'],['chart1','Grafik 1'],['inv','Hero']];
+  document.getElementById('swatches').innerHTML=keys.filter(([k])=>p[k]).map(([k,l])=>`<div><i style="background:${p[k]}"></i><b>${l}</b><span>${p[k]}</span></div>`).join('');
+  const lum=x=>{const n=parseInt(x.slice(1,7),16);const f=v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4};return .2126*f(n>>16&255)+.7152*f(n>>8&255)+.0722*f(n&255)};
+  const cr=(a,b)=>{const x=lum(a),y=lum(b);return ((Math.max(x,y)+.05)/(Math.min(x,y)+.05)).toFixed(1)};
+  renderRoles();
+  renderGaps();
+  renderClient();
+  setTimeout(enhance,0);
+  document.getElementById('contrast').textContent=`WCAG kontrasti: matn ${cr(p.textStrong,p.bgSurface)} · tana ${cr(p.textBody,p.bgApp)} · ikkilamchi ${cr(p.textMuted,p.bgApp)} · brend ustidagi matn ${cr(p.textOnBrand,p.brand)} · hero ${cr(p.onInv,p.inv)} : 1 (barchasi ≥ 4.5)`;
+}
+const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function placeTab(bar,instant){let ind=bar.querySelector('.tab-ind');if(!ind){ind=document.createElement('i');ind.className='tab-ind';bar.prepend(ind)}
+  const on=bar.querySelector('.tab.on .pill')||bar.querySelector('.tab .pill');if(!on)return;const br=bar.getBoundingClientRect(),pr=on.getBoundingClientRect();
+  if(instant)ind.style.transition='none';ind.style.width=pr.width+'px';ind.style.transform=`translate(${pr.left-br.left}px,${pr.top-br.top}px)`;if(instant){ind.offsetWidth;ind.style.transition=''}}
+function placeChip(box,instant){let ind=box.querySelector('.chip-ind');if(!ind){ind=document.createElement('i');ind.className='chip-ind';box.prepend(ind)}
+  const on=box.querySelector('.chip.on');if(!on){ind.style.opacity=0;return}ind.style.opacity=1;
+  if(instant)ind.style.transition='none';ind.style.width=on.offsetWidth+'px';ind.style.transform=`translateX(${on.offsetLeft}px)`;if(instant){ind.offsetWidth;ind.style.transition=''}}
+function countUp(el){const node=[...el.childNodes].find(n=>n.nodeType===3&&/\d/.test(n.textContent));if(!node)return;
+  const m=node.textContent.match(/^(\s*)([\d\s ]*\d(?:,\d+)?)(.*)$/s);if(!m)return;const raw=m[2],dec=(raw.split(',')[1]||'').length,sep=/\d[\s ]\d/.test(raw);
+  const target=parseFloat(raw.replace(/[\s ]/g,'').replace(',','.'));if(!isFinite(target)||target===0)return;
+  const fmt=v=>{let s=v.toFixed(dec);let [a,b]=s.split('.');if(sep)a=a.replace(/\B(?=(\d{3})+(?!\d))/g,' ');return a+(b?','+b:'')};
+  const t0=performance.now(),dur=1000;const step=now=>{const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,4);node.textContent=m[1]+fmt(target*e)+m[3];if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
+function play(scr,dx){scr.style.setProperty('--dx',(dx||0)+'px');scr.classList.remove('enter');void scr.offsetWidth;scr.classList.add('enter');
+  scr.querySelectorAll('.hero .big,.kpi .v').forEach(countUp)}
+const ROLES=[{"role": "DIRECTOR", "name": "Direktor", "group": "Rahbariyat va moliya", "overline": "Direktor · Insof Beton", "title": "Bosh sahifa", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Sof foyda (oy)", "value": "74,2", "unit": "mln so'm", "delta": {"text": "12%", "dir": "up", "tone": "success"}, "spark": [41, 48, 44, 57, 53, 62, 66, 74]}, "kpis": [{"label": "Sotuv (oy)", "value": "1,86 mlrd", "delta": "+8%", "tone": "success", "icon": "trend", "module": "Brand"}, {"label": "Debitorlik", "value": "612 mln", "delta": "+5%", "tone": "warning", "icon": "receipt", "module": "Brand"}, {"label": "Ishlab chiqarish", "value": "10 400 m³", "delta": "+6%", "tone": "info", "icon": "factory", "module": "Production"}, {"label": "Reyslar (oy)", "value": "1 248", "delta": "-3%", "tone": "warning", "icon": "truck", "module": "Logistics"}], "chart": {"type": "bars", "title": "Tushum va xarajat", "unit": "mln so'm", "labels": ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"], "series": [{"name": "Tushum", "data": [82, 94, 76, 101, 108, 86, 34]}, {"name": "Xarajat", "data": [64, 71, 69, 78, 80, 66, 22]}]}, "breakdown": {"title": "Sotuv ulushi", "items": [{"label": "Beton", "value": 52}, {"label": "Gazoblok", "value": 27}, {"label": "JBI", "value": 21}]}, "progress": {"title": "Oylik reja", "value": 72, "caption": "10 400 / 14 500 m³ · 9 kun qoldi"}, "attention": [{"title": "Tasdiq kutmoqda", "sub": "Limitdan oshgan zayavka va to'lovlar", "badge": {"text": "6", "tone": "warning"}, "value": null, "icon": "check", "module": "Brand"}, {"title": "60+ kunlik qarz", "sub": "4 mijoz, nasiya muddati o'tgan", "badge": {"text": "4", "tone": "danger"}, "value": "148 mln", "icon": "alert", "module": "Brand"}, {"title": "Sement zaxirasi kam", "sub": "2,5 kunlik qoldi", "badge": {"text": "Kam", "tone": "danger"}, "value": "86 t", "icon": "box", "module": "Warehouse"}], "quick": [{"label": "Tasdiqlash", "icon": "check", "module": "Brand"}, {"label": "Pul oqimi", "icon": "wallet", "module": "Brand"}, {"label": "Qarzdorlar", "icon": "receipt", "module": "Brand"}, {"label": "AI so'rov", "icon": "chat", "module": "Brand"}], "tabs": [{"label": "Asosiy", "icon": "home"}, {"label": "Tasdiqlar", "icon": "check"}, {"label": "Bo'limlar", "icon": "layers"}, {"label": "AI", "icon": "chat"}, {"label": "Menyu", "icon": "list"}], "rationale": "Direktor kuniga bir necha marta uchta savolga javob izlaydi: pul ishlayaptimi (foyda, sotuv), pul qaytayaptimi (debitorlik, nasiya) va zavod rejani bajaryaptimi (m³, reyslar). Ikkinchi tab — imzosini kutayotgan hujjatlar, chunki direktorning asosiy ishi qaror qabul qilish; kassa qoldig'i va kadr detallari tegishli rollarda qoladi.", "data": "ERP serverdagi /api/mobile/home (DIRECTOR kartalari) va list key=approvals allaqachon bor, AI tab ai.tsx orqali ishlaydi. Oylik foyda trendi (8 nuqta), mahsulot ulushi va debitorlik yoshi (aging) uchun /home ga yangi blok yoki alohida /reports/pnl endpointi kerak."}, {"role": "TADBIRKOR", "name": "Tadbirkor", "group": "Rahbariyat va moliya", "overline": "Tadbirkor · Insof ECO", "title": "Biznesim", "periods": ["Hafta", "Oy", "Yil"], "hero": {"label": "Foyda (oy)", "value": "38,6", "unit": "mln so'm", "delta": {"text": "9%", "dir": "up", "tone": "success"}, "spark": [22, 25, 24, 29, 31, 30, 35, 38.6]}, "kpis": [{"label": "Faol loyihalar", "value": "7", "delta": "2 kechikkan", "tone": "warning", "icon": "hardhat", "module": "Production"}, {"label": "Kutilgan tushum", "value": "214 mln", "delta": "+18%", "tone": "info", "icon": "wallet", "module": "Brand"}, {"label": "Ishdagi quruvchi", "value": "23 / 31", "delta": "74%", "tone": "success", "icon": "users", "module": "Production"}, {"label": "Yo'ldagi yuk", "value": "5 reys", "delta": "0", "tone": "info", "icon": "truck", "module": "Logistics"}], "chart": {"type": "hbars", "title": "Loyiha byudjeti sarfi", "unit": "%", "labels": ["Chilonzor 9-uy", "Yunusobod ofis", "Sergeli maktab", "Olmazor kottej", "Bektemir sklad"], "series": [{"name": "Sarflangan", "data": [92, 78, 64, 51, 33]}]}, "breakdown": {"title": "Xarajat tarkibi", "items": [{"label": "Material", "value": 48}, {"label": "Ish haqi", "value": 31}, {"label": "Transport", "value": 14}, {"label": "Boshqa", "value": 7}]}, "progress": {"title": "Loyihalar o'rtacha bajarilishi", "value": 58, "caption": "7 loyiha · 2 tasi muddatdan o'tgan"}, "attention": [{"title": "Material zayavkalari", "sub": "Quruvchilar so'radi, tasdiq kerak", "badge": {"text": "4", "tone": "warning"}, "value": null, "icon": "clipboard", "module": "Warehouse"}, {"title": "Ish qabul qilish", "sub": "REVIEW holatidagi naryadlar", "badge": {"text": "3", "tone": "info"}, "value": null, "icon": "check", "module": "Production"}, {"title": "Material yetishmaydi", "sub": "Minimal zaxiradan past", "badge": {"text": "2", "tone": "danger"}, "value": null, "icon": "box", "module": "Warehouse"}], "quick": [{"label": "Buyurtma", "icon": "plus", "module": "Brand"}, {"label": "Loyiha", "icon": "hardhat", "module": "Production"}, {"label": "Xarajat", "icon": "receipt", "module": "Brand"}, {"label": "Quruvchi", "icon": "users", "module": "Production"}], "tabs": [{"label": "Bosh", "icon": "home"}, {"label": "Loyihalar", "icon": "hardhat"}, {"label": "Buyurtma", "icon": "clipboard"}, {"label": "Moliya", "icon": "chart"}, {"label": "Menyu", "icon": "list"}], "rationale": "Tadbirkor loyiha asosida pul topadi: har loyihada byudjet sarfi va muddat — foydani saqlashning asosiy nuqtasi. Kutilgan tushum (shartnoma bo'yicha olinmagan pul) va band quruvchilar soni yangi buyurtma olish-olmaslikni hal qiladi; tablar mavjud (tadbirkor)/_layout.tsx bilan mos.", "data": "apps/api dashboard.controller GET /dashboard/tadbirkor allaqachon activeProjects, delayedProjects, workers/workingWorkers, shipmentsEnRoute, lowMaterials, pendingRequests, finishingOrders, profit, expectedIncome, expenseByCategory va months qaytaradi. Loyiha bo'yicha budget/spent foizi projList'da bor; faqat 8 nuqtali oylik foyda trendi uchun months'ni kengaytirish kerak."}, {"role": "FINANCE", "name": "Moliya", "group": "Rahbariyat va moliya", "overline": "Moliya · Insof Beton", "title": "Pul oqimi", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Pul qoldig'i (jami)", "value": "486", "unit": "mln so'm", "delta": {"text": "4%", "dir": "down", "tone": "warning"}, "spark": [520, 548, 531, 507, 498, 512, 494, 486]}, "kpis": [{"label": "Debitorlik", "value": "612 mln", "delta": "18% 60+ kun", "tone": "warning", "icon": "receipt", "module": "Brand"}, {"label": "Kreditorlik", "value": "398 mln", "delta": "7 kunda 142", "tone": "danger", "icon": "file", "module": "Warehouse"}, {"label": "Olingan avans", "value": "176 mln", "delta": "12 mijoz", "tone": "info", "icon": "cash", "module": "Brand"}, {"label": "Marja (oy)", "value": "21,4%", "delta": "-1,2 p.p.", "tone": "warning", "icon": "trend", "module": "Brand"}], "chart": {"type": "bars", "title": "14 kunlik pul prognozi", "unit": "mln so'm", "labels": ["1-2", "3-4", "5-6", "7-8", "9-10", "11-12", "13-14"], "series": [{"name": "Kirim", "data": [96, 84, 112, 78, 120, 90, 104]}, {"name": "Chiqim", "data": [88, 131, 74, 96, 82, 145, 70]}]}, "breakdown": {"title": "Debitorlik yoshi", "items": [{"label": "0–30 kun", "value": 56}, {"label": "31–60", "value": 26}, {"label": "61–90", "value": 11}, {"label": "90+", "value": 7}]}, "progress": {"title": "Oylik inkassatsiya rejasi", "value": 64, "caption": "1,19 / 1,86 mlrd so'm undirildi"}, "attention": [{"title": "Bugun to'lanadi", "sub": "Sement, armatura, yoqilg'i yetkazuvchi", "badge": {"text": "5", "tone": "danger"}, "value": "142 mln", "icon": "calendar", "module": "Warehouse"}, {"title": "Nasiya limiti oshgan", "sub": "Yuk jo'natish bloklangan mijozlar", "badge": {"text": "3", "tone": "warning"}, "value": "87 mln", "icon": "shield", "module": "Brand"}, {"title": "To'lov so'rovlari", "sub": "Snabjeniye va bo'limlardan", "badge": {"text": "8", "tone": "info"}, "value": "64 mln", "icon": "check", "module": "Brand"}], "quick": [{"label": "To'lov reja", "icon": "calendar", "module": "Brand"}, {"label": "Qarzdorlar", "icon": "receipt", "module": "Brand"}, {"label": "Limit", "icon": "shield", "module": "Brand"}, {"label": "Hisobot", "icon": "chart", "module": "Brand"}], "tabs": [{"label": "Moliya", "icon": "home"}, {"label": "Oqim", "icon": "trend"}, {"label": "Qarzlar", "icon": "receipt"}, {"label": "To'lovlar", "icon": "calendar"}, {"label": "Menyu", "icon": "list"}], "rationale": "Moliyachining asosiy vazifasi — kassa uzilishining oldini olish: bugungi qoldiq, 14 kunlik kirim-chiqim prognozi va yetkazuvchilarga to'lov kalendari. Debitorlik yoshi va nasiya limitlari qaysi mijozga yuk berishni, olingan avanslar esa qancha mahsulot qarzdormiz ekanini ko'rsatadi.", "data": "ERP /api/mobile/home (FINANCE kartalari) va list key=cashflow bor; ECO tomonda billing GET /billing/summary totalDebt va mijoz bo'yicha qarzni beradi. Kreditorlik to'lov kalendari, aging bucketlari, avans qoldig'i va 14 kunlik prognoz uchun yangi /finance/forecast va /finance/aging endpointlari kerak."}, {"role": "ACCOUNTING", "name": "Buxgalteriya", "group": "Rahbariyat va moliya", "overline": "Buxgalteriya · Insof Beton", "title": "Hisob", "periods": ["Hafta", "Oy", "Chorak"], "hero": {"label": "Savdo aylanmasi (oy)", "value": "1,86", "unit": "mlrd so'm", "delta": {"text": "8%", "dir": "up", "tone": "success"}, "spark": [1.41, 1.52, 1.47, 1.63, 1.58, 1.71, 1.74, 1.86]}, "kpis": [{"label": "Yozilmagan faktura", "value": "37", "delta": "jo'natilgan, fakturasiz", "tone": "danger", "icon": "file", "module": "Logistics"}, {"label": "Imzosiz e-faktura", "value": "14", "delta": "Didox / Soliq", "tone": "warning", "icon": "receipt", "module": "Brand"}, {"label": "QQS to'lovi", "value": "118 mln", "delta": "20-sanagacha", "tone": "warning", "icon": "calendar", "module": "Brand"}, {"label": "Akt-sverka", "value": "9 / 42", "delta": "tasdiqlangan", "tone": "info", "icon": "clipboard", "module": "Brand"}], "chart": {"type": "bars", "title": "Faktura: yozilgan va to'langan", "unit": "mln so'm", "labels": ["1-hf", "2-hf", "3-hf", "4-hf", "5-hf"], "series": [{"name": "Yozilgan", "data": [412, 468, 439, 501, 88]}, {"name": "To'langan", "data": [368, 402, 421, 377, 64]}]}, "breakdown": {"title": "Schyotlar holati", "items": [{"label": "To'langan", "value": 58}, {"label": "Qisman", "value": 17}, {"label": "Ochiq", "value": 25}]}, "progress": {"title": "Oy yopilishi", "value": 45, "caption": "Kirim, TTN, akt, amortizatsiya · 9/20 bajarildi"}, "attention": [{"title": "Kirim hujjatsiz", "sub": "Omborga keldi, schyot-faktura yo'q", "badge": {"text": "6", "tone": "danger"}, "value": "71 mln", "icon": "package", "module": "Warehouse"}, {"title": "Rad etilgan e-faktura", "sub": "Mijoz qaytardi, tuzatish kerak", "badge": {"text": "3", "tone": "warning"}, "value": null, "icon": "alert", "module": "Brand"}, {"title": "Hisobot muddati", "sub": "QQS va daromad solig'i deklaratsiyasi", "badge": {"text": "5 kun", "tone": "info"}, "value": null, "icon": "clock", "module": "Brand"}], "quick": [{"label": "Faktura", "icon": "plus", "module": "Brand"}, {"label": "Akt-sverka", "icon": "clipboard", "module": "Brand"}, {"label": "Kirim", "icon": "package", "module": "Warehouse"}, {"label": "Skaner", "icon": "scan", "module": "Brand"}], "tabs": [{"label": "Hisob", "icon": "home"}, {"label": "Schyotlar", "icon": "receipt"}, {"label": "Hujjatlar", "icon": "file"}, {"label": "Soliq", "icon": "calendar"}, {"label": "Menyu", "icon": "list"}], "rationale": "O'zbekistonda e-faktura (Didox/Soliq) imzolanmasa mijoz QQSni hisobga ololmaydi va to'lovni ushlab turadi, shuning uchun fakturasiz jo'natma va imzosiz faktura birinchi o'rinda. Akt-sverka nasiya mijozlari bilan qarzni yuridik tasdiqlaydi; soliq muddatlari va oy yopilishi jarima xavfini nazorat qiladi.", "data": "ERP list key=invoices va /api/mobile/home ACCOUNTING kartalari bor; ECO billing modelida Invoice OPEN/PARTIALLY_PAID/PAID statuslari mavjud. E-faktura statusi (Didox integratsiyasi), akt-sverka, soliq kalendari va oy yopilishi checklisti uchun yangi endpointlar kerak."}, {"role": "CASHIER", "name": "Kassa / bank", "group": "Rahbariyat va moliya", "overline": "Kassir · Insof Beton", "title": "Kassa", "periods": [], "hero": {"label": "Kassa qoldig'i (naqd)", "value": "38,4", "unit": "mln so'm", "delta": {"text": "6,1 mln", "dir": "up", "tone": "success"}, "spark": [29, 31, 34, 27, 33, 36, 32, 38.4]}, "kpis": [{"label": "Bugun kirim", "value": "126 mln", "delta": "42 to'lov", "tone": "success", "icon": "cash", "module": "Brand"}, {"label": "Bugun chiqim", "value": "88 mln", "delta": "17 to'lov", "tone": "warning", "icon": "wallet", "module": "Brand"}, {"label": "Bank qoldig'i", "value": "447 mln", "delta": "2 hisob", "tone": "info", "icon": "layers", "module": "Brand"}, {"label": "Click / Payme", "value": "19 mln", "delta": "9 o'tkazma", "tone": "info", "icon": "phone", "module": "Brand"}], "chart": {"type": "bars", "title": "Soatbay kirim-chiqim", "unit": "mln so'm", "labels": ["8", "10", "12", "14", "16", "18"], "series": [{"name": "Kirim", "data": [14, 31, 22, 27, 19, 13]}, {"name": "Chiqim", "data": [6, 18, 24, 11, 21, 8]}]}, "breakdown": {"title": "Bugungi kirim usuli", "items": [{"label": "Bank o'tkazma", "value": 61}, {"label": "Naqd", "value": 24}, {"label": "Click/Payme", "value": 15}]}, "progress": {"title": "Kassa limiti", "value": 77, "caption": "38,4 / 50 mln so'm · inkassatsiya 17:00"}, "attention": [{"title": "Chiqim tasdiqlangan", "sub": "Berilishi kerak: avans, yoqilg'i, xo'jalik", "badge": {"text": "7", "tone": "warning"}, "value": "24 mln", "icon": "check", "module": "Brand"}, {"title": "Bankdan noma'lum kirim", "sub": "Mijozga bog'lanmagan to'lovlar", "badge": {"text": "4", "tone": "danger"}, "value": "31 mln", "icon": "search", "module": "Brand"}, {"title": "Haydovchi topshirmagan", "sub": "Yetkazishda olingan naqd pul", "badge": {"text": "3", "tone": "warning"}, "value": "9,6 mln", "icon": "truck", "module": "Logistics"}], "quick": [{"label": "Kirim", "icon": "plus", "module": "Brand"}, {"label": "Chiqim", "icon": "cash", "module": "Brand"}, {"label": "Chek", "icon": "receipt", "module": "Brand"}, {"label": "Bank vypiska", "icon": "file", "module": "Brand"}], "tabs": [{"label": "Kassa", "icon": "home"}, {"label": "To'lovlar", "icon": "cash"}, {"label": "Bank", "icon": "layers"}, {"label": "Chek", "icon": "receipt"}, {"label": "Menyu", "icon": "list"}], "rationale": "Kassir kun bo'yi ishlaydi, shuning uchun davr tanlovi yo'q: naqd qoldiq, bugungi kirim-chiqim va bank/naqd/Click-Payme bo'linishi smenani yopishda kassa hisobotiga tushadi. Bankdan noma'lum kirimni mijozga bog'lash debitorlikni to'g'ri yopadi, haydovchilardan olingan naqd nazorati esa yo'qotishning oldini oladi.", "data": "ERP list key=payments va CASHIER kartalari /api/mobile/home'da bor; ECO billing POST /billing/invoices/:id/payments/cash va PaymentMethod (CASH, PAYME, CLICK, TRANSFER) usul bo'yicha bo'linishni beradi. Bank qoldig'i, vypiska importi va kassa limiti uchun yangi /cash/balance endpointi kerak."}, {"role": "HR", "name": "Otdel kadr", "group": "Rahbariyat va moliya", "overline": "Kadrlar · Insof Beton", "title": "Kadrlar", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Bugun ishda", "value": "214", "unit": "/ 236 xodim", "delta": {"text": "90,7%", "dir": "up", "tone": "success"}, "spark": [88, 91, 89, 92, 90, 87, 93, 90.7]}, "kpis": [{"label": "Kechikkanlar", "value": "11", "delta": "o'rt. 18 daq", "tone": "warning", "icon": "clock", "module": "Brand"}, {"label": "Kelmaganlar", "value": "9", "delta": "4 sababsiz", "tone": "danger", "icon": "alert", "module": "Brand"}, {"label": "Ta'til / kasal", "value": "13", "delta": "8 / 5", "tone": "info", "icon": "calendar", "module": "Brand"}, {"label": "Ochiq vakansiya", "value": "6", "delta": "2 haydovchi", "tone": "info", "icon": "search", "module": "Brand"}], "chart": {"type": "hbars", "title": "Davomat bo'limlar kesimida", "unit": "%", "labels": ["Beton sexi", "Gazoblok sexi", "JBI sexi", "Avtopark", "Ofis"], "series": [{"name": "Davomat", "data": [94, 91, 88, 85, 97]}]}, "breakdown": {"title": "Xodimlar tarkibi", "items": [{"label": "Ishlab chiqarish", "value": 54}, {"label": "Haydovchilar", "value": 22}, {"label": "Ombor/ta'minot", "value": 9}, {"label": "Ofis", "value": 15}]}, "progress": {"title": "Oylik tabel", "value": 68, "caption": "Ish haqi 5-sanada · 1,12 mlrd so'm fond"}, "attention": [{"title": "Selfi tekshiruvi", "sub": "Yuz mos kelmagan yoki joy tashqarisida", "badge": {"text": "5", "tone": "warning"}, "value": null, "icon": "scan", "module": "Brand"}, {"title": "Hujjat muddati tugaydi", "sub": "Haydovchilik guvohnomasi, tibbiy ko'rik", "badge": {"text": "4", "tone": "danger"}, "value": null, "icon": "shield", "module": "Logistics"}, {"title": "Ta'til arizalari", "sub": "Bo'lim boshlig'i kelishgan", "badge": {"text": "3", "tone": "info"}, "value": null, "icon": "calendar", "module": "Brand"}], "quick": [{"label": "Davomat", "icon": "scan", "module": "Brand"}, {"label": "Yangi xodim", "icon": "plus", "module": "Brand"}, {"label": "Tabel", "icon": "clipboard", "module": "Brand"}, {"label": "Ta'til", "icon": "calendar", "module": "Brand"}], "tabs": [{"label": "Kadrlar", "icon": "home"}, {"label": "Xodimlar", "icon": "users"}, {"label": "Davomat", "icon": "clock"}, {"label": "Tabel", "icon": "clipboard"}, {"label": "Menyu", "icon": "list"}], "rationale": "Zavod smenada ishlaydi: ertalabki davomat va kechikishlar sexlarga odam yetishini, kelmaganlar esa smena qayta taqsimotini hal qiladi. Selfi davomat shubhalari, haydovchi guvohnomasi va tibbiy ko'rik muddatlari huquqiy xavf, tabel esa 5-sanadagi ish haqi hisobiga to'g'ridan-to'g'ri ta'sir qiladi.", "data": "ERP list key=employees va HR kartalari /api/mobile/home'da bor; selfi davomat ErpFormField photo (old kamera, jonli kadr) orqali yuboriladi. Bo'limlar kesimidagi davomat, kechikish daqiqalari, vakansiyalar va hujjat muddatlari uchun yangi /hr/attendance-summary endpointi kerak."}, {"role": "SALES", "name": "Sotuv", "group": "Sotuv va ta'minot", "overline": "Sotuv menejeri · Insof Beton", "title": "Sotuv bugun", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Oylik reja bajarilishi", "value": "68", "unit": "%", "delta": {"text": "5%", "dir": "up", "tone": "success"}, "spark": [31, 36, 41, 45, 52, 57, 63, 68]}, "kpis": [{"label": "Sotilgan hajm", "value": "1 840 m³", "delta": "+9%", "tone": "success", "icon": "layers", "module": "Production"}, {"label": "Tushum", "value": "1,62 mlrd", "delta": "+6%", "tone": "success", "icon": "wallet", "module": "Brand"}, {"label": "O'rtacha chek", "value": "14,8 mln", "delta": "-3%", "tone": "warning", "icon": "receipt", "module": "Brand"}, {"label": "Muddati o'tgan nasiya", "value": "286 mln", "delta": "+12%", "tone": "danger", "icon": "alert", "module": "Brand"}], "chart": {"type": "bars", "title": "Reja va fakt", "unit": "m³", "labels": ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"], "series": [{"name": "Reja", "data": [320, 320, 320, 320, 320, 260, 120]}, {"name": "Fakt", "data": [298, 341, 276, 355, 312, 228, 96]}]}, "breakdown": {"title": "Sotuv tarkibi", "items": [{"label": "Beton", "value": 58}, {"label": "Gazoblok", "value": 24}, {"label": "JBI", "value": 13}, {"label": "Rastvor", "value": 5}]}, "progress": {"title": "Oylik reja", "value": 68, "caption": "9 860 / 14 500 m³ · 12 kun qoldi"}, "attention": [{"title": "Yangi zayavkalar", "sub": "Tasdiqlang va ishlab chiqarishga bering", "badge": {"text": "7", "tone": "warning"}, "value": null, "icon": "file", "module": "Brand"}, {"title": "Nasiya muddati o'tgan", "sub": "4 mijoz · eng kattasi 112 mln", "badge": {"text": "4", "tone": "danger"}, "value": "286 mln", "icon": "alert", "module": "Brand"}, {"title": "Limitdan oshgan mijoz", "sub": "Yangi yuk bloklangan", "badge": {"text": "2", "tone": "danger"}, "value": null, "icon": "shield", "module": "Brand"}], "quick": [{"label": "Yangi zayavka", "icon": "plus", "module": "Brand"}, {"label": "Mijozga qo'ng'iroq", "icon": "phone", "module": "Brand"}, {"label": "Narx-navo", "icon": "receipt", "module": "Brand"}, {"label": "Yuk holati", "icon": "truck", "module": "Logistics"}], "tabs": [{"label": "Bugun", "icon": "home"}, {"label": "Zayavka", "icon": "file"}, {"label": "Mijozlar", "icon": "users"}, {"label": "Nasiya", "icon": "wallet"}, {"label": "Menyu", "icon": "list"}], "rationale": "Sotuv menejeri har kuni reja va fakt farqini m³ da ko'rib, qaysi zayavkani tezlashtirish kerakligini hal qiladi. Muddati o'tgan nasiya va kredit limiti alohida chiqariladi, chunki qarzdor mijozga yangi yuk berish zavod uchun eng katta xavf. Mijozlar va Nasiya tablari kunlik qo'ng'iroq va undirish ishini bir joyda saqlaydi.", "data": "Zayavkalar ro'yxati hozir ERP `/api/mobile/list?key=orders` (roles.ts SALES) va bosh ekran `/api/mobile/home`dan keladi; ECO tarafida `orders` moduli (submit/confirm/reject) va `billing/summary` bor. Reja %, mijoz bo'yicha muddati o'tgan nasiya, kredit limiti va o'rtacha chek uchun ERP home'ga yangi sales bloki kerak."}, {"role": "PROCUREMENT", "name": "Snabjeniye", "group": "Sotuv va ta'minot", "overline": "Ta'minotchi · Insof Beton", "title": "Xaridlar", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Oylik xarid / budjet", "value": "2,14", "unit": "mlrd so'm", "delta": {"text": "4%", "dir": "up", "tone": "warning"}, "spark": [0.42, 0.61, 0.88, 1.05, 1.31, 1.58, 1.87, 2.14]}, "kpis": [{"label": "Ochiq zayavkalar", "value": "11", "delta": "+3", "tone": "warning", "icon": "clipboard", "module": "Warehouse"}, {"label": "Bugun keladi", "value": "9 reys", "delta": "2 kechikdi", "tone": "danger", "icon": "truck", "module": "Logistics"}, {"label": "Sement narxi", "value": "1,18 mln/t", "delta": "+6%", "tone": "danger", "icon": "trend", "module": "Brand"}, {"label": "Yetkazuvchiga qarz", "value": "640 mln", "delta": "-9%", "tone": "success", "icon": "wallet", "module": "Brand"}], "chart": {"type": "hbars", "title": "Xarajat materiallar bo'yicha", "unit": "mln so'm", "labels": ["Sement", "Armatura", "Shag'al", "Qum", "Qo'shimcha"], "series": [{"name": "Oy", "data": [1020, 540, 290, 180, 110]}]}, "breakdown": null, "progress": {"title": "Oylik budjet", "value": 79, "caption": "2,14 / 2,70 mlrd so'm · 12 kun qoldi"}, "attention": [{"title": "Sement 3 kunga yetadi", "sub": "Sklad: min. zaxiradan past", "badge": {"text": "Shoshilinch", "tone": "danger"}, "value": "86 t", "icon": "alert", "module": "Warehouse"}, {"title": "Kechikkan yetkazish", "sub": "Qum (Chirchiq), armatura (Bekobod)", "badge": {"text": "2", "tone": "warning"}, "value": null, "icon": "clock", "module": "Logistics"}, {"title": "Tasdiq kutayotgan to'lov", "sub": "Yetkazuvchi schyotlari direktorda", "badge": {"text": "4", "tone": "info"}, "value": "312 mln", "icon": "check", "module": "Brand"}], "quick": [{"label": "Xarid buyurtmasi", "icon": "plus", "module": "Brand"}, {"label": "Kirimni qabul", "icon": "scan", "module": "Warehouse"}, {"label": "Narx so'rovi", "icon": "receipt", "module": "Brand"}, {"label": "Yetkazuvchiga qo'ng'iroq", "icon": "phone", "module": "Brand"}], "tabs": [{"label": "Xaridlar", "icon": "home"}, {"label": "Zayavka", "icon": "clipboard"}, {"label": "Kirimlar", "icon": "package"}, {"label": "Yetkazuv", "icon": "users"}, {"label": "Menyu", "icon": "list"}], "rationale": "Ta'minotchi uchun asosiy xavf - sement yoki shag'al tugab, beton zavodi to'xtab qolishi, shuning uchun zaxira kunlari past materiallar va bugungi kelishi kerak bo'lgan reyslar birinchi chiqadi. Sement narxi o'zgarishi va budjet bajarilishi qayerdan, qancha hajmda olishni hal qiladi. Tablar zayavka - xarid - kirim - yetkazuvchi zanjirini kuzatadi.", "data": "Kirimlar ro'yxati ERP `/api/mobile/list?key=receipts` (roles.ts PROCUREMENT) va `/api/mobile/home`dan; ECO `materials` modulida `minStock` va `material-requests` (approve/reject) bor. Yetkazuvchi reyslari bo'yicha ETA, narx tarixi, budjet va yetkazuvchiga qarz uchun ERP'da yangi endpoint kerak."}, {"role": "WAREHOUSE", "name": "Sklad", "group": "Sotuv va ta'minot", "overline": "Omborchi · Insof Beton", "title": "Ombor", "periods": ["Bugun", "Hafta"], "hero": {"label": "Sement zaxirasi", "value": "3,2", "unit": "kun", "delta": {"text": "1,4 kun", "dir": "down", "tone": "danger"}, "spark": [6.1, 5.8, 5.2, 4.9, 4.6, 4.1, 3.7, 3.2]}, "kpis": [{"label": "Mindan past", "value": "3 tur", "delta": "+1", "tone": "danger", "icon": "alert", "module": "Warehouse"}, {"label": "Bugungi kirim", "value": "6 reys", "delta": "184 t", "tone": "info", "icon": "package", "module": "Warehouse"}, {"label": "Bugungi chiqim", "value": "212 t", "delta": "+8%", "tone": "info", "icon": "truck", "module": "Logistics"}, {"label": "Tayyor gazoblok", "value": "1 460 m³", "delta": "-6%", "tone": "warning", "icon": "box", "module": "Production"}], "chart": {"type": "hbars", "title": "Zaxira kunlari", "unit": "kun", "labels": ["Sement", "Qum", "Shag'al", "Armatura", "Plastifikator"], "series": [{"name": "Zaxira", "data": [3.2, 9.5, 6.8, 14, 4.1]}]}, "breakdown": {"title": "Tayyor mahsulot", "items": [{"label": "Gazoblok", "value": 61}, {"label": "Plita", "value": 22}, {"label": "Bordyur", "value": 11}, {"label": "Halqa", "value": 6}]}, "progress": {"title": "Silos to'lishi", "value": 38, "caption": "Sement 228 / 600 t · 2 silos"}, "attention": [{"title": "Kirim kutilmoqda", "sub": "Sement 2 vagon · tortib qabul qiling", "badge": {"text": "2", "tone": "warning"}, "value": "120 t", "icon": "scan", "module": "Warehouse"}, {"title": "Minimal zaxiradan past", "sub": "Sement, plastifikator, armatura 12", "badge": {"text": "3", "tone": "danger"}, "value": null, "icon": "alert", "module": "Warehouse"}, {"title": "Inventarizatsiya farqi", "sub": "Qum: hisob va fakt -14 t", "badge": {"text": "1", "tone": "info"}, "value": "-14 t", "icon": "clipboard", "module": "Warehouse"}], "quick": [{"label": "Kirim qilish", "icon": "scan", "module": "Warehouse"}, {"label": "Chiqim berish", "icon": "truck", "module": "Logistics"}, {"label": "Qoldiq tuzatish", "icon": "clipboard", "module": "Warehouse"}, {"label": "Xarid so'rovi", "icon": "cart", "module": "Warehouse"}], "tabs": [{"label": "Ombor", "icon": "home"}, {"label": "Xomashyo", "icon": "layers"}, {"label": "Tayyor", "icon": "box"}, {"label": "Harakat", "icon": "route"}, {"label": "Menyu", "icon": "list"}], "rationale": "Omborchi uchun eng muhim savol - zavod necha kun to'xtamasdan ishlaydi, shuning uchun sement, qum, shag'al va armatura zaxirasi tonnada emas, kunlarda ko'rsatiladi. Bugungi kirim va chiqim tarozi, yuk xati va inventarizatsiya farqini ushlab qolishga yordam beradi. Tayyor mahsulot qoldig'i sotuvga nima va qancha berish mumkinligini aytadi.", "data": "Xomashyo ro'yxati ERP `/api/mobile/list?key=stock` va `/api/mobile/home`dan; ECO `materials` servisida `stock` va `low` (minStock), `materials/warehouses`, `inventory/adjust` hamda dashboard `lowMaterials` bor. Kunlik sarf asosida zaxira kunlari, tayyor mahsulot qoldig'i va kunlik kirim/chiqim yig'indisi uchun yangi endpoint kerak."}, {"role": "QURUVCHI", "name": "Quruvchi", "group": "Sotuv va ta'minot", "overline": "Quruvchi · Insof ECO", "title": "Obyektlarim", "periods": ["Hafta", "Oy"], "hero": {"label": "Bu oy material xarajati", "value": "186,4", "unit": "mln so'm", "delta": {"text": "11%", "dir": "up", "tone": "info"}, "spark": [18, 41, 62, 88, 109, 131, 158, 186]}, "kpis": [{"label": "Faol obyektlar", "value": "3", "delta": "+1", "tone": "brand", "icon": "hardhat", "module": "Production"}, {"label": "Yo'ldagi yuk", "value": "2 reys", "delta": "~25 daq", "tone": "info", "icon": "truck", "module": "Logistics"}, {"label": "Faol buyurtmalar", "value": "5", "delta": "2 tasdiqda", "tone": "warning", "icon": "receipt", "module": "Brand"}, {"label": "To'lanmagan", "value": "42 mln", "delta": "3 kun qoldi", "tone": "danger", "icon": "wallet", "module": "Brand"}], "chart": {"type": "bars", "title": "Olingan beton", "unit": "m³", "labels": ["1-h", "2-h", "3-h", "4-h", "5-h", "6-h"], "series": [{"name": "Beton", "data": [24, 36, 18, 52, 44, 61]}]}, "breakdown": {"title": "Xarajat tarkibi", "items": [{"label": "Beton", "value": 64}, {"label": "Gazoblok", "value": 21}, {"label": "Armatura", "value": 9}, {"label": "Yetkazish", "value": 6}]}, "progress": {"title": "Yunusobod blok-4 karkas", "value": 57, "caption": "Beton 412 / 720 m³ · 4-qavat"}, "attention": [{"title": "Yuk yetib keldi", "sub": "M300, 8 m³ · OTP bilan qabul qiling", "badge": {"text": "1", "tone": "warning"}, "value": null, "icon": "check", "module": "Logistics"}, {"title": "Material kerak", "sub": "Ertaga quyish: 24 m³ M350 buyurtma yo'q", "badge": {"text": "Ertaga", "tone": "danger"}, "value": "24 m³", "icon": "alert", "module": "Production"}, {"title": "To'lov muddati", "sub": "2 schyot · Click / Payme", "badge": {"text": "2", "tone": "info"}, "value": "42 mln", "icon": "cash", "module": "Brand"}], "quick": [{"label": "Beton buyurtma", "icon": "plus", "module": "Brand"}, {"label": "Material so'rovi", "icon": "cart", "module": "Warehouse"}, {"label": "Yukni kuzatish", "icon": "map", "module": "Logistics"}, {"label": "Kalkulyator", "icon": "layers", "module": "Production"}], "tabs": [{"label": "Bosh", "icon": "home"}, {"label": "Obyektlar", "icon": "hardhat"}, {"label": "Buyurtma", "icon": "receipt"}, {"label": "Yetkazish", "icon": "truck"}, {"label": "Menyu", "icon": "list"}], "rationale": "Quruvchi uchun eng qimmat narsa - brigada beton kutib bekor turishi, shuning uchun yo'ldagi yuk, kelgan yukni qabul qilish va ertangi quyishga material yetishmasligi birinchi chiqadi. Obyekt bo'yicha hajm va xarajat smetani nazorat qiladi, to'lanmagan schyotlar esa yetkazib berish bloklanmasligi uchun ko'rsatiladi.", "data": "Hozir `dashboard/quruvchi` (activeOrders, todayTasks, earnings), `orders` (submit/cancel), `deliveries/mine` (sign/by-otp), `material-requests`, `projects/mine`, `billing/summary` va `tracking` bor; (quruvchi) tablarida Buyurtmalar/Vazifalar/Materiallar ishlatiladi. Obyekt bo'yicha m³ va xarajat yig'indisi hamda ETA bilan yo'ldagi yuklar uchun dashboard/quruvchi kengaytirilishi kerak."}, {"role": "PRODUCTION", "name": "Ishlab chiqarish boshlig'i", "group": "Ishlab chiqarish", "overline": "Ishlab chiqarish · Insof Beton", "title": "Sex", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Ishlab chiqarildi", "value": "412", "unit": "m³", "delta": {"text": "6%", "dir": "up", "tone": "success"}, "spark": [338, 361, 352, 384, 371, 398, 389, 412]}, "kpis": [{"label": "Reja bajarildi", "value": "92%", "delta": "412/448 m³", "tone": "warning", "icon": "trend", "module": "Production"}, {"label": "Sement sarfi", "value": "318 kg/m³", "delta": "+8 normadan", "tone": "danger", "icon": "layers", "module": "Warehouse"}, {"label": "Brak", "value": "1,4%", "delta": "-0,3%", "tone": "success", "icon": "shield", "module": "Production"}, {"label": "To'xtash", "value": "75 daq", "delta": "2 nosozlik", "tone": "warning", "icon": "clock", "module": "Production"}], "chart": {"type": "bars", "title": "Reja va fakt", "unit": "m³", "labels": ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"], "series": [{"name": "Reja", "data": [440, 440, 440, 440, 440, 360, 0]}, {"name": "Fakt", "data": [418, 452, 397, 431, 412, 344, 0]}]}, "breakdown": {"title": "Mahsulot bo'yicha", "items": [{"label": "Beton M300", "value": 42}, {"label": "Beton M200–M250", "value": 21}, {"label": "Gazoblok D500", "value": 23}, {"label": "JBI (plita, ustun)", "value": 14}]}, "progress": {"title": "Oylik reja", "value": 71, "caption": "8 120 / 11 400 m³ · 11 kun qoldi"}, "attention": [{"title": "Brigada kutayotgan", "sub": "Zayavkaga topshiriq berilmagan", "badge": {"text": "4", "tone": "warning"}, "value": null, "icon": "hardhat", "module": "Production"}, {"title": "Muddati yaqin", "sub": "≤ 2 kun · 186 m³ qoldi", "badge": {"text": "3", "tone": "danger"}, "value": null, "icon": "calendar", "module": "Production"}, {"title": "Uskuna nosozligi", "sub": "RBU-2 mikser · 45 daq to'xtadi", "badge": {"text": "1", "tone": "danger"}, "value": null, "icon": "wrench", "module": "Production"}], "quick": [{"label": "Zames qayd", "icon": "plus", "module": "Production"}, {"label": "Topshiriq berish", "icon": "clipboard", "module": "Production"}, {"label": "Brak qayd", "icon": "shield", "module": "Production"}, {"label": "Kunlik hisobot", "icon": "file", "module": "Brand"}], "tabs": [{"label": "Sex", "icon": "home"}, {"label": "Zameslar", "icon": "package"}, {"label": "Topshiriq", "icon": "clipboard"}, {"label": "Xabarlar", "icon": "bell"}, {"label": "Menyu", "icon": "list"}], "rationale": "Boshliq har kuni reja-faktni m³ va dona bo'yicha, sement sarfini normaga nisbatan va brakni ko'rib, qaysi marka yoki sexga e'tibor berishni hal qiladi. Uskuna to'xtashi va brigada kutayotgan zayavkalar — bugun chora ko'rilmasa muddat buziladigan joylar, shuning uchun ular ogohlantirishda turadi.", "data": "Ishlab chiqarilgan hajm, reja (ProductionPlan), brak (ProductDefect), brigada kutayotgan/muddati yaqin zayavkalar ERP /api/mobile/home da bor (lib/mobile/home.ts PRODUCTION va dashboard.ts production()). Sement sarfi kg/m³ normaga nisbatan (Recipe va StockMove PRODUCTION_CONSUME) hamda uskunalar bo'yicha to'xtash vaqti (hozir faqat BrigadeIssue.downtimeMin) uchun yangi hisob yoki endpoint kerak; Equipment modeli yo'q."}, {"role": "SUPERVISOR", "name": "Ish boshqaruvchi", "group": "Ishlab chiqarish", "overline": "Sex master · Insof Beton", "title": "Ishlar", "periods": ["Bugun", "Hafta"], "hero": {"label": "Bugun bajarildi", "value": "186", "unit": "m³", "delta": {"text": "88% topshiriq", "dir": "up", "tone": "warning"}, "spark": [92, 118, 104, 131, 142, 159, 171, 186]}, "kpis": [{"label": "Ochiq topshiriq", "value": "14", "delta": "5 yangi", "tone": "info", "icon": "clipboard", "module": "Production"}, {"label": "Kechikkan", "value": "3", "delta": "muddat o'tgan", "tone": "danger", "icon": "clock", "module": "Production"}, {"label": "Davomat", "value": "48 / 52", "delta": "2 kelmadi", "tone": "warning", "icon": "users", "module": "Production"}, {"label": "Brak", "value": "0,9%", "delta": "3 qayd", "tone": "success", "icon": "shield", "module": "Production"}], "chart": {"type": "hbars", "title": "Brigadalar bajarilishi", "unit": "%", "labels": ["Gazoblok-1", "Beton RBU", "JBI plita", "JBI ustun", "Gazoblok-2"], "series": [{"name": "Bajarilishi", "data": [104, 96, 88, 74, 61]}]}, "breakdown": null, "progress": {"title": "Smena topshiriqlari", "value": 88, "caption": "186 / 210 m³ · 1 240 / 1 600 dona"}, "attention": [{"title": "Kechikkan topshiriqlar", "sub": "JBI ustun · 2 kun o'tdi", "badge": {"text": "3", "tone": "danger"}, "value": null, "icon": "alert", "module": "Production"}, {"title": "Ochiq muammolar", "sub": "Material 1 · uskuna 1", "badge": {"text": "2", "tone": "warning"}, "value": null, "icon": "wrench", "module": "Production"}, {"title": "Davomat belgilanmagan", "sub": "Gazoblok-2 brigadasi", "badge": {"text": "4", "tone": "warning"}, "value": null, "icon": "users", "module": "Production"}], "quick": [{"label": "Topshiriq berish", "icon": "plus", "module": "Production"}, {"label": "Davomat", "icon": "check", "module": "Production"}, {"label": "Muammo hal", "icon": "wrench", "module": "Production"}, {"label": "Smena hisoboti", "icon": "file", "module": "Brand"}], "tabs": [{"label": "Ishlar", "icon": "home"}, {"label": "Topshiriq", "icon": "clipboard"}, {"label": "Brigada", "icon": "hardhat"}, {"label": "Muammolar", "icon": "alert"}, {"label": "Menyu", "icon": "list"}], "rationale": "Sex master smena davomida qaysi brigada ortda qolayotganini, kim kelmaganini va qaysi muammo ishni to'xtatib turganini bilib, odam va topshiriqni qayta taqsimlaydi. Brigadalar reytingi va kechikkan topshiriqlar unga kimga birinchi yordam berishni ko'rsatadi.", "data": "Ochiq/kechikkan topshiriq, qolgan hajm, bugun bajarilgan (TaskProgress), brak va davomat ERP /api/mobile/home SUPERVISOR va dashboard.ts brigadeWork() hamda sex.ts (davomat) da bor. Brigada bo'yicha bajarilish % (TaskProgress / BrigadeTask.qty) va barcha brigadalarning ochiq BrigadeIssue ro'yxati uchun alohida grafik yoki endpoint kerak."}, {"role": "BRIGADIER", "name": "Brigadir", "group": "Ishlab chiqarish", "overline": "Brigadir · Gazoblok-1", "title": "Brigadam", "periods": [], "hero": {"label": "Smena bajarildi", "value": "42", "unit": "m³ / 60", "delta": {"text": "70%", "dir": "up", "tone": "warning"}, "spark": [0, 6, 13, 19, 24, 31, 37, 42]}, "kpis": [{"label": "Davomat", "value": "11 / 12", "delta": "1 kasal", "tone": "success", "icon": "users", "module": "Production"}, {"label": "Faol topshiriq", "value": "3", "delta": "1 bugun tugaydi", "tone": "info", "icon": "clipboard", "module": "Production"}, {"label": "Ochiq muammo", "value": "2", "delta": "35 daq to'xtash", "tone": "danger", "icon": "alert", "module": "Production"}, {"label": "Brak", "value": "0,6 m³", "delta": "1,4%", "tone": "warning", "icon": "shield", "module": "Production"}], "chart": {"type": "bars", "title": "Smena soatma-soat", "unit": "m³", "labels": ["08", "10", "12", "14", "16", "18"], "series": [{"name": "Bajarildi", "data": [6, 8, 5, 9, 8, 6]}]}, "breakdown": null, "progress": {"title": "Smena topshirig'i", "value": 70, "caption": "42 / 60 m³ · smena 20:00 da yopiladi"}, "attention": [{"title": "Kesish mashinasi", "sub": "Uskuna muammosi · 35 daq", "badge": {"text": "Ochiq", "tone": "danger"}, "value": null, "icon": "wrench", "module": "Production"}, {"title": "Alyumin kukuni kam", "sub": "Material yetishmayapti", "badge": {"text": "Ochiq", "tone": "warning"}, "value": null, "icon": "box", "module": "Warehouse"}, {"title": "TB-118 bugun tugaydi", "sub": "D500 · 18 m³ qoldi", "badge": {"text": "Bugun", "tone": "warning"}, "value": null, "icon": "clock", "module": "Production"}], "quick": [{"label": "Bajarildi", "icon": "plus", "module": "Production"}, {"label": "Davomat", "icon": "users", "module": "Production"}, {"label": "Muammo", "icon": "alert", "module": "Production"}, {"label": "Brak qayd", "icon": "shield", "module": "Production"}], "tabs": [{"label": "Brigadam", "icon": "home"}, {"label": "Topshiriq", "icon": "clipboard"}, {"label": "Muammolar", "icon": "alert"}, {"label": "Smenalar", "icon": "calendar"}, {"label": "Menyu", "icon": "list"}], "rationale": "Brigadir faqat o'z smenasi bilan ishlaydi: kim keldi, bugungi topshiriq qancha qoldi va nima ishni to'xtatib turibdi. Bajarilgan hajm, muammo va brakni darhol qayd qilish master va boshliqqa real vaqtda ko'rinadi, shuning uchun ular tezkor amallarda turadi.", "data": "Smena holati, davomat, faol topshiriqlar, muammolar (BrigadeIssue), brak va smena hisobotlari ERP /api/mobile/home BRIGADIER (lib/mobile/brigadier.ts brigadierHome) va dashboard.ts da bor; smenani ochish/yopish, issue.*, defect amallari /api/mobile/action orqali ishlaydi. Soatma-soat bajarilish grafigi uchun TaskProgress ni soat bo'yicha guruhlovchi hisob kerak."}, {"role": "MECHANIC", "name": "Mexanik", "group": "Ishlab chiqarish", "overline": "Mexanik · Insof Beton", "title": "Texnika nazorati", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Texnik tayyorlik", "value": "82", "unit": "% · 18 / 22", "delta": {"text": "4%", "dir": "down", "tone": "warning"}, "spark": [91, 91, 86, 86, 91, 86, 86, 82]}, "kpis": [{"label": "Ta'mirda", "value": "2", "delta": "1 tasi 3 kun", "tone": "danger", "icon": "wrench", "module": "Logistics"}, {"label": "Muddati o'tgan TO", "value": "3", "delta": "moy, filtr", "tone": "danger", "icon": "calendar", "module": "Logistics"}, {"label": "Yoqilg'i", "value": "4 860 l", "delta": "+7% normadan", "tone": "warning", "icon": "fuel", "module": "Logistics"}, {"label": "Ta'mir xarajati", "value": "18,4 mln", "delta": "+12%", "tone": "warning", "icon": "cash", "module": "Brand"}], "chart": {"type": "hbars", "title": "Yoqilg'i normadan oshishi", "unit": "%", "labels": ["01 A 214 KA", "01 B 587 MA", "01 X 903 BA", "01 A 776 CA", "01 C 412 TA"], "series": [{"name": "Oshish", "data": [24, 15, 9, 6, 3]}]}, "breakdown": {"title": "Park holati", "items": [{"label": "Saflda", "value": 82}, {"label": "Ta'mirda", "value": 9}, {"label": "Bekor turibdi", "value": 9}]}, "progress": {"title": "Ertaga transport", "value": 90, "caption": "18 / 20 mashina kerak · 2 ta yetmaydi"}, "attention": [{"title": "Avtomikser 01 A 214 KA", "sub": "Yoqilg'i +24% · 3 zapravka", "badge": {"text": "Tekshir", "tone": "danger"}, "value": null, "icon": "fuel", "module": "Logistics"}, {"title": "Muddati o'tgan xizmat", "sub": "Moy, filtr · 3 mashina", "badge": {"text": "3", "tone": "danger"}, "value": null, "icon": "wrench", "module": "Logistics"}, {"title": "Ko'rik va sug'urta", "sub": "7 kun ichida tugaydi", "badge": {"text": "2", "tone": "warning"}, "value": null, "icon": "shield", "module": "Logistics"}], "quick": [{"label": "Xizmat qayd", "icon": "wrench", "module": "Logistics"}, {"label": "Holat o'zgartirish", "icon": "truck", "module": "Logistics"}, {"label": "Zapravka", "icon": "fuel", "module": "Logistics"}, {"label": "Ehtiyot qism", "icon": "package", "module": "Warehouse"}], "tabs": [{"label": "Nazorat", "icon": "home"}, {"label": "Texnika", "icon": "truck"}, {"label": "Xizmat", "icon": "wrench"}, {"label": "Reyslar", "icon": "route"}, {"label": "Menyu", "icon": "list"}], "rationale": "Mexanikning asosiy vazifasi ertangi reyslar uchun yetarli soz texnikani tayyorlash, shuning uchun bosh raqam — texnik tayyorlik va ertaga kerak bo'lgan mashinalar soni. Muddati o'tgan TO, yoqilg'i anomaliyasi va ta'mir xarajati buzilishni oldini olish va o'g'irlikni ushlash uchun har kuni ko'riladi.", "data": "Vehicle.status (ACTIVE/REPAIR/IDLE), inspectionUntil/insuranceUntil, VehicleService (nextDueAt/nextDueKm, cost), FuelLog va fuelNormL100 modellari ERP bazasida bor, lekin mobil MECHANIC dashboardi (dashboard.ts mechanic(), sklad-logistika) hozir faqat sklad, reys va ertangi transport ehtiyojini beradi. Park tayyorligi, muddati o'tgan TO, yoqilg'i normadan oshishi va ta'mir xarajati uchun yangi mechanic dashboard hisobi kerak; zavod uskunalari (RBU, kesish mashinasi) uchun Equipment modeli yo'q."}, {"role": "LOGISTICS", "name": "Logistika dispetcheri", "group": "Logistika", "overline": "Dispetcher · Insof Beton", "title": "Dispetcherlik", "periods": ["Bugun", "Hafta", "Oy"], "hero": {"label": "Bugungi reyslar", "value": "46 / 58", "unit": "reys", "delta": {"text": "79% reja", "dir": "up", "tone": "info"}, "spark": [4, 9, 15, 21, 28, 34, 41, 46]}, "kpis": [{"label": "O'z vaqtida", "value": "91%", "delta": "+3%", "tone": "success", "icon": "clock", "module": "Logistics"}, {"label": "Aylanma vaqt", "value": "84 daq", "delta": "-6 daq", "tone": "success", "icon": "route", "module": "Logistics"}, {"label": "Bo'sh mashina", "value": "3 ta", "delta": "+1", "tone": "warning", "icon": "truck", "module": "Logistics"}, {"label": "Yoqilg'i", "value": "38 l/100", "delta": "+4%", "tone": "warning", "icon": "fuel", "module": "Logistics"}], "chart": {"type": "bars", "title": "Soatlik reyslar: reja va fakt", "unit": "reys", "labels": ["07", "08", "09", "10", "11", "12", "13", "14"], "series": [{"name": "Reja", "data": [5, 8, 9, 8, 7, 6, 8, 7]}, {"name": "Fakt", "data": [4, 7, 9, 6, 7, 5, 8, 0]}]}, "breakdown": {"title": "Park holati · 24 mashina", "items": [{"label": "Yo'lda", "value": 46}, {"label": "Yuklash/tushirish", "value": 25}, {"label": "Bo'sh", "value": 13}, {"label": "Ta'mirda", "value": 16}]}, "progress": {"title": "Bugungi hajm", "value": 72, "caption": "412 / 570 m³ beton · 9 ta mikser yo'lda"}, "attention": [{"title": "Beton yoshi kritik", "sub": "Yo'lda 75+ daqiqa · 2 mikser", "badge": {"text": "2", "tone": "danger"}, "value": "82 daq", "icon": "alert", "module": "Logistics"}, {"title": "Kechikish xavfi", "sub": "ETA reja soatidan oshdi", "badge": {"text": "4", "tone": "warning"}, "value": null, "icon": "clock", "module": "Logistics"}, {"title": "Haydovchisiz buyurtma", "sub": "Ertalabgi zayavkalar", "badge": {"text": "5", "tone": "info"}, "value": "64 m³", "icon": "clipboard", "module": "Logistics"}], "quick": [{"label": "Reys tayinlash", "icon": "plus", "module": "Logistics"}, {"label": "Jonli xarita", "icon": "map", "module": "Logistics"}, {"label": "Haydovchiga qo'ng'iroq", "icon": "phone", "module": "Logistics"}, {"label": "Muammolar", "icon": "alert", "module": "Logistics"}], "tabs": [{"label": "Asosiy", "icon": "home"}, {"label": "Xarita", "icon": "map"}, {"label": "Reyslar", "icon": "truck"}, {"label": "Xabarlar", "icon": "chat"}, {"label": "Menyu", "icon": "user"}], "rationale": "Beton ~90 daqiqada qotadi, shuning uchun dispetcher birinchi navbatda yo'ldagi mikserlarning beton yoshini va kechikish xavfini ko'rishi kerak. Park holati, aylanma vaqt va soatlik reja/fakt bo'sh turgan mashinani darhol keyingi zayavkaga tayinlashga yordam beradi. Xarita alohida tab, chunki dispetcher kunining yarmini unda o'tkazadi.", "data": "ERP /home (erpAuth.home) LOGISTICS uchun fleet[] (phase, delay, delayTone, gps.etaMin, openIssues) va live[] beradi; API'da dispatch/board, deliveries (DeliveryStatus LOADING/EN_ROUTE/UNLOADING) va tracking/deliveries/:id/track bor. Beton yoshi (yuklangandan beri daqiqa), soatlik reja/fakt, aylanma vaqt va yoqilg'i sarfi uchun yangi agregat endpoint kerak."}, {"role": "DRIVER", "name": "Haydovchi (ERP)", "group": "Logistika", "overline": "Haydovchi · Insof Beton", "title": "Bugun", "periods": [], "hero": {"label": "Bugungi reyslar", "value": "5 / 7", "unit": "reys", "delta": {"text": "2 qoldi", "dir": "up", "tone": "brand"}, "spark": null}, "kpis": [{"label": "Yurilgan yo'l", "value": "142 km", "delta": "+18 km", "tone": "info", "icon": "route", "module": "Logistics"}, {"label": "Tashilgan", "value": "40 m³", "delta": "5 reys", "tone": "success", "icon": "truck", "module": "Logistics"}, {"label": "Bonus (oy)", "value": "1,2 mln", "delta": "+9%", "tone": "success", "icon": "wallet", "module": "Logistics"}, {"label": "Yoqilg'i", "value": "62 l", "delta": "limit 80", "tone": "warning", "icon": "fuel", "module": "Logistics"}], "chart": null, "breakdown": null, "progress": {"title": "Joriy reys", "value": 60, "caption": "Yo'lda · Sergeli, 8 m³ M300 · ~18 daq"}, "attention": [{"title": "Keyingi reys", "sub": "14:30 · Chilonzor 9-kv · 7 m³", "badge": {"text": "1", "tone": "info"}, "value": null, "icon": "calendar", "module": "Logistics"}, {"title": "Texnik ko'rik", "sub": "Baraban moyi · 3 kun qoldi", "badge": {"text": "!", "tone": "warning"}, "value": null, "icon": "wrench", "module": "Logistics"}], "quick": [{"label": "Holatni o'zgartirish", "icon": "check", "module": "Logistics"}, {"label": "Yo'l (navigator)", "icon": "nav", "module": "Logistics"}, {"label": "Dispetcherga qo'ng'iroq", "icon": "phone", "module": "Logistics"}, {"label": "Muammo / nosozlik", "icon": "alert", "module": "Logistics"}], "tabs": [{"label": "Bugun", "icon": "home"}, {"label": "Reyslarim", "icon": "truck"}, {"label": "Yo'l", "icon": "nav"}, {"label": "Menyu", "icon": "user"}], "rationale": "Shtatdagi haydovchiga eng muhimi — joriy reys holati va keyingi yuk vaqti; beton kutmaydi, shuning uchun 'Holatni o'zgartirish' birinchi tugma. Km, m³ va yoqilg'i limiti kunlik putyovka va bonus hisobiga to'g'ridan-to'g'ri ta'sir qiladi. Ekran minimal, kabinada bir qarashda o'qiladi.", "data": "ERP /home DRIVER roli (homeTitle 'Bugun', listKey 'trips'), useErpDetail('trips') har 30 s yangilanadigan 'Yurilgan yo'l' va useErpTripRoute (OSRM marshrut, core/erp-track GPS) mavjud. Kunlik km/m³ yig'indisi, oylik bonus, yoqilg'i limiti va texnik ko'rik eslatmasi uchun ERP /home ga yangi kartalar kerak."}, {"role": "HAYDOVCHI", "name": "Haydovchi (ECO)", "group": "Logistika", "overline": "Haydovchi · Insof ECO", "title": "Bugun", "periods": [], "hero": {"label": "Bugungi daromad", "value": "840 000", "unit": "so'm", "delta": {"text": "4 yuk", "dir": "up", "tone": "success"}, "spark": null}, "kpis": [{"label": "Bajarildi", "value": "4 yuk", "delta": "6 dan", "tone": "success", "icon": "check", "module": "Logistics"}, {"label": "Yangi yuklar", "value": "3 ta", "delta": "yaqinda", "tone": "brand", "icon": "package", "module": "Logistics"}, {"label": "Yo'l", "value": "118 km", "delta": "bugun", "tone": "info", "icon": "route", "module": "Logistics"}, {"label": "Hafta", "value": "4,1 mln", "delta": "+12%", "tone": "success", "icon": "wallet", "module": "Logistics"}], "chart": null, "breakdown": null, "progress": null, "attention": [{"title": "Faol yuk", "sub": "Gazoblok 12 paddon · Yunusobod", "badge": {"text": "Yo'lda", "tone": "brand"}, "value": "~22 daq", "icon": "truck", "module": "Logistics"}, {"title": "Imzo kutilmoqda", "sub": "Qabul OTP · oldingi yuk", "badge": {"text": "1", "tone": "warning"}, "value": null, "icon": "file", "module": "Logistics"}], "quick": [{"label": "Yetkazdim", "icon": "check", "module": "Logistics"}, {"label": "Yo'l", "icon": "nav", "module": "Logistics"}, {"label": "Mijozga qo'ng'iroq", "icon": "phone", "module": "Logistics"}, {"label": "Xabarlar", "icon": "chat", "module": "Logistics"}], "tabs": [{"label": "Bugun", "icon": "home"}, {"label": "Yuklar", "icon": "package"}, {"label": "Daromad", "icon": "wallet"}, {"label": "Men", "icon": "user"}], "rationale": "'Bitta yuk, bitta tugma': ECO haydovchisi kabinada faqat bugungi daromadni, faol yukni va keyingi qadam tugmasini ko'rishi kerak. Birinchi tugma holatga qarab almashadi (Qabul qilish → Yuklashni boshladim → Yo'lga chiqdim → Yetkazdim). Yangi yuklar soni bo'sh vaqtda qo'shimcha daromad topishga undaydi.", "data": "API dashboard/haydovchi allaqachon todayCount, doneToday, pending, active, vehicle, earnings (finance.myEarnings) va open[] qaytaradi; shipments/:id/transition va deliveries/:id/accept-otp mavjud. Kunlik km (tracking GPS yig'indisi) va haftalik daromad dinamikasi uchun endpointni kengaytirish kerak."}];
+Object.assign(I,{
+  cash:'<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  calendar:'<path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  map:'<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15M9 3.236v15"/>',
+  cart:'<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13h4M10 17h4"/>',
+  layers:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  fuel:'<path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+  hardhat:'<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5"/><path d="M14 6a6 6 0 0 1 6 6v3"/><path d="M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>',
+  clipboard:'<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  star:'<path d="M11.5 2.3a.53.53 0 0 1 .95 0l2.31 4.68a2.12 2.12 0 0 0 1.6 1.16l5.17.76a.53.53 0 0 1 .29.9l-3.74 3.64a2.12 2.12 0 0 0-.61 1.88l.88 5.14a.53.53 0 0 1-.77.56l-4.62-2.43a2.12 2.12 0 0 0-1.97 0L6.4 21.01a.53.53 0 0 1-.77-.56l.88-5.14a2.12 2.12 0 0 0-.61-1.88L2.16 9.8a.53.53 0 0 1 .29-.91l5.17-.75a2.12 2.12 0 0 0 1.6-1.16z"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  scan:'<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>',
+  route:'<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
+  receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>'
+});
+I.package=I.box;
+const icx=(n,s)=>I[n]?ic(n,s):ic('box',s);
+const MODS=['Brand','Production','Logistics','Warehouse'];
+const tileM=(n,m,s=28)=>(!m||m==='Brand'||!MODS.includes(m))?`<span class="tile" style="width:${s}px;height:${s}px;background:var(--brandSoft);color:var(--brandInk)">${icx(n,s*0.55)}</span>`:`<span class="tile" style="width:${s}px;height:${s}px;background:var(--module${m}Bg);color:var(--module${m})">${icx(n,s*0.55)}</span>`;
+const TONES=['success','warning','danger','info','brand'];
+const tone=t=>TONES.includes(t)?t:'info';
+const toneInk=t=>t==='brand'?'var(--brandInk)':`var(--${tone(t)})`;
+const toneBg=t=>t==='brand'?'var(--brandSoft)':`var(--${tone(t)}Bg)`;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v||1)));for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]) if(m*p>=v) return m*p;return 10*p}
+function sparkG(d){ if(!Array.isArray(d)||d.length<2) return '';
+  const W=250,H=40,pad=4,mn=Math.min(...d)*0.9,mx=Math.max(...d)*1.02||1;
+  const x=i=>pad+i*(W-2*pad)/(d.length-1), y=v=>H-pad-((v-mn)/(mx-mn||1))*(H-2*pad);
+  const pts=d.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '), L=d.length-1;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:40px;display:block" aria-hidden="true"><polygon class="spk-area" points="${x(0)},${H} ${pts} ${x(L)},${H}" fill="var(--brand)" fill-opacity=".2"/><polyline class="spk" pathLength="1" points="${pts}" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle class="pulse" cx="${x(L)}" cy="${y(d[L])}" r="4" fill="var(--brand)"/><circle cx="${x(L)}" cy="${y(d[L])}" r="4" fill="var(--brand)" stroke="var(--inv)" stroke-width="2"/></svg>`;
+}
+function barsG(c){
+  const labels=(c.labels||[]).slice(0,8), series=(c.series||[]).slice(0,2), n=labels.length; if(!n||!series.length) return '';
+  const all=series.flatMap(s=>s.data.slice(0,n)), max=niceMax(Math.max(...all));
+  const W=252,H=112,l=28,b=16,t=6,ch=H-b-t,gw=(W-l-4)/n,ns=series.length,bw=Math.min(10,(gw-6)/ns-2);
+  const y=v=>t+ch-(v/max)*ch, fmt=v=>v>=1000?(v/1000).toFixed(v%1000?1:0)+'k':String(+v.toFixed(1));
+  const ticks=[0,max/2,max].map(v=>`<line x1="${l}" x2="${W-2}" y1="${y(v)}" y2="${y(v)}" stroke="var(--borderSubtle)" ${v?'stroke-dasharray="2 3"':''}/><text x="${l-5}" y="${y(v)+3}" text-anchor="end" font-size="8" fill="var(--textMuted)">${fmt(v)}</text>`).join('');
+  const r=Math.min(4,bw/2);
+  const bars=labels.map((lab,i)=>{const gx=l+i*gw+(gw-(ns*bw+(ns-1)*2))/2;
+    return series.map((s,k)=>{const v=s.data[i]??0,x=gx+k*(bw+2),top=y(v);const hgt=t+ch-top;if(hgt<1)return '';const rr=Math.min(r,hgt);
+      return `<path class="bar" style="--i:${i}" d="M${x},${t+ch} V${top+rr} q0,-${rr} ${rr},-${rr} h${bw-2*rr} q${rr},0 ${rr},${rr} V${t+ch} Z" fill="var(--chart${k+1})"><title>${esc(lab)} · ${esc(s.name)}: ${v} ${esc(c.unit||'')}</title></path>`}).join('')
+      +`<text x="${l+i*gw+gw/2}" y="${H-4}" text-anchor="middle" font-size="8" fill="var(--textMuted)">${esc(String(lab).slice(0,5))}</text>`}).join('');
+  const legend=ns>1?`<div class="row" style="gap:12px;font-size:9.5px;color:var(--textBody)">${series.map((s,k)=>`<span class="row" style="gap:4px"><i style="width:8px;height:8px;border-radius:3px;background:var(--chart${k+1})"></i>${esc(s.name)}</span>`).join('')}</div>`:'';
+  return legend+`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" role="img" aria-label="${esc(c.title)}">${ticks}${bars}</svg>`;
+}
+function hbarsG(c){
+  const s=(c.series||[])[0]; if(!s) return ''; const labels=(c.labels||[]).slice(0,5), max=Math.max(...s.data.slice(0,labels.length))||1;
+  return `<div style="display:flex;flex-direction:column;gap:7px">${labels.map((lab,i)=>{const v=s.data[i]??0;return `<div style="display:grid;grid-template-columns:78px 1fr auto;gap:8px;align-items:center;font-size:10px"><span style="color:var(--textBody);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(lab)}</span><span style="height:8px;border-radius:99px;background:var(--chartTrack);overflow:hidden"><i class="hb" style="display:block;height:100%;width:${(v/max*100).toFixed(1)}%;border-radius:99px;background:var(--chart1)"></i></span><b class="num" style="font-size:10px">${v}</b></div>`}).join('')}</div>`;
+}
+function roleScreen(r){
+  const h=r.hero||{}, d=h.delta;
+  const periods=(r.periods||[]).slice(0,4);
+  const kpis=(r.kpis||[]).slice(0,4);
+  const ch=r.chart, bd=r.breakdown, pg=r.progress;
+  const initials=(r.name||'?').split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const hasDot=(r.attention||[]).length>0;
+  return `${sb()}<div class="appbar"><span class="av">${esc(initials)}</span><div style="flex:1;min-width:0"><div class="t-over" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.overline)}</div><div class="hdr-t" style="font-size:13px;font-weight:var(--wHead)">${esc(r.title||'Dashboard')}</div></div><span class="ib">${ic('bell')}${hasDot?'<i class="dot"></i>':''}</span></div>
+  <div class="scroll" style="gap:10px">
+    ${periods.length?`<div class="chips">${periods.map((p,i)=>`<span class="chip ${i===Math.min(1,periods.length-1)?'on':''}">${esc(p)}</span>`).join('')}</div>`:''}
+    <div class="hero">
+      <span class="row" style="gap:6px"><i style="display:inline-block;height:3px;width:14px;border-radius:2px;background:var(--accent,var(--brand))"></i><span class="t-over">${esc(h.label)}</span></span>
+      <div class="row" style="align-items:flex-end;gap:8px;flex-wrap:wrap"><span class="big num">${esc(h.value)} <span style="font-size:12px;font-weight:600">${esc(h.unit)}</span></span>${d?`<span class="delta" style="background:${d.tone==='danger'?'var(--dangerSolid)':d.tone==='warning'?'var(--warningSolid)':'var(--successSolid)'};color:#fff">${ic(d.dir==='down'?'down':'up',10)}${esc(d.text)}</span>`:''}</div>
+      ${sparkG(h.spark)}
+    </div>
+    <div class="kpi2">${kpis.map(k=>`<div class="card kpi">${tileM(k.icon,k.module)}<div style="min-width:0"><div class="t-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k.label)}</div><div class="v num" style="white-space:nowrap">${esc(k.value)}</div>${k.delta?`<div style="font-size:9px;font-weight:700;color:${toneInk(k.tone)}">${esc(k.delta)}</div>`:''}</div></div>`).join('')}</div>
+    <div class="qa">${(r.quick||[]).slice(0,4).map((q,i)=>`<div class="q ${i===0?'primary':''}">${tileM(q.icon,q.module,30)}<span style="line-height:1.15">${esc(q.label)}</span></div>`).join('')}</div>
+    ${(r.attention||[]).length?`<div class="sh"><b>E'tibor talab qiladi</b></div><div class="group">${r.attention.slice(0,3).map(a=>`<div class="li">${tileM(a.icon,a.module)}<div class="m"><b>${esc(a.title)}</b><span class="t-sm">${esc(a.sub)}</span></div>${a.badge?`<span class="badge" style="background:${toneBg(a.badge.tone)};color:${toneInk(a.badge.tone)}">${esc(a.badge.text)}</span>`:a.value?`<b class="num" style="font-size:11px">${esc(a.value)}</b>`:ic('chev',14)}</div>`).join('')}</div>`:''}
+    ${ch?`<div class="card" style="display:flex;flex-direction:column;gap:6px"><div class="sh"><b>${esc(ch.title)}</b><span class="t-sm">${esc(ch.unit)}</span></div>${ch.type==='hbars'?hbarsG(ch):barsG(ch)}</div>`:''}
+    ${pg?`<div class="card" style="display:flex;flex-direction:column;gap:6px"><div class="row between"><b style="font-size:11.5px">${esc(pg.title)}</b><span class="num" style="font-size:11px;font-weight:700">${pg.value}%</span></div><div class="prog" style="height:6px;margin:0"><i style="width:${Math.max(0,Math.min(100,pg.value))}%"></i></div><span class="t-sm">${esc(pg.caption)}</span></div>`:''}
+    ${bd?`<div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="sh"><b>${esc(bd.title)}</b></div><div style="display:flex;gap:2px;height:10px">${bd.items.slice(0,4).map((it,i)=>`<i title="${esc(it.label)} ${it.value}%" style="flex:${it.value};background:var(--chart${i+1});border-radius:99px"></i>`).join('')}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:10px">${bd.items.slice(0,4).map((it,i)=>`<span class="row between"><span class="row" style="gap:5px;color:var(--textBody);min-width:0"><i style="width:8px;height:8px;border-radius:3px;background:var(--chart${i+1});flex:0 0 auto"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.label)}</span></span><b class="num">${it.value}%</b></span>`).join('')}</div></div>`:''}
+  </div>${tabs((r.tabs||[]).slice(0,5).map(t=>[I[t.icon]?t.icon:'box',t.label]),0)}`;
+}
+const GROUP_ORDER=['Rahbariyat va moliya',"Sotuv va ta'minot",'Ishlab chiqarish','Logistika'];
+let roleGroup='all';
+try{ roleGroup=localStorage.getItem('insof-rg')||'all'; }catch(e){}
+function renderRoles(){
+  const box=document.getElementById('roleGrid'); if(!box) return;
+  const p=L[dir][mode];
+  const groups=GROUP_ORDER.filter(g=>ROLES.some(r=>r.group===g));
+  document.getElementById('roleSeg').innerHTML=[['all','Hammasi ('+ROLES.length+')'],...groups.map(g=>[g,g+' ('+ROLES.filter(r=>r.group===g).length+')'])].map(([k,l])=>`<button id="rg-${k.replace(/\W+/g,'')}" data-g="${esc(k)}" aria-pressed="${k===roleGroup}">${esc(l)}</button>`).join('');
+  const list=ROLES.filter(r=>roleGroup==='all'||r.group===roleGroup);
+  box.innerHTML=list.map(r=>`<div class="slot role-slot">
+      <h3><span class="tag new">${esc(r.group)}</span>${esc(r.name)}</h3>
+      <div class="phone"><div class="screen" data-dir="${dir}" style="${vars(p,R[dir])}">${roleScreen(r)}</div></div>
+      <p>${esc(r.rationale)}</p>
+      <p class="datanote"><b>Ma'lumot manbasi:</b> ${esc(r.data)}</p>
+    </div>`).join('');
+}
+
+Object.assign(I,{
+  wifiOff:'<path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><path d="m2 2 20 20"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  face:'<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/>',
+  send:'<path d="M14.54 21.69a.5.5 0 0 0 .94-.03l6.5-19a.5.5 0 0 0-.64-.64l-19 6.5a.5.5 0 0 0-.03.94l7.93 3.18a2 2 0 0 1 1.11 1.11z"/><path d="m21.85 2.15-10.94 10.94"/>',
+  help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  trash:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  pen:'<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>'
+});
+const tg=(on)=>`<span class="tg ${on?'on':''}" role="switch" aria-checked="${on}"><i></i></span>`;
+const setRow=(icn,m,t,right,sub)=>`<div class="li">${tileM(icn,m,28)}<div class="m"><b>${t}</b>${sub?`<span class="t-sm">${sub}</span>`:''}</div>${right}</div>`;
+const bar=(t,right='')=>`${sb()}<div class="appbar"><span class="ib">${ic('back')}</span><div class="hdr-t" style="flex:1;font-size:13px;font-weight:var(--wHead)">${t}</div>${right}</div>`;
+const GAPS=[
+ {key:'offline',tag:'Oflayn / xato',title:'Internet yo\'q holati',note:'Hozir ilovada oflayn banner yo\'q. Yuklanmagan ro\'yxat esa "ma\'lumot yo\'q" deb ko\'rinadi (NotificationsList.tsx:29). Yangi tartibda tepada global banner chiqadi, sabab aniq aytiladi va "Qayta urinish" tugmasi bor.',html:()=>`
+   ${sb()}<div class="offbar">${ic('wifiOff',14)}<span style="flex:1">Internet yo'q · 3 ta o'zgarish navbatda</span><b>Qayta</b></div>
+   <div class="appbar"><div class="hdr-t" style="flex:1;font-size:13px;font-weight:var(--wHead)">Buyurtmalar</div></div>
+   <div class="scroll" style="justify-content:center;align-items:center;text-align:center;gap:14px;padding:24px">
+     <div class="err-ill">${ic('wifiOff',44)}</div>
+     <div style="display:flex;flex-direction:column;gap:6px;align-items:center"><div class="t-title">Ma'lumot yuklanmadi</div><div class="t-body" style="max-width:220px">Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring. Saqlanganlar yo'qolmaydi.</div></div>
+     <span class="btn pri" style="flex:0 0 auto;padding:0 22px;height:42px">${ic('refresh',14)}Qayta urinish</span>
+     <span class="btn sec" style="flex:0 0 auto;padding:0 22px;height:40px">Bosh sahifa</span>
+   </div>`},
+ {key:'when',tag:'Buyurtma',title:'Obyekt va vaqt (2/3)',note:'Hozir sana "YYYY-MM-DDTHH:mm" ko\'rinishida qo\'lda yoziladi, manzilga esa soxta koordinata qo\'yiladi (new-order.tsx:43, 88). Yangi tartibda xaritadagi pin, kun chiplari, vaqt slotlari va interval tanlanadi.',html:()=>`
+   ${bar('Yangi buyurtma','<span class="t-sm" style="font-weight:700">2/3</span>')}
+   <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+   <div class="scroll" style="gap:10px">
+     <div class="card" style="padding:10px;display:flex;gap:9px;align-items:center">${tileM('map','Logistics')}<div style="flex:1;min-width:0"><div class="t-sm">Obyekt</div><b style="font-size:11.5px">Chilonzor 9-kv, 12-uy</b></div>${ic('chev',14)}</div>
+     <div class="mapbox"><svg viewBox="0 0 270 110" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q60 50 120 72 T270 60" stroke="var(--borderStrong)" stroke-width="6" fill="none"/><path d="M90 0 L110 110 M190 0 L170 110" stroke="var(--borderDefault)" stroke-width="4"/><rect x="20" y="12" width="50" height="28" rx="4" fill="var(--bgMuted)"/><rect x="200" y="76" width="56" height="24" rx="4" fill="var(--bgMuted)"/></svg><span class="pin">${ic('map',16)}</span><span class="chip" style="position:absolute;right:8px;bottom:8px;height:26px;font-size:9.5px">${ic('nav',11)}&nbsp;Joylashuvim</span></div>
+     <div class="t-over">Kun</div>
+     <div class="chips"><span class="chip">Bugun</span><span class="chip on">Ertaga</span><span class="chip">Sha, 4-okt</span><span class="chip">Ya, 5-okt</span></div>
+     <div class="t-over">Boshlanish vaqti</div>
+     <div class="slots">${['07:00','08:00','09:00','10:00','11:00','13:00','14:00','15:00'].map((t,i)=>`<span class="tslot ${i===1?'on':''} ${i===6?'off':''}">${t}</span>`).join('')}</div>
+     <div class="card" style="padding:10px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:11.5px">Mikserlar oralig'i</b><div class="t-sm">12 m³ = 2 reys</div></div><div class="stepper"><span>−</span><b>30 daq</b><span>+</span></div></div>
+   </div>
+   <div class="sticky"><span class="btn sec" style="flex:1">Orqaga</span><span class="btn pri" style="flex:1.6">Davom etish ${ic('chev',13)}</span></div>`},
+ {key:'ordered',tag:'Do\'kon',title:'Buyurtma qabul qilindi',note:'Hozir do\'kondan buyurtma berilgach faqat toast chiqadi va ekran yopiladi ([id].tsx:71): raqam ham, keyingi qadam ham ko\'rinmaydi. Yangi ekranda buyurtma raqami, keyingi qadamlar va kuzatish tugmasi bor.',html:()=>`
+   ${sb()}<div class="scroll" style="gap:12px;padding-top:26px">
+     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><span class="okc">${ic('check',30)}</span><div class="t-title">Buyurtma qabul qilindi</div><span class="row" style="gap:6px;font-size:11px;color:var(--textMuted)">№ B-2026-00412 <span class="ib" style="width:24px;height:24px">${ic('copy',12)}</span></span></div>
+     <div class="card" style="display:flex;flex-direction:column;gap:4px"><div class="row between"><b style="font-size:12px">Beton M300 · 12 m³</b>${badge('Yangi','info')}</div><span class="t-sm">Ertaga, 08:00 · Chilonzor 9-kv</span><div class="num" style="font-size:16px;font-weight:var(--wHead);margin-top:4px">≈ 10 800 000 so'm</div></div>
+     <div class="card tl">
+       <div class="s done"><span class="d"></span><div><b>Qabul qilindi</b><div class="t-sm">14:32</div></div></div>
+       <div class="s now"><span class="d"></span><div><b>Sotuv bo'limi qo'ng'iroq qiladi</b><div class="t-sm">15 daqiqa ichida</div></div></div>
+       <div class="s"><span class="d"></span><div style="color:var(--textMuted)">Yetkazish: tasdiqdan so'ng</div></div>
+     </div>
+   </div>
+   <div class="sticky" style="flex-direction:column"><span class="btn pri" style="height:44px">Buyurtmalarim</span><span class="btn sec" style="flex:0 0 40px;height:40px">Do'konga qaytish</span></div>`},
+ {key:'settings',tag:'Sozlamalar',title:'Sozlamalar',note:'Hozir "Til" bosilmaydi, mavzu faqat tizimga ergashadi, bildirishnoma va Face ID sozlamalari yo\'q, yordam raqami esa namuna (Profile.tsx:73-75). Yangi sahifa 4 ta guruhdan iborat.',html:()=>`
+   ${bar('Sozlamalar')}
+   <div class="scroll" style="gap:8px">
+     <div class="card" style="display:flex;gap:10px;align-items:center;padding:10px"><span class="av" style="width:40px;height:40px">RA</span><div style="flex:1"><b style="font-size:12px">Rustam Aliyev</b><div class="t-sm">Direktor · +998 90 123 45 67</div></div>${ic('chev',14)}</div>
+     <div class="t-over" style="margin-top:4px">Ilova</div>
+     <div class="group">${setRow('globe','Logistics','Til','<span class="t-sm">O\'zbekcha '+ic('chev',12)+'</span>')}${setRow('moon','Production','Mavzu','<div class="miniseg"><span>Tizim</span><span class="on">Yorug\'</span><span>Tungi</span></div>')}</div>
+     <div class="t-over" style="margin-top:4px">Xavfsizlik</div>
+     <div class="group">${setRow('lock','Warehouse','PIN kod','<span class="t-sm">Yoqilgan</span>')}${setRow('face','Brand','Face ID bilan kirish',tg(true))}</div>
+     <div class="t-over" style="margin-top:4px">Bildirishnomalar</div>
+     <div class="group">${setRow('truck','Logistics','Reys xabarlari',tg(true))}${setRow('wallet','Brand','To\'lov xabarlari',tg(true))}${setRow('chat','Production','Chat',tg(false))}</div>
+     <div class="t-over" style="margin-top:4px">Yordam</div>
+     <div class="group">${setRow('help','Brand','Telegram: @insof_support',ic('chev',12))}${setRow('trash','Warehouse','<span style="color:var(--danger)">Hisobni o\'chirish</span>','')}</div>
+     <div class="t-sm" style="text-align:center">Versiya 1.0.0</div>
+   </div>`},
+ {key:'accept',tag:'Yetkazish',title:'Betonni qabul qilish',note:'Hozir imzo o\'rniga soxta "tap.png" yuboriladi, "Qo\'ng\'iroq" tugmasi esa ishlamaydi (delivery/[id].tsx:132, 168). Yangi ekranda hajmni tasdiqlash, nakladnoy fotosi va haqiqiy imzo maydoni bor.',html:()=>`
+   ${bar('Qabul qilish','<span class="ib">'+ic('phone')+'</span>')}
+   <div class="scroll" style="gap:10px">
+     <div class="hero" style="gap:6px"><span class="t-over">Mikser 01 A 123 BC · 14:05</span><div style="font-size:16px;font-weight:var(--wHead)">Beton M300 · 8 m³</div><span style="font-size:10.5px;color:var(--onInvMuted)">Zavoddan chiqdi 13:22 · yoshi 43 daq</span></div>
+     <div class="card" style="padding:10px;display:flex;align-items:center;gap:8px"><div style="flex:1"><b style="font-size:11.5px">Qabul qilingan hajm</b><div class="t-sm">Hujjat bo'yicha 8,0 m³</div></div><div class="stepper"><span>−</span><b>8,0 m³</b><span>+</span></div></div>
+     <div class="photo">${ic('camera',20)}<span>Nakladnoy fotosi</span></div>
+     <div class="sign"><svg viewBox="0 0 240 70" aria-hidden="true"><path class="sig" pathLength="1" d="M14 46 C30 10 44 64 60 34 S88 20 96 44 S120 58 132 30 S160 18 170 42 S196 52 220 26" fill="none" stroke="var(--textStrong)" stroke-width="2.4" stroke-linecap="round"/></svg><div class="row between" style="font-size:9.5px;color:var(--textMuted)"><span>${ic('pen',11)} Shu yerga imzo qo'ying</span><b style="color:var(--brandInk)">Tozalash</b></div></div>
+   </div>
+   <div class="sticky" style="flex-direction:column"><span class="btn pri" style="height:46px">${ic('check',14)}Imzolash va qabul qilish</span><span class="btn sec" style="flex:0 0 38px;height:38px;color:var(--danger)">E'tiroz bildirish</span></div>`},
+ {key:'notif',tag:'Bildirishnoma',title:'Bildirishnomalar',note:'Hozir ro\'yxatda tur ikonkasi ham, sana guruhlari ham yo\'q, ochilishi bilan hammasi "o\'qildi" bo\'lib qoladi (NotificationsList.tsx:19-43). Yangi ekranda filtr, "Bugun" va "Kecha" guruhlari va o\'qilmagan nuqtasi bor.',html:()=>{
+   const n=(icn,m,t,b,time,un)=>`<div class="li" style="align-items:flex-start">${tileM(icn,m)}<div class="m"><b style="white-space:normal">${t}</b><span class="t-sm" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${b}</span></div><div class="r"><span class="t-sm">${time}</span>${un?'<i class="udot"></i>':''}</div></div>`;
+   return `${bar('Bildirishnomalar','<span style="font-size:10px;font-weight:700;color:var(--brandInk)">Hammasi o\'qildi</span>')}
+   <div class="scroll" style="gap:10px">
+     <div class="chips"><span class="chip on">Hammasi</span><span class="chip">O'qilmagan <span class="n">3</span></span><span class="chip">Reyslar</span><span class="chip">To'lovlar</span></div>
+     <div class="t-over">Bugun</div>
+     <div class="group">${n('truck','Logistics','Reys biriktirildi','Z-2026-00027 · Yunusobod, 10 m³. Mikser 01 A 777 BA','09:14',1)}${n('wallet','Brand','To\'lov qabul qilindi','"Baraka Qurilish" MChJ · 4 500 000 so\'m, Click','08:40',1)}${n('alert','Warehouse','Sement zaxirasi kam','3 kunga yetadi. Snabjeniyega zayavka yuboring','07:55',1)}</div>
+     <div class="t-over">Kecha</div>
+     <div class="group">${n('check','Production','Zayavka tasdiqlandi','№ 4812 · Beton M300 direktor tomonidan tasdiqlandi','18:20',0)}${n('chat','Brand','Yangi xabar','Dilshod R.: Ertangi reys vaqti o\'zgardimi?','16:02',0)}</div>
+   </div>`}},
+ {key:'chat',tag:'Chat',title:'Chat',note:'Hozir chatda kun ajratgichlari, yuborildi/o\'qildi belgilari va ilova (foto, joylashuv) yo\'q, vaqt "2 soat" ko\'rinishida chiqadi (chat/[id].tsx:35). Yangi chatda buyurtma kartasi ham xabar sifatida yuboriladi.',html:()=>`
+   ${sb()}<div class="appbar"><span class="ib">${ic('back')}</span><span class="av">DR</span><div style="flex:1;min-width:0"><b style="font-size:12px">Dilshod Rahimov</b><div class="t-sm" style="color:var(--success)">● onlayn · Sotuv</div></div><span class="ib">${ic('phone')}</span></div>
+   <div class="scroll" style="gap:8px;background:var(--bgSubtle)">
+     <span class="daychip">Bugun</span>
+     <div class="bub in">Assalomu alaykum! Ertangi beton vaqti o'zgarmaydimi?<small>09:02</small></div>
+     <div class="bub out">Va alaykum assalom. Yo'q, 08:00 da birinchi mikser chiqadi.<small>09:04 <span class="tick">✓✓</span></small></div>
+     <div class="bub out ref"><div class="row" style="gap:8px">${tileM('box','Production')}<div><b style="font-size:11px">Buyurtma № 4812</b><div style="font-size:9.5px;opacity:.8">Beton M300 · 12 m³ · Ertaga 08:00</div></div></div><small>09:05 <span class="tick">✓✓</span></small></div>
+     <div class="bub in">Rahmat, kutamiz!<small>09:06</small></div>
+     <div class="typing"><i></i><i></i><i></i></div>
+   </div>
+   <div class="composer"><span class="ib sec" style="border:0">${ic('plus')}</span><span class="cin">Xabar yozing…</span><span class="send">${ic('send',15)}</span></div>`},
+ {key:'pin',tag:'Xavfsizlik',title:'PIN qulf',note:'Hozir ilova orqa fondan qaytganda qayta qulflanmaydi, xato PIN terilganda tebranish yo\'q, Face ID esa "Tez kunda" deb turibdi (pin-lock.tsx:26-51). Yangi ekranda ism va avatar, silkinadigan nuqtalar va Face ID tugmasi bor.',html:()=>`
+   ${sb()}<div class="scroll" style="align-items:center;gap:14px;padding-top:28px">
+     <span class="av" style="width:58px;height:58px;font-size:18px">RA</span>
+     <div style="text-align:center"><div class="t-title">Salom, Rustam</div><div class="t-sm">PIN kodni kiriting</div></div>
+     <div class="pdots"><i class="f"></i><i class="f"></i><i></i><i></i></div>
+     <div class="keypad">${['1','2','3','4','5','6','7','8','9','face','0','del'].map(k=>`<span class="key ${k==='face'||k==='del'?'ghost':''}">${k==='face'?ic('face',22):k==='del'?ic('back',20):k}</span>`).join('')}</div>
+     <div class="row" style="gap:18px;font-size:10.5px;font-weight:700;color:var(--brandInk)"><span>PIN esdan chiqdimi?</span><span style="color:var(--textMuted)">Boshqa hisob</span></div>
+   </div>`}
+];
+function renderGaps(){const box=document.getElementById('gapRail');if(!box)return;const p=L[dir][mode];
+  box.innerHTML=GAPS.map(g=>`<div class="slot role-slot"><h3><span class="tag new">${g.tag}</span>${g.title}</h3><div class="phone"><div class="screen" data-dir="${dir}" style="${vars(p,R[dir])}">${g.html()}</div></div><p>${g.note}</p></div>`).join('')}
+
+const PRODUCTS=[
+ {id:'m300',name:'Beton M300 (B22,5)',g:'Beton',price:'780 000',unit:'m³',art:'beton',tag:'Ko\'p sotiladi'},
+ {id:'d500',name:'Gazoblok D500 600×300×200',g:'Gazoblok',price:'720 000',unit:'m³',art:'gazo',tag:'Bugun bor'},
+ {id:'pk',name:'Plita PK 60-12',g:'Plita',price:'1 450 000',unit:'dona',art:'plita'},
+ {id:'ks',name:'Quduq halqasi KS 10-9',g:'Halqa',price:'520 000',unit:'dona',art:'halqa'},
+ {id:'m200',name:'Beton M200 (B15)',g:'Beton',price:'690 000',unit:'m³',art:'beton'},
+ {id:'br',name:'Bordyur BR 100.30.15',g:'Bordyur',price:'48 000',unit:'dona',art:'bordyur'}
+];
+const isoP=(ox,oy,x,y,z)=>[(ox+(x-y)*.866).toFixed(1),(oy+(x+y)*.5-z).toFixed(1)].join(',');
+function isoBox(ox,oy,w,d,h,c){const P=(x,y,z)=>isoP(ox,oy,x,y,z);
+  return `<polygon points="${P(0,d,0)} ${P(w,d,0)} ${P(w,d,h)} ${P(0,d,h)}" fill="${c[1]}"/><polygon points="${P(w,0,0)} ${P(w,d,0)} ${P(w,d,h)} ${P(w,0,h)}" fill="${c[2]}"/><polygon points="${P(0,0,h)} ${P(w,0,h)} ${P(w,d,h)} ${P(0,d,h)}" fill="${c[0]}"/>`}
+const CONC=['#eef1f6','#d6dce6','#b7c0cf'], WHITE=['#ffffff','#eceff4','#d5dbe5'];
+function prodArt(t){let s='';
+  if(t==='gazo'){s=isoBox(60,40,46,22,18,WHITE)+isoBox(60,22,46,22,18,WHITE)+isoBox(100,62,46,22,18,WHITE)+isoBox(100,44,46,22,18,WHITE)}
+  else if(t==='plita'){s=isoBox(36,30,96,34,12,CONC);for(let i=0;i<5;i++){const [x,y]=isoP(36,30,96,6+i*6,6).split(',');s+=`<ellipse cx="${x}" cy="${y}" rx="2.6" ry="2.2" fill="#8f9bb0"/>`}}
+  else if(t==='halqa'){s=`<ellipse cx="90" cy="78" rx="46" ry="16" fill="#b7c0cf"/><rect x="44" y="44" width="92" height="34" fill="#d6dce6"/><ellipse cx="90" cy="44" rx="46" ry="16" fill="#eef1f6"/><ellipse cx="90" cy="44" rx="36" ry="11" fill="#8f9bb0"/>`}
+  else if(t==='bordyur'){s=isoBox(40,40,90,12,24,CONC)+isoBox(40,40,90,4,30,CONC)}
+  else {s=`<ellipse cx="90" cy="92" rx="56" ry="14" fill="#b7c0cf"/><path d="M34 92 Q60 40 90 34 Q120 40 146 92 Z" fill="#d6dce6"/><path d="M58 70 Q76 50 92 48" stroke="#eef1f6" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="72" cy="80" r="2" fill="#9aa5b8"/><circle cx="108" cy="74" r="2" fill="#9aa5b8"/><circle cx="96" cy="86" r="1.6" fill="#9aa5b8"/>`}
+  return `<svg viewBox="0 0 180 110" style="width:100%;height:100%;display:block" aria-hidden="true">${s}</svg>`}
+const ctabs=(on,cart=2)=>`<div class="tabbar">${[['home','Bosh'],['layers','Katalog'],['cart','Savat'],['truck','Buyurtma'],['user','Profil']].map(([n,l],i)=>`<div class="tab ${i===on?'on':''}"><span class="pill">${ic(n,16)}${i===2&&cart?`<b class="tbadge">${cart}</b>`:''}</span>${l}</div>`).join('')}</div>`;
+const pcard=(p,w)=>`<div class="pcard" ${w?`style="width:${w}px;flex:0 0 auto"`:''}><div class="pimg">${prodArt(p.art)}${p.tag?`<span class="ptag">${p.tag}</span>`:''}</div><div class="pbody"><span class="t-sm">${p.g}</span><b class="pname">${p.name}</b><div class="row between" style="align-items:flex-end"><span class="pprice num">${p.price} <small>so'm/${p.unit}</small></span><span class="padd">${ic('plus',13)}</span></div></div></div>`;
+const shopHead=()=>`${sb()}<div class="appbar" style="gap:8px"><svg viewBox="0 0 1024 1024" style="width:30px;height:30px;border-radius:8px;flex:0 0 auto"><rect width="1024" height="1024" fill="var(--brand)"/><g fill="var(--textOnBrand)" transform="translate(512 512) scale(.86) translate(-512 -512)"><polygon points="211,211 812,211 812,397 516,397 516,457 592,503 592,626 812,626 812,812 211,812 211,626 410,626 410,397 211,397"/></g></svg><div class="search" style="flex:1;height:34px">${ic('search',13)}Beton, gazoblok, plita…</div><span class="ib">${ic('bell')}</span></div>`;
+const CLIENT=[
+ {key:'home',tag:'Bosh sahifa',title:'Bosh sahifa',note:'Yuqorida qidiruv, so\'ng bugungi taklif banneri va zavod holati (ochiq, bugun yetkazadi). Undan keyin toifalar, kalkulyator va mahsulotlar. Hozirgi sahifada toifalar yo\'q, qidiruv faqat katalogda bor.',html:()=>`
+   ${shopHead()}<div class="scroll" style="gap:12px">
+    <div class="hero promo"><span class="t-over">Bugungi taklif</span><div style="font-size:17px;font-weight:var(--wHead);line-height:1.2">Beton M300<br>10 m³ dan oshsa −5%</div><div class="row" style="gap:8px"><span class="btn pri" style="flex:0 0 auto;height:34px;padding:0 14px;font-size:11px">Buyurtma</span><span style="font-size:10px;color:var(--onInvMuted);white-space:nowrap">3-oktabrgacha</span></div><div class="promo-art">${prodArt('beton')}</div><div class="dots3"><i class="on"></i><i></i><i></i></div></div>
+    <div class="card today"><span class="live"></span><div style="flex:1"><b style="font-size:11.5px">Zavod ochiq · 07:00–20:00</b><div class="t-sm">Bugun yetkazamiz · 2 soat ichida</div></div><span class="ib sec">${ic('phone')}</span></div>
+    <div class="cats">${[['Beton','beton'],['Gazoblok','gazo'],['Plita','plita'],['Halqa','halqa'],['Bordyur','bordyur']].map(([n,a])=>`<div class="cat"><span class="catimg">${prodArt(a)}</span>${n}</div>`).join('')}</div>
+    <div class="card calcp">${tileM('chart','Production',34)}<div style="flex:1"><b style="font-size:11.5px">Necha m³ kerak?</b><div class="t-sm">Poydevor o'lchamini kiriting, hajm va narxni hisoblaymiz</div></div>${ic('chev',14)}</div>
+    <div class="sh"><b>Ommabop</b><a href="#mijoz" onclick="return false">Barchasi</a></div>
+    <div class="hscroll">${PRODUCTS.slice(0,4).map(p=>pcard(p,140)).join('')}</div>
+   </div>${ctabs(0)}`},
+ {key:'katalog',tag:'Katalog',title:'Katalog',note:'Toifa chiplari, saralash va filtr. Ikki ustunli kartalarda narx birligi bilan ko\'rsatiladi, "+" bilan darhol savatga qo\'shiladi. Hozir kartadan savatga qo\'shib bo\'lmaydi.',html:()=>`
+   ${shopHead()}<div class="scroll" style="gap:10px">
+    <div class="chips"><span class="chip on">Hammasi</span><span class="chip">Beton</span><span class="chip">Gazoblok</span><span class="chip">Plita</span><span class="chip">Halqa</span></div>
+    <div class="row between"><span class="t-sm"><b style="color:var(--textStrong)">24</b> mahsulot</span><span class="row" style="gap:6px"><span class="chip" style="height:26px;font-size:9.5px">${ic('list',11)}&nbsp;Arzonroq</span><span class="chip" style="height:26px;font-size:9.5px">${ic('settings',11)}&nbsp;Filtr</span></span></div>
+    <div class="pgrid">${PRODUCTS.map(p=>pcard(p)).join('')}</div>
+   </div>${ctabs(1)}`},
+ {key:'product',tag:'Mahsulot',title:'Mahsulot sahifasi',note:'Katta rasm va galereya, marka chiplari, texnik ko\'rsatkichlar jadvali va yetkazish shartlari. Pastda doim ko\'rinadigan bar: hajm va jami summa. Hozir "Buyurtma" tugmasi karta ichida qolib ketgan ([id].tsx:99-116).',html:()=>`
+   ${sb()}<div class="pdhero">${prodArt('beton')}<span class="ib sec pdback">${ic('back')}</span><span class="ib sec pdfav">${ic('star')}</span><div class="dots3" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%)"><i class="on"></i><i></i><i></i></div></div>
+   <div class="scroll" style="gap:10px;margin-top:-18px;border-radius:22px 22px 0 0;background:var(--bgApp);position:relative;z-index:2;padding-top:14px">
+    <div><span class="t-sm">Beton · Insof Beton zavodi</span><div class="t-title" style="font-size:16px">Beton M300 (B22,5)</div><div class="row" style="gap:8px;margin-top:4px"><span class="pprice num" style="font-size:18px">780 000 <small>so'm/m³</small></span>${badge('Bugun bor','success')}</div></div>
+    <div class="t-over">Marka</div>
+    <div class="chips"><span class="chip">M200</span><span class="chip">M250</span><span class="chip on">M300</span><span class="chip">M350</span><span class="chip">M400</span></div>
+    <div class="group"><div class="kv"><span>Mustahkamlik sinfi</span><b>B22,5</b></div><div class="kv"><span>Harakatchanlik</span><b>P3–P4</b></div><div class="kv"><span>Sovuqqa chidamlilik</span><b>F150</b></div><div class="kv"><span>Suv o'tkazmaslik</span><b>W6</b></div></div>
+    <div class="card" style="display:flex;gap:9px;align-items:center;padding:10px">${tileM('truck','Logistics')}<div style="flex:1"><b style="font-size:11px">Mikser bilan yetkazish</b><div class="t-sm">Toshkent bo'ylab · 1 reys = 8–10 m³</div></div></div>
+   </div>
+   <div class="sticky"><div class="stepper"><span>−</span><b>12 m³</b><span>+</span></div><span class="btn pri" style="flex:1;flex-direction:column;gap:0;line-height:1.1"><span style="font-size:9px;opacity:.85">Jami 9 360 000 so'm</span>Savatga qo'shish</span></div>`},
+ {key:'calc',tag:'Kalkulyator',title:'Beton kalkulyatori',note:'Konstruksiya turini tanlash, o\'lchamlar va jonli natija: m³, mikserlar soni va taxminiy narx. Natijadan bir bosishda buyurtma beriladi.',html:()=>`
+   ${bar('Kalkulyator')}<div class="scroll" style="gap:10px">
+    <div class="chips"><span class="chip on">Lenta poydevor</span><span class="chip">Plita</span><span class="chip">Ustun</span><span class="chip">Pol</span></div>
+    <div class="calcfig"><svg viewBox="0 0 260 90" aria-hidden="true">${isoBox(40,24,150,16,26,['var(--brandSoft)','color-mix(in srgb,var(--brand) 35%,var(--bgSurface))','color-mix(in srgb,var(--brand) 55%,var(--bgSurface))'])}<text x="80" y="86" font-size="9" fill="var(--textMuted)">Uzunlik 48 m</text><text x="200" y="40" font-size="9" fill="var(--textMuted)">0,4 m</text><text x="12" y="34" font-size="9" fill="var(--textMuted)">0,6 m</text></svg></div>
+    <div class="fields">${[['Uzunlik','48','m'],['Kenglik','0,4','m'],['Balandlik','0,6','m']].map(([l,v,u])=>`<div class="fld"><span class="t-sm">${l}</span><b class="num">${v} <small>${u}</small></b></div>`).join('')}</div>
+    <div class="hero" style="gap:8px"><span class="t-over">Kerakli hajm</span><div class="row" style="align-items:flex-end;gap:8px"><span class="big num">11,5</span><span style="font-size:13px;font-weight:600;padding-bottom:4px">m³</span></div><div class="row between" style="font-size:10.5px;color:var(--onInvMuted)"><span>${ic('truck',12)} 2 ta mikser</span><span>+5% zaxira bilan 12 m³</span></div><div class="row between"><span style="font-size:10.5px;color:var(--onInvMuted)">Taxminiy narx, M300</span><b class="num" style="font-size:14px">9 360 000 so'm</b></div></div>
+   </div><div class="sticky"><span class="btn pri xl" style="height:48px">${ic('cart',15)}12 m³ ni buyurtma qilish</span></div>`},
+ {key:'checkout',tag:'Buyurtma',title:'Buyurtmani rasmiylashtirish',note:'Bitta sahifada: savatdagi mahsulotlar, manzil, yetkazish vaqti va to\'lov usuli (naqd, Click, Payme, bank o\'tkazmasi). Hozir buyurtma faqat ism va telefon so\'raydigan oddiy forma.',html:()=>`
+   ${bar('Buyurtma','<span class="t-sm" style="font-weight:700">2 ta</span>')}<div class="scroll" style="gap:10px">
+    <div class="group">${PRODUCTS.slice(0,2).map((p,i)=>`<div class="li"><span class="mini">${prodArt(p.art)}</span><div class="m"><b>${p.name}</b><span class="t-sm">${i?'8 m³':'12 m³'} · ${p.price} so'm/${p.unit}</span></div><b class="num" style="font-size:11px">${i?'5,76':'9,36'} mln</b></div>`).join('')}</div>
+    <div class="t-over">Yetkazish</div>
+    <div class="group"><div class="li">${tileM('map','Logistics')}<div class="m"><b>Chilonzor 9-kv, 12-uy</b><span class="t-sm">Obyekt · xaritada belgilangan</span></div>${ic('chev',13)}</div><div class="li">${tileM('calendar','Production')}<div class="m"><b>Ertaga, 08:00–10:00</b><span class="t-sm">Mikserlar oralig'i 30 daq</span></div>${ic('chev',13)}</div></div>
+    <div class="t-over">To'lov</div>
+    <div class="paygrid">${[['Naqd','cash',0],['Click','wallet',1],['Payme','wallet',0],['Bank o\'tkazma','receipt',0]].map(([n,i,on])=>`<span class="pay ${on?'on':''}">${ic(i,14)}${n}</span>`).join('')}</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:5px;font-size:10.5px"><div class="row between"><span class="t-sm">Mahsulotlar</span><b class="num">15 120 000</b></div><div class="row between"><span class="t-sm">Yetkazish (3 reys)</span><b class="num">450 000</b></div><div class="row between" style="color:var(--success)"><span>Chegirma −5%</span><b class="num">−756 000</b></div><div class="row between" style="border-top:1px solid var(--borderSubtle);padding-top:6px"><b>Jami</b><b class="num" style="font-size:13px">14 814 000 so'm</b></div></div>
+   </div><div class="sticky"><span class="btn pri xl" style="height:48px">Buyurtmani tasdiqlash</span></div>`},
+ {key:'track',tag:'Kuzatish',title:'Buyurtmani kuzatish',note:'Mikser xaritada jonli ko\'rinadi, kelish vaqti va beton yoshi ko\'rsatiladi, haydovchiga bir bosishda qo\'ng\'iroq qilinadi. Pastda buyurtma bosqichlari. Hozir mijoz uchun bunday ekran yo\'q.',html:()=>`
+   ${sb()}<div class="trackmap"><svg viewBox="0 0 280 230" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="280" height="230" fill="var(--bgSubtle)"/><path d="M0 150 Q80 120 140 150 T280 130" stroke="var(--borderDefault)" stroke-width="12" fill="none"/><path d="M90 0 L120 230 M210 0 L180 230" stroke="var(--borderDefault)" stroke-width="8"/><rect x="18" y="20" width="56" height="40" rx="6" fill="var(--bgMuted)"/><rect x="220" y="170" width="50" height="40" rx="6" fill="var(--bgMuted)"/><path class="spk" pathLength="1" d="M40 200 Q100 170 120 150 T200 90 L236 60" stroke="var(--brand)" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="1"/><circle cx="236" cy="60" r="8" fill="var(--brand)"/><circle class="pulse" cx="150" cy="128" r="10" fill="var(--brand)"/><circle cx="150" cy="128" r="10" fill="var(--bgSurface)" stroke="var(--brand)" stroke-width="3"/></svg><span class="ib sec" style="position:absolute;top:8px;left:12px">${ic('back')}</span></div>
+   <div class="scroll sheet" style="gap:10px">
+    <i class="grab"></i>
+    <div class="row between"><div><span class="t-sm">Kelish vaqti</span><div class="t-title num" style="font-size:20px">14 daqiqa</div></div>${badge('Yo\'lda','warning')}</div>
+    <div class="card" style="display:flex;gap:9px;align-items:center;padding:10px"><span class="av">AK</span><div style="flex:1"><b style="font-size:11.5px">Aziz K. · 01 A 777 BA</b><div class="t-sm">Mikser · M300, 8 m³ · beton yoshi 32 daq</div></div><span class="ib" style="background:var(--successSolid);color:#fff">${ic('phone')}</span></div>
+    <div class="card tl"><div class="s done"><span class="d"></span><div><b>Tasdiqlandi</b><div class="t-sm">08:12</div></div></div><div class="s done"><span class="d"></span><div><b>Zavoddan chiqdi</b><div class="t-sm">13:22 · 1-reys</div></div></div><div class="s now"><span class="d"></span><div><b>Yo'lda</b><div class="t-sm">Chilonzor 9-kv</div></div></div><div class="s"><span class="d"></span><div style="color:var(--textMuted)">Qabul qilish va imzo</div></div></div>
+   </div>${ctabs(3)}`},
+ {key:'zavod',tag:'Zavod',title:'Zavod sahifasi',note:'Zavod haqida ishonch beruvchi ma\'lumotlar: ish vaqti, manzil, sertifikatlar, ishlab chiqarish quvvati va aloqa tugmalari. Hozirgi zavod sahifasi faqat matndan iborat.',html:()=>`
+   ${sb()}<div class="zcover"><svg viewBox="0 0 280 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="280" height="120" fill="var(--inv)"/>${isoBox(60,38,40,30,46,['#ffffff22','#ffffff14','#ffffff0c'])}${isoBox(130,52,70,40,26,['#ffffff22','#ffffff14','#ffffff0c'])}<rect x="214" y="20" width="10" height="70" fill="#ffffff22"/></svg><span class="ib sec" style="position:absolute;top:8px;left:12px">${ic('back')}</span></div>
+   <div class="scroll" style="gap:10px;margin-top:-26px;position:relative;z-index:2">
+    <div class="card" style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div class="row" style="gap:10px"><svg viewBox="0 0 1024 1024" style="width:44px;height:44px;border-radius:12px"><rect width="1024" height="1024" fill="var(--brand)"/><g fill="var(--textOnBrand)" transform="translate(512 512) scale(.86) translate(-512 -512)"><polygon points="211,211 812,211 812,397 516,397 516,457 592,503 592,626 812,626 812,812 211,812 211,626 410,626 410,397 211,397"/></g></svg><div><b style="font-size:13px">Insof Beton zavodi</b><div class="t-sm">Temir-beton mahsulotlari · Toshkent</div></div></div><div class="row" style="gap:6px;flex-wrap:wrap">${badge('Ochiq · 07:00–20:00','success')}${badge('GOST sertifikat','info')}</div></div>
+    <div class="kpi2" style="grid-template-columns:1fr 1fr 1fr">${[['120 m³','soatiga'],['22','mikser'],['2 soat','yetkazish']].map(([v,l])=>`<div class="card" style="padding:9px;text-align:center"><div class="num" style="font-size:14px;font-weight:var(--wHead)">${v}</div><div class="t-sm">${l}</div></div>`).join('')}</div>
+    <div class="group"><div class="li">${tileM('map','Logistics')}<div class="m"><b>Sergeli tumani, Yangi Sergeli 12</b><span class="t-sm">Xaritada ochish</span></div>${ic('chev',13)}</div><div class="li">${tileM('file','Production')}<div class="m"><b>Sertifikatlar va laboratoriya</b><span class="t-sm">3 ta hujjat · PDF</span></div>${ic('chev',13)}</div></div>
+   </div><div class="sticky"><span class="btn sec" style="flex:1;color:var(--textStrong)">${ic('chat',14)}Telegram</span><span class="btn pri" style="flex:1">${ic('phone',14)}Qo'ng'iroq</span></div>`},
+ {key:'profil',tag:'Profil',title:'Profil (mehmon)',note:'Kirmagan mijozga avval foydasi ko\'rsatiladi: buyurtmalarni kuzatish, obyektlar va hisob-fakturalar. Kirish Telegram yoki SMS orqali bir qadamda bo\'ladi. Pastda yordam va til sozlamalari.',html:()=>`
+   ${sb()}<div class="scroll" style="gap:12px;padding-top:18px">
+    <div class="hero" style="gap:10px;align-items:flex-start"><span class="t-over">Insof ECO hisobi</span><div style="font-size:16px;font-weight:var(--wHead);line-height:1.25">Buyurtmalaringizni kuzating, obyektlarni boshqaring</div><div style="display:flex;flex-direction:column;gap:5px;font-size:10.5px;color:var(--onInvMuted)"><span>${ic('check',11)} Mikser jonli xaritada</span><span>${ic('check',11)} Hisob-faktura va akt-sverka</span><span>${ic('check',11)} Bir nechta obyekt va jamoa</span></div><span class="btn pri" style="flex:0 0 auto;height:38px;padding:0 18px;align-self:stretch">${ic('send',14)}Telegram orqali kirish</span><span style="font-size:10px;color:var(--onInvMuted);align-self:center">yoki telefon raqam va SMS</span></div>
+    <div class="group">${setRow('globe','Logistics','Til','<span class="t-sm">O\'zbekcha '+ic('chev',12)+'</span>')}${setRow('help','Brand','Yordam va savollar',ic('chev',12))}${setRow('file','Production','Ommaviy oferta',ic('chev',12))}</div>
+   </div>${ctabs(4,0)}`}
+];
+function renderClient(){const box=document.getElementById('clientGrid');if(!box)return;const p=L[dir][mode];
+  box.innerHTML=CLIENT.map(g=>`<div class="slot role-slot"><h3><span class="tag new">${g.tag}</span>${g.title}</h3><div class="phone"><div class="screen" data-dir="${dir}" style="${vars(p,R[dir])}">${g.html()}</div></div><p>${g.note}</p></div>`).join('')}
+let view='staff';
+function setView(v,push){view=v==='client'?'client':'staff';
+  document.getElementById('view-staff').hidden=view!=='staff';document.getElementById('view-client').hidden=view!=='client';
+  document.querySelectorAll('#viewNav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===view));
+  document.getElementById('pageTitle').textContent=view==='client'?'Mijoz sahifalari':'Rang va joylashuv redizayni';
+  const ld=document.getElementById('pageLede');if(ld){if(!ld.dataset.staff)ld.dataset.staff=ld.textContent;ld.textContent=view==='client'?"Insof do'konidan beton va temir-beton mahsulotlari buyurtma qiladigan mijozlar uchun sahifalar. Rang, shrift va mavzu tanlovi xodimlar ilovasi bilan umumiy, shuning uchun ikkala tomon bir xil brendda ko'rinadi.":ld.dataset.staff}
+  if(push){try{history.replaceState(null,'',view==='client'?'#mijoz':'#xodimlar')}catch(e){}}
+  setTimeout(enhance,0)}
+
+function enhance(){
+  const scrs=[...document.querySelectorAll('.screen:not([data-dir="cur"])')];
+  scrs.forEach(scr=>{scr.querySelectorAll('.scroll').forEach(sc=>[...sc.children].forEach((el,i)=>el.style.setProperty('--i',i)));
+    scr.querySelectorAll('.tabbar').forEach(b=>placeTab(b,true));scr.querySelectorAll('.chips').forEach(c=>placeChip(c,true))});
+  if(RM()){scrs.forEach(s=>s.classList.add('enter'));return}
+  scrs.forEach((scr,i)=>{scr.classList.add('loading');scr.classList.remove('enter');setTimeout(()=>{scr.classList.remove('loading');play(scr)},650+Math.min(i,6)*90)});
+}
+document.addEventListener('scroll',e=>{const sc=e.target;if(!sc.classList||!sc.classList.contains('scroll'))return;const bar=sc.parentElement.querySelector('.appbar');if(bar)bar.classList.toggle('raised',sc.scrollTop>4)},true);
+function onScreenClick(e){
+  const scr=e.target.closest('.screen'); if(!scr||scr.dataset.dir==='cur') return;
+  const chip=e.target.closest('.chip'); if(chip){const box=chip.parentElement;box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===chip));placeChip(box);if(!RM())scr.querySelectorAll('.hero .big,.kpi .v').forEach(countUp)}
+  const tab=e.target.closest('.tab'); if(tab){const bar=tab.parentElement,tabsA=[...bar.querySelectorAll('.tab')],from=tabsA.findIndex(t=>t.classList.contains('on')),to=tabsA.indexOf(tab);
+    tabsA.forEach(c=>c.classList.toggle('on',c===tab));placeTab(bar);if(from!==to&&!RM()){const sc=scr.querySelector('.scroll');if(sc)sc.scrollTop=0;play(scr,(to>from?1:-1)*24)}}
+  const sg=e.target.closest('.seg2 span'); if(sg){sg.parentElement.querySelectorAll('span').forEach(c=>c.classList.toggle('on',c===sg));if(!RM())scr.querySelectorAll('.hero .big').forEach(countUp)}
+  const host=e.target.closest('.card,.li,.q,.btn,.tab .pill'); if(host&&!RM()){
+    const r=host.getBoundingClientRect(), s=Math.max(r.width,r.height), sp=document.createElement('span');
+    sp.className='ripple'; sp.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;
+    if(getComputedStyle(host).position==='static') host.style.position='relative'; host.style.overflow='hidden'; host.appendChild(sp); setTimeout(()=>sp.remove(),600);
+  }
+}
+document.getElementById('rail').addEventListener('click',onScreenClick);
+document.getElementById('replay').addEventListener('click',enhance);
+addEventListener('resize',()=>document.querySelectorAll('.screen:not([data-dir="cur"])').forEach(s=>{s.querySelectorAll('.tabbar').forEach(b=>placeTab(b,true));s.querySelectorAll('.chips').forEach(c=>placeChip(c,true))}));
+document.getElementById('roleSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;roleGroup=b.dataset.g;try{localStorage.setItem('insof-rg',roleGroup)}catch(e){}renderRoles();setTimeout(enhance,0);});
+document.getElementById('roleGrid').addEventListener('click',onScreenClick);
+document.getElementById('gapRail').addEventListener('click',e=>{onScreenClick(e);const t=e.target.closest('.tg');if(t){t.classList.toggle('on');t.setAttribute('aria-checked',t.classList.contains('on'))}const ms=e.target.closest('.miniseg span');if(ms)ms.parentElement.querySelectorAll('span').forEach(x=>x.classList.toggle('on',x===ms));const sl=e.target.closest('.tslot:not(.off)');if(sl)sl.parentElement.querySelectorAll('.tslot').forEach(x=>x.classList.toggle('on',x===sl));const k=e.target.closest('.key:not(.ghost)');if(k){const d=k.closest('.scroll').querySelector('.pdots');const dots=[...d.children];const n=dots.findIndex(x=>!x.classList.contains('f'));if(n>=0)dots[n].classList.add('f');if(n===3||n<0){d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');setTimeout(()=>dots.forEach(x=>x.classList.remove('f')),450)}}});
+document.getElementById('viewNav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setView(b.dataset.v,true);scrollTo({top:0,behavior:'smooth'})});
+document.getElementById('clientGrid').addEventListener('click',e=>{onScreenClick(e);const p=e.target.closest('.pay');if(p)p.parentElement.querySelectorAll('.pay').forEach(x=>x.classList.toggle('on',x===p))});
+addEventListener('hashchange',()=>setView(location.hash==='#mijoz'?'client':'staff'));
+document.getElementById('dirSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;dir=b.dataset.d;try{localStorage.setItem('insof-dir2',dir)}catch(e){}render();});
+document.getElementById('fontSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;font=b.dataset.f;try{localStorage.setItem('insof-font',font)}catch(e){}render();});
+document.getElementById('modeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;try{localStorage.setItem('insof-mode',mode)}catch(e){}render();});
+render();
+setView(location.hash==='#mijoz'?'client':'staff');
+</script>

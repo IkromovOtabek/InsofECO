@@ -1,0 +1,54 @@
+{
+  "role": "SALES",
+  "name": "Sotuv",
+  "group": "Sotuv va ta'minot",
+  "overline": "Sotuv menejeri · Insof Beton",
+  "title": "Sotuv bugun",
+  "periods": ["Bugun", "Hafta", "Oy"],
+  "hero": { "label": "Oylik reja bajarilishi", "value": "68", "unit": "%",
+            "delta": { "text": "5%", "dir": "up", "tone": "success" },
+            "spark": [31, 36, 41, 45, 52, 57, 63, 68] },
+  "kpis": [
+    { "label": "Sotilgan hajm", "value": "1 840 m³", "delta": "+9%", "tone": "success", "icon": "layers", "module": "Production" },
+    { "label": "Tushum", "value": "1,62 mlrd", "delta": "+6%", "tone": "success", "icon": "wallet", "module": "Brand" },
+    { "label": "O'rtacha chek", "value": "14,8 mln", "delta": "-3%", "tone": "warning", "icon": "receipt", "module": "Brand" },
+    { "label": "Muddati o'tgan nasiya", "value": "286 mln", "delta": "+12%", "tone": "danger", "icon": "alert", "module": "Brand" }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Reja va fakt",
+    "unit": "m³",
+    "labels": ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"],
+    "series": [
+      { "name": "Reja", "data": [320, 320, 320, 320, 320, 260, 120] },
+      { "name": "Fakt", "data": [298, 341, 276, 355, 312, 228, 96] }
+    ]
+  },
+  "breakdown": { "title": "Sotuv tarkibi", "items": [
+    { "label": "Beton", "value": 58 },
+    { "label": "Gazoblok", "value": 24 },
+    { "label": "JBI", "value": 13 },
+    { "label": "Rastvor", "value": 5 }
+  ] },
+  "progress": { "title": "Oylik reja", "value": 68, "caption": "9 860 / 14 500 m³ · 12 kun qoldi" },
+  "attention": [
+    { "title": "Yangi zayavkalar", "sub": "Tasdiqlang va ishlab chiqarishga bering", "badge": { "text": "7", "tone": "warning" }, "value": null, "icon": "file", "module": "Brand" },
+    { "title": "Nasiya muddati o'tgan", "sub": "4 mijoz · eng kattasi 112 mln", "badge": { "text": "4", "tone": "danger" }, "value": "286 mln", "icon": "alert", "module": "Brand" },
+    { "title": "Limitdan oshgan mijoz", "sub": "Yangi yuk bloklangan", "badge": { "text": "2", "tone": "danger" }, "value": null, "icon": "shield", "module": "Brand" }
+  ],
+  "quick": [
+    { "label": "Yangi zayavka", "icon": "plus", "module": "Brand" },
+    { "label": "Mijozga qo'ng'iroq", "icon": "phone", "module": "Brand" },
+    { "label": "Narx-navo", "icon": "receipt", "module": "Brand" },
+    { "label": "Yuk holati", "icon": "truck", "module": "Logistics" }
+  ],
+  "tabs": [
+    { "label": "Bugun", "icon": "home" },
+    { "label": "Zayavka", "icon": "file" },
+    { "label": "Mijozlar", "icon": "users" },
+    { "label": "Nasiya", "icon": "wallet" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Sotuv menejeri har kuni reja va fakt farqini m³ da ko'rib, qaysi zayavkani tezlashtirish kerakligini hal qiladi. Muddati o'tgan nasiya va kredit limiti alohida chiqariladi, chunki qarzdor mijozga yangi yuk berish zavod uchun eng katta xavf. Mijozlar va Nasiya tablari kunlik qo'ng'iroq va undirish ishini bir joyda saqlaydi.",
+  "data": "Zayavkalar ro'yxati hozir ERP `/api/mobile/list?key=orders` (roles.ts SALES) va bosh ekran `/api/mobile/home`dan keladi; ECO tarafida `orders` moduli (submit/confirm/reject) va `billing/summary` bor. Reja %, mijoz bo'yicha muddati o'tgan nasiya, kredit limiti va o'rtacha chek uchun ERP home'ga yangi sales bloki kerak."
+}

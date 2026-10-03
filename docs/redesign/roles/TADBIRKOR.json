@@ -1,0 +1,197 @@
+{
+  "role": "TADBIRKOR",
+  "name": "Tadbirkor",
+  "group": "Rahbariyat va moliya",
+  "overline": "Tadbirkor · Insof ECO",
+  "title": "Biznesim",
+  "periods": [
+    "Hafta",
+    "Oy",
+    "Yil"
+  ],
+  "hero": {
+    "label": "Foyda (oy)",
+    "value": "38,6",
+    "unit": "mln so'm",
+    "delta": {
+      "text": "9%",
+      "dir": "up",
+      "tone": "success"
+    },
+    "spark": [
+      22,
+      25,
+      24,
+      29,
+      31,
+      30,
+      35,
+      38.6
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Faol loyihalar",
+      "value": "7",
+      "delta": "2 kechikkan",
+      "tone": "warning",
+      "icon": "hardhat",
+      "module": "Production"
+    },
+    {
+      "label": "Kutilgan tushum",
+      "value": "214 mln",
+      "delta": "+18%",
+      "tone": "info",
+      "icon": "wallet",
+      "module": "Brand"
+    },
+    {
+      "label": "Ishdagi quruvchi",
+      "value": "23 / 31",
+      "delta": "74%",
+      "tone": "success",
+      "icon": "users",
+      "module": "Production"
+    },
+    {
+      "label": "Yo'ldagi yuk",
+      "value": "5 reys",
+      "delta": "0",
+      "tone": "info",
+      "icon": "truck",
+      "module": "Logistics"
+    }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Loyiha byudjeti sarfi",
+    "unit": "%",
+    "labels": [
+      "Chilonzor 9-uy",
+      "Yunusobod ofis",
+      "Sergeli maktab",
+      "Olmazor kottej",
+      "Bektemir sklad"
+    ],
+    "series": [
+      {
+        "name": "Sarflangan",
+        "data": [
+          92,
+          78,
+          64,
+          51,
+          33
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Xarajat tarkibi",
+    "items": [
+      {
+        "label": "Material",
+        "value": 48
+      },
+      {
+        "label": "Ish haqi",
+        "value": 31
+      },
+      {
+        "label": "Transport",
+        "value": 14
+      },
+      {
+        "label": "Boshqa",
+        "value": 7
+      }
+    ]
+  },
+  "progress": {
+    "title": "Loyihalar o'rtacha bajarilishi",
+    "value": 58,
+    "caption": "7 loyiha · 2 tasi muddatdan o'tgan"
+  },
+  "attention": [
+    {
+      "title": "Material zayavkalari",
+      "sub": "Quruvchilar so'radi, tasdiq kerak",
+      "badge": {
+        "text": "4",
+        "tone": "warning"
+      },
+      "value": null,
+      "icon": "clipboard",
+      "module": "Warehouse"
+    },
+    {
+      "title": "Ish qabul qilish",
+      "sub": "REVIEW holatidagi naryadlar",
+      "badge": {
+        "text": "3",
+        "tone": "info"
+      },
+      "value": null,
+      "icon": "check",
+      "module": "Production"
+    },
+    {
+      "title": "Material yetishmaydi",
+      "sub": "Minimal zaxiradan past",
+      "badge": {
+        "text": "2",
+        "tone": "danger"
+      },
+      "value": null,
+      "icon": "box",
+      "module": "Warehouse"
+    }
+  ],
+  "quick": [
+    {
+      "label": "Buyurtma",
+      "icon": "plus",
+      "module": "Brand"
+    },
+    {
+      "label": "Loyiha",
+      "icon": "hardhat",
+      "module": "Production"
+    },
+    {
+      "label": "Xarajat",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "Quruvchi",
+      "icon": "users",
+      "module": "Production"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Bosh",
+      "icon": "home"
+    },
+    {
+      "label": "Loyihalar",
+      "icon": "hardhat"
+    },
+    {
+      "label": "Buyurtma",
+      "icon": "clipboard"
+    },
+    {
+      "label": "Moliya",
+      "icon": "chart"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "Tadbirkor loyiha asosida pul topadi: har loyihada byudjet sarfi va muddat — foydani saqlashning asosiy nuqtasi. Kutilgan tushum (shartnoma bo'yicha olinmagan pul) va band quruvchilar soni yangi buyurtma olish-olmaslikni hal qiladi; tablar mavjud (tadbirkor)/_layout.tsx bilan mos.",
+  "data": "apps/api dashboard.controller GET /dashboard/tadbirkor allaqachon activeProjects, delayedProjects, workers/workingWorkers, shipmentsEnRoute, lowMaterials, pendingRequests, finishingOrders, profit, expectedIncome, expenseByCategory va months qaytaradi. Loyiha bo'yicha budget/spent foizi projList'da bor; faqat 8 nuqtali oylik foyda trendi uchun months'ni kengaytirish kerak."
+}

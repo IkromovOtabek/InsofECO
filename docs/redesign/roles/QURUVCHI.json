@@ -1,0 +1,51 @@
+{
+  "role": "QURUVCHI",
+  "name": "Quruvchi",
+  "group": "Sotuv va ta'minot",
+  "overline": "Quruvchi · Insof ECO",
+  "title": "Obyektlarim",
+  "periods": ["Hafta", "Oy"],
+  "hero": { "label": "Bu oy material xarajati", "value": "186,4", "unit": "mln so'm",
+            "delta": { "text": "11%", "dir": "up", "tone": "info" },
+            "spark": [18, 41, 62, 88, 109, 131, 158, 186] },
+  "kpis": [
+    { "label": "Faol obyektlar", "value": "3", "delta": "+1", "tone": "brand", "icon": "hardhat", "module": "Production" },
+    { "label": "Yo'ldagi yuk", "value": "2 reys", "delta": "~25 daq", "tone": "info", "icon": "truck", "module": "Logistics" },
+    { "label": "Faol buyurtmalar", "value": "5", "delta": "2 tasdiqda", "tone": "warning", "icon": "receipt", "module": "Brand" },
+    { "label": "To'lanmagan", "value": "42 mln", "delta": "3 kun qoldi", "tone": "danger", "icon": "wallet", "module": "Brand" }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Olingan beton",
+    "unit": "m³",
+    "labels": ["1-h", "2-h", "3-h", "4-h", "5-h", "6-h"],
+    "series": [ { "name": "Beton", "data": [24, 36, 18, 52, 44, 61] } ]
+  },
+  "breakdown": { "title": "Xarajat tarkibi", "items": [
+    { "label": "Beton", "value": 64 },
+    { "label": "Gazoblok", "value": 21 },
+    { "label": "Armatura", "value": 9 },
+    { "label": "Yetkazish", "value": 6 }
+  ] },
+  "progress": { "title": "Yunusobod blok-4 karkas", "value": 57, "caption": "Beton 412 / 720 m³ · 4-qavat" },
+  "attention": [
+    { "title": "Yuk yetib keldi", "sub": "M300, 8 m³ · OTP bilan qabul qiling", "badge": { "text": "1", "tone": "warning" }, "value": null, "icon": "check", "module": "Logistics" },
+    { "title": "Material kerak", "sub": "Ertaga quyish: 24 m³ M350 buyurtma yo'q", "badge": { "text": "Ertaga", "tone": "danger" }, "value": "24 m³", "icon": "alert", "module": "Production" },
+    { "title": "To'lov muddati", "sub": "2 schyot · Click / Payme", "badge": { "text": "2", "tone": "info" }, "value": "42 mln", "icon": "cash", "module": "Brand" }
+  ],
+  "quick": [
+    { "label": "Beton buyurtma", "icon": "plus", "module": "Brand" },
+    { "label": "Material so'rovi", "icon": "cart", "module": "Warehouse" },
+    { "label": "Yukni kuzatish", "icon": "map", "module": "Logistics" },
+    { "label": "Kalkulyator", "icon": "layers", "module": "Production" }
+  ],
+  "tabs": [
+    { "label": "Bosh", "icon": "home" },
+    { "label": "Obyektlar", "icon": "hardhat" },
+    { "label": "Buyurtma", "icon": "receipt" },
+    { "label": "Yetkazish", "icon": "truck" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Quruvchi uchun eng qimmat narsa - brigada beton kutib bekor turishi, shuning uchun yo'ldagi yuk, kelgan yukni qabul qilish va ertangi quyishga material yetishmasligi birinchi chiqadi. Obyekt bo'yicha hajm va xarajat smetani nazorat qiladi, to'lanmagan schyotlar esa yetkazib berish bloklanmasligi uchun ko'rsatiladi.",
+  "data": "Hozir `dashboard/quruvchi` (activeOrders, todayTasks, earnings), `orders` (submit/cancel), `deliveries/mine` (sign/by-otp), `material-requests`, `projects/mine`, `billing/summary` va `tracking` bor; (quruvchi) tablarida Buyurtmalar/Vazifalar/Materiallar ishlatiladi. Obyekt bo'yicha m³ va xarajat yig'indisi hamda ETA bilan yo'ldagi yuklar uchun dashboard/quruvchi kengaytirilishi kerak."
+}

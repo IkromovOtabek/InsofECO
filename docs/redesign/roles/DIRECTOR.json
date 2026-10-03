@@ -1,0 +1,209 @@
+{
+  "role": "DIRECTOR",
+  "name": "Direktor",
+  "group": "Rahbariyat va moliya",
+  "overline": "Direktor · Insof Beton",
+  "title": "Bosh sahifa",
+  "periods": [
+    "Bugun",
+    "Hafta",
+    "Oy"
+  ],
+  "hero": {
+    "label": "Sof foyda (oy)",
+    "value": "74,2",
+    "unit": "mln so'm",
+    "delta": {
+      "text": "12%",
+      "dir": "up",
+      "tone": "success"
+    },
+    "spark": [
+      41,
+      48,
+      44,
+      57,
+      53,
+      62,
+      66,
+      74
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Sotuv (oy)",
+      "value": "1,86 mlrd",
+      "delta": "+8%",
+      "tone": "success",
+      "icon": "trend",
+      "module": "Brand"
+    },
+    {
+      "label": "Debitorlik",
+      "value": "612 mln",
+      "delta": "+5%",
+      "tone": "warning",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "Ishlab chiqarish",
+      "value": "10 400 m³",
+      "delta": "+6%",
+      "tone": "info",
+      "icon": "factory",
+      "module": "Production"
+    },
+    {
+      "label": "Reyslar (oy)",
+      "value": "1 248",
+      "delta": "-3%",
+      "tone": "warning",
+      "icon": "truck",
+      "module": "Logistics"
+    }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Tushum va xarajat",
+    "unit": "mln so'm",
+    "labels": [
+      "Du",
+      "Se",
+      "Ch",
+      "Pa",
+      "Ju",
+      "Sh",
+      "Ya"
+    ],
+    "series": [
+      {
+        "name": "Tushum",
+        "data": [
+          82,
+          94,
+          76,
+          101,
+          108,
+          86,
+          34
+        ]
+      },
+      {
+        "name": "Xarajat",
+        "data": [
+          64,
+          71,
+          69,
+          78,
+          80,
+          66,
+          22
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Sotuv ulushi",
+    "items": [
+      {
+        "label": "Beton",
+        "value": 52
+      },
+      {
+        "label": "Gazoblok",
+        "value": 27
+      },
+      {
+        "label": "JBI",
+        "value": 21
+      }
+    ]
+  },
+  "progress": {
+    "title": "Oylik reja",
+    "value": 72,
+    "caption": "10 400 / 14 500 m³ · 9 kun qoldi"
+  },
+  "attention": [
+    {
+      "title": "Tasdiq kutmoqda",
+      "sub": "Limitdan oshgan zayavka va to'lovlar",
+      "badge": {
+        "text": "6",
+        "tone": "warning"
+      },
+      "value": null,
+      "icon": "check",
+      "module": "Brand"
+    },
+    {
+      "title": "60+ kunlik qarz",
+      "sub": "4 mijoz, nasiya muddati o'tgan",
+      "badge": {
+        "text": "4",
+        "tone": "danger"
+      },
+      "value": "148 mln",
+      "icon": "alert",
+      "module": "Brand"
+    },
+    {
+      "title": "Sement zaxirasi kam",
+      "sub": "2,5 kunlik qoldi",
+      "badge": {
+        "text": "Kam",
+        "tone": "danger"
+      },
+      "value": "86 t",
+      "icon": "box",
+      "module": "Warehouse"
+    }
+  ],
+  "quick": [
+    {
+      "label": "Tasdiqlash",
+      "icon": "check",
+      "module": "Brand"
+    },
+    {
+      "label": "Pul oqimi",
+      "icon": "wallet",
+      "module": "Brand"
+    },
+    {
+      "label": "Qarzdorlar",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "AI so'rov",
+      "icon": "chat",
+      "module": "Brand"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Asosiy",
+      "icon": "home"
+    },
+    {
+      "label": "Tasdiqlar",
+      "icon": "check"
+    },
+    {
+      "label": "Bo'limlar",
+      "icon": "layers"
+    },
+    {
+      "label": "AI",
+      "icon": "chat"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "Direktor kuniga bir necha marta uchta savolga javob izlaydi: pul ishlayaptimi (foyda, sotuv), pul qaytayaptimi (debitorlik, nasiya) va zavod rejani bajaryaptimi (m³, reyslar). Ikkinchi tab — imzosini kutayotgan hujjatlar, chunki direktorning asosiy ishi qaror qabul qilish; kassa qoldig'i va kadr detallari tegishli rollarda qoladi.",
+  "data": "ERP serverdagi /api/mobile/home (DIRECTOR kartalari) va list key=approvals allaqachon bor, AI tab ai.tsx orqali ishlaydi. Oylik foyda trendi (8 nuqta), mahsulot ulushi va debitorlik yoshi (aging) uchun /home ga yangi blok yoki alohida /reports/pnl endpointi kerak."
+}

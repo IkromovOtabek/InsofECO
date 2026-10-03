@@ -1,0 +1,49 @@
+{
+  "role": "MECHANIC",
+  "name": "Mexanik",
+  "group": "Ishlab chiqarish",
+  "overline": "Mexanik · Insof Beton",
+  "title": "Texnika nazorati",
+  "periods": ["Bugun", "Hafta", "Oy"],
+  "hero": { "label": "Texnik tayyorlik", "value": "82", "unit": "% · 18 / 22",
+            "delta": { "text": "4%", "dir": "down", "tone": "warning" },
+            "spark": [91, 91, 86, 86, 91, 86, 86, 82] },
+  "kpis": [
+    { "label": "Ta'mirda", "value": "2", "delta": "1 tasi 3 kun", "tone": "danger", "icon": "wrench", "module": "Logistics" },
+    { "label": "Muddati o'tgan TO", "value": "3", "delta": "moy, filtr", "tone": "danger", "icon": "calendar", "module": "Logistics" },
+    { "label": "Yoqilg'i", "value": "4 860 l", "delta": "+7% normadan", "tone": "warning", "icon": "fuel", "module": "Logistics" },
+    { "label": "Ta'mir xarajati", "value": "18,4 mln", "delta": "+12%", "tone": "warning", "icon": "cash", "module": "Brand" }
+  ],
+  "chart": {
+    "type": "hbars",
+    "title": "Yoqilg'i normadan oshishi", "unit": "%",
+    "labels": ["01 A 214 KA", "01 B 587 MA", "01 X 903 BA", "01 A 776 CA", "01 C 412 TA"],
+    "series": [ { "name": "Oshish", "data": [24, 15, 9, 6, 3] } ]
+  },
+  "breakdown": { "title": "Park holati", "items": [
+    { "label": "Saflda", "value": 82 },
+    { "label": "Ta'mirda", "value": 9 },
+    { "label": "Bekor turibdi", "value": 9 }
+  ] },
+  "progress": { "title": "Ertaga transport", "value": 90, "caption": "18 / 20 mashina kerak · 2 ta yetmaydi" },
+  "attention": [
+    { "title": "Avtomikser 01 A 214 KA", "sub": "Yoqilg'i +24% · 3 zapravka", "badge": { "text": "Tekshir", "tone": "danger" }, "value": null, "icon": "fuel", "module": "Logistics" },
+    { "title": "Muddati o'tgan xizmat", "sub": "Moy, filtr · 3 mashina", "badge": { "text": "3", "tone": "danger" }, "value": null, "icon": "wrench", "module": "Logistics" },
+    { "title": "Ko'rik va sug'urta", "sub": "7 kun ichida tugaydi", "badge": { "text": "2", "tone": "warning" }, "value": null, "icon": "shield", "module": "Logistics" }
+  ],
+  "quick": [
+    { "label": "Xizmat qayd", "icon": "wrench", "module": "Logistics" },
+    { "label": "Holat o'zgartirish", "icon": "truck", "module": "Logistics" },
+    { "label": "Zapravka", "icon": "fuel", "module": "Logistics" },
+    { "label": "Ehtiyot qism", "icon": "package", "module": "Warehouse" }
+  ],
+  "tabs": [
+    { "label": "Nazorat", "icon": "home" },
+    { "label": "Texnika", "icon": "truck" },
+    { "label": "Xizmat", "icon": "wrench" },
+    { "label": "Reyslar", "icon": "route" },
+    { "label": "Menyu", "icon": "list" }
+  ],
+  "rationale": "Mexanikning asosiy vazifasi ertangi reyslar uchun yetarli soz texnikani tayyorlash, shuning uchun bosh raqam — texnik tayyorlik va ertaga kerak bo'lgan mashinalar soni. Muddati o'tgan TO, yoqilg'i anomaliyasi va ta'mir xarajati buzilishni oldini olish va o'g'irlikni ushlash uchun har kuni ko'riladi.",
+  "data": "Vehicle.status (ACTIVE/REPAIR/IDLE), inspectionUntil/insuranceUntil, VehicleService (nextDueAt/nextDueKm, cost), FuelLog va fuelNormL100 modellari ERP bazasida bor, lekin mobil MECHANIC dashboardi (dashboard.ts mechanic(), sklad-logistika) hozir faqat sklad, reys va ertangi transport ehtiyojini beradi. Park tayyorligi, muddati o'tgan TO, yoqilg'i normadan oshishi va ta'mir xarajati uchun yangi mechanic dashboard hisobi kerak; zavod uskunalari (RBU, kesish mashinasi) uchun Equipment modeli yo'q."
+}

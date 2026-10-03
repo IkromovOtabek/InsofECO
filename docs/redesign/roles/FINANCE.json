@@ -1,0 +1,213 @@
+{
+  "role": "FINANCE",
+  "name": "Moliya",
+  "group": "Rahbariyat va moliya",
+  "overline": "Moliya · Insof Beton",
+  "title": "Pul oqimi",
+  "periods": [
+    "Bugun",
+    "Hafta",
+    "Oy"
+  ],
+  "hero": {
+    "label": "Pul qoldig'i (jami)",
+    "value": "486",
+    "unit": "mln so'm",
+    "delta": {
+      "text": "4%",
+      "dir": "down",
+      "tone": "warning"
+    },
+    "spark": [
+      520,
+      548,
+      531,
+      507,
+      498,
+      512,
+      494,
+      486
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Debitorlik",
+      "value": "612 mln",
+      "delta": "18% 60+ kun",
+      "tone": "warning",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "Kreditorlik",
+      "value": "398 mln",
+      "delta": "7 kunda 142",
+      "tone": "danger",
+      "icon": "file",
+      "module": "Warehouse"
+    },
+    {
+      "label": "Olingan avans",
+      "value": "176 mln",
+      "delta": "12 mijoz",
+      "tone": "info",
+      "icon": "cash",
+      "module": "Brand"
+    },
+    {
+      "label": "Marja (oy)",
+      "value": "21,4%",
+      "delta": "-1,2 p.p.",
+      "tone": "warning",
+      "icon": "trend",
+      "module": "Brand"
+    }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "14 kunlik pul prognozi",
+    "unit": "mln so'm",
+    "labels": [
+      "1-2",
+      "3-4",
+      "5-6",
+      "7-8",
+      "9-10",
+      "11-12",
+      "13-14"
+    ],
+    "series": [
+      {
+        "name": "Kirim",
+        "data": [
+          96,
+          84,
+          112,
+          78,
+          120,
+          90,
+          104
+        ]
+      },
+      {
+        "name": "Chiqim",
+        "data": [
+          88,
+          131,
+          74,
+          96,
+          82,
+          145,
+          70
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Debitorlik yoshi",
+    "items": [
+      {
+        "label": "0–30 kun",
+        "value": 56
+      },
+      {
+        "label": "31–60",
+        "value": 26
+      },
+      {
+        "label": "61–90",
+        "value": 11
+      },
+      {
+        "label": "90+",
+        "value": 7
+      }
+    ]
+  },
+  "progress": {
+    "title": "Oylik inkassatsiya rejasi",
+    "value": 64,
+    "caption": "1,19 / 1,86 mlrd so'm undirildi"
+  },
+  "attention": [
+    {
+      "title": "Bugun to'lanadi",
+      "sub": "Sement, armatura, yoqilg'i yetkazuvchi",
+      "badge": {
+        "text": "5",
+        "tone": "danger"
+      },
+      "value": "142 mln",
+      "icon": "calendar",
+      "module": "Warehouse"
+    },
+    {
+      "title": "Nasiya limiti oshgan",
+      "sub": "Yuk jo'natish bloklangan mijozlar",
+      "badge": {
+        "text": "3",
+        "tone": "warning"
+      },
+      "value": "87 mln",
+      "icon": "shield",
+      "module": "Brand"
+    },
+    {
+      "title": "To'lov so'rovlari",
+      "sub": "Snabjeniye va bo'limlardan",
+      "badge": {
+        "text": "8",
+        "tone": "info"
+      },
+      "value": "64 mln",
+      "icon": "check",
+      "module": "Brand"
+    }
+  ],
+  "quick": [
+    {
+      "label": "To'lov reja",
+      "icon": "calendar",
+      "module": "Brand"
+    },
+    {
+      "label": "Qarzdorlar",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "Limit",
+      "icon": "shield",
+      "module": "Brand"
+    },
+    {
+      "label": "Hisobot",
+      "icon": "chart",
+      "module": "Brand"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Moliya",
+      "icon": "home"
+    },
+    {
+      "label": "Oqim",
+      "icon": "trend"
+    },
+    {
+      "label": "Qarzlar",
+      "icon": "receipt"
+    },
+    {
+      "label": "To'lovlar",
+      "icon": "calendar"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "Moliyachining asosiy vazifasi — kassa uzilishining oldini olish: bugungi qoldiq, 14 kunlik kirim-chiqim prognozi va yetkazuvchilarga to'lov kalendari. Debitorlik yoshi va nasiya limitlari qaysi mijozga yuk berishni, olingan avanslar esa qancha mahsulot qarzdormiz ekanini ko'rsatadi.",
+  "data": "ERP /api/mobile/home (FINANCE kartalari) va list key=cashflow bor; ECO tomonda billing GET /billing/summary totalDebt va mijoz bo'yicha qarzni beradi. Kreditorlik to'lov kalendari, aging bucketlari, avans qoldig'i va 14 kunlik prognoz uchun yangi /finance/forecast va /finance/aging endpointlari kerak."
+}

@@ -1,0 +1,203 @@
+{
+  "role": "ACCOUNTING",
+  "name": "Buxgalteriya",
+  "group": "Rahbariyat va moliya",
+  "overline": "Buxgalteriya · Insof Beton",
+  "title": "Hisob",
+  "periods": [
+    "Hafta",
+    "Oy",
+    "Chorak"
+  ],
+  "hero": {
+    "label": "Savdo aylanmasi (oy)",
+    "value": "1,86",
+    "unit": "mlrd so'm",
+    "delta": {
+      "text": "8%",
+      "dir": "up",
+      "tone": "success"
+    },
+    "spark": [
+      1.41,
+      1.52,
+      1.47,
+      1.63,
+      1.58,
+      1.71,
+      1.74,
+      1.86
+    ]
+  },
+  "kpis": [
+    {
+      "label": "Yozilmagan faktura",
+      "value": "37",
+      "delta": "jo'natilgan, fakturasiz",
+      "tone": "danger",
+      "icon": "file",
+      "module": "Logistics"
+    },
+    {
+      "label": "Imzosiz e-faktura",
+      "value": "14",
+      "delta": "Didox / Soliq",
+      "tone": "warning",
+      "icon": "receipt",
+      "module": "Brand"
+    },
+    {
+      "label": "QQS to'lovi",
+      "value": "118 mln",
+      "delta": "20-sanagacha",
+      "tone": "warning",
+      "icon": "calendar",
+      "module": "Brand"
+    },
+    {
+      "label": "Akt-sverka",
+      "value": "9 / 42",
+      "delta": "tasdiqlangan",
+      "tone": "info",
+      "icon": "clipboard",
+      "module": "Brand"
+    }
+  ],
+  "chart": {
+    "type": "bars",
+    "title": "Faktura: yozilgan va to'langan",
+    "unit": "mln so'm",
+    "labels": [
+      "1-hf",
+      "2-hf",
+      "3-hf",
+      "4-hf",
+      "5-hf"
+    ],
+    "series": [
+      {
+        "name": "Yozilgan",
+        "data": [
+          412,
+          468,
+          439,
+          501,
+          88
+        ]
+      },
+      {
+        "name": "To'langan",
+        "data": [
+          368,
+          402,
+          421,
+          377,
+          64
+        ]
+      }
+    ]
+  },
+  "breakdown": {
+    "title": "Schyotlar holati",
+    "items": [
+      {
+        "label": "To'langan",
+        "value": 58
+      },
+      {
+        "label": "Qisman",
+        "value": 17
+      },
+      {
+        "label": "Ochiq",
+        "value": 25
+      }
+    ]
+  },
+  "progress": {
+    "title": "Oy yopilishi",
+    "value": 45,
+    "caption": "Kirim, TTN, akt, amortizatsiya · 9/20 bajarildi"
+  },
+  "attention": [
+    {
+      "title": "Kirim hujjatsiz",
+      "sub": "Omborga keldi, schyot-faktura yo'q",
+      "badge": {
+        "text": "6",
+        "tone": "danger"
+      },
+      "value": "71 mln",
+      "icon": "package",
+      "module": "Warehouse"
+    },
+    {
+      "title": "Rad etilgan e-faktura",
+      "sub": "Mijoz qaytardi, tuzatish kerak",
+      "badge": {
+        "text": "3",
+        "tone": "warning"
+      },
+      "value": null,
+      "icon": "alert",
+      "module": "Brand"
+    },
+    {
+      "title": "Hisobot muddati",
+      "sub": "QQS va daromad solig'i deklaratsiyasi",
+      "badge": {
+        "text": "5 kun",
+        "tone": "info"
+      },
+      "value": null,
+      "icon": "clock",
+      "module": "Brand"
+    }
+  ],
+  "quick": [
+    {
+      "label": "Faktura",
+      "icon": "plus",
+      "module": "Brand"
+    },
+    {
+      "label": "Akt-sverka",
+      "icon": "clipboard",
+      "module": "Brand"
+    },
+    {
+      "label": "Kirim",
+      "icon": "package",
+      "module": "Warehouse"
+    },
+    {
+      "label": "Skaner",
+      "icon": "scan",
+      "module": "Brand"
+    }
+  ],
+  "tabs": [
+    {
+      "label": "Hisob",
+      "icon": "home"
+    },
+    {
+      "label": "Schyotlar",
+      "icon": "receipt"
+    },
+    {
+      "label": "Hujjatlar",
+      "icon": "file"
+    },
+    {
+      "label": "Soliq",
+      "icon": "calendar"
+    },
+    {
+      "label": "Menyu",
+      "icon": "list"
+    }
+  ],
+  "rationale": "O'zbekistonda e-faktura (Didox/Soliq) imzolanmasa mijoz QQSni hisobga ololmaydi va to'lovni ushlab turadi, shuning uchun fakturasiz jo'natma va imzosiz faktura birinchi o'rinda. Akt-sverka nasiya mijozlari bilan qarzni yuridik tasdiqlaydi; soliq muddatlari va oy yopilishi jarima xavfini nazorat qiladi.",
+  "data": "ERP list key=invoices va /api/mobile/home ACCOUNTING kartalari bor; ECO billing modelida Invoice OPEN/PARTIALLY_PAID/PAID statuslari mavjud. E-faktura statusi (Didox integratsiyasi), akt-sverka, soliq kalendari va oy yopilishi checklisti uchun yangi endpointlar kerak."
+}
