@@ -58,7 +58,7 @@ function Gate() {
       // `erp/<kartochka>` va haydovchi marshruti (`yolda/<reys>`) — barcha bo'limlar uchun
       // umumiy ekranlar, guruhdan tashqarida turadi va bu yerda qaytarilmasligi kerak.
       // Do'kon (`(shop)`) xodimlarga yopiq — u mijozlar uchun.
-      if (group !== target && group !== 'erp' && group !== 'yolda') router.replace(`/${target}` as never);
+      if (group !== target && group !== 'erp' && group !== 'yolda' && group !== 'settings') router.replace(`/${target}` as never);
       return;
     }
 
@@ -68,7 +68,7 @@ function Gate() {
     if (group === '(auth)' && afterLogin.has()) { if (segs[1] !== 'register') router.dismissTo(afterLogin.take() as never); return; }
     const target = ROLE_GROUP[active.role];
     // `(shop)` — do'kon kirgan foydalanuvchiga ham ochiq (menyudan)
-    const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker', '(shop)'].includes(group ?? '');
+    const shared = ['delivery', 'order', 'project', 'work-order', 'shipment', 'chat', 'worker', '(shop)', 'settings'].includes(group ?? '');
     if (group !== target && !shared) router.replace(`/${target}` as never);
   }, [status, kind, active, erp, segments, router]);
 
