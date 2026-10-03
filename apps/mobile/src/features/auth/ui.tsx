@@ -49,9 +49,11 @@ export function AuthScreen({ children, back = true, onBack, footer }: { children
 
 /** Brend logotipi (Insof JBI) — kirish ekrani tepasida (Welcome bilan bir xil o'lcham va kirish harakati). */
 export function AuthLogo({ height = space.x12 + space.lg }: { height?: number }) {
+  const { c, dark } = useTheme();
   return (
     <Appear delay={40} from={18} style={{ marginTop: space.xl, alignItems: 'center' }}>
-      <Image source={LOGO} style={{ height, width: height * LOGO_RATIO }} resizeMode="contain" accessibilityLabel="Insof JBI — temir beton mahsulotlari" />
+      {/* Logotip matni to'q — qorong'i fonda bir rangli och ko'rinishda */}
+      <Image source={LOGO} style={{ height, width: height * LOGO_RATIO, tintColor: dark ? c.textStrong : undefined }} resizeMode="contain" accessibilityLabel="Insof JBI — temir beton mahsulotlari" />
     </Appear>
   );
 }

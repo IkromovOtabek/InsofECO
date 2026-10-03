@@ -24,14 +24,14 @@ const PERKS: { icon: IconName; module: ModuleTone; title: string; desc: string }
 
 export default function Welcome() {
   const router = useRouter();
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingHorizontal: space.pageX, paddingTop: insets.top + space.x12, paddingBottom: insets.bottom + space.xl }}>
       <View style={{ flex: 1 }}>
         <Appear from={18}>
-          <Image source={LOGO} style={{ height: LOGO_H, width: LOGO_H * LOGO_RATIO }} resizeMode="contain" accessibilityLabel="Insof JBI logotipi" />
+          <Image source={LOGO} style={{ height: LOGO_H, width: LOGO_H * LOGO_RATIO, tintColor: dark ? c.textStrong : undefined }} resizeMode="contain" accessibilityLabel="Insof JBI logotipi" />
         </Appear>
         <Gap h={space.xxl} />
         <Appear delay={90}><Txt v="titleLg">Insof ECO</Txt></Appear>
