@@ -10,14 +10,14 @@ import { Platform } from 'react-native';
 
 // ───────────────────────── Ranglar ─────────────────────────
 
-/** Brend — ikkala mavzuda bir xil. */
+/** Brend — logotip ko'ki (ikonka, push, xizmat bildirishnomasi). Ekranlar `c.brand` dan oladi. */
 export const brand = {
-  500: '#f59e0b',
-  600: '#d97706',
-  100: '#fef3c7',
-  /** Brend fonidagi (100) matn — 4.5:1 uchun to'q amber. */
-  ink: '#92400e',
-  ring: '#f59e0b80',
+  500: '#0b4fd6',
+  600: '#0a3fb0',
+  100: '#e2e5fd',
+  /** Brend fonidagi (100) matn. */
+  ink: '#0b1c8e',
+  ring: '#0b4fd680',
 } as const;
 
 /** Tashqi xizmatlarning o'z brend ranglari — faqat ularning belgisi uchun (Telegram ko'k, SMS yashil). */
@@ -54,87 +54,13 @@ export const illus = {
 } as const;
 
 /**
- * Eski palitra — FAQAT ochilish sahnasi (`components/launch.tsx`) uchun saqlangan, u o'zgarmaydi.
- * Ilova ekranlari `palettes` dan (useTheme().c) oladi.
+ * Ochilish sahnasi (`components/launch.tsx`) uchun 3 ta qiymat — sahna o'zgarmaydi.
+ * Eski amber mavzu olib tashlangan; ilova ekranlari faqat `palettes` dan (useTheme().c) oladi.
  */
 export const palette = {
-  light: {
-    bgApp: '#f5f6f8',
-    bgSurface: '#ffffff',
-    bgSubtle: '#f8fafc',
-    bgMuted: '#f1f5f9',
-    bgChrome: '#ffffff',
-    borderSubtle: '#f1f5f9',
-    borderDefault: '#e2e8f0',
-    borderStrong: '#cad5e2',
-    textStrong: '#0f172b',
-    textBody: '#314158',
-    textMuted: '#5f7088',
-    textFaint: '#7f8da5',
-    textOnBrand: '#0f172b',
-
-    brand: brand[500],
-    brandHover: brand[600],
-    brandSoft: brand[100],
-    brandInk: brand.ink,
-    brandRing: brand.ring,
-
-    success: '#007a55', successBg: '#ecfdf5', successSolid: '#009966',
-    warning: '#bb4d00', warningBg: '#fffbeb', warningSolid: '#e17100',
-    danger: '#c10007', dangerBg: '#fef2f2', dangerSolid: '#e7000b',
-    info: '#1447e6', infoBg: '#eff6ff', infoSolid: '#155dfc',
-
-    moduleProduction: '#7008e7', moduleProductionBg: '#f5f3ff',
-    moduleLogistics: '#0069a8', moduleLogisticsBg: '#f0f9ff',
-    moduleWarehouse: '#ca3500', moduleWarehouseBg: '#fff7ed',
-
-    chart1: chart[1], chart2: chart[2], chart3: chart[3], chart4: chart[4],
-    chartGrid: '#e2e8f0',
-    chartTrack: '#f1f5f9',
-
-    /** Modal/sheet ortidagi parda. */
-    scrim: '#0f172b99',
-    /** Yorqin holat rangi ustidagi matn (success/danger solid). */
-    textOnSolid: '#ffffff',
-  },
-  dark: {
-    bgApp: '#0f172a',
-    bgSurface: '#1e293b',
-    bgSubtle: '#243044',
-    bgMuted: '#2c3a50',
-    bgChrome: '#0b1120',
-    borderSubtle: '#243044',
-    borderDefault: '#334155',
-    borderStrong: '#42536c',
-    textStrong: '#f1f5f9',
-    textBody: '#cbd5e1',
-    textMuted: '#94a3b8',
-    textFaint: '#8794a9',
-    textOnBrand: '#0f172b',
-
-    brand: brand[500],
-    brandHover: brand[600],
-    brandSoft: '#3b2a0c',
-    brandInk: '#fbbf24',
-    brandRing: brand.ring,
-
-    success: '#34d399', successBg: '#0f2a22', successSolid: '#009966',
-    warning: '#fbbf24', warningBg: '#2a2110', warningSolid: '#e17100',
-    danger: '#f87171', dangerBg: '#2b1517', dangerSolid: '#e7000b',
-    info: '#60a5fa', infoBg: '#14213a', infoSolid: '#155dfc',
-
-    moduleProduction: '#a78bfa', moduleProductionBg: '#251b3d',
-    moduleLogistics: '#38bdf8', moduleLogisticsBg: '#0f2436',
-    moduleWarehouse: '#fb923c', moduleWarehouseBg: '#2e1a0e',
-
-    chart1: chart[1], chart2: chart[2], chart3: chart[3], chart4: chart[4],
-    chartGrid: '#334155',
-    chartTrack: '#243044',
-
-    scrim: '#020617b3',
-    textOnSolid: '#ffffff',
-  },
+  light: { bgSurface: '#ffffff', brand: '#f59e0b', chartTrack: '#f1f5f9' },
 } as const;
+
 /**
  * Ilova palitralari: foydalanuvchi Sozlamalarda tanlaydi (Chizma yoki Marjon) va har birida
  * yorug'/qorong'i rejim alohida sozlangan. Yorug' rejimda fon sof oq emas — palitra tusidagi

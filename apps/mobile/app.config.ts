@@ -27,7 +27,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'uz.insofeco.app',
-    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#0b1120' },
+    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#0b4fd6' },
     permissions: [
       'ACCESS_COARSE_LOCATION',
       'ACCESS_FINE_LOCATION',
@@ -46,7 +46,7 @@ const config: ExpoConfig = {
     ['expo-location', { isAndroidBackgroundLocationEnabled: true, isAndroidForegroundServiceEnabled: true }],
     // `sounds` — ovoz fayli native to'plamga qo'shiladi: iOS bundle'ga, Android `res/raw` ga.
     // Shuning uchun ovoz o'zgarsa ilovani qayta chiqarish kerak (OTA yetarli emas).
-    ['expo-notifications', { color: '#f59e0b', sounds: ['./assets/bildirishnoma.wav'] }],
+    ['expo-notifications', { color: '#0b4fd6', sounds: ['./assets/bildirishnoma.wav'] }],
     // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
     './plugins/withKotlinVersion.js',
     // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
