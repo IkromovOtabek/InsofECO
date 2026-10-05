@@ -49,6 +49,8 @@ export class SitesController {
   @Post(':id/stages/:stageId/reports')
   async addReport(@CurrentUser() a: AuthContext, @Param('id') siteId: string, @Param('stageId') stageId: string, @Body(Zod(ReportSchema)) b: z.infer<typeof ReportSchema>) {
     await this.ownSite(a, siteId);
+    // Bosqich shu obyektniki bo'lsin — aks holda o'z obyekti id'si bilan begona bosqichga hisobot yozilardi
+    if (!(await this.prisma.stage.count({ where: { id: stageId, siteId } }))) throw DomainError.notFound('Bosqich');
     return this.prisma.dailyReport.create({ data: { stageId, createdBy: a.userId, ...b } });
   }
 

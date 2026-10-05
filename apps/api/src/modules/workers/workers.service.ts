@@ -99,13 +99,21 @@ export class WorkersService {
   }
 
   async createReview(a: AuthContext, input: z.infer<typeof ReviewCreateSchema>) {
+    // Faqat o'z tashkilotining odamiga va o'z ish/yukiga baho: aks holda istalgan foydalanuvchining
+    // umumiy reytingini (ratingAvg) tushirib yuborish mumkin edi
+    const [member, wo, sh] = await Promise.all([
+      this.prisma.membership.count({ where: { userId: input.targetUserId, organizationId: a.orgId! } }),
+      input.workOrderId ? this.prisma.workOrder.count({ where: { id: input.workOrderId, organizationId: a.orgId!, workerUserId: input.targetUserId } }) : Promise.resolve(1),
+      input.shipmentId ? this.prisma.shipment.count({ where: { id: input.shipmentId, organizationId: a.orgId!, driverUserId: input.targetUserId } }) : Promise.resolve(1),
+    ]);
+    if (!member || !wo || !sh) throw DomainError.notFound('Ish yoki xodim');
     const r = await this.prisma.review.create({ data: { organizationId: a.orgId!, authorUserId: a.userId, ...input } });
     const agg = await this.prisma.review.aggregate({ where: { targetUserId: input.targetUserId }, _avg: { scoreOverall: true }, _count: true });
     await this.prisma.workerProfile.updateMany({ where: { userId: input.targetUserId }, data: { ratingAvg: agg._avg.scoreOverall ?? 0, ratingCount: agg._count } });
     return r;
   }
 
-  reviewsFor(userId: string) {
-    return this.prisma.review.findMany({ where: { targetUserId: userId }, orderBy: { createdAt: 'desc' }, take: 50 });
+  reviewsFor(a: AuthContext, userId: string) {
+    return this.prisma.review.findMany({ where: { targetUserId: userId, organizationId: a.orgId! }, orderBy: { createdAt: 'desc' }, take: 50 });
   }
 }

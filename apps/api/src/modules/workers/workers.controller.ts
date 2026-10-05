@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { z } from 'zod';
 import { ReviewCreateSchema, Specialty, WorkerProfileUpdateSchema } from '@insof/shared';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
+import { DomainError } from '../../common/errors/domain.error';
 import { Zod } from '../../common/validation/zod-validation.pipe';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { WorkersService } from './workers.service';
@@ -40,12 +41,23 @@ export class DriversController {
   mine(@CurrentUser() a: AuthContext) { return this.s.myVehicle(a); }
 
   @Roles('TADBIRKOR') @Post('vehicles')
-  create(@CurrentUser() a: AuthContext, @Body(Zod(VehicleSchema)) b: z.infer<typeof VehicleSchema>) { return this.prisma.vehicle.create({ data: { organizationId: a.orgId!, ...b } }); }
+  async create(@CurrentUser() a: AuthContext, @Body(Zod(VehicleSchema)) b: z.infer<typeof VehicleSchema>) {
+    await this.assertOwnDriver(a, b.driverUserId);
+    return this.prisma.vehicle.create({ data: { organizationId: a.orgId!, ...b } });
+  }
 
   @Roles('TADBIRKOR') @Patch('vehicles/:id')
   async update(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(VehicleSchema.partial())) b: Partial<z.infer<typeof VehicleSchema>>) {
-    await this.prisma.vehicle.updateMany({ where: { id, organizationId: a.orgId! }, data: b });
+    await this.assertOwnDriver(a, b.driverUserId);
+    const r = await this.prisma.vehicle.updateMany({ where: { id, organizationId: a.orgId! }, data: b });
+    // Begona tashkilot mashinasi o'zgarmaydi — uni qaytarib ham bermaymiz
+    if (r.count !== 1) throw DomainError.notFound('Mashina');
     return this.prisma.vehicle.findUnique({ where: { id } });
+  }
+
+  /** Mashinaga faqat shu zavod haydovchisi biriktiriladi (aks holda begona odamning ismi/telefoni reyslarda chiqardi). */
+  private async assertOwnDriver(a: AuthContext, driverUserId?: string | null) {
+    if (driverUserId && !(await this.prisma.membership.count({ where: { userId: driverUserId, organizationId: a.orgId!, role: 'HAYDOVCHI' } }))) throw DomainError.notFound('Haydovchi');
   }
 }
 
@@ -56,6 +68,6 @@ export class ReviewsController {
   @Roles('TADBIRKOR', 'QURUVCHI') @Post()
   create(@CurrentUser() a: AuthContext, @Body(Zod(ReviewCreateSchema)) b: z.infer<typeof ReviewCreateSchema>) { return this.s.createReview(a, b); }
 
-  @Get()
-  list(@Query('targetUserId') targetUserId: string) { return this.s.reviewsFor(targetUserId); }
+  @Roles('TADBIRKOR', 'QURUVCHI') @Get()
+  list(@CurrentUser() a: AuthContext, @Query('targetUserId') targetUserId: string) { return this.s.reviewsFor(a, String(targetUserId ?? '')); }
 }
