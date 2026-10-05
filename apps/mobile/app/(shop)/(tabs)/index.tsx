@@ -47,7 +47,7 @@ export default function ShopHome() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <ShopTopBar account onSearchPress={() => toCatalog({ focus: String(Date.now()) })} />
+      <ShopTopBar onSearchPress={() => toCatalog({ focus: String(Date.now()) })} />
       <ScrollView
         contentContainerStyle={{ paddingTop: space.xs, paddingBottom: space.xxl }}
         refreshControl={<RefreshControl refreshing={q.isFetching && !q.isLoading} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}

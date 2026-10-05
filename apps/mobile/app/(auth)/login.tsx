@@ -11,7 +11,7 @@ import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { useTelegramLogin } from '@/features/auth/telegram';
-import { AuthLogo, AuthScreen, Divider, ErrorBox, FooterLink, PhonePrefix, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
+import { AuthLogo, AuthScreen, Divider, ErrorBox, PhonePrefix, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 import { SocialLogin } from '@/features/auth/social';
 import { afterLogin } from '@/features/shop/after-login';
 
@@ -114,7 +114,7 @@ export default function Login() {
   };
 
   return (
-    <AuthScreen onBack={toShop} footer={<FooterLink text="Xodimlar ERP logini bilan kiradi" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
+    <AuthScreen onBack={toShop}>
       <AuthLogo />
 
       <Title display hint={mode === 'phone' ? "Raqamingiz Telegram'iga 6 xonali kod yuboramiz." : "Har bir bo'lim o'z login va paroli bilan kiradi. Ruxsatlar rolga qarab ochiladi."}>Tizimga kirish</Title>
@@ -174,7 +174,6 @@ export default function Login() {
               containerStyle={{ marginBottom: 0 }}
               right={<IconButton icon={show ? 'eye-off' : 'eye'} label={show ? 'Parolni yashirish' : "Parolni ko'rsatish"} onPress={() => setShow((v) => !v)} size={size.touch - space.sm} tone="muted" />}
             />
-            <TextLink onPress={() => router.push('/(auth)/forgot')} style={{ alignSelf: 'flex-end' }}>Parolni unutdingizmi?</TextLink>
           </Appear>
         </>
       )}
@@ -185,6 +184,12 @@ export default function Login() {
         {mode === 'phone'
           ? <PrimaryButton title={loading ? 'Yuborilmoqda…' : 'Kodni olish'} onPress={requestCode} loading={loading} />
           : <PrimaryButton title={loading ? 'Kirilmoqda…' : 'Kirish'} onPress={submit} loading={loading} />}
+      </Appear>
+
+      {/* Kirish tugmasi ostida — ro'yxatdan o'tish va parolni tiklash */}
+      <Appear delay={280} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+        <TextLink onPress={() => router.push('/(auth)/register')}>Ro&apos;yxatdan o&apos;tish</TextLink>
+        <TextLink onPress={() => router.push('/(auth)/forgot')}>Parolni unutdingizmi?</TextLink>
       </Appear>
 
       <Appear delay={300}>

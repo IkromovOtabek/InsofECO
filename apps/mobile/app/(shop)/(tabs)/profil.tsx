@@ -74,7 +74,10 @@ export default function ShopProfile() {
           </Reveal>
         ) : (
           <Reveal gap={space.lg}>
-            {/* Mehmon: kirish/ro'yxatdan o'tish Asosiy sahifa sarlavhasidagi ikonkada */}
+            {/* Mehmon: Kirish — login sahifasi (uning ostida Ro'yxatdan o'tish va Parolni unutdingizmi?) */}
+            <ListGroup>
+              <ListItem icon="log-in" module="brand" title="Kirish" subtitle="Hisobingizga kiring yoki ro'yxatdan o'ting" onPress={() => router.push('/(auth)/login')} chevron last />
+            </ListGroup>
             {common}
           </Reveal>
         )}

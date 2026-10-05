@@ -13,7 +13,6 @@ import type { ShopItem } from './api';
 import { ProductImage } from './art';
 import { useCart } from './cart';
 import { sanitizeInput } from './calc';
-import { openLoginPrompt } from './login-prompt';
 
 /** Kichik belgi (sarlavha, zavod logotipi) — ilova ikonkasi. */
 export const LOGO_MARK = require('../../../assets/icon.png') as number;
@@ -35,15 +34,12 @@ function useBellTarget(): string | null {
  * Do'kon sarlavhasi — demo `shopHead()`: logotip plitkasi + pill qidiruv + qo'ng'iroq.
  * `onSearchPress` berilsa qidiruv bosiladigan "ko'rinish" (katalogga o'tadi), aks holda haqiqiy maydon.
  */
-export function ShopTopBar({ search, onSearch, onSearchPress, autoFocus, account }: {
+export function ShopTopBar({ search, onSearch, onSearchPress, autoFocus }: {
   search?: string; onSearch?: (s: string) => void; onSearchPress?: () => void; autoFocus?: boolean;
-  /** Mehmonga hisob ikonkasi — bosilsa "Kirish / Ro'yxatdan o'tish" oynasi (Asosiy sahifa). */
-  account?: boolean;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bell = useBellTarget();
-  const anon = useSession((s) => s.status !== 'authed');
   const field = (
     <SearchField
       value={search ?? ''}
@@ -63,7 +59,6 @@ export function ShopTopBar({ search, onSearch, onSearchPress, autoFocus, account
         </Pressable>
       ) : <View style={{ flex: 1 }}>{field}</View>}
       {bell ? <IconButton icon="bell" label="Bildirishnomalar" onPress={() => router.push(bell as never)} /> : null}
-      {account && anon ? <IconButton icon="user" label="Kirish yoki ro'yxatdan o'tish" variant="secondary" onPress={openLoginPrompt} /> : null}
     </View>
   );
 }
