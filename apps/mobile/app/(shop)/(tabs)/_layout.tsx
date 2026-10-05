@@ -18,7 +18,7 @@ export default function ShopTabs() {
   const count = useCartCount();
   return (
     <Tabs tabBar={floatingTabBar()} screenOptions={{ ...tabsOptions(c, insets.bottom, { reduce }), headerShown: false }}>
-      <Tabs.Screen name="index" options={{ title: 'Bosh', tabBarIcon: tabIcon('house') }} />
+      <Tabs.Screen name="index" options={{ title: 'Asosiy', tabBarIcon: tabIcon('house') }} />
       <Tabs.Screen name="katalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('layers') }} />
       <Tabs.Screen name="savat" options={{ title: 'Savat', tabBarIcon: tabIcon('shopping-cart'), tabBarBadge: count > 0 ? count : undefined }} />
       <Tabs.Screen name="buyurtma" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('truck') }} />

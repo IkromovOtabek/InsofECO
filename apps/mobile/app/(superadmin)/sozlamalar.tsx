@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ListGroup, SectionHead, Toggle } from '@/design/blocks';
+import { ListGroup, SectionHead, SkeletonList, Toggle } from '@/design/blocks';
 import { Badge, Button, Callout, EmptyState, Input, ListItem, Screen, Txt } from '@/design/primitives';
 import { Avatar, Confirm, Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -71,7 +71,8 @@ export default function AdminSettings() {
 
         <View style={{ gap: space.md }}>
           <SectionHead title="Feature flag'lar" icon="flag" action="Qo'shish" onAction={() => setEdit({ key: '', value: true, isPublic: true })} />
-          {cfg.isError && !cfg.data ? <EmptyState compact icon="cloud-off" title="Yuklanmadi" onRetry={() => void cfg.refetch()} />
+          {cfg.isLoading ? <SkeletonList rows={3} />
+            : cfg.isError && !cfg.data ? <EmptyState compact icon="cloud-off" title="Yuklanmadi" onRetry={() => void cfg.refetch()} />
             : (cfg.data ?? []).length === 0 ? <ListGroup><EmptyState compact icon="flag" title="Sozlama yo'q" hint="Masalan: feature.chat = true (ilovaga ochiq)" /></ListGroup>
             : (
               <ListGroup>

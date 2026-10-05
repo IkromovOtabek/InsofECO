@@ -4,12 +4,11 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { EmptyState, IconTile, ListGroup, Txt, fmtDate, fmtTime } from '@/design/primitives';
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
-import { ChipGroup } from '@/design/blocks';
+import { ChipGroup, SkeletonList } from '@/design/blocks';
 import { IconName, toast } from '@/design/ui';
 import { Animated, Appear, ENTER_FADE, EXIT_FADE, LiveItem, LiveList, haptic, stagger, usePressScale } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { ModuleTone, Tone, radius, size, space } from '@/design/tokens';
-import { Loader } from '@/design/loader';
 import { useNotifications } from '@/features/eco/api';
 import { api } from '@/core/api';
 import { routeOf, setBadge } from '@/core/push';
@@ -161,7 +160,7 @@ export function NotificationFeed({ items, loading, error, errorObj, refreshing, 
   // Faqat ro'yxatda haqiqatan bor guruhlar chip bo'ladi
   const groups = useMemo(() => (Object.keys(GROUP_LABEL) as FeedGroup[]).filter((g) => (items ?? []).some((n) => n.group === g)), [items]);
 
-  if (loading && !items) return <Loader fill />;
+  if (loading && !items) return <View style={{ flex: 1, backgroundColor: c.bgApp, paddingHorizontal: space.pageX, paddingTop: space.lg }}><SkeletonList rows={6} /></View>;
   if (error && !items?.length) return <View style={{ flex: 1, backgroundColor: c.bgApp }}><ErrorScreen error={errorObj} onRetry={onRefresh} /></View>;
 
   const empty = filter === 'unread'

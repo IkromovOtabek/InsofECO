@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChipGroup, ListGroup, SectionHead } from '@/design/blocks';
-import { Button, Callout, EmptyState, Input, ListItem, Screen, SearchField, fmtNum } from '@/design/primitives';
+import { Button, Callout, EmptyState, Input, ListItem, Screen, SearchField, Txt, fmtNum } from '@/design/primitives';
 import { Confirm, toast } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
@@ -53,7 +53,7 @@ export default function AdminBroadcast() {
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2, gap: space.section }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2, gap: space.section }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={{ gap: space.md }}>
           <Input label="Sarlavha" required value={title} onChangeText={setTitle} maxLength={80} placeholder="Texnik ishlar" />
           <Input label="Matn" required value={body} onChangeText={setBody} maxLength={400} multiline placeholder="Bugun 23:00 dan 23:30 gacha ilova ishlamaydi" />
@@ -74,6 +74,8 @@ export default function AdminBroadcast() {
                   {(orgs.data?.rows ?? []).slice(0, 8).map((o) => (
                     <ListItem key={o.id} icon={o.type === 'PLANT' ? 'factory' : 'building'} title={o.name} subtitle={`${o.members} a'zo`} chevron={false} onPress={() => { setOrg({ id: o.id, name: o.name }); setSearch(''); }} />
                   ))}
+                  {orgs.isLoading ? <EmptyState compact icon="search" title="Qidirilmoqda…" /> : null}
+                  {orgs.isError && !orgs.data ? <EmptyState compact icon="cloud-off" title="Yuklanmadi" onRetry={() => void orgs.refetch()} /> : null}
                   {orgs.data && orgs.data.rows.length === 0 ? <EmptyState compact icon="search" title="Topilmadi" /> : null}
                 </ListGroup>
               ) : null}
@@ -82,6 +84,7 @@ export default function AdminBroadcast() {
         </View>
 
         <Callout tone="warning" icon="triangle-alert">Xabar darhol telefonlarga boradi va qaytarib olinmaydi. Superadminlar va bloklanganlar qabul qilmaydi.</Callout>
+        {!ok ? <Txt v="caption" color="muted" align="center">Sarlavha va matn kamida 2 belgidan iborat bo&apos;lsin</Txt> : null}
         <Button title="Tekshirish va yuborish" icon="send" size="lg" disabled={!ok} loading={busy && !preview} onPress={() => void check()} />
       </ScrollView>
 

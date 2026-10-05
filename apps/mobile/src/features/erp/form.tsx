@@ -152,8 +152,8 @@ export function FieldInput({ field, values, onChange, errors }: { field: ErpForm
           value={value}
           onChangeText={(v: string) => onChange(field.name, v)}
           placeholder={field.placeholder}
-          keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-          autoCapitalize={field.type === 'number' ? 'none' : 'sentences'}
+          keyboardType={field.type === 'number' ? 'numeric' : /phone|tel/i.test(field.name) ? 'phone-pad' : 'default'}
+          autoCapitalize={field.type === 'number' || /phone|tel/i.test(field.name) ? 'none' : 'sentences'}
           autoCorrect={false}
         />
       );

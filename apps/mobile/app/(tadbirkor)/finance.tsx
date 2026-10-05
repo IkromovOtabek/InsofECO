@@ -34,7 +34,7 @@ export default function Finance() {
       <View style={{ paddingHorizontal: space.pageX, paddingTop: space.sm }}>
         <ChipGroup value={seg} onChange={setSeg} items={[{ key: 'overview', label: 'Umumiy' }, { key: 'income', label: 'Daromad', count: incomes.length || undefined }, { key: 'expense', label: 'Xarajat', count: expenses.length || undefined }]} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingTop: space.md, paddingBottom: space.xxxl }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={f.isRefetching || ex.isRefetching || inc.isRefetching} onRefresh={refresh} tintColor={c.textMuted} />}>
+      <ScrollView contentContainerStyle={{ padding: space.pageX, paddingTop: space.md, paddingBottom: space.xxxl }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={f.isRefetching || ex.isRefetching || inc.isRefetching} onRefresh={refresh} tintColor={c.textMuted} />}>
         {seg === 'overview' ? (
           f.isError && !d ? <EmptyState icon="cloud-off" title="Moliya yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={refresh} /> : (
             <Reveal key="o" loading={!d}>
@@ -75,9 +75,10 @@ export default function Finance() {
             <Card>
               <Txt v="titleSm">Xarajat kiritish</Txt>
               <Gap h={space.md} />
-              <Input label="Summa" value={amt} onChangeText={setAmt} placeholder="so'm" keyboardType="number-pad" mono />
+              <Input label="Summa" value={amt} onChangeText={(v) => setAmt(v.replace(/\D/g, ''))} placeholder="so'm" keyboardType="number-pad" mono />
               <Input label="Izoh" value={desc} onChangeText={setDesc} placeholder="Masalan: yoqilg'i, DAF" />
-              <Button title="Qo'shish" icon="plus" loading={addExpense.isPending} disabled={!amt || desc.length < 2} onPress={() => addExpense.mutate({ amount: Number(amt), description: desc, category: 'OTHER' }, { onSuccess: () => { setAmt(''); setDesc(''); void ex.refetch(); toast.success('Xarajat qo\'shildi'); }, onError: (e) => toast.error(e.message, 'Xato') })} />
+              {!Number(amt) || desc.trim().length < 2 ? <Txt v="caption" color="muted" style={{ marginBottom: space.sm }}>{!Number(amt) ? 'Summani kiriting' : 'Izoh kamida 2 belgi'}</Txt> : null}
+              <Button title="Qo'shish" icon="plus" loading={addExpense.isPending} disabled={!Number(amt) || desc.trim().length < 2} onPress={() => addExpense.mutate({ amount: Number(amt), description: desc, category: 'OTHER' }, { onSuccess: () => { setAmt(''); setDesc(''); void ex.refetch(); toast.success('Xarajat qo\'shildi'); }, onError: (e) => toast.error(e.message, 'Xato') })} />
             </Card>
             {ex.isLoading ? <SkeletonList rows={4} /> : expenses.length ? [
               <Txt key="h" v="overline">{`${expenses.length} ta xarajat`}</Txt>,
@@ -90,7 +91,7 @@ export default function Finance() {
                   />
                 ))}
               </ListGroup>,
-            ] : <ListGroup><EmptyState compact icon="receipt" title="Hali xarajat yo'q" hint="Yuqoridagi forma bilan kiriting" /></ListGroup>}
+            ] : ex.isError ? <EmptyState icon="cloud-off" title="Xarajatlar yuklanmadi" onRetry={() => void ex.refetch()} /> : <ListGroup><EmptyState compact icon="receipt" title="Hali xarajat yo'q" hint="Yuqoridagi forma bilan kiriting" /></ListGroup>}
           </Reveal>
         ) : null}
       </ScrollView>

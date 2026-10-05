@@ -24,8 +24,8 @@ export default function SuperAdminLayout() {
     // birinchi tabga (Holat) emas
     <Tabs backBehavior="history" tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Holat', headerShown: false, tabBarIcon: tabIcon('activity') }} />
-      <Tabs.Screen name="tashkilotlar" options={{ title: 'Tashkilotlar', tabBarIcon: tabIcon('building') }} />
-      <Tabs.Screen name="foydalanuvchilar" options={{ title: 'Foydalanuvchilar', tabBarIcon: tabIcon('users') }} />
+      <Tabs.Screen name="tashkilotlar" options={{ title: 'Tashkilotlar', tabBarLabel: 'Tashkilot', tabBarIcon: tabIcon('building') }} />
+      <Tabs.Screen name="foydalanuvchilar" options={{ title: 'Foydalanuvchilar', tabBarLabel: 'Odamlar', tabBarIcon: tabIcon('users') }} />
       <Tabs.Screen name="sozlamalar" options={{ title: 'Sozlamalar', tabBarIcon: tabIcon('settings') }} />
       <Tabs.Screen name="tashkilot" options={{ ...hidden, title: 'Tashkilot', headerLeft: HeaderBack }} />
       <Tabs.Screen name="foydalanuvchi" options={{ ...hidden, title: 'Foydalanuvchi', headerLeft: HeaderBack }} />

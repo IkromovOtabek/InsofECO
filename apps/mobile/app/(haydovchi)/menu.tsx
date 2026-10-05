@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ListGroup, OfflineBanner } from '@/design/blocks';
 import { Badge, Button, Card, Gap, ListItem, ProgressBar, Screen, Txt } from '@/design/primitives';
-import { Avatar, fmtShort } from '@/design/ui';
+import { Avatar, dialog, fmtShort } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
@@ -55,7 +55,7 @@ export default function HaydovchiMenu() {
         </ListGroup>
 
         <Gap h={space.section} />
-        <Button title="Chiqish" variant="danger" size="xl" icon="log-out" onPress={() => { void authApi.logout().catch(() => {}); void signOut(); }} />
+        <Button title="Chiqish" variant="danger" size="xl" icon="log-out" onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void authApi.logout().catch(() => {}); void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
       </ScrollView>
     </Screen>
   );

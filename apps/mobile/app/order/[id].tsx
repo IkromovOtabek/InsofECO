@@ -61,7 +61,7 @@ export default function OrderScreen() {
   let bar: { primary: StickyPrimary; secondary?: { title: string; icon?: 'x'; onPress: () => void } } | null = null;
   if (isPlant && o.status === 'SUBMITTED') bar = { primary: { title: 'Tasdiqlash', icon: 'check', loading: act.isPending, onPress: () => act.mutate({ action: 'confirm', body: {} }, { onError: err }) }, secondary: { title: 'Rad etish', icon: 'x', onPress: () => setRejectOpen(true) } };
   else if (isPlant && o.status === 'CONFIRMED') bar = { primary: { title: "Reyslarga bo'lish", icon: 'truck', loading: plan.isPending, onPress: () => plan.mutate(undefined, { onError: err }) } };
-  else if (!isPlant && o.status === 'DELIVERED') bar = { primary: { title: 'Yakuniy qabul', icon: 'circle-check', variant: 'success', onPress: () => dialog('Yakunlash', 'Barcha reyslar qabul qilingan', [{ text: 'OK' }]) } };
+  else if (!isPlant && o.status === 'DELIVERED') bar = { primary: { title: 'Yakuniy qabul', icon: 'circle-check', variant: 'success', onPress: () => dialog('Yakunlash', 'Barcha reyslar qabul qilingan', [{ text: 'Tushunarli' }]) } };
   else if (!isPlant && ['DRAFT', 'SUBMITTED', 'CONFIRMED'].includes(o.status)) bar = { primary: { title: 'Buyurtmani bekor qilish', icon: 'x', variant: 'danger', loading: act.isPending, onPress: cancel } };
 
   const details: { label: string; value: string; tone?: 'danger' }[] = [

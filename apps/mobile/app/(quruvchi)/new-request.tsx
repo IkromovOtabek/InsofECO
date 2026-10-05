@@ -29,13 +29,13 @@ export default function NewRequest() {
           <Appear>
             <SectionHead title="Obyekt" icon="hard-hat" />
             <Card>
-              <Select label="Obyekt" required value={projectId || null} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name, hint: p.address }))} onChange={(v) => setProjectId(v)} placeholder={projects.isLoading ? 'Yuklanmoqda…' : 'Obyektni tanlang'} containerStyle={{ marginBottom: 0 }} />
+              <Select label="Obyekt" required value={projectId || null} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name, hint: p.address }))} onChange={(v) => setProjectId(v)} placeholder={projects.isLoading ? 'Yuklanmoqda…' : 'Obyektni tanlang'} error={projects.isError && !projects.data ? "Obyektlar yuklanmadi — internetni tekshirib, qayta oching" : undefined} hint={projects.data && !projects.data.length ? "Sizga biriktirilgan obyekt yo'q — tadbirkorga murojaat qiling" : undefined} containerStyle={{ marginBottom: 0 }} />
             </Card>
 
             <Gap h={space.section} />
             <SectionHead title="Material" icon="package" />
             <Card>
-              <Select label="Material" required value={materialId || null} options={(mats.data ?? []).map((x) => ({ value: x.id, label: x.name, hint: `omborda ${fmtUnit(x.stock, x.unit)}` }))} onChange={(v) => setMaterialId(v)} placeholder={mats.isLoading ? 'Yuklanmoqda…' : 'Materialni tanlang'} />
+              <Select label="Material" required value={materialId || null} options={(mats.data ?? []).map((x) => ({ value: x.id, label: x.name, hint: `omborda ${fmtUnit(x.stock, x.unit)}` }))} onChange={(v) => setMaterialId(v)} placeholder={mats.isLoading ? 'Yuklanmoqda…' : 'Materialni tanlang'} error={mats.isError && !mats.data ? "Materiallar yuklanmadi — internetni tekshirib, qayta oching" : undefined} />
               <Input label={`Miqdor${m ? ` (${m.unit})` : ''}`} required value={qty} onChangeText={setQty} keyboardType="decimal-pad" placeholder="Masalan: 20" mono error={qtyError} hint={m ? `Omborda ${fmtUnit(m.stock, m.unit)}` : undefined} containerStyle={{ marginBottom: 0 }} />
             </Card>
 

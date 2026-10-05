@@ -165,7 +165,7 @@ export default function AdminStatus() {
                   )}
               </View>
 
-              <Txt v="caption" color="faint" align="center">{`${user?.fullName ?? user?.phone ?? ''} · har bir amal jurnalga yoziladi`}</Txt>
+              <Txt v="caption" color="muted" align="center">{`${user?.fullName ?? user?.phone ?? ''} · har bir amal jurnalga yoziladi`}</Txt>
             </Reveal>
           )}
       </ScrollView>

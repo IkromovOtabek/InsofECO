@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { KpiGrid, ListGroup, SectionHead, SkeletonList } from '@/design/blocks';
+import { KpiGrid, ListGroup, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
 import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, Txt, fmtDateFull } from '@/design/primitives';
 import { Avatar, Confirm, fmtRel, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -28,13 +28,13 @@ export default function AdminOrganization() {
   return (
     <Screen padded={false}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2, gap: space.section }}
+        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2 }}
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
         {q.isLoading ? <SkeletonList rows={6} />
           : !o ? <EmptyState icon="cloud-off" title="Tashkilot yuklanmadi" hint={q.error instanceof Error ? q.error.message : undefined} onRetry={() => void q.refetch()} />
           : (
-            <>
+            <Reveal gap={space.section}>
               <View style={{ gap: space.sm }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
                   <Badge label={o.type === 'PLANT' ? 'Zavod' : 'Mijoz tashkiloti'} tone={o.type === 'PLANT' ? 'info' : 'neutral'} icon={o.type === 'PLANT' ? 'factory' : 'building'} />
@@ -94,7 +94,7 @@ export default function AdminOrganization() {
               {o.blockedAt
                 ? <Button title="Blokdan chiqarish" icon="lock-open" variant="secondary" size="lg" onPress={() => setAsk('unblock')} />
                 : <Button title="Tashkilotni bloklash" icon="ban" variant="danger" size="lg" onPress={() => setAsk('block')} />}
-            </>
+            </Reveal>
           )}
       </ScrollView>
 

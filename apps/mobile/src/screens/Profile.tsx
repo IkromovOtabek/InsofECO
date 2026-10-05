@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button, Screen, Txt } from '@/design/primitives';
-import { Avatar } from '@/design/ui';
+import { Avatar, dialog } from '@/design/ui';
 import { Appear, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
@@ -84,7 +84,7 @@ export function Profile({ children }: { children?: React.ReactNode }) {
         </Appear>
 
         <Appear delay={stagger(4)} style={{ marginTop: space.lg }}>
-          <Button title="Chiqish" variant="secondary" icon="log-out" size="lg" textColor={c.danger} onPress={() => { void authApi.logout().catch(() => {}); void signOut(); }} />
+          <Button title="Chiqish" variant="secondary" icon="log-out" size="lg" textColor={c.danger} onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void authApi.logout().catch(() => {}); void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
         </Appear>
       </ScrollView>
     </Screen>

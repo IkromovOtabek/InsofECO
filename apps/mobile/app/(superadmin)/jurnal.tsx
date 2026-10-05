@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
-import { ListGroup, SkeletonList } from '@/design/blocks';
+import { ListGroup, Reveal, SkeletonList } from '@/design/blocks';
 import { EmptyState, ListItem, Screen } from '@/design/primitives';
 import { fmtRel } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -19,9 +19,10 @@ export default function AdminAudit() {
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
         {q.isLoading ? <SkeletonList rows={8} />
-          : q.isError && !q.data ? <EmptyState icon="cloud-off" title="Yuklanmadi" onRetry={() => void q.refetch()} />
+          : q.isError && !q.data ? <EmptyState icon="cloud-off" title="Jurnal yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} />
           : rows.length === 0 ? <EmptyState icon="history" title="Jurnal bo'sh" />
           : (
+            <Reveal>
             <ListGroup>
               {rows.map((r) => {
                 const write = !r.action.startsWith('GET');
@@ -39,6 +40,7 @@ export default function AdminAudit() {
                 );
               })}
             </ListGroup>
+            </Reveal>
           )}
       </ScrollView>
     </Screen>

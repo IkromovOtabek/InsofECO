@@ -6,7 +6,7 @@ import { dialog, Avatar, toast } from '@/design/ui';
 import { Appear } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
-import { Loader } from '@/design/loader';
+import { SkeletonList } from '@/design/blocks';
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { Conversation, useAction, useContacts, useConversations } from '@/features/eco/api';
 
@@ -62,7 +62,7 @@ export function MessagesList() {
   };
   const data = q.data ?? [];
 
-  if (q.isLoading) return <Loader fill />;
+  if (q.isLoading) return <View style={{ flex: 1, backgroundColor: c.bgApp, padding: space.pageX }}><SkeletonList rows={6} /></View>;
   if (q.isError && !data.length) return <View style={{ flex: 1, backgroundColor: c.bgApp }}><ErrorScreen error={q.error} title="Suhbatlar yuklanmadi" onRetry={() => void q.refetch()} /></View>;
 
   return (

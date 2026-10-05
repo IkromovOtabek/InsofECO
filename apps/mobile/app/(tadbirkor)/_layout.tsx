@@ -16,8 +16,9 @@ export default function TadbirkorLayout() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const hidden = { href: null } as const;
+  // `history` — yashirin ekranlardan (Menyu → Xodimlar, Daromad, Tarix) «Orqaga» ochilgan joyiga qaytadi, birinchi tabga emas
   return (
-    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
+    <Tabs backBehavior="history" tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Asosiy', headerShown: false, tabBarIcon: tabIcon('house') }} />
       <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('list') }} />
       <Tabs.Screen name="messages" options={{ title: 'Xabarlar', tabBarIcon: tabIcon('message-circle') }} />

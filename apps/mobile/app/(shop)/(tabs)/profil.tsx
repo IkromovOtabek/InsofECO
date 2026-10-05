@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, Card, ListItem, Txt } from '@/design/primitives';
 import { ListGroup, PageHeader, Reveal } from '@/design/blocks';
 import { Icon } from '@/design/icons';
-import { Avatar } from '@/design/ui';
+import { Avatar, dialog } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
@@ -73,7 +73,7 @@ export default function ShopProfile() {
             </ListGroup>
             {common}
             <ListGroup>
-              <ListItem icon="log-out" tone="danger" title="Chiqish" chevron={false} onPress={() => void signOut()} />
+              <ListItem icon="log-out" tone="danger" title="Chiqish" chevron={false} onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
             </ListGroup>
           </Reveal>
         ) : (

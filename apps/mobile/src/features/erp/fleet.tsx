@@ -165,7 +165,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                         onPress={() => focus(t)}
                       >
                         <View style={{ paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: col.solid, borderWidth: active ? size.ring + 1 : size.ring, borderColor: active ? c.textStrong : c.bgSurface }}>
-                          <Txt v="overline" style={{ color: c.textOnSolid }} numberOfLines={1}>{t.plate}</Txt>
+                          <Txt v="overline" style={{ color: tone === 'brand' ? c.textOnBrand : tone === 'neutral' ? c.bgSurface : c.textOnSolid }} numberOfLines={1}>{t.plate}</Txt>
                         </View>
                       </Marker>
                     );

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChipGroup, ListGroup, SectionHead, SkeletonList, Toggle } from '@/design/blocks';
+import { ChipGroup, ListGroup, Reveal, SectionHead, SkeletonList, Toggle } from '@/design/blocks';
 import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, SearchField, Txt, fmtDateFull } from '@/design/primitives';
 import { Avatar, Confirm, Sheet, fmtRel, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -45,13 +45,13 @@ export default function AdminUser() {
   return (
     <Screen padded={false}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2, gap: space.section }}
+        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.sm, paddingBottom: space.x12 * 2 }}
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
       >
         {q.isLoading ? <SkeletonList rows={6} />
           : !u ? <EmptyState icon="cloud-off" title="Foydalanuvchi yuklanmadi" hint={q.error instanceof Error ? q.error.message : undefined} onRetry={() => void q.refetch()} />
           : (
-            <>
+            <Reveal gap={space.section}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
                 <Avatar name={u.fullName ?? u.phone} size={size.avatarLg} tone={u.blockedAt ? 'danger' : u.isSuperAdmin ? 'brand' : 'neutral'} />
                 <View style={{ flex: 1, minWidth: 0, gap: space.xs }}>
@@ -120,7 +120,7 @@ export default function AdminUser() {
                     : <Button title="Foydalanuvchini bloklash" icon="ban" variant="danger" size="lg" onPress={() => setAsk({ kind: 'block' })} />}
                 </View>
               )}
-            </>
+            </Reveal>
           )}
       </ScrollView>
 

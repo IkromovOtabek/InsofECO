@@ -15,8 +15,9 @@ export default function HaydovchiLayout() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const hidden = { href: null } as const;
+  // `history` — yashirin ekranlardan (Menyu → Xodimlar, Daromad, Tarix) «Orqaga» ochilgan joyiga qaytadi, birinchi tabga emas
   return (
-    <Tabs tabBar={floatingTabBar({ driver: true })} screenOptions={tabsOptions(c, insets.bottom, { driver: true, reduce })}>
+    <Tabs backBehavior="history" tabBar={floatingTabBar({ driver: true })} screenOptions={tabsOptions(c, insets.bottom, { driver: true, reduce })}>
       <Tabs.Screen name="index" options={{ title: 'Bugun', headerShown: false, tabBarIcon: tabIcon('house', { driver: true }) }} />
       <Tabs.Screen name="deliveries" options={{ title: 'Yuklar', tabBarIcon: tabIcon('package', { driver: true }) }} />
       <Tabs.Screen name="earnings" options={{ title: 'Daromad', tabBarIcon: tabIcon('wallet', { driver: true }) }} />

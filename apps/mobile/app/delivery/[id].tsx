@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
@@ -43,7 +43,7 @@ export default function DeliveryScreen() {
   if (!d) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Reys yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="cloud-off" title="Reys yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }
@@ -54,7 +54,11 @@ export default function DeliveryScreen() {
 
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}
+        keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
+        refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
+      >
         <Appear>
           <Row style={{ justifyContent: 'space-between', gap: space.sm }}>
             <Txt v="titleMd" style={{ flex: 1 }} numberOfLines={1}>№{d.order.number} · reys {d.sequence}</Txt>
@@ -155,7 +159,7 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
   };
 
   const navigate = () => {
-    if (!dest) { toast.warning('Zayavkada obyekt nuqtasi yo\'q — manzil: ' + d.order.address, 'Navigatsiya'); return; }
+    if (!dest) { toast.warning('Buyurtmada obyekt nuqtasi yo\'q — manzil: ' + d.order.address, 'Navigatsiya'); return; }
     void openInNavigator({ lat: dest.lat, lng: dest.lng, label: d.order.address });
   };
 

@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, Card, EmptyState, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
-import { Avatar, Confirm, fmtShort, tabIcon, toast } from '@/design/ui';
+import { Avatar, Confirm, dialog, fmtShort, tabIcon, toast } from '@/design/ui';
 import {
   ActionGrid, AttentionList, BarChartCard, BreakdownCard, ChipGroup, HBarList, HeroCard, KpiGrid, ListGroup, OfflineBanner, PageHeader,
   ProgressCard, Reveal, SectionHead, SkeletonDashboard, SkeletonList, type ActionItem, type AttentionItem, type KpiItem,
@@ -909,7 +909,7 @@ export function ErpMenu() {
         </Appear>
 
         <Appear delay={stagger(6)} style={{ marginTop: space.xl }}>
-          <Button variant="secondary" icon="log-out" title="Chiqish" onPress={() => void signOut()} />
+          <Button variant="secondary" icon="log-out" title="Chiqish" textColor={c.danger} onPress={() => dialog('Chiqasizmi?', "Qayta kirish uchun login va parol kerak bo'ladi.", [{ text: 'Chiqish', style: 'destructive', onPress: () => void signOut() }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
         </Appear>
       </ScrollView>
       <Confirm

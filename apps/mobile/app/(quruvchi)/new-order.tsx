@@ -136,7 +136,7 @@ export default function NewOrder() {
               <>
                 <SectionHead title="Zavod va marka" icon="factory" />
                 <Card>
-                  <Select label="Zavod" required value={plantId ?? null} options={plantOptions} placeholder={plants.isLoading ? 'Yuklanmoqda…' : 'Zavodni tanlang'} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
+                  <Select label="Zavod" required value={plantId ?? null} options={plantOptions} placeholder={plants.isLoading ? 'Yuklanmoqda…' : 'Zavodni tanlang'} error={plants.isError && !plants.data ? "Zavodlar yuklanmadi — internetni tekshirib, qayta oching" : undefined} onChange={(v) => { setPlantId(v); setMixId(undefined); }} />
                   <Select label="Marka" required value={mixId ?? null} options={mixOptions} placeholder={!plantId ? 'Avval zavodni tanlang' : mixes.isLoading ? 'Markalar yuklanmoqda…' : 'Markani tanlang'} onChange={(v) => setMixId(v)} containerStyle={{ marginBottom: 0 }} />
                 </Card>
                 <Gap h={space.section} />

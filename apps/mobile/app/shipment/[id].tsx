@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapUnavailable, MapView, Marker, Polyline } from '@/core/map';
 import { openInNavigator } from '@/core/navigate';
@@ -41,7 +41,7 @@ export default function ShipmentScreen() {
   if (!s) {
     return (
       <Screen>
-        {q.isError ? <EmptyState icon="circle-alert" title="Yuk yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" action="Qayta urinish" onAction={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
+        {q.isError ? <EmptyState icon="cloud-off" title="Yuk yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void q.refetch()} /> : <Loader style={{ marginTop: space.xxxl }} />}
       </Screen>
     );
   }
@@ -77,10 +77,12 @@ export default function ShipmentScreen() {
   // NEW/ACCEPTED→0 Ombor, LOADING→1, EN_ROUTE→2, DELIVERED→3, CONFIRMED→4
   const step = Math.max(0, Math.min(STEPS.length, idx - 1));
 
-  if ((role as string) === 'HAYDOVCHI') return <DriverView s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || tr.isPending} from={from} to={to} />;
+  const refreshing = q.isRefetching;
+  const onRefresh = () => void q.refetch();
+  if ((role as string) === 'HAYDOVCHI') return <DriverView refreshing={refreshing} onRefresh={onRefresh} s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || tr.isPending} from={from} to={to} />;
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
         <Appear>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}><Txt v="overline">Yuk №{s.number}</Txt><StatusChip status={s.status} /></View>
           <Txt v="titleMd" style={{ marginTop: 2 }}>{s.cargo}</Txt>
@@ -111,7 +113,7 @@ export default function ShipmentScreen() {
                 <Txt v="titleSm">Yuk yetkazildi</Txt><Gap h={space.sm} />
                 <Button title="Foto" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — keyingi versiya, demo foto biriktiriladi')} /><Gap h={space.sm} />
                 <StatusLine icon="map-pin" tone="info" text="Joylashuv avtomatik qo'shiladi" />
-                <Input value={receiver} onChangeText={setReceiver} placeholder="Qabul qiluvchi ismi" />
+                <Input value={receiver} onChangeText={setReceiver} placeholder="Qabul qiluvchi ismi" accessibilityLabel="Qabul qiluvchi ismi" autoCapitalize="words" />
                 <Button title="Yetkazdim" size="xl" icon="flag" loading={tr.isPending || checking} onPress={() => void deliver()} />
               </Card>
             ) : (
@@ -131,14 +133,14 @@ export default function ShipmentScreen() {
 /** Shafyor ko'rinishi: katta stepper, marshrut, bitta asosiy tugma, qo'ng'iroq/navigatsiya. Ekran o'chmaydi. */
 type TrVars = { to: string; receiverName?: string; photoKey?: string; location?: { lat: number; lng: number } };
 
-function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to }: { s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
+function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to }: { refreshing: boolean; onRefresh: () => void; s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
   const { c } = useTheme();
   useKeepAwake();
   const call = () => { if (s.contact?.phone) void Linking.openURL(`tel:${s.contact.phone}`); else toast.warning('Buyurtmachi raqami ko\'rsatilmagan — dispetcher bilan bog\'laning', 'Aloqa'); };
   const done = s.status === 'CONFIRMED' || s.status === 'CANCELLED';
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
         <Appear>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}><Txt v="overline">Yuk №{s.number}</Txt><StatusChip status={s.status} /></View>
           <Txt v="titleMd" style={{ marginTop: space.xs }}>{s.cargo}</Txt>
@@ -174,7 +176,7 @@ function DriverView({ s, step, next, tr, err, receiver, setReceiver, navigate, o
             <Card style={{ padding: space.xl, borderWidth: size.ring, borderColor: c.brand }}>
               <Txt v="titleMd">Obyektga yetdim</Txt>
               <Gap h={space.md} />
-              <Input value={receiver} onChangeText={setReceiver} placeholder="Kim qabul qildi? (ism)" left="user" />
+              <Input value={receiver} onChangeText={setReceiver} placeholder="Kim qabul qildi? (ism)" left="user" accessibilityLabel="Qabul qiluvchi ismi" autoCapitalize="words" />
               <BigAction title="Yetkazdim" icon="flag" loading={delivering} onPress={deliver} />
               <View style={{ marginTop: space.sm }}><StatusLine icon="map-pin" tone="info" text={`Obyektdan ${SITE_RADIUS_M} m ichida bosiladi — joylashuv va vaqt yoziladi`} /></View>
             </Card>

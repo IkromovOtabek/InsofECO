@@ -16,9 +16,10 @@ export default function QuruvchiLayout() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const hidden = { href: null } as const;
+  // `history` — yashirin ekranlardan (Menyu → Xodimlar, Daromad, Tarix) «Orqaga» ochilgan joyiga qaytadi, birinchi tabga emas
   return (
-    <Tabs tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
-      <Tabs.Screen name="index" options={{ title: 'Bosh', headerShown: false, tabBarIcon: tabIcon('house') }} />
+    <Tabs backBehavior="history" tabBar={floatingTabBar()} screenOptions={tabsOptions(c, insets.bottom, { reduce })}>
+      <Tabs.Screen name="index" options={{ title: 'Asosiy', headerShown: false, tabBarIcon: tabIcon('house') }} />
       <Tabs.Screen name="sites" options={{ title: 'Obyektlar', tabBarIcon: tabIcon('hard-hat') }} />
       <Tabs.Screen name="orders" options={{ title: 'Buyurtma', tabBarIcon: tabIcon('receipt') }} />
       <Tabs.Screen name="materials" options={{ title: 'Yetkazish', tabBarIcon: tabIcon('truck') }} />
