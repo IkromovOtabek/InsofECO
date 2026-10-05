@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DeliveryStatus } from '@insof/shared';
 import { api, uuid } from '@/core/api';
 import { outbox } from '@/core/outbox';
+import { usePollInterval } from '@/shared/hooks';
 import { queryClient } from '@/core/query';
 
 export interface Delivery {
@@ -14,8 +15,8 @@ export interface Delivery {
 
 export const deliveryKeys = { mine: (date?: string) => ['deliveries', 'mine', date] as const, one: (id: string) => ['deliveries', id] as const };
 
-export const useMyDeliveries = (date?: string) => useQuery({ queryKey: deliveryKeys.mine(date), queryFn: () => api<Delivery[]>('/deliveries/mine', { query: { date } }), refetchInterval: 30_000 });
-export const useDelivery = (id: string) => useQuery({ queryKey: deliveryKeys.one(id), queryFn: () => api<Delivery>(`/deliveries/${id}`), refetchInterval: 15_000 });
+export const useMyDeliveries = (date?: string) => useQuery({ queryKey: deliveryKeys.mine(date), queryFn: () => api<Delivery[]>('/deliveries/mine', { query: { date } }), refetchInterval: usePollInterval(30_000) });
+export const useDelivery = (id: string) => useQuery({ queryKey: deliveryKeys.one(id), queryFn: () => api<Delivery>(`/deliveries/${id}`), refetchInterval: usePollInterval(15_000) });
 
 /**
  * Haydovchi holat o'tishi — optimistik + outbox. Internet bo'lmasa ham tugma darhol "ishlaydi".

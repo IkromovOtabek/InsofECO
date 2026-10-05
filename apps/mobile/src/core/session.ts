@@ -45,6 +45,9 @@ const KIND_KEY = 'session.kind';
 const ERP_USER_KEY = 'session.erpUser';
 const ADMIN_KEY = 'session.admin';
 
+/** Buzilgan kesh (yarim yozilgan JSON) sovuq startni "loading" da qotirib qo'ymasin — mehmon sifatida ochiladi. */
+const parse = <T,>(raw: string | undefined): T | null => { if (!raw) return null; try { return JSON.parse(raw) as T; } catch { return null; } };
+
 export const useSession = create<SessionState>((set, get) => ({
   status: 'loading',
   kind: null,
@@ -59,17 +62,18 @@ export const useSession = create<SessionState>((set, get) => ({
     if (kind === 'erp') {
       const refresh = await secure.get(KEYS.erpRefresh);
       const cached = kv.getString(ERP_USER_KEY);
-      if (!refresh || !cached) return set({ status: 'anon', kind: null });
-      return set({ status: 'authed', kind: 'erp', erp: JSON.parse(cached) as ErpUser });
+      const erp = parse<ErpUser>(cached);
+      if (!refresh || !erp) return set({ status: 'anon', kind: null });
+      return set({ status: 'authed', kind: 'erp', erp });
     }
 
     const refresh = await secure.get(KEYS.refresh);
     const cachedUser = kv.getString('session.user');
-    if (!refresh || !cachedUser) return set({ status: 'anon', kind: null });
-    const user = JSON.parse(cachedUser) as Profile;
+    const user = parse<Profile>(cachedUser);
+    if (!refresh || !user) return set({ status: 'anon', kind: null });
     const admin = !!user.isSuperAdmin && kv.getString(ADMIN_KEY) === '1';
     const activeRaw = admin ? undefined : kv.getString(ACTIVE_KEY);
-    const active = admin ? null : activeRaw ? (JSON.parse(activeRaw) as Membership) : pickDefault(user);
+    const active = admin ? null : parse<Membership>(activeRaw) ?? pickDefault(user);
     set({ status: 'authed', kind: 'eco', user, active, admin });
   },
 

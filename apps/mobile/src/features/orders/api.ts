@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreateOrderInput, OrderStatus } from '@insof/shared';
 import { api, uuid } from '@/core/api';
+import { usePollInterval } from '@/shared/hooks';
 
 export interface OrderItem { id: string; gradeSnapshot: string; nameSnapshot: string; volumeM3: string; unitPriceSnapshot: string }
 export interface DeliveryLite { id: string; sequence: number; status: string; plannedM3: string; plannedAt: string; slaBreached: boolean; driver?: { user: { fullName: string | null; phone: string } } | null; vehicle?: { plateNumber: string } | null }
@@ -17,7 +18,7 @@ export const orderKeys = { all: ['orders'] as const, list: (f: Record<string, un
 export const useOrders = (filter: { status?: string; date?: string } = {}) =>
   useQuery({ queryKey: orderKeys.list(filter), queryFn: () => api<{ items: Order[]; nextCursor: string | null }>('/orders', { query: filter }) });
 
-export const useOrder = (id: string) => useQuery({ queryKey: orderKeys.one(id), queryFn: () => api<Order>(`/orders/${id}`), refetchInterval: 15_000 });
+export const useOrder = (id: string) => useQuery({ queryKey: orderKeys.one(id), queryFn: () => api<Order>(`/orders/${id}`), refetchInterval: usePollInterval(15_000) });
 
 export const usePlants = () => useQuery({ queryKey: ['plants'], queryFn: () => api<{ id: string; name: string; address?: string }[]>('/organizations/plants') });
 export const useMixes = (plantOrgId?: string) => useQuery({ queryKey: ['mixes', plantOrgId], queryFn: () => api<Mix[]>('/catalog/mixes', { query: { plantOrgId } }), enabled: !!plantOrgId });

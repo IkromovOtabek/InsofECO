@@ -3,6 +3,11 @@ import { focusManager, QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiException } from './api';
+import { useSession } from './session';
+import { closeSocket } from './socket';
+import { outbox } from './outbox';
+import { stopTracking } from './location';
+import { stopErpTracking } from './erp-track';
 
 /**
  * React Query sozlamasi.
@@ -47,3 +52,30 @@ export const queryClient = new QueryClient({
 });
 
 export const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: 'rq.v1' });
+
+/**
+ * Kesh hisobga bog'langan. So'rov kalitlarida foydalanuvchi/tashkilot yo'q (`['dash', 'tadbirkor']`,
+ * `['erp', 'home']`), shuning uchun chiqishda, boshqa hisobga kirishda yoki boshqa tashkilot/rolga
+ * o'tishda eski kesh (va diskdagi nusxasi) tozalanadi — aks holda keyingi hisob oldingisining
+ * buyurtmalari, summalari va xabarlarini ko'rardi. Soket ham eski token bilan qolmasin.
+ */
+const identity = (s: ReturnType<typeof useSession.getState>) =>
+  s.status !== 'authed' ? 'anon' : s.kind === 'erp' ? `erp:${s.erp?.id ?? ''}` : `eco:${s.user?.id ?? ''}:${s.admin ? 'admin' : s.active?.organization.id ?? ''}:${s.active?.role ?? ''}`;
+
+useSession.subscribe((next, prev) => {
+  // Sovuq start (loading → authed) — diskdagi kesh shu hisobniki, tozalanmaydi (oflayn ochilish)
+  if (prev.status === 'loading') return;
+  if (identity(next) === identity(prev)) return;
+  queryClient.cancelQueries().catch(() => {});
+  queryClient.clear();
+  void persister.removeClient();
+  closeSocket();
+  if (next.status !== 'authed') {
+    // Chiqildi — fon GPS'i boshqa birovning telefonida yurib qolmasin (batareya + shaxsiy hayot)
+    void stopTracking().catch(() => {});
+    void stopErpTracking().catch(() => {});
+    return;
+  }
+  // Yangi hisob/tashkilot faol — uning navbatdagi amallari yuborilsin
+  void outbox.flush();
+});

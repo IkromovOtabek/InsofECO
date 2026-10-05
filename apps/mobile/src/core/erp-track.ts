@@ -32,7 +32,9 @@ const SEND_AT_POINTS = 10;
 
 interface Pt { lat: number; lng: number; speedKmh?: number; heading?: number; at: string }
 
-const readBuf = (): Pt[] => { try { return JSON.parse(kv.getString(BUF) ?? '[]') as Pt[]; } catch { return []; } };
+const readBuf = (): Pt[] => { try { const v = JSON.parse(kv.getString(BUF) ?? '[]') as unknown; return Array.isArray(v) ? (v as Pt[]) : []; } catch { return []; } };
+/** ~8 soatlik iz (15 s da nuqta) — server uzoq qabul qilmasa bufer cheksiz o'smasin. */
+const MAX_BUF = 2000;
 
 TaskManager.defineTask(ERP_GPS_TASK, async ({ data, error }) => {
   if (error || !data) return;
@@ -48,7 +50,7 @@ TaskManager.defineTask(ERP_GPS_TASK, async ({ data, error }) => {
       at: new Date(l.timestamp).toISOString(),
     });
   }
-  kv.set(BUF, JSON.stringify(buf));
+  kv.set(BUF, JSON.stringify(buf.slice(-MAX_BUF)));
   const last = Number(kv.getString(LAST_SENT) ?? 0);
   if (buf.length >= SEND_AT_POINTS || Date.now() - last >= SEND_EVERY_MS) await flushErpGps();
 });

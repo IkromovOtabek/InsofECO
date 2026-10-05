@@ -13,6 +13,8 @@ import { discloseBackgroundLocation } from './bg-disclosure';
 export const GPS_TASK = 'insof.gps';
 const BUF = 'gps.buffer';
 const ACTIVE = 'gps.activeDeliveryId';
+/** ~10 soatlik iz (har 15–30 s da nuqta) — undan eskisi tashlanadi. */
+const MAX_BUF = 2000;
 
 interface Pt { lat: number; lng: number; speedKmh?: number; heading?: number; at: string }
 /** Buferdagi buzilgan JSON fon vazifasini har safar yiqitmasin. */
@@ -30,7 +32,8 @@ TaskManager.defineTask(GPS_TASK, async ({ data, error }) => {
   for (const l of locations) {
     buf.push({ lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: l.coords.speed != null ? Math.max(0, l.coords.speed * 3.6) : undefined, heading: l.coords.heading ?? undefined, at: new Date(l.timestamp).toISOString() });
   }
-  kv.set(BUF, JSON.stringify(buf));
+  // Server uzoq vaqt qabul qilmasa bufer cheksiz o'smasin (har nuqtada butun JSON qayta yoziladi)
+  kv.set(BUF, JSON.stringify(buf.slice(-MAX_BUF)));
   if (buf.length >= 20) await flushGps();
 });
 

@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, uuid } from '@/core/api';
 import { config } from '@/core/config';
+import { usePollInterval } from '@/shared/hooks';
 
 export type Health = 'ok' | 'degraded' | 'down' | 'unknown';
 export type EcoRole = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
@@ -78,7 +79,7 @@ export const useAdminHealth = () => useQuery({
     const h = await api<Omit<AdminHealth, 'rttMs'>>('/admin/health');
     return { ...h, rttMs: Date.now() - t } as AdminHealth;
   },
-  refetchInterval: POLL,
+  refetchInterval: usePollInterval(POLL),
   staleTime: 5_000,
   retry: 0,
 });
@@ -97,23 +98,23 @@ export const useErpFromDevice = () => useQuery({
       return { ok: false, status: 0, ms: null as number | null };
     } finally { clearTimeout(timer); }
   },
-  refetchInterval: POLL,
+  refetchInterval: usePollInterval(POLL),
   retry: 0,
 });
 
-export const useAdminOverview = () => useQuery({ queryKey: ['admin', 'overview'], queryFn: () => api<AdminOverview>('/admin/overview'), refetchInterval: 60_000 });
+export const useAdminOverview = () => useQuery({ queryKey: ['admin', 'overview'], queryFn: () => api<AdminOverview>('/admin/overview'), refetchInterval: usePollInterval(60_000) });
 
 export const useAdminOrgs = (p: { q?: string; type?: 'PLANT' | 'CONTRACTOR'; blocked?: boolean }) => useQuery({
   queryKey: ['admin', 'orgs', p],
   queryFn: () => api<{ total: number; rows: AdminOrgRow[] }>('/admin/organizations', { query: { q: p.q, type: p.type, blocked: p.blocked === undefined ? undefined : String(p.blocked), limit: 50 } }),
-  refetchInterval: 60_000,
+  refetchInterval: usePollInterval(60_000),
 });
 export const useAdminOrg = (id: string) => useQuery({ queryKey: ['admin', 'org', id], queryFn: () => api<AdminOrg>(`/admin/organizations/${id}`), enabled: !!id });
 
 export const useAdminUsers = (p: { q?: string; role?: EcoRole; blocked?: boolean }) => useQuery({
   queryKey: ['admin', 'users', p],
   queryFn: () => api<{ total: number; rows: AdminUserRow[] }>('/admin/users', { query: { q: p.q, role: p.role, blocked: p.blocked === undefined ? undefined : String(p.blocked), limit: 50 } }),
-  refetchInterval: 60_000,
+  refetchInterval: usePollInterval(60_000),
 });
 export const useAdminUser = (id: string) => useQuery({ queryKey: ['admin', 'user', id], queryFn: () => api<AdminUser>(`/admin/users/${id}`), enabled: !!id });
 

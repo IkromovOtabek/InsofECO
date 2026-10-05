@@ -10,6 +10,27 @@ export class ApiException extends Error {
   get code() { return this.body.code; }
 }
 
+/**
+ * Tarmoq so'rovi vaqt chegarasi bilan. RN `fetch` o'zi hech qachon voz kechmaydi: yarim ochiq
+ * mobil aloqada (tunnel, zaif 2G) so'rov cheksiz osilib qoladi — outbox `flushing` bayrog'i
+ * yechilmaydi, refresh va'dasi esa barcha keyingi so'rovlarni ushlab turadi.
+ */
+export async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 30_000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Javob matni JSON bo'lmasa (proksi 502 HTML sahifasi) — SyntaxError emas, `null`. */
+export const parseJsonSafe = (text: string): unknown => { if (!text) return null; try { return JSON.parse(text); } catch { return null; } };
+
+/** Refresh rad etildi (token eskirgan/bekor) — faqat shunda chiqariladi. 5xx/502 (deploy) chiqarib yubormaydi. */
+export const refreshRejected = (status: number) => status === 400 || status === 401 || status === 403;
+
 let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccess(): Promise<string | null> {
@@ -17,8 +38,8 @@ async function refreshAccess(): Promise<string | null> {
   refreshing = (async () => {
     const refreshToken = await secure.get(KEYS.refresh);
     if (!refreshToken) return null;
-    const r = await fetch(`${config.apiUrl}/v1/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }) });
-    if (!r.ok) { await useSession.getState().signOut(); return null; }
+    const r = await fetchWithTimeout(`${config.apiUrl}/v1/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }) }, 15_000);
+    if (!r.ok) { if (refreshRejected(r.status)) await useSession.getState().signOut(); return null; }
     const j = (await r.json()) as { accessToken: string; refreshToken: string };
     await secure.set(KEYS.access, j.accessToken);
     await secure.set(KEYS.refresh, j.refreshToken);
@@ -41,7 +62,8 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
     const org = useSession.getState().active?.organization.id;
     if (org) headers['x-org-id'] = org;
     if (idempotencyKey) headers['idempotency-key'] = idempotencyKey;
-    return fetch(`${config.apiUrl}/v1${path}${qs}`, { method, headers, body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body) });
+    // Fayl yuklash sekin tarmoqda uzoqroq davom etadi
+    return fetchWithTimeout(`${config.apiUrl}/v1${path}${qs}`, { method, headers, body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body) }, form ? 120_000 : 30_000);
   };
 
   let token = auth ? await secure.get(KEYS.access) : null;
@@ -52,8 +74,8 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new ApiException(res.status, (json as ApiError) ?? { code: 'INTERNAL', message: 'Xato' });
+  const json = parseJsonSafe(text);
+  if (!res.ok) throw new ApiException(res.status, (json as ApiError | null) ?? { code: 'INTERNAL', message: 'Xato' });
   return json as T;
 }
 

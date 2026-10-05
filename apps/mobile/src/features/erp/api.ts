@@ -6,6 +6,7 @@ import { config } from '@/core/config';
 import { KEYS, secure } from '@/core/storage';
 import { ApiException } from '@/core/api';
 import type { ApiError } from '@insof/shared';
+import { usePollInterval } from '@/shared/hooks';
 
 /**
  * Bosh sahifa. `params` — karta filtrlari (masalan `{ revenue: 'week' }`). Filtrsiz chaqiruvlar
@@ -15,7 +16,7 @@ export const useErpHome = (params?: Record<string, string>) =>
   useQuery({
     queryKey: params && Object.keys(params).length ? ['erp', 'home', params] : ['erp', 'home'],
     queryFn: () => erpAuth.home(params),
-    refetchInterval: 30_000,
+    refetchInterval: usePollInterval(30_000),
     placeholderData: keepPreviousData,
   });
 
@@ -32,7 +33,7 @@ export const useErpDetail = (key: string, id: string) =>
     queryKey: ['erp', 'detail', key, id],
     queryFn: () => erpAuth.detail(key, id),
     enabled: !!key && !!id,
-    refetchInterval: key === 'trips' ? 30_000 : false,
+    refetchInterval: usePollInterval(key === 'trips' ? 30_000 : false),
   });
 
 /**
@@ -66,7 +67,7 @@ export const useErpTripRoute = (
       return { ...next, lineIncluded: true, line: prev.line, routeMeters: prev.routeMeters, routeSeconds: prev.routeSeconds, routeSource: prev.routeSource };
     },
     enabled: !!id,
-    refetchInterval: 90_000,
+    refetchInterval: usePollInterval(90_000),
   });
 };
 
@@ -75,7 +76,7 @@ export const useErpTripRoute = (
  * (ruxsat berilmagan, telefon o'chiq edi) xodim ro'yxatda ko'radi.
  */
 export const useErpNotifications = () =>
-  useQuery({ queryKey: ['erp', 'notifications'], queryFn: erpAuth.notifications, refetchInterval: 30_000 });
+  useQuery({ queryKey: ['erp', 'notifications'], queryFn: erpAuth.notifications, refetchInterval: usePollInterval(30_000) });
 
 /** Ro'yxat ochilganda hammasi o'qilgan deb belgilanadi. */
 export function useErpReadNotifications() {

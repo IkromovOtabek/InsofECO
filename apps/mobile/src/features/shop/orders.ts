@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiException } from '@/core/api';
 import { useSession } from '@/core/session';
+import { usePollInterval } from '@/shared/hooks';
 import { orderKeys, type Order } from '@/features/orders/api';
 import { shopFetch, type ShopOrderInput, type ShopOrderResult } from './api';
 import type { CartLine } from './cart';
@@ -50,7 +51,7 @@ export function useClientOrders() {
     queryKey: orderKeys.list({}),
     queryFn: () => api<{ items: Order[]; nextCursor: string | null }>('/orders', { query: {} }),
     enabled,
-    refetchInterval: enabled ? 30_000 : false,
+    refetchInterval: usePollInterval(enabled ? 30_000 : false),
   });
   return { ...q, enabled };
 }

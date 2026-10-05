@@ -24,6 +24,10 @@ import { erpAuth } from '@/core/erp';
 import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
 import { afterLogin } from '@/features/shop/after-login';
 import { initMaps } from '@/core/map';
+import { RouteErrorBoundary } from '@/components/route-error';
+
+/** Ekran chizishdagi kutilmagan xato — oq ekran o'rniga "Qayta urinish" (expo-router chegarasi). */
+export { RouteErrorBoundary as ErrorBoundary };
 
 // Yandex MapKit kaliti birinchi xaritadan oldin berilishi shart — ilova ochilishida bir marta
 initMaps();
@@ -193,7 +197,8 @@ export default function RootLayout() {
    * chizishni talab qiladi — shart ichiga olinsa ilova oq ekranda qotib qoladi.
    */
   const [fontsReady] = useFonts(APP_FONTS);
-  useEffect(() => { void hydrate(); }, [hydrate]);
+  // SecureStore (Android Keystore) xatosi sovuq startni "loading" da abadiy qotirmasin — mehmon sifatida ochiladi
+  useEffect(() => { hydrate().catch(() => useSession.setState({ status: 'anon', kind: null })); }, [hydrate]);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* Superadmin ma'lumoti (barcha foydalanuvchilar, telefonlar) diskka yozilmaydi — faqat xotirada */}

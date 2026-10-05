@@ -13,9 +13,12 @@ export function useLivePosition(deliveryId: string | null) {
     void getSocket().then((s) => {
       if (!active) return;
       const handler = (p: LivePosition) => { if (p.deliveryId === deliveryId) setPos(p); };
+      // Qayta ulanganda server xonalarni unutadi — kuzatuv qayta so'raladi
+      const watch = () => { s.emit('watch', { deliveryId }); };
       s.on('position', handler);
-      s.emit('watch', { deliveryId });
-      cleanup = () => { s.off('position', handler); s.emit('unwatch', { deliveryId }); };
+      s.on('connect', watch);
+      if (s.connected) watch();
+      cleanup = () => { s.off('position', handler); s.off('connect', watch); s.emit('unwatch', { deliveryId }); };
     });
     return () => { active = false; cleanup(); };
   }, [deliveryId]);

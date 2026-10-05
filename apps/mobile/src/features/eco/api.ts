@@ -1,9 +1,10 @@
 /** ECO System API hooklari — barcha rollar uchun. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, uuid } from '@/core/api';
+import { usePollInterval } from '@/shared/hooks';
 
 export const q = <T,>(key: unknown[], path: string, opts: { query?: Record<string, string | undefined>; refetchInterval?: number; enabled?: boolean } = {}) =>
-  useQuery({ queryKey: key, queryFn: () => api<T>(path, { query: opts.query }), refetchInterval: opts.refetchInterval, enabled: opts.enabled });
+  useQuery({ queryKey: key, queryFn: () => api<T>(path, { query: opts.query }), refetchInterval: usePollInterval(opts.refetchInterval ?? 30_000), enabled: opts.enabled });
 
 export function useAction<TVars = void, TRes = unknown>(build: (v: TVars) => { path: string; body?: unknown; method?: 'POST' | 'PATCH' }, invalidate: string[] = []) {
   const qc = useQueryClient();

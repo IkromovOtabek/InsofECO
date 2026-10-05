@@ -1,6 +1,6 @@
 import { config } from './config';
 import { KEYS, secure } from './storage';
-import { ApiException } from './api';
+import { ApiException, fetchWithTimeout, parseJsonSafe, refreshRejected } from './api';
 import type { ApiError } from '@insof/shared';
 import { useSession } from './session';
 
@@ -183,10 +183,10 @@ async function refreshAccess(): Promise<string | null> {
   refreshing = (async () => {
     const refreshToken = await secure.get(KEYS.erpRefresh);
     if (!refreshToken) return null;
-    const r = await fetch(`${config.erpUrl}/api/mobile/auth/refresh`, {
+    const r = await fetchWithTimeout(`${config.erpUrl}/api/mobile/auth/refresh`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }),
-    });
-    if (!r.ok) { await useSession.getState().signOut(); return null; }
+    }, 15_000);
+    if (!r.ok) { if (refreshRejected(r.status)) await useSession.getState().signOut(); return null; }
     const j = (await r.json()) as ErpTokens;
     await secure.set(KEYS.erpAccess, j.accessToken);
     await secure.set(KEYS.erpRefresh, j.refreshToken);
@@ -206,7 +206,8 @@ export async function erpApi<T>(path: string, opts: ErpOpts = {}): Promise<T> {
   const doFetch = async (token: string | null) => {
     const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;
-    return fetch(`${config.erpUrl}/api/mobile${path}${qs}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    // Rasm (base64) yuboriladigan formalar uchun chegara kengroq
+    return fetchWithTimeout(`${config.erpUrl}/api/mobile${path}${qs}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }, 60_000);
   };
 
   let token = auth ? await secure.get(KEYS.erpAccess) : null;
@@ -216,7 +217,7 @@ export async function erpApi<T>(path: string, opts: ErpOpts = {}): Promise<T> {
     if (token) res = await doFetch(token);
   }
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+  const json = parseJsonSafe(text);
   // ERP xato kodlari ECO'nikidan boshqa ro'yxat (BAD_CREDENTIALS, FORBIDDEN…) — shakli bir xil,
   // ApiException faqat `code` va `message` ni o'qiydi.
   if (!res.ok) throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
