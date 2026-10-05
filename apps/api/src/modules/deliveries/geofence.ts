@@ -43,8 +43,17 @@ const label = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).to
  * - Obyekt nuqtasi noma'lum bo'lsa tekshirib bo'lmaydi: o'tkazamiz (xatoni haydovchiga emas, zayavkaga yuklash noto'g'ri).
  * - Haydovchi koordinata yubormasa — rad etiladi: "joylashuvsiz o'tadi" bo'shlig'i yopiladi.
  */
+/**
+ * Koordinatasiz so'rov rad etilsinmi. Standart — YO'Q: telefonlardagi eski ilova (OTA bilan yangilab
+ * bo'lmaydi — yangi versiya Yandex native modulini talab qiladi) joylashuv yubormaydi va deploy'dan
+ * keyin haydovchilar reysni yopa olmay qolardi. Yangi ilova tarqalgach `SITE_COORDS_REQUIRED=true`.
+ * Koordinata kelsa 300 m qoidasi har doim qo'llanadi.
+ */
+const coordsRequired = () => (process.env.SITE_COORDS_REQUIRED ?? 'false').toLowerCase() === 'true';
+
 export function assertAtSite(location: LatLng | undefined | null, dest: LatLng | null, action: string) {
   if (!dest) return;
+  if (!location && !coordsRequired()) return;
   if (!location) {
     throw new DomainError('DELIVERY_INVALID_TRANSITION', `«${action}» uchun joylashuv kerak — GPS yoqib, qayta urinib ko'ring`, { reason: 'LOCATION_REQUIRED', radiusM: SITE_RADIUS_M });
   }
