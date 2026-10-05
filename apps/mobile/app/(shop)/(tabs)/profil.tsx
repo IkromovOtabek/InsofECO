@@ -2,23 +2,19 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, ListItem, Txt } from '@/design/primitives';
+import { Card, ListItem, Txt } from '@/design/primitives';
 import { ListGroup, PageHeader, Reveal } from '@/design/blocks';
-import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { elevation, radius, size, space } from '@/design/tokens';
+import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
 import { useLogout } from '@/features/auth/logout';
 import { erpRoleConfig } from '@/features/erp/roles';
-import { InverseGrid } from '@/features/shop/art';
 import { useCart } from '@/features/shop/cart';
 
 const ROLE_GROUP = { TADBIRKOR: '(tadbirkor)', QURUVCHI: '(quruvchi)', HAYDOVCHI: '(haydovchi)' } as const;
 
-/** Hisob nima beradi — ECO kabinetida BOR imkoniyatlar (jonli reys, hisob-kitob, obyektlar). */
-const PERKS = ['Mikser jonli xaritada', 'Hisob-faktura va akt-sverka', 'Bir nechta obyekt va jamoa'];
 
 /**
  * Profil — demo CLIENT[7] (mehmon): to'q karta — hisob foydalari, "Kirish" va "Ro'yxatdan o'tish"
@@ -78,26 +74,7 @@ export default function ShopProfile() {
           </Reveal>
         ) : (
           <Reveal gap={space.lg}>
-            <View style={[{ borderRadius: radius.hero, borderCurve: 'continuous', backgroundColor: c.bgInverse }, elevation(c).hero]}>
-              <View style={{ borderRadius: radius.hero, borderCurve: 'continuous', overflow: 'hidden', padding: space.lg + 2, gap: space.md + 2 }}>
-                <InverseGrid />
-                <Txt v="appbarOverline" style={{ color: c.textOnInverseMuted }}>Insof ECO hisobi</Txt>
-                <Txt v="titleLg" style={{ color: c.textOnInverse }}>Buyurtmalaringizni kuzating, obyektlarni boshqaring</Txt>
-                <View style={{ gap: space.sm }}>
-                  {PERKS.map((p) => (
-                    <View key={p} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                      <Icon name="check" size={size.iconSm} color={c.textOnInverseMuted} strokeWidth={2} />
-                      <Txt v="tSm" style={{ color: c.textOnInverseMuted, flex: 1 }}>{p}</Txt>
-                    </View>
-                  ))}
-                </View>
-                {/* Mehmon uchun ikki yo'l: kirish (raqam/parol yoki kod — login ekranida) va ro'yxatdan o'tish */}
-                <View style={{ gap: space.sm, marginTop: space.xs }}>
-                  <Button title="Kirish" icon="log-in" size="sticky" onPress={() => router.push('/(auth)/login')} />
-                  <Button title="Ro'yxatdan o'tish" variant="secondary" size="sticky" onPress={() => router.push('/(auth)/register')} />
-                </View>
-              </View>
-            </View>
+            {/* Mehmon: kirish/ro'yxatdan o'tish Asosiy sahifa sarlavhasidagi ikonkada */}
             {common}
           </Reveal>
         )}

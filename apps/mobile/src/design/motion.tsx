@@ -27,6 +27,8 @@ export const SPRING_SLIDE = { damping: 18, stiffness: 210, mass: 0.8 } as const;
 export const EASE_ENTER = Easing.bezier(0.2, 0.8, 0.2, 1);
 /** Tab indikatori — demo cubic-bezier(.34,1.45,.64,1) .5s: sezilarli sakrash. */
 export const SPRING_TAB = { damping: 14, stiffness: 190, mass: 0.9 } as const;
+/** Pastki bar tanlov foni — sekin va yumshoq siljish (prujinasiz, sakramaydi). */
+export const TAB_SLIDE = { duration: 420, easing: Easing.bezier(0.25, 0.1, 0.25, 1) } as const;
 /** Ustun o'sishi — demo `grow .8s var(--spring)` (cubic-bezier(.34,1.56,.64,1)): ~10% oshib qaytadi. */
 export const SPRING_GROW = { damping: 11, stiffness: 120, mass: 0.9 } as const;
 

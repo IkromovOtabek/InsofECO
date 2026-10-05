@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { create } from 'zustand';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { Button, IconButton, IconTile, Txt } from '@/design/primitives';
@@ -24,12 +25,17 @@ const PERKS: { icon: IconName; text: string }[] = [
  * ekranida turganda. Foydalanuvchi kirish ekraniga o'tib ketgan bo'lsa taymer to'xtaydi
  * va do'konga qaytganda qaytadan sanaydi — oyna kirish ekrani ostida yashirin ochilib qolmaydi.
  */
+/** Asosiy sahifa sarlavhasidagi ikonka shu oynani ochadi. */
+const useLoginPromptStore = create<{ open: boolean; set: (v: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }));
+export const openLoginPrompt = () => useLoginPromptStore.getState().set(true);
+
 export function LoginPrompt() {
   const router = useRouter();
   const status = useSession((s) => s.status);
   const segments = useSegments() as unknown as string[];
   const inShop = segments[0] === '(shop)';
-  const [open, setOpen] = useState(false);
+  const open = useLoginPromptStore((s) => s.open);
+  const setOpen = useLoginPromptStore((s) => s.set);
 
   useEffect(() => {
     if (status !== 'anon' || !inShop || shownThisLaunch) return;

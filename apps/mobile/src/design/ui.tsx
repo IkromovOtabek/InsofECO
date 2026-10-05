@@ -12,7 +12,7 @@ import i18n from '@/core/i18n';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { StatusMark, SuccessCheck } from './success';
-import { DUR, EASE_STATE, ENTER_DIALOG, ENTER_SHEET, ENTER_TOAST, EXIT_DIALOG, EXIT_LAYER, EXIT_SHEET, EXIT_TOAST, MOVE_ITEM, SPRING_SLIDE, SPRING_TAB, haptic, usePop } from './motion';
+import { DUR, EASE_STATE, ENTER_DIALOG, ENTER_SHEET, ENTER_TOAST, EXIT_DIALOG, EXIT_LAYER, EXIT_SHEET, EXIT_TOAST, MOVE_ITEM, SPRING_SLIDE, SPRING_TAB, TAB_SLIDE, haptic, usePop } from './motion';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { FONT, Palette, Tone, duration, elevation, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
 import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
@@ -205,7 +205,7 @@ export function FloatingTabBar({ state, descriptors, navigation, insets, driver 
     if (!l) return;
     const to = l.x + (l.w - pillW) / 2;
     if (!placed.current || reduce) { x.value = to; placed.current = true; }
-    else x.value = withSpring(to, SPRING_TAB);
+    else x.value = withTiming(to, TAB_SLIDE);
   }, [focusedKey, focusedShown, pillW, reduce, x]);
   useEffect(() => { move(); }, [move]);
   const ind = useAnimatedStyle(() => ({ opacity: x.value < 0 ? 0 : 1, transform: [{ translateX: x.value }] }));

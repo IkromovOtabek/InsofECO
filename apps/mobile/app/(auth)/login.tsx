@@ -190,7 +190,7 @@ export default function Login() {
       <Appear delay={300}>
         <Divider />
         {/* Telegram va telefon-kod — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
-        <SocialLogin onTelegram={() => void tg.start()} onPhoneCode={mode === 'password' ? () => switchMode('phone') : undefined} telegramBusy={tg.starting || tg.waiting} />
+        <SocialLogin onTelegram={() => void tg.start()} telegramBusy={tg.starting || tg.waiting} />
         {tg.waiting ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
             <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
