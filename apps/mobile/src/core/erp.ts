@@ -166,7 +166,47 @@ export interface ErpFleetTruck {
   openIssues: number;
   gps: { lat: number; lng: number; at: string; etaMin: number | null; km: number | null } | null;
 }
-export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: string; list: { key: string; title: string }; create: { key: string; label: string } | null; quick: ErpQuick[]; cards: ErpCard[]; sections: ErpSection[]; live?: ErpLiveTruck[]; fleet?: ErpFleetTruck[] }
+export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: string; list: { key: string; title: string }; create: { key: string; label: string } | null; quick: ErpQuick[]; cards: ErpCard[]; sections: ErpSection[]; live?: ErpLiveTruck[]; fleet?: ErpFleetTruck[];
+  /** Xodimning o'z davomati (bosh sahifa "Keldim / Ketdim" kartasi). Login xodimga bog'lanmagan — null. */
+  selfAttendance?: ErpSelfAttendance | null;
+  /** Rahbar: boshqalarning davomati kartochkasi (`/erp/<key>/<id>`). */
+  attendanceManage?: { title: string; subtitle: string; key: string; id: string } | null }
+
+/** Xodimning bugungi davomati — server `lib/self-attendance.ts` (`SelfAttendance`) bilan bir xil. */
+export interface ErpSelfAttendance {
+  linked: boolean;
+  date: string;
+  state: 'none' | 'in' | 'out' | 'other';
+  /** "Bugun: kelmadingiz", "Keldingiz 08:12", "Ketdingiz 18:05". */
+  label: string;
+  hint: string | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  lateMin: number | null;
+  next: 'in' | 'out' | null;
+  shift: { start: string; end: string };
+  workplace: { lat: number; lng: number; radiusM: number } | null;
+}
+export interface ErpSelfMarkBody {
+  kind: 'in' | 'out'; lat: number; lng: number; accuracy: number | null;
+  biometric: true; method: string; deviceId: string; at: string; mocked: boolean;
+}
+export interface ErpSelfMarkResult { ok: true; already: boolean; message: string; attendance: ErpSelfAttendance }
+export interface ErpMyAttendanceDay {
+  date: string; day: number; weekday: string; weekend: boolean;
+  status: 'PRESENT' | 'ABSENT' | 'LEAVE' | 'SICK' | 'DAYOFF' | null; mark: string | null;
+  checkIn: string | null; checkOut: string | null; minutes: number | null; lateMin: number | null; self: boolean;
+}
+export interface ErpMyAttendance {
+  today: ErpSelfAttendance;
+  month: {
+    month: string; title: string; prev: string; next: string | null;
+    employee: { fullName: string; position: string };
+    shift: { start: string; end: string };
+    totals: { present: number; absent: number; sick: number; leave: number; dayoff: number; minutes: number; lateDays: number; lateMinutes: number };
+    days: ErpMyAttendanceDay[];
+  };
+}
 /** Ro'yxat ustidagi filtr chipi — serverdan keladi (masalan ishlab chiqarish "Zayavkalar"i). */
 export interface ErpListFilter { key: string; label: string; count: number; active: boolean }
 export interface ErpListData { key: string; title: string; rows: ErpRow[]; filters?: ErpListFilter[] }
@@ -266,4 +306,8 @@ export const erpAuth = {
   aiCatalog: () => erpApi<ErpAiCatalog>('/ai'),
   aiQuick: (key: string) => erpApi<ErpAiReply>('/ai', { method: 'POST', body: { mode: 'quick', key } }),
   aiAsk: (question: string, history: ErpAiTurn[]) => erpApi<ErpAiReply>('/ai', { method: 'POST', body: { mode: 'chat', question, history } }),
+  /** "Mening davomatim": bugungi holat va oy (`YYYY-MM`, berilmasa — joriy). Faqat o'ziniki. */
+  myAttendance: (month?: string) => erpApi<ErpMyAttendance>('/attendance/self', { query: { month } }),
+  /** "Keldim" / "Ketdim" — Face ID / barmoq izidan va GPS'dan keyin. Geofence va takror tekshiruvi serverda. */
+  markSelf: (body: ErpSelfMarkBody) => erpApi<ErpSelfMarkResult>('/attendance/self', { method: 'POST', body }),
 };

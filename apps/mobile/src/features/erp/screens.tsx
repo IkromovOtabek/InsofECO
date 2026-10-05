@@ -26,6 +26,7 @@ import { RangeCalendar } from './range-calendar';
 import { ProgressChart } from './charts';
 import { ErpAiChat } from './ai-chat';
 import { DailyReportSheet } from './daily-report';
+import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
@@ -298,6 +299,9 @@ export function ErpHome() {
       setCalOpen(false);
       setParams((prev) => ({ ...prev, [filtered.filterParam!]: 'custom', from, to }));
     };
+
+    // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (Face ID + GPS) va rahbarga "Xodimlar davomati" ──
+    if (data.selfAttendance || data.attendanceManage) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
 
     if (error) blocks.push(<OfflineBanner key="off" visible title="Yangilab bo'lmadi" onRetry={() => void refetch()} />);
 
@@ -794,7 +798,8 @@ export function ErpMenu() {
   const toggleSections = () => setSectionsOpenRaw((v) => { kv.set('erp.menu.sectionsOpen', !v); return !v; });
   React.useEffect(() => { void pinStore.has().then(setHasPin); }, []);
   // Bo'limlar ro'yxati — `/api/mobile/home` dagi `quick`: kompyuterdagi ERP menyusida ko'ringan har bir bo'lim shu yerda ham turadi.
-  const quick = useErpHome().data?.quick ?? [];
+  const homeData = useErpHome().data;
+  const quick = homeData?.quick ?? [];
   const lists = quick.filter((q) => q.kind === 'list');
   const forms = quick.filter((q) => q.kind === 'new');
   // Hisobni o'chirish (do'kon talabi): xodim hisobini direktor bergan — darhol o'chirilmaydi,
@@ -875,6 +880,9 @@ export function ErpMenu() {
         <Appear delay={stagger(3)} style={{ marginTop: space.xl }}>
           <SectionHead title="Ilova" />
           <ListGroup>
+            {homeData?.selfAttendance ? (
+              <ListItem icon="calendar-days" module={module} title="Mening davomatim" subtitle={homeData.selfAttendance.label} onPress={() => router.push('/erp/davomatim' as never)} />
+            ) : null}
             <ListItem icon="settings" module={module} title="Sozlamalar" subtitle="Mavzu, palitra, til va yordam" onPress={() => router.push('/settings' as never)} />
             <ListItem icon="bell" module={module} title="Bildirishnomalar" onPress={() => router.push('/erp/bildirishnomalar' as never)} />
           </ListGroup>

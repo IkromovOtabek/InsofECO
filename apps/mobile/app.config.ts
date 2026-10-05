@@ -10,6 +10,9 @@ const GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? (existsSync('./googl
 // (plugin aks holda NSLocationAlwaysUsageDescription ga inglizcha standart matn yozadi).
 const LOC_WHEN_IN_USE = 'Obyekt manzilini aniqlash va reys holatini belgilash uchun.';
 const LOC_ALWAYS = "Faol reys davomida mashina joylashuvini quruvchi va dispetcherga ko'rsatish uchun (faqat reys vaqtida).";
+// Face ID: xodim o'z telefonidan "Keldim / Ketdim" bosganda shaxsini tasdiqlaydi (kamera ochilmaydi, rasm saqlanmaydi).
+// Bitta matn uchta joyga: infoPlist, expo-local-authentication va expo-secure-store plaginlari (aks holda inglizcha standart).
+const FACE_ID = 'Davomatni tasdiqlash uchun Face ID ishlatiladi';
 
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9';
 
@@ -32,6 +35,7 @@ const config: ExpoConfig = {
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOC_WHEN_IN_USE,
       NSLocationAlwaysAndWhenInUseUsageDescription: LOC_ALWAYS,
+      NSFaceIDUsageDescription: FACE_ID,
       UIBackgroundModes: ['location', 'remote-notification'],
       // "Navigatorda ochish" ro'yxati: iOS faqat shu sxemalar uchun `canOpenURL` ga to'g'ri javob beradi.
       // `src/core/navigate.ts` (APPS) va Android `plugins/withNavigatorQueries.js` bilan bir xil bo'lsin.
@@ -69,8 +73,11 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    // Face ID ishlatilmaydi — plugin qo'shadigan inglizcha NSFaceIDUsageDescription'ni olib tashlaymiz
-    ['expo-secure-store', { faceIDPermission: false }],
+    // Face ID — davomat uchun (expo-local-authentication). Secure-store plagini ham shu o'zbekcha matnni yozsin,
+    // aks holda u NSFaceIDUsageDescription'ni o'chirib/inglizchaga almashtirib qo'yadi.
+    ['expo-secure-store', { faceIDPermission: FACE_ID }],
+    // Android: USE_BIOMETRIC / USE_FINGERPRINT ruxsatlari plagindan; iOS: Face ID matni. Native — yangi build kerak.
+    ['expo-local-authentication', { faceIDPermission: FACE_ID }],
     ['expo-location', {
       locationWhenInUsePermission: LOC_WHEN_IN_USE,
       locationAlwaysAndWhenInUsePermission: LOC_ALWAYS,
