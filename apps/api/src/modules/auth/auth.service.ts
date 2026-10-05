@@ -8,11 +8,27 @@ import { ChangePasswordInput, LoginInput, OtpVerify, RegisterInput, ResetPasswor
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
 import { DomainError } from '../../common/errors/domain.error';
-import { OtpService } from './otp.service';
+import { OtpService, PHONE_TOKEN_TTL_SECONDS } from './otp.service';
 import { avatarPath } from '../users/avatar';
 import { MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
 
 const REFRESH_DAYS = Number(process.env.JWT_REFRESH_TTL_DAYS ?? 30);
+
+/**
+ * Ro'yxatdan o'tishda telefon egaligi (kod) majburiymi. Sukut — ha. `false` faqat o'tish davri uchun:
+ * eski (1.0.0/1.0.1) ilovalar tokensiz yuboradi; `true` bo'lganda ular ro'yxatdan o'ta olmaydi
+ * (kod bilan kirish ishlaydi). Har so'rovda o'qiladi — env o'zgarsa qayta deploy yetarli.
+ */
+const registerOtpRequired = () => (process.env.REGISTER_OTP_REQUIRED ?? 'true').trim().toLowerCase() !== 'false';
+
+/** Ro'yxatdan o'tish so'rovi: umumiy sxema + kod tasdig'idan olingan token. */
+export type RegisterRequest = RegisterInput & { phoneVerificationToken?: string };
+
+const PHONE_NOT_VERIFIED = () => new DomainError(
+  'AUTH_OTP_INVALID',
+  'Telefon raqami tasdiqlanmagan yoki tasdiq muddati tugagan. Raqamga kelgan kodni qayta kiriting (eski ilova bo\'lsa — yangilang)',
+  { reason: 'PHONE_NOT_VERIFIED' },
+);
 
 /** Superadmin bloklagan hisob — hech qaysi usul bilan kira olmaydi. */
 const assertNotBlocked = (u: { blockedAt: Date | null }) => {
@@ -54,19 +70,44 @@ export class AuthService {
     return { ...tokens, user: await this.profile(user.id) };
   }
 
+  /**
+   * Ro'yxatdan o'tish, 2-qadam: kod tekshiriladi. Raqam tizimda yo'q bo'lsa — bir martalik
+   * `phoneVerificationToken` (10 daqiqa, shu raqam va 'register' maqsadiga bog'langan) qaytadi.
+   * Raqam allaqachon bor bo'lsa — egasi kodni to'g'ri kiritdi, demak oddiy kod bilan kirish:
+   * sessiya beriladi (mavjud hisob qayta yaratilmaydi va parol bu yerda qo'yilmaydi).
+   */
+  async verifyRegisterPhone(input: OtpVerify) {
+    await this.otp.verify(input.phone, input.code);
+    const exists = await this.prisma.user.findUnique({ where: { phone: input.phone } });
+    if (exists) return { status: 'existing' as const, ...(await this.signInVerifiedPhone(input.phone, input.device)) };
+    const phoneVerificationToken = await this.otp.issuePhoneToken(input.phone, 'register');
+    return { status: 'verified' as const, phoneVerificationToken, expiresIn: PHONE_TOKEN_TTL_SECONDS };
+  }
+
   /** Parol bilan ro'yxatdan o'tish. Tashkilot/a'zolik rolga qarab yaratiladi. */
-  async register(input: RegisterInput) {
+  async register(input: RegisterRequest) {
+    // Telefon egaligi: kod tasdig'idan olingan token (REGISTER_OTP_REQUIRED=false bo'lsa — eski ilovalar uchun ixtiyoriy).
+    // Busiz begona odam yangi raqamni oldindan egallab, parol qo'yib olardi.
+    const token = input.phoneVerificationToken;
+    if (token ? !(await this.otp.checkPhoneToken(token, input.phone, 'register')) : registerOtpRequired()) throw PHONE_NOT_VERIFIED();
+
     const exists = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (exists?.passwordHash) throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam allaqachon ro\'yxatdan o\'tgan');
-    // Ro'yxatdan o'tishda telefon egaligi tekshirilmaydi (kod yo'q). Parolsiz hisob — Telegram/SMS bilan
-    // kirgan yoki ERP taklif qilgan odam: unga parol qo'yishga ruxsat bersak, raqamni bilgan har kim
-    // o'sha hisobni (a'zoliklari, buyurtmalari bilan) egallab olardi. Egasi kod bilan kiradi,
-    // parolni esa "Parolni unutdim" (kod bilan) orqali qo'yadi.
+    // Parolsiz hisob — Telegram/SMS bilan kirgan yoki ERP taklif qilgan odam: unga parol qo'yishga ruxsat
+    // bersak, raqamni bilgan har kim (eski ilova, token yo'q) o'sha hisobni (a'zoliklari, buyurtmalari bilan)
+    // egallab olardi. Egasi kod bilan kiradi, parolni esa "Parolni unutdim" (kod bilan) orqali qo'yadi.
     if (exists) {
       assertNotBlocked(exists);
       throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam tizimda bor. Telegram yoki SMS kodi bilan kiring; parolni keyin "Parolni unutdim" orqali o\'rnatasiz');
     }
+    if (input.role === 'HAYDOVCHI' && input.plantOrgId) {
+      // Token sarflanishidan oldin: noto'g'ri zavod tufayli foydalanuvchi kodni qayta so'ramasin
+      const plant = await this.prisma.organization.findFirst({ where: { id: input.plantOrgId, type: 'PLANT', deletedAt: null }, select: { id: true } });
+      if (!plant) throw DomainError.notFound('Zavod');
+    }
     const passwordHash = await argon2.hash(input.password);
+    // Bir martalik: parallel ikkinchi so'rov shu tokenni ishlata olmaydi
+    if (token && !(await this.otp.consumePhoneToken(token, input.phone, 'register'))) throw PHONE_NOT_VERIFIED();
 
     // Tranzaksiyadan keyin ERP'ga xabar: haydovchi zavodga o'zi yozildi, yoki ERP'dan taklif qilingan mijoz ilovaga kirdi
     const pending: { registered: MembershipChangedEvent | null; customer: MembershipChangedEvent[] } = { registered: null, customer: [] };

@@ -1,12 +1,18 @@
 import { Body, Controller, HttpCode, Ip, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ChangePasswordInput, ChangePasswordSchema, ForgotPasswordSchema, LoginInput, LoginSchema, OtpRequest, OtpRequestSchema, OtpVerify, OtpVerifySchema, RefreshSchema, RegisterInput, RegisterSchema, ResetPasswordInput, ResetPasswordSchema } from '@insof/shared';
+import { ChangePasswordInput, ChangePasswordSchema, ForgotPasswordSchema, LoginInput, LoginSchema, OtpRequest, OtpRequestSchema, OtpVerify, OtpVerifySchema, RefreshSchema, RegisterSchema, ResetPasswordInput, ResetPasswordSchema } from '@insof/shared';
 import { z } from 'zod';
 import { DeviceInfoSchema } from '@insof/shared';
-import { AuthService } from './auth.service';
+import { AuthService, RegisterRequest } from './auth.service';
 import { TelegramLoginService } from './telegram-login.service';
 import { AuthContext, CurrentUser, Public } from '../../common/auth/decorators';
 import { Zod } from '../../common/validation/zod-validation.pipe';
+
+/**
+ * Ro'yxatdan o'tish: umumiy sxema + `phoneVerificationToken` (POST /auth/register/verify javobi).
+ * Intersection: chap tomon tokenni olib tashlaydi, o'ng tomon faqat tokenni qoldiradi — natija ikkalasi.
+ */
+const RegisterRequestSchema = RegisterSchema.and(z.object({ phoneVerificationToken: z.string().min(20).max(200).optional() }));
 
 const TelegramPollSchema = z.object({ nonce: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/), device: DeviceInfoSchema });
 
@@ -33,10 +39,22 @@ export class AuthController {
     return this.auth.verifyOtp(body);
   }
 
+  /**
+   * Ro'yxatdan o'tish, 2-qadam (kod `otp/request` bilan yuborilgan): kod to'g'ri bo'lsa —
+   * `{ status: 'verified', phoneVerificationToken }` yoki raqam tizimda bor bo'lsa `{ status: 'existing', ...sessiya }`.
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('register/verify')
+  @HttpCode(200)
+  verifyRegisterPhone(@Body(Zod(OtpVerifySchema)) body: OtpVerify) {
+    return this.auth.verifyRegisterPhone(body);
+  }
+
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
-  register(@Body(Zod(RegisterSchema)) body: RegisterInput) {
+  register(@Body(Zod(RegisterRequestSchema)) body: RegisterRequest) {
     return this.auth.register(body);
   }
 
