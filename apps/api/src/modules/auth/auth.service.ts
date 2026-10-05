@@ -6,10 +6,11 @@ import { Prisma } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
 import { ChangePasswordInput, LoginInput, OtpVerify, RegisterInput, ResetPasswordInput } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { RedisService } from '../../infra/redis/redis.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { OtpService } from './otp.service';
 import { avatarPath } from '../users/avatar';
-import { MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent } from '../organizations/organizations.events';
+import { MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
 
 const REFRESH_DAYS = Number(process.env.JWT_REFRESH_TTL_DAYS ?? 30);
 
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly otp: OtpService,
     private readonly events: EventEmitter2,
+    private readonly redis: RedisService,
   ) {}
 
   requestOtp(phone: string, ip: string) {
@@ -56,16 +58,21 @@ export class AuthService {
   async register(input: RegisterInput) {
     const exists = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (exists?.passwordHash) throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam allaqachon ro\'yxatdan o\'tgan');
-    if (exists) assertNotBlocked(exists);
+    // Ro'yxatdan o'tishda telefon egaligi tekshirilmaydi (kod yo'q). Parolsiz hisob — Telegram/SMS bilan
+    // kirgan yoki ERP taklif qilgan odam: unga parol qo'yishga ruxsat bersak, raqamni bilgan har kim
+    // o'sha hisobni (a'zoliklari, buyurtmalari bilan) egallab olardi. Egasi kod bilan kiradi,
+    // parolni esa "Parolni unutdim" (kod bilan) orqali qo'yadi.
+    if (exists) {
+      assertNotBlocked(exists);
+      throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam tizimda bor. Telegram yoki SMS kodi bilan kiring; parolni keyin "Parolni unutdim" orqali o\'rnatasiz');
+    }
     const passwordHash = await argon2.hash(input.password);
 
     // Tranzaksiyadan keyin ERP'ga xabar: haydovchi zavodga o'zi yozildi, yoki ERP'dan taklif qilingan mijoz ilovaga kirdi
     const pending: { registered: MembershipChangedEvent | null; customer: MembershipChangedEvent[] } = { registered: null, customer: [] };
     const user = await this.prisma.$transaction(async (tx) => {
-      // Taklif orqali oldindan yaratilgan (parolsiz) foydalanuvchi bo'lishi mumkin — uni to'ldiramiz
-      const u = exists
-        ? await tx.user.update({ where: { id: exists.id }, data: { fullName: input.fullName, passwordHash } })
-        : await tx.user.create({ data: { phone: input.phone, fullName: input.fullName, passwordHash } });
+      // Oldindan yaratilgan (parolsiz) hisob bu yerga yetib kelmaydi — u kod bilan kiradi (yuqoridagi izoh)
+      const u = await tx.user.create({ data: { phone: input.phone, fullName: input.fullName, passwordHash } });
 
       if (input.role === 'TADBIRKOR' && input.organization) {
         await tx.organization.create({ data: { ...input.organization, memberships: { create: { userId: u.id, role: 'TADBIRKOR' } } } });
@@ -87,7 +94,6 @@ export class AuthService {
     });
     for (const ev of pending.customer) this.events.emit(ORG_EVENTS.membershipChanged, ev);
     if (pending.registered) this.events.emit(ORG_EVENTS.membershipChanged, pending.registered);
-    else if (exists) this.events.emit(ORG_EVENTS.userUpdated, { userId: user.id, byUserId: null } satisfies UserUpdatedEvent); // taklif qilingan haydovchi ismini kiritdi
 
     await this.touchDevice(user.id, input.device);
     const tokens = await this.issueSession(user.id, input.device.deviceId, randomUUID());
@@ -122,6 +128,10 @@ export class AuthService {
 
   /** Telefon + parol. Xato xabari bir xil (raqam bor/yo'qligini oshkor qilmaydi). */
   async login(input: LoginInput) {
+    // Raqam bo'yicha cheklov: IP bo'yicha throttle tarqatilgan (ko'p IP'dan) parol terishni to'xtatmaydi
+    if (!(await this.redis.allow(`login:p:${input.phone}`, 20, 900))) {
+      throw new DomainError('AUTH_OTP_RATE_LIMIT', 'Juda ko\'p urinish. 15 daqiqadan keyin qayta urinib ko\'ring yoki kod bilan kiring');
+    }
     const user = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, input.password))) {
       throw new DomainError('AUTH_BAD_CREDENTIALS', 'Telefon yoki parol noto\'g\'ri');

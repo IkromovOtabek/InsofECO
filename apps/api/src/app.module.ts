@@ -44,7 +44,8 @@ import { HealthController } from './health.controller';
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
-        redact: ['req.headers.authorization', 'req.body.phone', 'req.body.code'],
+        // ERP integratsiyasining API kaliti ham log'ga tushmasin (authorization — Payme Basic ham shu yerda)
+        redact: ['req.headers.authorization', 'req.headers["x-api-key"]', 'req.headers.cookie', 'req.body.phone', 'req.body.code'],
         transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
       },
     }),
