@@ -30,7 +30,7 @@ export class DeliveriesController {
     return this.deliveries.sign(a, id, b, key);
   }
 
-  /** Haydovchi: quruvchi ilovasiz — SMS-kod bilan yakunlash. */
+  /** Haydovchi: quruvchi ilovasiz — qabul kodi (mijozning Telegram'iga) bilan yakunlash. */
   @Post(':id/sign/by-otp') @HttpCode(200)
   signByOtp(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(SignDeliverySchema)) b: z.infer<typeof SignDeliverySchema>, @Headers('idempotency-key') key?: string) {
     return this.deliveries.sign(a, id, b, key);

@@ -14,7 +14,7 @@ Reys yaratildi ──PUT /v1/erp/trips/:ref──────▶  Order+Delivery
 "Yuklandi"     ──POST …/status {LOADING}────▶  ACCEPTED→LOADING (avtomatik)        
                                                 ◀── Haydovchi: EN_ROUTE, ARRIVED… ◀── tugma bosdi
 /api/eco/webhook ◀──POST (HMAC imzo)──────────  delivery.status_changed
-Trip: LOADED / ON_ROAD / DELIVERED               COMPLETED (imzo/SMS-kod)
+Trip: LOADED / ON_ROAD / DELIVERED               COMPLETED (imzo/qabul kodi)
 ```
 
 ## Kirish: integratsiya kaliti (IntegrationClient)

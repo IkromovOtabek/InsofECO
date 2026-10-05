@@ -70,7 +70,7 @@ export default function AdminUser() {
 
               <KVList rows={[
                 { label: 'Faol seanslar', value: String(u.activeSessions) },
-                { label: 'Parol', value: u.hasPassword ? "o'rnatilgan" : "yo'q (SMS/Telegram)" },
+                { label: 'Parol', value: u.hasPassword ? "o'rnatilgan" : "yo'q (Telegram kodi)" },
                 { label: 'Til', value: u.locale },
                 { label: "Ro'yxatdan o'tgan", value: fmtDateFull(u.createdAt) },
                 { label: 'Seanslar yopilgan', value: u.tokensValidAfter ? fmtDateFull(u.tokensValidAfter) : '—' },

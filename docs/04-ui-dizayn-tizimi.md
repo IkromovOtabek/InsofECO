@@ -37,7 +37,7 @@ Masshtab: spacing 4-lik (`4, 8, 12, 16, 20, 24, 32`), radius `sm 8 / md 12 / lg 
 ## 4. Ekranlar ro'yxati (MVP)
 
 ### Umumiy
-- Splash → Telefon kiritish → OTP (6 katak, avto-o'qish SMS Android'da) → Rol tanlash (agar > 1) → Ruxsatlar onboarding (push; haydovchi: joylashuv)
+- Splash → Telefon kiritish → OTP (6 katak; kod Telegram'ga keladi, nusxalab qo'yish) → Rol tanlash (agar > 1) → Ruxsatlar onboarding (push; haydovchi: joylashuv)
 
 ### Tadbirkor
 1. **Bosh** — 4 ta KPI (bugun m³, faol reyslar, tasdiq kutayotgan, qarzdorlik), mashinalar holati lentasi, oxirgi hodisalar.
@@ -57,7 +57,7 @@ Masshtab: spacing 4-lik (`4, 8, 12, 16, 20, 24, 32`), radius `sm 8 / md 12 / lg 
 ### Haydovchi
 1. **Bugun** — reyslar ro'yxati (vaqt, obyekt, hajm, marka); navbatdagi reys ustida katta "Qabul qilish".
 2. **Faol reys** — ekranning yarmi: xarita + "Navigatsiya" (Yandex/Google ga chiqadi) + "Qo'ng'iroq"; pastki yarmi: **bitta katta holat tugmasi** (keyingi holat nomi bilan: "Yo'lga chiqdim" → "Yetib keldim" → "Tushirishni boshladim" → "Tugatdim"). Kichik: "Muammo" (sheet: nosozlik / yo'l / boshqa + foto).
-3. **Yakunlash** — nakladnoy foto, quruvchi imzosi (telefonni uzatadi) yoki SMS-kod, "Yuborish".
+3. **Yakunlash** — nakladnoy foto, quruvchi imzosi (telefonni uzatadi) yoki qabul kodi (mijozning Telegram'iga), "Yuborish".
 4. **Tarix** — o'tgan reyslar, kunlik jami m³.
 
 ## 5. Holat ranglari (chip)

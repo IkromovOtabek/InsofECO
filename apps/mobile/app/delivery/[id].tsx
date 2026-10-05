@@ -132,7 +132,7 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
   /** Obyektda bo'lishi shart bo'lgan holatlar — server ham tekshiradi (deliveries/geofence.ts). */
   const SITE_DONE: Partial<Record<DeliveryStatus, { action: string; title: string; text: string }>> = {
     ARRIVED: { action: 'Yetib keldim', title: 'Obyektga yetib keldingiz', text: 'Mijozga xabar ketdi. Tayyor bo\'lsangiz — «Tushirishni boshladim».' },
-    UNLOADING: { action: 'Tushirishni boshladim', title: 'Tushirish boshlandi', text: 'Tugagach quruvchi imzolaydi yoki SMS-kodni kiritasiz.' },
+    UNLOADING: { action: 'Tushirishni boshladim', title: 'Tushirish boshlandi', text: 'Tugagach quruvchi imzolaydi yoki qabul kodini kiritasiz.' },
   };
 
   const go = async (to: DeliveryStatus) => {
@@ -168,9 +168,9 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
     return (
       <Card>
         <Txt v="titleSm">Yakunlash</Txt>
-        <Txt color="muted">Quruvchi o'z telefonida imzolaydi. Ilovasi bo'lmasa — SMS-kod:</Txt>
+        <Txt color="muted">Quruvchi o'z telefonida imzolaydi. Ilovasi bo'lmasa — uning Telegram'iga keladigan qabul kodi:</Txt>
         <Gap />
-        {otpSent ? <Txt v="caption">Kod {otpSent} raqamiga yuborildi</Txt> : <Button title="Quruvchiga SMS-kod yuborish" variant="secondary" icon="send" onPress={() => requestAcceptOtp(d.id).then((r) => setOtpSent(r.sentTo)).catch(err)} />}
+        {otpSent ? <Txt v="caption">Kod {otpSent} raqamining Telegram'iga yuborildi</Txt> : <Button title="Quruvchiga Telegram orqali kod yuborish" variant="secondary" icon="send" onPress={() => requestAcceptOtp(d.id).then((r) => setOtpSent(r.sentTo)).catch(err)} />}
         <Gap />
         <Input label="Quruvchi aytgan 4 xonali kod" mono value={otp} onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" />
         <Button title={t('driver.UNLOADING')} size="xl" icon="check-check" disabled={otp.length !== 4} loading={sign.isPending} onPress={() => sign.mutate({ otpCode: otp, acceptedM3: Number(d.loadedM3 ?? d.plannedM3) }, { onError: err })} />

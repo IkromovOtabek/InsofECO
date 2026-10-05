@@ -16,7 +16,7 @@ import { DomainError } from '../../common/errors/domain.error';
  *      → nonce "tasdiqlandi" + telefon.
  *   4. Ilova `poll` qiladi; tasdiqlangan nonce BIR MARTA sessiyaga almashtiriladi va o'chiriladi.
  *
- * Telefon Telegram tomonidan tasdiqlangan — SMS-kod bilan bir xil ishonch darajasi, shuning uchun
+ * Telefon Telegram tomonidan tasdiqlangan — bir martalik kod bilan bir xil ishonch darajasi, shuning uchun
  * keyingi qadam (foydalanuvchi yaratish/topish) OTP bilan kirish bilan aynan bir xil.
  */
 

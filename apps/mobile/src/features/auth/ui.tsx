@@ -16,7 +16,7 @@ const LOGO_RATIO = 970 / 210;
 
 /**
  * Autentifikatsiya ekranlarining umumiy bo'laklari — umumiy dizayn tizimida (yorug'/qorong'i
- * tizim sozlamasiga ergashadi). Kirish, ro'yxat, SMS kod, parol tiklash va PIN shu yerdan quriladi.
+ * tizim sozlamasiga ergashadi). Kirish, ro'yxat, Telegram kodi, parol tiklash va PIN shu yerdan quriladi.
  */
 
 /** "+998" prefiksi — telefon maydoni yonida, input balandligida; yumshoq muted plitka, chegarasiz. */

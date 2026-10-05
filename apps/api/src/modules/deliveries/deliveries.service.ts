@@ -16,7 +16,7 @@ import {
   canTransition,
 } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
-import { SmsPort } from '../../infra/sms/sms.port';
+import { TelegramGatewayService, devCodeAllowed, maskPhone } from '../../infra/telegram-gateway/telegram-gateway.service';
 import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { tashkentDayRange } from '../../common/time';
@@ -38,7 +38,7 @@ export class DeliveriesService {
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
     private readonly orders: OrdersService,
-    private readonly sms: SmsPort,
+    private readonly telegram: TelegramGatewayService,
     @InjectQueue(SLA_QUEUE) private readonly slaQueue: Queue,
     private readonly storage: StorageService,
   ) {}
@@ -90,7 +90,7 @@ export class DeliveriesService {
       throw new DomainError('DELIVERY_INVALID_TRANSITION', `${from} → ${input.to} (${role}) mumkin emas`, { from, to: input.to, current: from });
     }
     if (input.to === 'COMPLETED' && role === 'HAYDOVCHI') {
-      throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Yakunlash uchun quruvchi imzosi yoki SMS-kod kerak (POST /sign)');
+      throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Yakunlash uchun quruvchi imzosi yoki qabul kodi kerak (POST /sign)');
     }
     // "Yetib keldim" / "Tushirishni boshladim" — faqat obyekt yonida. Dispetcher (TADBIRKOR)
     // override qila oladi: u telefonda emas, ofisda turib holatni to'g'rilaydi.
@@ -133,7 +133,7 @@ export class DeliveriesService {
     return updated;
   }
 
-  /** Quruvchi imzosi yoki (haydovchi kiritgan) SMS-kod bilan yakunlash. */
+  /** Quruvchi imzosi yoki (haydovchi kiritgan) qabul kodi bilan yakunlash. */
   async sign(a: AuthContext, id: string, input: SignInput, clientEventId?: string) {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirilayotgan reys imzolanadi');
@@ -142,16 +142,16 @@ export class DeliveriesService {
     const signatureKey = await this.storage.verifyKey(a.userId, input.signatureKey, ['signature']);
 
     if (role === 'HAYDOVCHI') {
-      // Haydovchi telefonidan: faqat SMS-kod bilan (quruvchi ilovasiz holat)
+      // Haydovchi telefonidan: faqat qabul kodi bilan (quruvchi ilovasiz holat; kod mijozning Telegram'iga boradi)
       if (!input.otpCode || !d.acceptOtpHash || !(await argon2.verify(d.acceptOtpHash, input.otpCode))) {
-        throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'SMS-kod noto\'g\'ri');
+        throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Qabul kodi noto\'g\'ri');
       }
     } else if (!signatureKey) {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Imzo kerak');
     }
 
     // Qabul qilingan hajm yuklangandan (yoki rejadan) ko'p bo'lolmaydi: faktura shu hajm bo'yicha yoziladi —
-    // haydovchi SMS-kod bilan yakunlaganda xato/ataylab katta son mijozga ortiqcha schyot bo'lardi.
+    // haydovchi qabul kodi bilan yakunlaganda xato/ataylab katta son mijozga ortiqcha schyot bo'lardi.
     const maxM3 = Prisma.Decimal.max(d.loadedM3 ?? d.plannedM3, d.plannedM3);
     if (new Prisma.Decimal(input.acceptedM3).gt(maxM3)) {
       throw new DomainError('VALIDATION', `Qabul qilingan hajm ${maxM3.toString()} m³ dan oshmasin`, { acceptedM3: input.acceptedM3, maxM3: maxM3.toNumber() });
@@ -174,19 +174,31 @@ export class DeliveriesService {
     return updated;
   }
 
-  /** Quruvchi ilovasiz bo'lsa: haydovchi so'raydi → mijoz telefoniga 4 xonali kod. */
+  /**
+   * Quruvchi ilovasiz bo'lsa: haydovchi so'raydi → mijoz raqamining Telegram'iga (Telegram Gateway)
+   * 4 xonali kod. SMS yo'q. Dev (Gateway yo'q, prod emas) — kod `0000`, hech narsa yuborilmaydi.
+   * Bu yerda xato ochiq aytiladi: chaqiruvchi — tizimga kirgan haydovchi, u kelmaydigan kodni kutmasin.
+   */
   async requestAcceptOtp(a: AuthContext, id: string) {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida');
     const client = await this.prisma.membership.findFirst({ where: { organizationId: d.order.clientOrgId, isActive: true, ...VISIBLE_MEMBER }, include: { user: true }, orderBy: { createdAt: 'asc' } });
     if (!client) throw DomainError.notFound('Mijoz');
-    const code = (process.env.SMS_PROVIDER ?? 'FAKE') === 'FAKE' ? '0000' : String(randomInt(0, 10_000)).padStart(4, '0');
+    const dev = devCodeAllowed(this.telegram.enabled);
+    if (!this.telegram.enabled && !dev) {
+      this.logger.warn(`Qabul kodi yuborilmadi ${maskPhone(client.user.phone)}: TELEGRAM_GATEWAY_TOKEN sozlanmagan`);
+      throw new DomainError('AUTH_OTP_SEND_FAILED', 'Qabul kodini Telegram orqali yuborish sozlanmagan. Quruvchi ilovada imzolasin yoki logistga ayting');
+    }
+    const code = dev ? '0000' : String(randomInt(0, 10_000)).padStart(4, '0');
     await this.prisma.delivery.update({ where: { id }, data: { acceptOtpHash: await argon2.hash(code) } });
-    try {
-      await this.sms.send(client.user.phone, `Insof ECO: №${d.order.number} reys ${d.sequence} qabul kodi ${code}`);
-    } catch (e) {
-      // Haydovchi kelmaydigan kodni kutib turmasin — darhol aytamiz
-      throw new DomainError('AUTH_OTP_SEND_FAILED', 'Mijozga SMS yuborilmadi. Qayta urinib ko\'ring yoki logistga ayting', { cause: String(e) });
+    if (!dev) {
+      try {
+        await this.telegram.sendCode(client.user.phone, code, 1800);
+      } catch (e) {
+        // Haydovchi kelmaydigan kodni kutib turmasin — darhol aytamiz
+        this.logger.warn(`Qabul kodi yuborilmadi ${maskPhone(client.user.phone)}: ${e instanceof Error ? e.message : String(e)}`);
+        throw new DomainError('AUTH_OTP_SEND_FAILED', 'Mijozga kod Telegram orqali yuborilmadi (raqamda Telegram yo\'q bo\'lishi mumkin). Quruvchi ilovada imzolasin yoki logistga ayting');
+      }
     }
     return { sentTo: client.user.phone.replace(/(\+998\d{2})\d{5}(\d{2})/, '$1*****$2') };
   }

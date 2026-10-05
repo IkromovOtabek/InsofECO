@@ -752,7 +752,7 @@ export class ErpService {
   /**
    * Mijoz — CONTRACTOR tashkilot. Izlash tartibi: ERP kartasi id (externalRef) → INN → nom.
    * externalRef birinchi o'rinda, chunki ERP'da mijoz nomi yoki INN'i o'zgarishi mumkin,
-   * id esa o'zgarmaydi. Telefon bo'lsa — QURUVCHI a'zo (SMS qabul kodi uchun).
+   * id esa o'zgarmaydi. Telefon bo'lsa — QURUVCHI a'zo (Telegram qabul kodi uchun).
    */
   private async ensureClient(plantOrgId: string, c: ErpTripInput['customer']) {
     // Izlash faqat SHU zavod mijozlari ichida: boshqa zavodning bir xil id/INN/nomli mijozi bilan qo'shilib ketmaydi

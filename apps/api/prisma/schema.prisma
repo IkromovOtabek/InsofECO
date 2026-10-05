@@ -427,7 +427,7 @@ model Delivery {
   slaBreached    Boolean        @default(false)
   signatureKey   String?
   waybillPhotoKey String?
-  /// Quruvchi ilovasiz bo'lsa — SMS orqali qabul kodi
+  /// Quruvchi ilovasiz bo'lsa — mijozning Telegram'iga (Gateway) yuborilgan qabul kodi xeshi
   acceptOtpHash  String?
   disputeReason  String?
   disputeComment String?

@@ -55,7 +55,7 @@ export class AuthService {
   }
 
   /**
-   * Telefon egaligi tasdiqlangan (SMS-kod yoki Telegram kontakti) — hisob bo'lmasa yaratiladi,
+   * Telefon egaligi tasdiqlangan (Telegram kodi yoki Telegram bot kontakti) — hisob bo'lmasa yaratiladi,
    * rol keyin tanlanadi. `fullName` faqat yangi hisobga yoziladi, mavjudini almashtirmaydi.
    */
   async signInVerifiedPhone(phone: string, device: OtpVerify['device'], fullName?: string) {
@@ -93,12 +93,12 @@ export class AuthService {
 
     const exists = await this.prisma.user.findUnique({ where: { phone: input.phone } });
     if (exists?.passwordHash) throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam allaqachon ro\'yxatdan o\'tgan');
-    // Parolsiz hisob — Telegram/SMS bilan kirgan yoki ERP taklif qilgan odam: unga parol qo'yishga ruxsat
+    // Parolsiz hisob — Telegram kodi bilan kirgan yoki ERP taklif qilgan odam: unga parol qo'yishga ruxsat
     // bersak, raqamni bilgan har kim (eski ilova, token yo'q) o'sha hisobni (a'zoliklari, buyurtmalari bilan)
     // egallab olardi. Egasi kod bilan kiradi, parolni esa "Parolni unutdim" (kod bilan) orqali qo'yadi.
     if (exists) {
       assertNotBlocked(exists);
-      throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam tizimda bor. Telegram yoki SMS kodi bilan kiring; parolni keyin "Parolni unutdim" orqali o\'rnatasiz');
+      throw new DomainError('AUTH_PHONE_TAKEN', 'Bu raqam tizimda bor. Telegram orqali kelgan kod bilan kiring; parolni keyin "Parolni unutdim" orqali o\'rnatasiz');
     }
     if (input.role === 'HAYDOVCHI' && input.plantOrgId) {
       // Token sarflanishidan oldin: noto'g'ri zavod tufayli foydalanuvchi kodni qayta so'ramasin
@@ -142,7 +142,7 @@ export class AuthService {
   }
 
   /**
-   * Kirgan foydalanuvchi o'zini mijoz (quruvchi) qiladi — Telegram/SMS orqali parolsiz kirgan va
+   * Kirgan foydalanuvchi o'zini mijoz (quruvchi) qiladi — Telegram orqali parolsiz kirgan va
    * hali roli yo'q odam uchun (aks holda "rol biriktirilmagan" ekranida qolib ketardi).
    * Faqat QURUVCHI: tadbirkor/haydovchi zavod tasdig'ini talab qiladi, ular oddiy ro'yxatdan o'tadi.
    */
@@ -187,9 +187,11 @@ export class AuthService {
 
   /** 1-qadam: raqamga kod yuborish. Raqam bor-yo'qligi oshkor qilinmaydi — javob bir xil. */
   async forgotPassword(phone: string, ip: string) {
+    // Chek har ikki holatda bir xil — "juda ko'p urinish" faqat mavjud raqamda chiqmasin
+    await this.otp.assertRate(phone, ip);
     const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user) return { retryAfter: 60, channel: this.otp.defaultChannel }; // hisob yo'q — baribir "yubordik" deymiz
-    return this.otp.request(phone, ip);
+    if (!user) return this.otp.neutralResponse; // hisob yo'q — baribir "yubordik" deymiz (kod yaratilmaydi)
+    return this.otp.requestWithoutRate(phone);
   }
 
   /**

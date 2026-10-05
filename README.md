@@ -45,7 +45,7 @@ Eslatmalar:
 - `prisma migrate dev` interaktiv; CI/skriptlarda `prisma:deploy` ishlatiladi. Yangi migratsiya: `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<vaqt>_<nom>/migration.sql`.
 - Mobil ilova real qurilmada ishlashi uchun `EXPO_PUBLIC_API_URL=http://<kompyuter-IP>:3010` bering.
 
-Seed foydalanuvchilar (OTP dev rejimida har doim `000000`):
+Seed foydalanuvchilar (dev rejimida — `NODE_ENV` production emas va `TELEGRAM_GATEWAY_TOKEN` bo'sh — kod hech qayerga yuborilmaydi, OTP har doim `000000`):
 
 | Rol | Telefon |
 |---|---|
@@ -90,6 +90,9 @@ S3_ACCESS_KEY=$S3KEY
 S3_SECRET_KEY=$S3SEC
 JWT_PRIVATE_KEY=$(awk 'BEGIN{ORS="\\n"}1' /tmp/jwt.key)
 JWT_PUBLIC_KEY=$(awk 'BEGIN{ORS="\\n"}1' /tmp/jwt.pub)
+# Bir martalik kodlar FAQAT Telegram Gateway orqali (SMS yo'q): https://gateway.telegram.org → API token
+TELEGRAM_GATEWAY_TOKEN=
+# TELEGRAM_GATEWAY_SENDER=   # ixtiyoriy: tasdiqlangan kanal username'i (@ siz)
 EOF
 rm -f /tmp/jwt.key /tmp/jwt.pub && chmod 600 apps/api/.env
 # Eski qatorlar ikki marta yozilgan bo'lishi mumkin — oxirgisi kuchga kiradi, lekin tekshirib chiqing:

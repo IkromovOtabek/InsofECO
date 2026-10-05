@@ -12,7 +12,7 @@ import { AuthScreen, ErrorBox, FooterLink, InfoCard, PhonePrefix, PrimaryButton,
 /**
  * Parolni tiklash — 1-qadam: raqamga kod yuborish.
  *
- * Kod Telegram'ga (Telegram bo'lmasa SMS) yuboriladi; elektron pochta kanali ham bor, lekin tizimda foydalanuvchining pochtasi
+ * Kod faqat Telegram'ga (Telegram Gateway) yuboriladi, SMS yo'q; elektron pochta kanali ham bor, lekin tizimda foydalanuvchining pochtasi
  * saqlanmaydi, shuning uchun pochta varianti ko'rsatiladi-yu, tanlanmaydi —
  * uning o'rniga administratorga murojaat qilish yo'li yozilgan.
  */
@@ -46,7 +46,7 @@ export default function Forgot() {
         <ListGroup>
           <ListItem
             leading={<IconTile icon="send" module="brand" />}
-            title="Telegram yoki SMS orqali"
+            title="Telegram orqali kod"
             subtitle={local ? `+998 ${local}` : '+998 …'}
             right={<Badge label="Tanlangan" tone="success" icon="check" />}
           />

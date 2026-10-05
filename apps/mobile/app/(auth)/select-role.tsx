@@ -77,7 +77,7 @@ export default function SelectRole() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
-  /** Telegram/SMS bilan kirgan yangi odam — mijoz sifatida darhol davom etadi. */
+  /** Telegram (kod yoki bot) orqali kirgan yangi odam — mijoz sifatida darhol davom etadi. */
   const asCustomer = async () => {
     setBusy(true); setError(undefined);
     try {

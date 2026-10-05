@@ -1,4 +1,4 @@
-// .env ni modullar dekoratorlari baholanishidan OLDIN yuklash shart (BullModule/JwtModule/SmsModule import vaqtida env o'qiydi)
+// .env ni modullar dekoratorlari baholanishidan OLDIN yuklash shart (BullModule/JwtModule import vaqtida env o'qiydi)
 import 'dotenv/config';
 /**
  * Fon ishlari prosessi. Hozircha SlaProcessor API bilan bir prosessda ham ishlaydi (BullModule).

@@ -29,7 +29,7 @@ flowchart TB
   W[BullMQ Workers] --> R
   W --> PG
   W --> PUSH[Expo Push → FCM/APNs]
-  W --> SMS[Eskiz SMS]
+  W --> TG[Telegram Gateway]
   PAY[Payme / Click] -->|webhook| GW
 ```
 
@@ -47,7 +47,7 @@ apps/api/src
 │   ├── prisma/             PrismaService
 │   ├── redis/
 │   ├── storage/            S3 presigned URLs
-│   ├── sms/                SmsPort + EskizAdapter + FakeAdapter
+│   ├── telegram-gateway/   bir martalik kodlar (OTP, qabul kodi) — SMS yo'q
 │   └── push/               PushPort + ExpoAdapter
 └── modules/
     ├── auth/               OTP so'rash, tasdiqlash, refresh, logout
@@ -60,7 +60,7 @@ apps/api/src
     ├── deliveries/         reys state machine, imzo, foto, nizo
     ├── tracking/           WS gateway, GPS ingest, geofence
     ├── billing/            faktura, to'lov, Payme/Click webhook, qarz
-    ├── notifications/      push + SMS + in-app, shablonlar
+    ├── notifications/      push + in-app, shablonlar
     └── reports/            agregatlar (kunlik ishlab chiqarish, utilization)
 ```
 
@@ -144,7 +144,7 @@ POST   /v1/files/presign            { contentType, purpose } → { url, key }
 | Queue | Ish | Trigger |
 |---|---|---|
 | `sla` | 90-daqiqa tekshiruvi | `delivery.en_route` da delayed job (t+90m) |
-| `notify` | push / SMS yuborish | domen hodisalari |
+| `notify` | push yuborish | domen hodisalari |
 | `geofence` | `ARRIVED` avtomatik | har GPS nuqtada (throttle 30 s) |
 | `reports` | kunlik agregatlar | cron 00:10 |
 | `gps-archive` | eski nuqtalarni siqish | cron haftalik |

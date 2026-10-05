@@ -169,7 +169,7 @@ Biznes qoidalari (beton texnologiyasi):
 - **90 daqiqa qoidasi:** `EN_ROUTE` dan `UNLOADING` gacha 90 daqiqadan oshsa — reys `SLA_BREACH` bayrog'i oladi, Tadbirkor va Quruvchiga push. (Sozlanadi: yozda 60 daq.)
 - GPS faqat `ACCEPTED…UNLOADING` oralig'ida yig'iladi (batareya va shaxsiy hayot).
 - `ARRIVED` avtomatik: mashina obyektdan 200 m radiusga kirsa (server tomonda geofence), lekin haydovchi qo'lda ham bosa oladi.
-- `COMPLETED` uchun Quruvchi imzosi (ekranga chizilgan) yoki OTP-kod (agar quruvchi ilovasiz bo'lsa — SMS orqali 4 xonali kod, haydovchi kiritadi).
+- `COMPLETED` uchun Quruvchi imzosi (ekranga chizilgan) yoki OTP-kod (agar quruvchi ilovasiz bo'lsa — mijoz raqamining Telegram'iga (Telegram Gateway) 4 xonali kod, haydovchi kiritadi).
 - Bir haydovchida bir vaqtda faqat **bitta** faol reys.
 
 ### 4.3 Qurilish obyekti (Qishloq qurilishi)
@@ -218,7 +218,7 @@ Shu sababli: hech qayerda "bitta zavod" deb hardcode qilinmaydi.
 
 | Ehtiyoj | Provayder | Izoh |
 |---|---|---|
-| SMS OTP | Eskiz.uz (yoki Play Mobile) | Telefon raqam bilan kirish — parol yo'q |
+| Bir martalik kod (OTP) | Telegram Gateway (`TELEGRAM_GATEWAY_TOKEN`) — SMS yo'q (Insof ERP bilan bir xil) | Telefon raqam bilan kirish, ro'yxat, parolni tiklash, reys qabul kodi |
 | To'lov | Payme, Click | Webhook + idempotency |
 | Xarita | Google Maps (iOS/Android), Yandex (navigatsiya uchun deep-link) | Qishloqda Yandex aniqroq |
 | Push | Expo Push → FCM (Samsung) / APNs (Apple) | |
@@ -233,6 +233,6 @@ Shu sababli: hech qayerda "bitta zavod" deb hardcode qilinmaydi.
 |---|---|
 | Haydovchi telefonida internet yo'q | Offline navbat: holat o'zgarishlari lokal saqlanadi, ulanganda yuboriladi (idempotent event ID bilan) |
 | Batareya (fon GPS) | Faqat faol reysda, 15 s / 50 m interval, harakat bo'lmasa to'xtatiladi |
-| Quruvchi ilovani o'rnatmaydi | SMS-OTP bilan qabul qilish; web-link orqali kuzatish (keyingi bosqich) |
+| Quruvchi ilovani o'rnatmaydi | Telegram orqali qabul kodi bilan qabul qilish; web-link orqali kuzatish (keyingi bosqich) |
 | Nizolar ("kam keldi") | Har reysda foto + imzo + GPS izi + vaqt tamg'alari — dalil bazasi |
 | Rollar aralashib ketishi | Membership modeli, bitta akkaunt → bir nechta tashkilot/rol, rol tanlash ekrani |

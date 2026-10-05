@@ -31,7 +31,7 @@ export const SignDeliverySchema = z
     acceptedM3: z.number().positive(),
     note: z.string().max(500).optional(),
   })
-  .refine((v) => v.signatureKey || v.otpCode, { message: 'Imzo yoki SMS-kod kerak' });
+  .refine((v) => v.signatureKey || v.otpCode, { message: 'Imzo yoki qabul kodi kerak' });
 
 export const DisputeDeliverySchema = z.object({
   reason: z.enum(['VOLUME', 'QUALITY', 'LATE', 'OTHER']),

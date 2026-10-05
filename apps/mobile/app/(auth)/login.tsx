@@ -17,7 +17,7 @@ import { afterLogin } from '@/features/shop/after-login';
 
 /**
  * Kirish oynasi — ikki usul, yuqoridagi tanlagich bilan:
- *   «Telefon raqam»   → raqamga 6 xonali kod (Telegram Gateway, Telegram'i yo'q raqamga SMS) → /otp;
+ *   «Telefon raqam»   → raqamning Telegram'iga 6 xonali kod (Telegram Gateway; SMS yo'q) → /otp;
  *   «Login va parol»  → quyidagicha.
  *
  * Login-parol rejimida bitta maydon ikkala tizimga xizmat qiladi:
@@ -58,7 +58,7 @@ export default function Login() {
 
   /**
    * Ortga — har doim do'konga (E-commerce). `router.back()` yetmaydi: login ko'pincha
-   * `replace` bilan ochiladi (ro'yxat, SMS, parolni tiklash ekranlaridan) va tarix bo'sh
+   * `replace` bilan ochiladi (ro'yxat, kod, parolni tiklash ekranlaridan) va tarix bo'sh
    * bo'ladi. `dismissTo` do'kon tarixda bo'lsa unga qaytadi, bo'lmasa uni o'rniga qo'yadi.
    */
   // Mahsulotdan "Buyurtma berish" orqali kelgan bo'lsa — o'sha mahsulotga qaytadi
@@ -117,7 +117,7 @@ export default function Login() {
     <AuthScreen onBack={toShop} footer={<FooterLink text="Xodimlar ERP logini bilan kiradi" action="Ro'yxatdan o'tish" onPress={() => router.replace('/(auth)/register')} />}>
       <AuthLogo />
 
-      <Title display hint={mode === 'phone' ? "Raqamingizga 6 xonali kod yuboramiz — Telegram'ga, Telegram bo'lmasa SMS." : "Har bir bo'lim o'z login va paroli bilan kiradi. Ruxsatlar rolga qarab ochiladi."}>Tizimga kirish</Title>
+      <Title display hint={mode === 'phone' ? "Raqamingiz Telegram'iga 6 xonali kod yuboramiz." : "Har bir bo'lim o'z login va paroli bilan kiradi. Ruxsatlar rolga qarab ochiladi."}>Tizimga kirish</Title>
 
       <Appear delay={110} style={{ marginTop: space.xl }}>
         <SegmentedControl<Mode> value={mode} onChange={switchMode} items={[{ key: 'phone', label: 'Telefon raqam', icon: 'smartphone' }, { key: 'password', label: 'Login va parol', icon: 'key-round' }]} />
@@ -189,8 +189,8 @@ export default function Login() {
 
       <Appear delay={300}>
         <Divider />
-        {/* Telegram va SMS — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
-        <SocialLogin onTelegram={() => void tg.start()} onSms={mode === 'password' ? () => switchMode('phone') : undefined} telegramBusy={tg.starting || tg.waiting} />
+        {/* Telegram va telefon-kod — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
+        <SocialLogin onTelegram={() => void tg.start()} onPhoneCode={mode === 'password' ? () => switchMode('phone') : undefined} telegramBusy={tg.starting || tg.waiting} />
         {tg.waiting ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
             <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>

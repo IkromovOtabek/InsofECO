@@ -12,9 +12,9 @@ const D = size.avatarLg; // 56 — dumaloq tugma
 
 /**
  * Kirish usullari — faqat belgi, yozuvsiz (foydalanuvchi so'rovi): Telegram o'z ko'k rangida,
- * SMS yashil (`onSms` berilmasa — masalan login allaqachon telefon rejimida — ko'rinmaydi). Ekran o'quvchi uchun `accessibilityLabel` bor.
+ * telefon raqam + Telegram'ga kod — yashil (`onPhoneCode` berilmasa — masalan login allaqachon telefon rejimida — ko'rinmaydi). Ekran o'quvchi uchun `accessibilityLabel` bor.
  */
-export function SocialLogin({ onTelegram, onSms, telegramBusy }: { onTelegram: () => void; onSms?: () => void; telegramBusy?: boolean }) {
+export function SocialLogin({ onTelegram, onPhoneCode, telegramBusy }: { onTelegram: () => void; onPhoneCode?: () => void; telegramBusy?: boolean }) {
   const { c } = useTheme();
   // Yumshoq ko'rinish: belgi oq doira ichida (soya), bosilganda ozgina kichrayadi
   const ring = ({ pressed }: { pressed: boolean }) => [
@@ -27,10 +27,10 @@ export function SocialLogin({ onTelegram, onSms, telegramBusy }: { onTelegram: (
       <Pressable accessibilityRole="button" accessibilityLabel="Telegram orqali kirish" accessibilityState={{ busy: !!telegramBusy }} onPress={onTelegram} hitSlop={space.sm} style={ring}>
         {telegramBusy ? <ActivityIndicator color={social.telegram} /> : <Svg width={D} height={D} viewBox="0 0 24 24"><Path d={TG_PATH} fill={social.telegram} /></Svg>}
       </Pressable>
-      {onSms ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="SMS-kod orqali kirish" onPress={onSms} hitSlop={space.sm} style={ring}>
-          <View style={{ width: D, height: D, borderRadius: radius.pill, backgroundColor: social.sms, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="message-circle" color={social.onSocial} size={size.iconXl} strokeWidth={2} />
+      {onPhoneCode ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Telefon raqam va Telegram kodi orqali kirish" onPress={onPhoneCode} hitSlop={space.sm} style={ring}>
+          <View style={{ width: D, height: D, borderRadius: radius.pill, backgroundColor: social.phone, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="phone" color={social.onSocial} size={size.iconXl} strokeWidth={2} />
           </View>
         </Pressable>
       ) : null}

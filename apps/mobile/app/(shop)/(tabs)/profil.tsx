@@ -22,7 +22,7 @@ const PERKS = ['Mikser jonli xaritada', 'Hisob-faktura va akt-sverka', 'Bir nech
 
 /**
  * Profil — demo CLIENT[7] (mehmon): to'q karta — hisob foydalari, "Kirish" va "Ro'yxatdan o'tish"
- * (Telegram/SMS tanlovi login ekranida); ostida Til, Yordam (Aloqa), Saralanganlar. Kirgan foydalanuvchida — kabinet, sozlamalar, chiqish.
+ * (parol yoki Telegram kodi — login ekranida); ostida Til, Yordam (Aloqa), Saralanganlar. Kirgan foydalanuvchida — kabinet, sozlamalar, chiqish.
  */
 export default function ShopProfile() {
   const router = useRouter();

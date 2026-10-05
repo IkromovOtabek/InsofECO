@@ -4,12 +4,14 @@ import { createHash, randomBytes, randomInt } from 'crypto';
 import { DEFAULT_RULES } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
-import { SmsPort } from '../../infra/sms/sms.port';
-import { TelegramGatewayService } from '../../infra/telegram-gateway/telegram-gateway.service';
+import { TelegramGatewayService, devCodeAllowed, maskPhone } from '../../infra/telegram-gateway/telegram-gateway.service';
 import { DomainError } from '../../common/errors/domain.error';
 
-/** Kod qayerga ketdi — ilova "Telegram'ga yubordik" yoki "SMS yubordik" deb yozadi. */
-export type OtpChannel = 'telegram' | 'sms';
+/**
+ * Kod qayerga ketdi. Endi FAQAT Telegram — maydon eski ilovalar (1.0.x) uchun saqlangan:
+ * ular `channel` ga qarab "Telegram'ga yubordik" deb yozadi.
+ */
+export type OtpChannel = 'telegram';
 
 /** Telefon egaligi tasdig'i nima uchun berilgan — boshqa maqsadga ishlatilmaydi. */
 export type PhoneTokenPurpose = 'register';
@@ -20,9 +22,19 @@ export const PHONE_TOKEN_TTL_SECONDS = 600;
 /** Redis kaliti — tokenning o'zi emas, SHA-256 xeshi saqlanadi (Redis dampi tokenni oshkor qilmasin). */
 const phoneTokenKey = (token: string) => `phonetok:${createHash('sha256').update(token).digest('hex')}`;
 
+/** Dev/test rejimidagi (Gateway yo'q, prod emas) doimiy kod — seed/smoke skriptlari va lokal ishlab chiqish uchun. */
+export const DEV_OTP_CODE = '000000';
+
+/** Har doim bir xil javob: kod yetkazildimi-yo'qmi, raqam tizimda bormi-yo'qmi — tashqaridan bilinmaydi. */
+const NEUTRAL = { retryAfter: 60, channel: 'telegram' as const };
+
 /**
- * Kirish kodi: avval Telegram Gateway (TELEGRAM_GATEWAY_TOKEN bo'lsa) — raqamda Telegram bo'lmasa
- * yoki Gateway rad etsa SMS'ga (Eskiz) tushadi. Ikkalasi ham ishlamasa — "yuborilmadi" xatosi.
+ * Bir martalik kirish kodi — FAQAT Telegram Gateway orqali (TELEGRAM_GATEWAY_TOKEN), raqamning
+ * Telegram hisobiga "Verification Codes" chatiga. SMS kanali yo'q (Insof ERP bilan bir xil).
+ *
+ * Gateway sozlanmagan yoki yetkaza olmasa ham javob NEYTRAL (`{retryAfter, channel:'telegram'}`),
+ * sabab faqat server jurnaliga yoziladi: aks holda xato javobi raqam haqida ma'lumot oshkor qilardi.
+ * Kod kelmagan foydalanuvchi login+parol yoki "Telegram orqali kirish" (bot) yo'lidan foydalanadi.
  */
 @Injectable()
 export class OtpService {
@@ -30,56 +42,55 @@ export class OtpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly sms: SmsPort,
     private readonly telegram: TelegramGatewayService,
   ) {}
 
-  private get smsFake() {
-    return (process.env.SMS_PROVIDER ?? 'FAKE') === 'FAKE';
+  /** Raqam bor-yo'qligi oshkor bo'lmasligi uchun — mavjud bo'lmagan raqamga ham neytral javob. */
+  get neutralResponse(): { retryAfter: number; channel: OtpChannel } {
+    return { ...NEUTRAL };
   }
 
-  /** Dev: hech qanday haqiqiy kanal yo'q — kod har doim 000000. */
-  private get isFake() {
-    return this.smsFake && !this.telegram.enabled;
-  }
-
-  /** Raqam tizimda yo'q bo'lsa ham shu qaytariladi (parolni tiklash) — javob farq qilmasin. */
-  get defaultChannel(): OtpChannel {
-    return this.telegram.enabled ? 'telegram' : 'sms';
-  }
-
-  async request(phone: string, ip: string): Promise<{ retryAfter: number; channel: OtpChannel }> {
+  /**
+   * Soatlik chek (raqam + IP). Raqam tizimda bor-yo'qligidan QAT'I NAZAR bir xil qo'llanadi —
+   * aks holda "juda ko'p urinish" faqat mavjud raqamda chiqib, uni oshkor qilardi.
+   */
+  async assertRate(phone: string, ip: string): Promise<void> {
     const okPhone = await this.redis.allow(`otp:p:${phone}`, DEFAULT_RULES.otpPerPhonePerHour, 3600);
     const okIp = await this.redis.allow(`otp:ip:${ip}`, 10, 3600);
     if (!okPhone || !okIp) throw new DomainError('AUTH_OTP_RATE_LIMIT', 'Juda ko\'p urinish. Keyinroq urinib ko\'ring');
+  }
 
-    const code = this.isFake ? '000000' : String(randomInt(0, 1_000_000)).padStart(6, '0');
+  async request(phone: string, ip: string): Promise<{ retryAfter: number; channel: OtpChannel }> {
+    await this.assertRate(phone, ip);
+    return this.issue(phone);
+  }
+
+  /** Kod yaratib Telegram'ga yuboradi. Chekni (`assertRate`) chaqiruvchi tekshirgan bo'lishi shart. */
+  requestWithoutRate(phone: string) {
+    return this.issue(phone);
+  }
+
+  private async issue(phone: string): Promise<{ retryAfter: number; channel: OtpChannel }> {
+    const dev = devCodeAllowed(this.telegram.enabled);
+    // Prodda Gateway yo'q — hech bir kanal yetkaza olmaydi: kod yaratilmaydi, javob neytral
+    if (!this.telegram.enabled && !dev) {
+      this.logger.warn(`OTP yetkazilmadi ${maskPhone(phone)}: TELEGRAM_GATEWAY_TOKEN sozlanmagan`);
+      return this.neutralResponse;
+    }
+
+    const code = dev ? DEV_OTP_CODE : String(randomInt(0, 1_000_000)).padStart(6, '0');
     await this.prisma.otpCode.create({
       data: { phone, codeHash: await argon2.hash(code), expiresAt: new Date(Date.now() + DEFAULT_RULES.otpTtlSeconds * 1000) },
     });
-
-    if (this.telegram.enabled) {
-      try {
-        await this.telegram.sendCode(phone, code, DEFAULT_RULES.otpTtlSeconds);
-        return { retryAfter: 60, channel: 'telegram' };
-      } catch (e) {
-        // Raqamda Telegram yo'q / Gateway ishlamadi. SMS sozlanmagan bo'lsa (FAKE) zaxira yo'q —
-        // soxta adapter "yubordim" deb aldab qo'ymasin.
-        if (this.smsFake) {
-          throw new DomainError('AUTH_OTP_SEND_FAILED', 'Kod Telegram\'ga yuborilmadi. Raqamda Telegram ochilganini tekshiring yoki login va parol bilan kiring');
-        }
-        this.logger.warn(`Telegram'ga yuborilmadi, SMS'ga o'tamiz: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
+    if (dev) return this.neutralResponse; // dev/test: hech narsa yuborilmaydi, kod — DEV_OTP_CODE
 
     try {
-      await this.sms.send(phone, `Insof ECO: kirish kodi ${code}. Hech kimga bermang.`);
+      await this.telegram.sendCode(phone, code, DEFAULT_RULES.otpTtlSeconds);
     } catch (e) {
-      // Kod bazada qoldi, lekin foydalanuvchiga yetmadi — "yuborildi" deb aldamaymiz
-      this.logger.error(`OTP SMS yuborilmadi (${phone.slice(0, 7)}***): ${e instanceof Error ? e.message : String(e)}`);
-      throw new DomainError('AUTH_OTP_SEND_FAILED', 'SMS yuborilmadi. Birozdan keyin qayta urinib ko\'ring');
+      // Raqamda Telegram yo'q / Gateway rad etdi — sabab faqat jurnalda, javob baribir neytral
+      this.logger.warn(`OTP yetkazilmadi ${maskPhone(phone)}: ${e instanceof Error ? e.message : String(e)}`);
     }
-    return { retryAfter: 60, channel: 'sms' };
+    return this.neutralResponse;
   }
 
   async verify(phone: string, code: string): Promise<void> {

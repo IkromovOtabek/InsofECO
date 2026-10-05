@@ -154,7 +154,7 @@ export function PinLock() {
     if (next.length === PIN_LEN) void submit(next);
   };
 
-  const forgot = () => dialog('PIN esdan chiqdimi?', "Hisobdan chiqib, parol (yoki Telegram yoki SMS kodi) bilan qaytadan kiring. Keyin yangi PIN o'rnatishingiz mumkin.", [
+  const forgot = () => dialog('PIN esdan chiqdimi?', "Hisobdan chiqib, parol (yoki Telegram kodi) bilan qaytadan kiring. Keyin yangi PIN o'rnatishingiz mumkin.", [
     { text: i18n.t('ui.cancel'), style: 'cancel' },
     { text: 'Chiqish', style: 'destructive', onPress: () => { setLocked(false); void logout(); } },
   ]);

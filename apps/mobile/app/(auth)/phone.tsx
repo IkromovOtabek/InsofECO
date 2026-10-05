@@ -13,7 +13,7 @@ import { AuthIcon, AuthScreen, ConsentCheck, Divider, ErrorBox, FooterLink, Ghos
 const CONSENT_MSG = 'Davom etish uchun maxfiylik siyosatiga rozilik bildiring';
 
 /**
- * Telefon raqami — unga 6 xonali kod yuboriladi (Telegram, bo'lmasa SMS).
+ * Telefon raqami — uning Telegram'iga 6 xonali kod yuboriladi (Telegram Gateway; SMS yo'q).
  *   - oddiy rejim: kod bilan kirish;
  *   - `mode=register`: ro'yxatdan o'tishning 1-qadami. Kod tasdiqlangach raqam egasi ekani
  *     isbotlanadi va ma'lumotlar formasi ochiladi (begona odam raqamni oldindan egallay olmaydi).
@@ -54,8 +54,8 @@ export default function PhoneScreen() {
     <AuthScreen footer={footer} onBack={isRegister ? () => (router.canGoBack() ? router.back() : router.replace('/(auth)/login')) : undefined}>
       {isRegister ? <Steps labels={REGISTER_STEPS} current={0} /> : <AuthIcon icon="smartphone" />}
       <Title hint={isRegister
-        ? "Avval raqamingizni tasdiqlaymiz: 6 xonali kod Telegram'ga (bo'lmasa SMS) keladi. Keyin rol, ism va parolni kiritasiz."
-        : "Raqamingizni kiriting — tasdiqlash uchun 6 xonali kod Telegram'ga (bo'lmasa SMS) yuboramiz."}
+        ? "Avval raqamingizni tasdiqlaymiz: 6 xonali kod Telegram'ingizga keladi. Keyin rol, ism va parolni kiritasiz."
+        : "Raqamingizni kiriting — tasdiqlash uchun 6 xonali kodni Telegram orqali yuboramiz."}
       >
         {isRegister ? "Ro'yxatdan o'tish" : 'Telefon raqamingiz'}
       </Title>

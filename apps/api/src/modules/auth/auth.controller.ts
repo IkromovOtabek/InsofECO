@@ -87,7 +87,7 @@ export class AuthController {
     return { status: 'ok' as const, ...(await this.auth.signInVerifiedPhone(done.phone, body.device, done.name)) };
   }
 
-  /** Roli yo'q foydalanuvchi (Telegram/SMS bilan kirgan) — mijoz sifatida davom etadi. */
+  /** Roli yo'q foydalanuvchi (Telegram orqali kirgan) — mijoz sifatida davom etadi. */
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('customer')
   @HttpCode(200)

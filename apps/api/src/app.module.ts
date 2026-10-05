@@ -8,7 +8,6 @@ import { LoggerModule } from 'nestjs-pino';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { TelegramGatewayModule } from './infra/telegram-gateway/telegram-gateway.module';
-import { SmsModule } from './infra/sms/sms.module';
 import { PushModule } from './infra/push/push.module';
 import { StorageModule } from './infra/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -55,7 +54,6 @@ import { AppVersionModule } from './common/app-version/app-version.middleware';
     BullModule.forRoot({ connection: redisConnection() }),
     PrismaModule,
     RedisModule,
-    SmsModule,
     TelegramGatewayModule,
     PushModule,
     StorageModule,

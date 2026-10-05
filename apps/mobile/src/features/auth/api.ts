@@ -12,8 +12,8 @@ function deviceInfo() {
   return { deviceId: deviceId(), platform: Platform.OS as 'ios' | 'android', model: Device.modelName ?? undefined, appVersion: Constants.expoConfig?.version };
 }
 
-/** Kod qayerga ketdi: Telegram Gateway yoki SMS (Telegram'i yo'q raqamlar uchun zaxira). */
-export type OtpChannel = 'telegram' | 'sms';
+/** Kod qayerga ketdi — faqat Telegram (Telegram Gateway). SMS kanali yo'q. */
+export type OtpChannel = 'telegram';
 
 export const authApi = {
   requestOtp: (phone: string) => api<{ retryAfter: number; channel?: OtpChannel }>('/auth/otp/request', { method: 'POST', body: { phone }, auth: false }),
@@ -35,7 +35,7 @@ export const authApi = {
   /** Botda raqam ulashilganmi — `pending` yoki sessiya. */
   telegramPoll: (nonce: string) =>
     api<{ status: 'pending' } | { status: 'ok'; accessToken: string; refreshToken: string; user: Profile }>('/auth/telegram/poll', { method: 'POST', body: { nonce, device: deviceInfo() }, auth: false }),
-  /** Roli yo'q foydalanuvchi (Telegram/SMS bilan kirgan) mijoz (quruvchi) bo'ladi — yangilangan profil. */
+  /** Roli yo'q foydalanuvchi (Telegram orqali kirgan) mijoz (quruvchi) bo'ladi — yangilangan profil. */
   becomeCustomer: () => api<Profile>('/auth/customer', { method: 'POST' }),
   /** Parolni tiklash: raqamga kod yuborish. Hisob yo'q bo'lsa ham javob bir xil. */
   forgotPassword: (phone: string) =>

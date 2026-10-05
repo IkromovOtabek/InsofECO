@@ -11,7 +11,7 @@ Android 1.0.0 APK xodimlarda; iOS build hali yo'q (Apple Developer hisobi kutilm
 |---|---|---|
 | 1 | **Google Play targetSdk.** Expo SDK 52 (RN 0.76) `targetSdkVersion 34` beradi. Play yangi ilova/yangilanish uchun API 35 (2025-08-31 dan), 2026-08-31 dan **API 36** talab qiladi; Android 15+ uchun 16 KB sahifa o'lchami ham shart. APK (ERP orqali) va TestFlight'ga ta'siri yo'q. Yechim: Expo SDK 54+ ga ko'tarish (RN 0.81, Yandex MapKit 16 KB mos versiya), keyin `expo-build-properties` bilan target 36. | Dasturchi |
 | 2 | **Android push.** `google-services.json` yo'q → Android'da Expo push token olinmaydi, bildirishnoma kelmaydi. Firebase → `uz.insofeco.app` → faylni EAS'ga `eas env:create --environment production --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json`, FCM V1 kalitini `eas credentials` ga. `app.config.ts` uni o'zi ulaydi. Keyin yangi build. | Siz |
-| 3 | **Demo hisoblar** production bazada: mijoz (telefon + parol, SMS'siz kiradi) va ERP xodim (haydovchi, reys bilan). `08-app-store-matnlari.md` dagi `<…>` joylarini to'ldiring. | Siz |
+| 3 | **Demo hisoblar** production bazada: mijoz (telefon + parol, kodsiz kiradi) va ERP xodim (haydovchi, reys bilan). `08-app-store-matnlari.md` dagi `<…>` joylarini to'ldiring. | Siz |
 | 4 | **Play fon joylashuv deklaratsiyasi** + 30 s video ("Yo'lga chiqdim" → tushuntirish oynasi `src/core/bg-disclosure.ts` → "Har doim ruxsat" → xarita). | Siz |
 | 5 | Skrinshotlar: iPhone 6.9"/6.7" (1290×2796) va Android telefon, 4–6 ta. | Siz |
 
@@ -60,7 +60,7 @@ build → restart. Migratsiyalar orqaga qaytmaydi — faqat kengaytiruvchi migra
 
 | Kanal | Buyruq | Kimga |
 |---|---|---|
-| Android APK (ERP orqali) | `eas build -p android --profile preview` → APK'ni serverga `…/uploads/app/insof-eco.apk` (yoki `tenants/insof.env` → `APK_PATH`) | Xodimlar: ERP → `/api/app/android`; taklif SMS'idagi `ECO_APP_URL` |
+| Android APK (ERP orqali) | `eas build -p android --profile preview` → APK'ni serverga `…/uploads/app/insof-eco.apk` (yoki `tenants/insof.env` → `APK_PATH`) | Xodimlar: ERP → `/api/app/android`; yangilash ekranidagi `ECO_APP_URL` |
 | TestFlight | `eas build -p ios --profile production --auto-submit` | Xodimlar, sinovchilar |
 | Play internal | `eas build -p android --profile production` → `eas submit -p android --profile production` (track `internal`, `draft`) | Ichki sinov (targetSdk bloklovchisi yopilgach) |
 | OTA (faqat JS) | `eas update --channel production --environment production --message "..."` | 1.0.1 o'rnatilganlar |
@@ -143,7 +143,7 @@ savoli chiqmaydi (`usesNonExemptEncryption: false`).
 
 **5. Keyingi relizlar.** JS o'zgarishi — `eas update --channel production --environment production` (TestFlight buildiga ham yetadi).
 Native o'zgarish — `eas build -p ios --profile production --auto-submit` (buildNumber o'zi oshadi).
-Ommaviy TestFlight havolasini ERP'dagi `ECO_APP_URL` ga qo'yish mumkin (taklif SMS'idagi havola).
+Ommaviy TestFlight havolasini ERP'dagi `ECO_APP_URL` ga qo'yish mumkin (majburiy yangilash ekranidagi havola).
 
 ## Do'kon ro'yxati matnlari (uz)
 
@@ -172,7 +172,7 @@ Joylashuv faqat faol reys vaqtida, haydovchi "Yo'lga chiqdim" bosganidan "Yetkaz
 ## Review uchun izohlar (App Review Notes / Play "App access")
 
 To'liq inglizcha matn va demo hisob maydonlari — `08-app-store-matnlari.md` → "App Review Information".
-Mijoz demo hisobi telefon + parol bilan kiradi (SMS kod kerak emas); xodim — login/parol ("Login va parol bilan kirish").
+Mijoz demo hisobi telefon + parol bilan kiradi (Telegram kodi kerak emas); xodim — login/parol ("Login va parol bilan kirish").
 Fon joylashuv faqat haydovchi rolida, reys ochiq paytda.
 
 ## Buyruqlar

@@ -3,7 +3,7 @@ export const ErrorCode = {
   AUTH_OTP_INVALID: 'AUTH_OTP_INVALID',
   AUTH_OTP_EXPIRED: 'AUTH_OTP_EXPIRED',
   AUTH_OTP_RATE_LIMIT: 'AUTH_OTP_RATE_LIMIT',
-  /** SMS shlyuzi kodni yubora olmadi — foydalanuvchi bekorga kutmasin. */
+  /** Kod Telegram orqali yuborilmadi (qabul kodi / Telegram bot sozlanmagan) — foydalanuvchi bekorga kutmasin. */
   AUTH_OTP_SEND_FAILED: 'AUTH_OTP_SEND_FAILED',
   RATE_LIMIT: 'RATE_LIMIT',
   AUTH_TOKEN_INVALID: 'AUTH_TOKEN_INVALID',

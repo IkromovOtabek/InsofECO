@@ -10,7 +10,7 @@ const BindSchema = z.object({ nonce: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/),
 const ContactSchema = z.object({ chatId: z.string().regex(/^-?\d{1,20}$/), phone: z.string().min(9).max(20), name: z.string().max(120).optional() });
 
 /**
- * `contact` tasdiqlagan telefon nomidan sessiya beriladi (SMS-kod bilan teng). Shuning uchun bu yo'llarni
+ * `contact` tasdiqlagan telefon nomidan sessiya beriladi (bir martalik kod bilan teng). Shuning uchun bu yo'llarni
  * istalgan zavodning API kaliti emas, faqat botni yuritadigan ERP kaliti chaqira olishi kerak:
  * `TELEGRAM_LOGIN_CLIENT_IDS` — IntegrationClient.id lar (vergul bilan). Bo'sh bo'lsa (eski o'rnatish)
  * hamma faol kalitga ruxsat va ogohlantirish — prodda albatta to'ldiring.

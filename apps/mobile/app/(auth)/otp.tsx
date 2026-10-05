@@ -12,7 +12,7 @@ import { ApiException } from '@/core/api';
 import { AuthScreen, ErrorBox, PrimaryButton, REGISTER_STEPS, Steps, TextLink, Title } from '@/features/auth/ui';
 
 /**
- * Tasdiqlash kodi (Telegram Gateway yoki SMS — `via`) — oltita alohida katak.
+ * Tasdiqlash kodi (faqat Telegram — Telegram Gateway, SMS yo'q) — oltita alohida katak.
  * `mode=reset` bo'lsa kod tekshirilgach yangi parol ekraniga o'tadi;
  * `mode=register` — ro'yxatdan o'tish: kod raqam egaligini tasdiqlaydi va ma'lumotlar formasi
  * bir martalik token bilan ochiladi (raqam tizimda bor bo'lsa — egasi shu kod bilan kiradi);
@@ -21,11 +21,8 @@ import { AuthScreen, ErrorBox, PrimaryButton, REGISTER_STEPS, Steps, TextLink, T
 const LEN = 6;
 
 export default function OtpScreen() {
-  const params = useLocalSearchParams<{ phone: string; mode?: string; via?: string }>();
-  const { phone, mode } = params;
-  // Qayta yuborishda kanal o'zgarishi mumkin (Telegram ishlamay SMS'ga tushsa)
-  const [via, setVia] = useState(params.via === 'telegram' ? 'telegram' : 'sms');
-  const tg = via === 'telegram';
+  // `via` parametri eski navigatsiyadan qolgan bo'lishi mumkin — e'tiborsiz: kod har doim Telegram'ga boradi
+  const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: string; via?: string }>();
   const router = useRouter();
   const { c } = useTheme();
   const signIn = useSession((s) => s.signIn);
@@ -94,7 +91,6 @@ export default function OtpScreen() {
     try {
       const r = isReset ? await authApi.forgotPassword(phone) : await authApi.requestOtp(phone);
       setLeft(r.retryAfter ?? 60);
-      if (r.channel) setVia(r.channel);
     } catch (e) {
       haptic.error();
       setError(e instanceof ApiException ? e.message : 'Qayta yuborib bo\'lmadi');
@@ -107,15 +103,14 @@ export default function OtpScreen() {
     <AuthScreen>
       {isRegister ? <Steps labels={REGISTER_STEPS} current={1} /> : null}
       <Appear delay={60} style={{ marginTop: space.xxl }}>
-        <IconTile icon={tg ? 'send' : 'message-square'} module="brand" size={size.iconTile + space.md} />
+        <IconTile icon="send" module="brand" size={size.iconTile + space.md} />
       </Appear>
 
       <Title>Tasdiqlash kodi</Title>
       <Appear delay={90} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm }}>
         <Txt v="bodySm" color="muted">
-          {tg
-            ? <>{LEN} xonali kodni <Txt v="bodySm" mono color="strong">{phone}</Txt> raqamidagi Telegram'ga («Verification Codes» chati) yubordik.</>
-            : <><Txt v="bodySm" mono color="strong">{phone}</Txt> raqamiga {LEN} xonali kod yubordik.</>}
+          {LEN} xonali kodni <Txt v="bodySm" mono color="strong">{phone}</Txt> raqamidagi Telegram'ga («Verification Codes» chati) yubordik.
+          Kelmasa — raqamda Telegram ochilganini tekshiring yoki Telegram tugmasi / parol bilan kiring.
         </Txt>
         <TextLink onPress={() => router.back()}>O&apos;zgartirish</TextLink>
       </Appear>
@@ -133,7 +128,7 @@ export default function OtpScreen() {
               onKeyPress={(e) => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) refs.current[i - 1]?.focus(); }}
               keyboardType="number-pad"
               textContentType="oneTimeCode"
-              autoComplete="sms-otp"
+              autoComplete="one-time-code"
               maxLength={LEN}
               autoFocus={i === 0}
               selectTextOnFocus
@@ -150,7 +145,7 @@ export default function OtpScreen() {
         <View style={{ marginTop: space.sm }}>
           {code.length === LEN
             ? <StatusLine icon="circle-check" tone="success" text="Kod to'liq kiritildi" />
-            : <StatusLine icon={tg ? 'send' : 'message-square'} text={tg ? "Telegram'dagi kodni kiriting yoki nusxalab qo'ying." : "Kodni kiriting — SMS kelganda o'zi to'ladi."} />}
+            : <StatusLine icon="send" text="Telegram'dagi kodni kiriting yoki nusxalab qo'ying." />}
         </View>
       </Appear>
 
@@ -165,7 +160,7 @@ export default function OtpScreen() {
           <ListItem
             icon="clock"
             title={left > 0 ? 'Qayta yuborish' : 'Kodni qayta yuborish'}
-            subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : tg ? 'Telegram\'ga kelmagan bo\'lsa bosing' : 'SMS kelmagan bo\'lsa bosing'}
+            subtitle={left > 0 ? 'Vaqt tugagach yana yuborish mumkin' : 'Telegram\'ga kelmagan bo\'lsa bosing'}
             onPress={left > 0 ? undefined : () => void resend()}
             right={left > 0 ? <Txt v="mono" color="strong">{mmss}</Txt> : null}
           />

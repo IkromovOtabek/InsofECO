@@ -9,7 +9,7 @@
  *
  * (yoki: yarn workspace @insof/api ts-node scripts/grant-superadmin.ts +998…)
  *
- * Hisob yo'q bo'lsa parolsiz yaratiladi — egasi ilovaga SMS/Telegram kodi bilan kiradi.
+ * Hisob yo'q bo'lsa parolsiz yaratiladi — egasi ilovaga Telegram kodi bilan kiradi.
  * Superadmin hech qaysi tashkilotga bog'lanmaydi va ularning ro'yxatlarida ko'rinmaydi.
  *
  * Ikkinchi qulf: API muhitida `SUPERADMIN_PHONES` berilsa, SuperAdminGuard bayroqdan tashqari

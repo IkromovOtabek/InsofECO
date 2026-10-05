@@ -19,7 +19,7 @@ import { AuthScreen, ErrorBox, FooterLink, Hint, PrimaryButton, REGISTER_STEPS, 
 
 /**
  * Ro'yxatdan o'tish — uch qadamli oqim:
- *   1) Telefon (`phone?mode=register`) — rozilik va raqam, kod Telegram'ga yoki SMS'ga;
+ *   1) Telefon (`phone?mode=register`) — rozilik va raqam, kod Telegram'ga (SMS yo'q);
  *   2) Kod (`otp?mode=register`) — raqam egaligi tasdiqlanadi, server bir martalik
  *      `phoneVerificationToken` beradi (10 daqiqa, shu raqamga bog'langan);
  *   3) Shu ekran: rol (Mijoz / Haydovchi), ism, parol, haydovchiga — zavod.

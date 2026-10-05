@@ -25,7 +25,7 @@ const input = { fullName: 'Ali Valiyev', phone: '+998901234567', password: 'secr
 
 function setup() {
   const redis = fakeRedis();
-  const otp = new OtpService({} as never, redis as never, {} as never, { enabled: false } as never);
+  const otp = new OtpService({} as never, redis as never, { enabled: false } as never);
   const prisma = {
     user: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn() },
     organization: { findFirst: jest.fn() },
