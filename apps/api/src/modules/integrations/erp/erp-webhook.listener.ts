@@ -4,6 +4,7 @@ import { createHmac } from 'crypto';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { DeliveryStatusChangedEvent } from '../../deliveries/deliveries.events';
 import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent, VehicleChangedEvent } from '../../organizations/organizations.events';
+import { customerRefFor, parseCustomerRef } from './erp-refs';
 
 /**
  * ECO → ERP webhook. Haydovchi ilovada tugma bosganda (qabul, yuklash, yo'lda, keldi, imzo)
@@ -93,11 +94,13 @@ export class ErpWebhookListener {
       this.prisma.creditLimit.findMany({ where: { clientOrgId: org.id }, select: { plantOrgId: true } }),
       this.prisma.order.findMany({ where: { clientOrgId: org.id }, select: { plantOrgId: true }, distinct: ['plantOrgId'] }),
     ]);
-    const plants = new Set([...limits, ...orders].map((x) => x.plantOrgId));
+    // Prefiksli (`erp:<zavod>:<ref>`) karta — faqat o'sha zavodniki; eski prefikssiz — bog'langan zavodlarga
+    const owner = parseCustomerRef(org.externalRef).plantOrgId;
+    const plants = owner ? new Set([owner]) : new Set([...limits, ...orders].map((x) => x.plantOrgId));
     for (const plantOrgId of plants) {
       await this.broadcast(plantOrgId, null, {
         event: 'customer.registered',
-        externalRef: org.externalRef,
+        externalRef: customerRefFor(plantOrgId, org.externalRef),
         orgId: org.id,
         orgName: org.name,
         userId: user.id,

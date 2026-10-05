@@ -54,7 +54,7 @@ export class ErpController {
    * ERP o'zi hal qiladi (direktor ruxsati). Xato javob raqam bor/yo'qligini oshkor qilmaydi.
    */
   @Post('auth/verify') @HttpCode(200)
-  verifyCredentials(@Body(Zod(ErpVerifyCredentialsSchema)) b: z.infer<typeof ErpVerifyCredentialsSchema>) { return this.erp.verifyCredentials(b.phone, b.password); }
+  verifyCredentials(@CurrentUser() a: AuthContext, @Body(Zod(ErpVerifyCredentialsSchema)) b: z.infer<typeof ErpVerifyCredentialsSchema>) { return this.erp.verifyCredentials(a, b.phone, b.password); }
 
   @Get('vehicles')
   vehicles(@CurrentUser() a: AuthContext) { return this.erp.vehicles(a); }

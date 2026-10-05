@@ -14,6 +14,14 @@ import { OrganizationsService } from '../../organizations/organizations.service'
 import { TrackingService, trackStats } from '../../tracking/tracking.service';
 import { ErpCustomerInput, ErpInvoiceInput, ErpMaterialInput, ErpMixInput, ErpOrderInput, ErpPaymentInput, ErpTripInput, ErpTripStatusInput } from './erp.schemas';
 import { AccountService } from '../../auth/account.service';
+import { RedisService } from '../../../infra/redis/redis.service';
+import { customerRefFor, notOtherPlantsWhere, plantClientWhere, scopedCustomerRef } from './erp-refs';
+
+/** ERP login (`auth/verify`): parol taxminini cheklash. Telefon bo'yicha — barcha kalitlar uchun umumiy. */
+export const VERIFY_LIMITS = {
+  perPhone: { limit: 10, windowSeconds: 15 * 60 },
+  perKey: { limit: 60, windowSeconds: 60 },
+};
 
 const D = Prisma.Decimal;
 
@@ -54,6 +62,7 @@ export class ErpService {
     private readonly tracking: TrackingService,
     private readonly events: EventEmitter2,
     private readonly account: AccountService,
+    private readonly redis: RedisService,
   ) {}
 
   private readonly include = {
@@ -169,7 +178,7 @@ export class ErpService {
    */
   async upsertTrip(a: AuthContext, ref: string, input: ErpTripInput) {
     const orgId = a.orgId!;
-    const client = await this.ensureClient(input.customer);
+    const client = await this.ensureClient(orgId, input.customer);
     const mix = await this.ensureMix(orgId, input.product);
     const [driver, vehicle] = await Promise.all([this.resolveDriver(a, input), this.resolveVehicle(orgId, input)]);
 
@@ -290,10 +299,12 @@ export class ErpService {
 
   /** ERP mijoz kartasi → CONTRACTOR tashkilot + shu zavod uchun kredit limiti. */
   async upsertCustomer(a: AuthContext, input: ErpCustomerInput) {
-    const org = await this.ensureClient(input);
+    const org = await this.ensureClient(a.orgId!, input);
+    // INN butun bazada unique — boshqa tashkilotniki bo'lsa (boshqa zavod mijozi) ustiga yozilmaydi
+    const innFree = input.inn && input.inn !== org.inn ? !(await this.prisma.organization.findUnique({ where: { inn: input.inn }, select: { id: true } })) : false;
     const data: Prisma.OrganizationUpdateInput = {
       name: input.name,
-      ...(input.inn ? { inn: input.inn } : {}),
+      ...(innFree ? { inn: input.inn } : {}),
       ...(input.address !== undefined ? { address: input.address } : {}),
       // ERP'da arxivlangan mijoz ilovada ko'rinmaydi. O'chirilmaydi — qayta faollashtirilsa tiklanadi.
       ...(input.isActive === undefined ? {} : { deletedAt: input.isActive ? null : (org.deletedAt ?? new Date()) }),
@@ -307,7 +318,7 @@ export class ErpService {
         update: { limitAmount: new D(input.creditLimit) },
       });
     }
-    return { id: saved.id, externalRef: saved.externalRef, name: saved.name, inn: saved.inn, isActive: !saved.deletedAt };
+    return { id: saved.id, externalRef: customerRefFor(a.orgId!, saved.externalRef), name: saved.name, inn: saved.inn, isActive: !saved.deletedAt };
   }
 
   // ───────── Mijozning ilova hisobi ─────────
@@ -336,15 +347,29 @@ export class ErpService {
     };
   }
 
-  private orgView(o: { id: string; name: string; inn: string | null; externalRef: string | null; createdAt: Date }) {
-    return { id: o.id, name: o.name, inn: o.inn, externalRef: o.externalRef, createdAt: o.createdAt };
+  private orgView(plantOrgId: string, o: { id: string; name: string; inn: string | null; externalRef: string | null; createdAt: Date }) {
+    return { id: o.id, name: o.name, inn: o.inn, externalRef: customerRefFor(plantOrgId, o.externalRef), createdAt: o.createdAt };
+  }
+
+  /**
+   * ERP mijoz kartasi id → shu zavodning tashkiloti. Avval prefiksli (`erp:<zavod>:<ref>`) yozuv; keyin eski
+   * prefikssiz yozuv — faqat shu zavod bilan bog'langan yoki boshqa hech bir zavodga bog'lanmagan bo'lsa.
+   * Boshqa zavodning bir xil raqamli mijozi hech qachon qaytmaydi.
+   */
+  private async findClientByRef(plantOrgId: string, ref: string) {
+    const scoped = await this.prisma.organization.findUnique({ where: { externalRef: scopedCustomerRef(plantOrgId, ref) } });
+    if (scoped) return scoped;
+    return this.prisma.organization.findFirst({
+      where: { type: 'CONTRACTOR', externalRef: ref, OR: [plantClientWhere(plantOrgId), notOtherPlantsWhere(plantOrgId)] },
+    });
   }
 
   /** ERP mijoz kartasi ilovada kimga ulangan. `linked=false` — ECO'da bu mijoz hali yo'q (ERP yubormagan). */
-  async customerApp(_a: AuthContext, externalRef: string) {
-    const org = await this.prisma.organization.findUnique({ where: { externalRef }, include: { memberships: this.memberInclude } });
+  async customerApp(a: AuthContext, externalRef: string) {
+    const found = await this.findClientByRef(a.orgId!, externalRef);
+    const org = found ? await this.prisma.organization.findUnique({ where: { id: found.id }, include: { memberships: this.memberInclude } }) : null;
     if (!org || org.deletedAt) return { linked: false as const, org: null, members: [] as ReturnType<ErpService['memberView']>[] };
-    return { linked: true as const, org: this.orgView(org), members: org.memberships.map((m) => this.memberView(m)) };
+    return { linked: true as const, org: this.orgView(a.orgId!, org), members: org.memberships.map((m) => this.memberView(m)) };
   }
 
   /**
@@ -356,23 +381,52 @@ export class ErpService {
     const text = (q ?? '').trim();
     const digits = text.replace(/\D/g, '');
     const or: Prisma.OrganizationWhereInput[] = [];
-    if (text) {
+    if (text.length >= 3) {
       or.push({ name: { contains: text, mode: 'insensitive' } });
-      if (digits.length >= 4) or.push({ memberships: { some: { user: { phone: { contains: digits.slice(-9) } } } } });
+      // Telefon — faqat to'liq raqam (oxirgi 9 raqam) bo'yicha: qisman qidiruv bilan raqamlarni terib chiqib bo'lmasin
+      if (digits.length >= 9) or.push({ memberships: { some: { role: 'QURUVCHI', user: { phone: { endsWith: digits.slice(-9) } } } } });
       if (digits.length === 9) or.push({ inn: digits });
     }
+    // Qidiruvsiz — faqat shu zavodga ilova orqali buyurtma bergan mijozlar (butun platforma ro'yxati emas)
+    const scope: Prisma.OrganizationWhereInput = or.length ? { OR: or } : { ordersAsClient: { some: { plantOrgId: a.orgId! } } };
     const orgs = await this.prisma.organization.findMany({
-      where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI' } }, ...(or.length ? { OR: or } : {}) },
+      where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI' } }, ...scope },
       orderBy: { createdAt: 'desc' },
       take: 20,
       include: { memberships: this.memberInclude, _count: { select: { ordersAsClient: { where: { plantOrgId: a.orgId! } } } } },
     });
-    return orgs.map((o) => ({ ...this.orgView(o), members: o.memberships.map((m) => this.memberView(m)), ordersHere: o._count.ordersAsClient }));
+    return orgs.map((o) => ({ ...this.orgView(a.orgId!, o), members: o.memberships.map((m) => this.memberView(m)), ordersHere: o._count.ordersAsClient }));
   }
 
-  /** ERP login uchun: telefon + parol (ilovadagi). Hisob o'chirilgan yoki parolsiz bo'lsa ham xuddi shu xato. */
-  async verifyCredentials(phone: string, password: string) {
-    const u = await this.prisma.user.findUnique({ where: { phone }, select: { id: true, phone: true, fullName: true, passwordHash: true, deletedAt: true } });
+  /**
+   * Shu zavodga aloqador foydalanuvchilar: zavodning o'z a'zolari yoki shu zavod mijozi (CONTRACTOR) a'zolari.
+   * ERP kaliti boshqa zavod odamlarini ko'rmaydi va ularning parolini tekshira olmaydi.
+   */
+  private plantUserWhere(plantOrgId: string): Prisma.UserWhereInput {
+    return {
+      memberships: {
+        some: {
+          ...VISIBLE_MEMBER,
+          OR: [{ organizationId: plantOrgId }, { organization: plantClientWhere(plantOrgId) }],
+        },
+      },
+    };
+  }
+
+  /**
+   * ERP login uchun: telefon + parol (ilovadagi). Hisob o'chirilgan, parolsiz yoki shu zavodga aloqasiz bo'lsa ham
+   * xuddi shu xato. Parol taxminiga qarshi: telefon bo'yicha (barcha kalitlar uchun umumiy) va kalit bo'yicha limit.
+   */
+  async verifyCredentials(a: AuthContext, phone: string, password: string) {
+    const [okKey, okPhone] = await Promise.all([
+      this.redis.allow(`erp:verify:key:${a.integration?.id ?? a.orgId}`, VERIFY_LIMITS.perKey.limit, VERIFY_LIMITS.perKey.windowSeconds),
+      this.redis.allow(`erp:verify:phone:${phone}`, VERIFY_LIMITS.perPhone.limit, VERIFY_LIMITS.perPhone.windowSeconds),
+    ]);
+    if (!okKey || !okPhone) throw new DomainError('RATE_LIMIT', "Juda ko'p urinish. Keyinroq qayta urinib ko'ring");
+    const u = await this.prisma.user.findFirst({
+      where: { phone, ...this.plantUserWhere(a.orgId!) },
+      select: { id: true, phone: true, fullName: true, passwordHash: true, deletedAt: true },
+    });
     if (!u?.passwordHash || u.deletedAt || !(await argon2.verify(u.passwordHash, password))) {
       throw new DomainError('AUTH_BAD_CREDENTIALS', "Telefon yoki parol noto'g'ri");
     }
@@ -380,7 +434,8 @@ export class ErpService {
   }
 
   /**
-   * Ilovada ro'yxatdan o'tgan BARCHA foydalanuvchilar (tadbirkor, quruvchi, haydovchi) — ERP direktori uchun.
+   * Ilovada ro'yxatdan o'tgan, SHU ZAVODGA aloqador foydalanuvchilar (zavod a'zolari va zavod mijozlari a'zolari) —
+   * ERP direktori uchun. Boshqa zavodlarning odamlari va ularning a'zoliklari ko'rinmaydi.
    * "Ro'yxatdan o'tgan" = parol o'rnatgan; faqat telefon bo'yicha taklif qilinganlar va integratsiya xizmat
    * foydalanuvchilari kirmaydi. `q` — ism / telefon (oxirgi 9 raqam) / tashkilot nomi; `role` — shu rolda a'zoligi borlar.
    */
@@ -390,20 +445,27 @@ export class ErpService {
     const or: Prisma.UserWhereInput[] = [];
     if (text) {
       or.push({ fullName: { contains: text, mode: 'insensitive' } });
-      or.push({ memberships: { some: { organization: { name: { contains: text, mode: 'insensitive' } } } } });
+      or.push({ memberships: { some: { organization: { name: { contains: text, mode: 'insensitive' } }, OR: [{ organizationId: a.orgId! }, { organization: plantClientWhere(a.orgId!) }] } } });
       if (digits.length >= 4) or.push({ phone: { contains: digits.slice(-9) } });
     }
     const users = await this.prisma.user.findMany({
       where: {
-        passwordHash: { not: null }, deletedAt: null, integrations: { none: {} }, ...VISIBLE_USER,
-        ...(role ? { memberships: { some: { role } } } : {}),
-        ...(or.length ? { OR: or } : {}),
+        AND: [
+          { passwordHash: { not: null }, deletedAt: null, integrations: { none: {} }, ...VISIBLE_USER },
+          this.plantUserWhere(a.orgId!),
+          ...(role ? [{ memberships: { some: { role, OR: [{ organizationId: a.orgId! }, { organization: plantClientWhere(a.orgId!) }] } } }] : []),
+          ...(or.length ? [{ OR: or }] : []),
+        ],
       },
       orderBy: { createdAt: 'desc' },
       take: 500,
       select: {
         id: true, phone: true, fullName: true, createdAt: true, deleteRequestedAt: true,
-        memberships: { orderBy: { createdAt: 'asc' }, select: { role: true, isActive: true, createdAt: true, organization: { select: { id: true, name: true, type: true, inn: true, externalRef: true, deletedAt: true } } } },
+        memberships: {
+          where: { OR: [{ organizationId: a.orgId! }, { organization: plantClientWhere(a.orgId!) }] },
+          orderBy: { createdAt: 'asc' },
+          select: { role: true, isActive: true, createdAt: true, organization: { select: { id: true, name: true, type: true, inn: true, externalRef: true, deletedAt: true } } },
+        },
         sessions: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
         devices: { orderBy: { lastSeenAt: 'desc' }, take: 1, select: { platform: true, model: true, appVersion: true, lastSeenAt: true } },
       },
@@ -422,7 +484,7 @@ export class ErpService {
         since: m.createdAt,
         /** true — shu zavodning o'zi (haydovchi zavodga a'zo) */
         ownPlant: m.organization.id === a.orgId,
-        org: { id: m.organization.id, name: m.organization.name, type: m.organization.type, inn: m.organization.inn, externalRef: m.organization.externalRef },
+        org: { id: m.organization.id, name: m.organization.name, type: m.organization.type, inn: m.organization.inn, externalRef: customerRefFor(a.orgId!, m.organization.externalRef) },
       })),
     }));
   }
@@ -437,12 +499,18 @@ export class ErpService {
    * ERP tashkiloti ERP'dan boshqa ma'lumot yaratmaydi, shuning uchun boshqa jadvallar ko'chirilmaydi.
    */
   async linkCustomer(a: AuthContext, externalRef: string, orgId: string) {
+    const plantOrgId = a.orgId!;
+    const scopedRef = scopedCustomerRef(plantOrgId, externalRef);
     const target = await this.prisma.organization.findFirst({ where: { id: orgId, type: 'CONTRACTOR', deletedAt: null } });
     if (!target) throw DomainError.notFound('Ilova tashkiloti');
-    if (target.externalRef && target.externalRef !== externalRef) throw new DomainError('CUSTOMER_ALREADY_LINKED', 'Bu ilova hisobi boshqa ERP mijoziga ulangan');
+    // Faqat shu zavodning shu kartasi (yoki hali hech kimga ulanmagan ilova hisobi) — boshqa zavod mijozini o'zgartirib bo'lmaydi
+    const current = await this.findClientByRef(plantOrgId, externalRef);
+    if (target.externalRef && current?.id !== target.id) throw new DomainError('CUSTOMER_ALREADY_LINKED', 'Bu ilova hisobi boshqa ERP mijoziga ulangan');
 
-    const current = await this.prisma.organization.findUnique({ where: { externalRef } });
     if (current && current.id !== target.id) {
+      // Eski (prefikssiz) umumiy mijoz boshqa zavod bilan ham ishlagan bo'lsa — uning buyurtmalari/schyotlarini ko'chirmaymiz
+      const foreign = await this.prisma.organization.count({ where: { id: current.id, NOT: notOtherPlantsWhere(plantOrgId) } });
+      if (foreign) throw DomainError.forbidden("Bu mijoz boshqa zavod bilan ham bog'langan — birlashtirib bo'lmaydi");
       await this.prisma.$transaction(async (tx) => {
         // A'zolar: bir xil (foydalanuvchi, rol) ikkalasida bo'lsa — ERP tomonidagi o'chadi
         const members = await tx.membership.findMany({ where: { organizationId: current.id } });
@@ -467,12 +535,12 @@ export class ErpService {
         await tx.organization.update({ where: { id: current.id }, data: { externalRef: null, inn: null, deletedAt: new Date(), name: `${current.name} (birlashtirildi)` } });
         await tx.organization.update({
           where: { id: target.id },
-          data: { externalRef, name: current.name, inn: target.inn ?? current.inn, address: target.address ?? current.address },
+          data: { externalRef: scopedRef, name: current.name, inn: target.inn ?? current.inn, address: target.address ?? current.address },
         });
       });
       this.logger.log(`mijoz ${externalRef}: ERP tashkiloti ${current.id} ilova tashkiloti ${target.id} ga birlashtirildi`);
     } else if (!target.externalRef) {
-      await this.prisma.organization.update({ where: { id: target.id }, data: { externalRef } });
+      await this.prisma.organization.update({ where: { id: target.id }, data: { externalRef: scopedRef } });
     }
     return this.customerApp(a, externalRef);
   }
@@ -517,7 +585,7 @@ export class ErpService {
    */
   async upsertOrder(a: AuthContext, ref: string, input: ErpOrderInput) {
     const orgId = a.orgId!;
-    const client = await this.ensureClient(input.customer);
+    const client = await this.ensureClient(orgId, input.customer);
     const mixes = new Map<string, string>();
     for (const it of input.items) {
       const mix = await this.ensureMix(orgId, { grade: it.grade, name: it.name, unitPrice: it.unitPrice });
@@ -686,24 +754,31 @@ export class ErpService {
    * externalRef birinchi o'rinda, chunki ERP'da mijoz nomi yoki INN'i o'zgarishi mumkin,
    * id esa o'zgarmaydi. Telefon bo'lsa — QURUVCHI a'zo (SMS qabul kodi uchun).
    */
-  private async ensureClient(c: ErpTripInput['customer']) {
-    let org = c.externalRef ? await this.prisma.organization.findUnique({ where: { externalRef: c.externalRef } }) : null;
-    if (!org && c.inn) org = await this.prisma.organization.findUnique({ where: { inn: c.inn } });
-    if (!org) org = await this.prisma.organization.findFirst({ where: { type: 'CONTRACTOR', name: c.name, deletedAt: null } });
+  private async ensureClient(plantOrgId: string, c: ErpTripInput['customer']) {
+    // Izlash faqat SHU zavod mijozlari ichida: boshqa zavodning bir xil id/INN/nomli mijozi bilan qo'shilib ketmaydi
+    let org = c.externalRef ? await this.findClientByRef(plantOrgId, c.externalRef) : null;
+    if (!org && c.inn) org = await this.prisma.organization.findFirst({ where: { AND: [{ inn: c.inn }, plantClientWhere(plantOrgId)] } });
+    if (!org) org = await this.prisma.organization.findFirst({ where: { AND: [{ name: c.name, deletedAt: null }, plantClientWhere(plantOrgId)] } });
     if (!org && c.phone) {
       // Mijoz ilovada o'zi ro'yxatdan o'tgan bo'lishi mumkin (sotuvchi uni ERP'ga keyin kiritdi) —
       // telefoni orqali hali hech bir ERP kartasiga ulanmagan tashkilotini topamiz va yangisini ochmaymiz.
       // Aks holda mijozda ikkita "Quruvchi" tashkilot paydo bo'lib, ilova rol tanlash ekranida qolib ketardi.
       org = await this.prisma.organization.findFirst({
-        where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI', user: { phone: c.phone } } } },
+        // faqat boshqa zavod bilan ishlamagan ilova hisobi — boshqa zavod mijozini o'ziga tortib olmaydi
+        where: { type: 'CONTRACTOR', externalRef: null, deletedAt: null, memberships: { some: { role: 'QURUVCHI', user: { phone: c.phone } } }, ...notOtherPlantsWhere(plantOrgId) },
         orderBy: { createdAt: 'asc' },
       });
       if (org) this.logger.log(`mijoz ${c.name} ilovadagi hisobiga ulandi: ${org.name} (${org.id})`);
     }
-    if (!org) org = await this.prisma.organization.create({ data: { type: 'CONTRACTOR', name: c.name, inn: c.inn, externalRef: c.externalRef } });
-    else if (c.externalRef && !org.externalRef) {
-      // Eski yozuv — endi ERP kartasiga bog'lanadi
-      org = await this.prisma.organization.update({ where: { id: org.id }, data: { externalRef: c.externalRef } });
+    if (!org) {
+      // INN unique: boshqa (shu zavodga aloqasiz) tashkilotda bo'lsa — yangisiga yozilmaydi
+      const innTaken = c.inn ? !!(await this.prisma.organization.findUnique({ where: { inn: c.inn }, select: { id: true } })) : false;
+      org = await this.prisma.organization.create({
+        data: { type: 'CONTRACTOR', name: c.name, inn: innTaken ? null : c.inn, externalRef: c.externalRef ? scopedCustomerRef(plantOrgId, c.externalRef) : null },
+      });
+    } else if (c.externalRef && !org.externalRef) {
+      // Eski yozuv — endi shu zavodning ERP kartasiga bog'lanadi
+      org = await this.prisma.organization.update({ where: { id: org.id }, data: { externalRef: scopedCustomerRef(plantOrgId, c.externalRef) } });
     }
     if (c.phone) {
       try {
