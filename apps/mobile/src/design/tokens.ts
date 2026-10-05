@@ -422,6 +422,18 @@ export type TypeVariant = keyof typeof type;
  */
 export const textRoom = (text: string, fontSize: number, extra = 0) => text.length * (fontSize * 0.59 + extra);
 
+/**
+ * Chegaralangan zaxira kenglik — `minWidth` uchun. To'liq `textRoom` uzun yorliqni konteynerdan
+ * TASHQARIGA itarardi (360 dp telefonda "Materialni qabul qildim…" tugmadan chiqib ketardi).
+ * Qisqa so'zlar ("Kirish") to'liq himoyalanadi, uzunlari `flexShrink` + `adjustsFontSizeToFit` bilan sig'adi.
+ */
+export const fitRoom = (text: string, fontSize: number, cap = 64) => Math.min(textRoom(text, fontSize), cap);
+
+/** "Xrom" matni (tugma, chip, tab, nishon) uchun tizim shrift kattalashtirish chegarasi; oddiy matn — 1.4. */
+export const CHROME_SCALE = 1.2;
+/** Bir qatorli xrom yorliqlari sig'masa shu nisbatgacha kichrayadi (pastida — ellipsis). */
+export const MIN_FONT_SCALE = 0.75;
+
 // ───────────────────────── Harakat ─────────────────────────
 
 /** Yagona tezliklar: mikro (hover/fokus), holat, ekran o'tishi, yuklanish sikli. */

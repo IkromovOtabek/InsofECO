@@ -14,8 +14,8 @@ import { Icon, IconName } from './icons';
 import { StatusMark, SuccessCheck } from './success';
 import { DUR, EASE_STATE, ENTER_DIALOG, ENTER_SHEET, ENTER_TOAST, EXIT_DIALOG, EXIT_LAYER, EXIT_SHEET, EXIT_TOAST, MOVE_ITEM, SPRING_SLIDE, SPRING_TAB, TAB_SLIDE, haptic, usePop } from './motion';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { FONT, Palette, Tone, duration, elevation, radius, shadow, size, space, textRoom, toneColors, type } from './tokens';
-import { Badge, Button, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
+import { CHROME_SCALE, FONT, Palette, Tone, duration, elevation, fitRoom, radius, shadow, size, space, toneColors, type } from './tokens';
+import { Badge, Button, FIT_LINE, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
 export type { IconName } from './icons';
@@ -121,11 +121,12 @@ export function SegmentTrack<T extends string>({ items, value, onChange, variant
             onLayout={(e) => { const { x: lx, width } = e.nativeEvent.layout; lay.current[s.key] = { x: lx, w: width }; if (s.key === value) move(value); }}
             accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={s.count != null ? `${s.label}, ${s.count}` : s.label}
             hitSlop={{ top: pad + (mini ? space.xs : 0), bottom: pad + (mini ? space.xs : 0) }}
-            style={{ flexGrow: 1, flexShrink: scroll ? 0 : 1, flexBasis: 'auto', height: itemH, paddingHorizontal: mini ? space.tight : space.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs + 2 }}
+            // Aylanmaydigan trekda elementlar siqiladi (minWidth 0, kichikroq padding) — yorliq kichrayadi, trekdan chiqmaydi
+            style={{ flexGrow: 1, flexShrink: scroll ? 0 : 1, flexBasis: 'auto', minWidth: scroll ? undefined : 0, height: itemH, paddingHorizontal: mini ? space.tight : scroll ? space.lg : space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs + 2 }}
           >
             {s.icon ? <Icon name={s.icon} size={size.iconSm} color={on ? pal.on : pal.off} /> : null}
-            <Txt v={tv} numberOfLines={1} style={{ color: on ? pal.on : pal.off, minWidth: textRoom(s.label, type[tv].fontSize) }}>{s.label}</Txt>
-            {s.count != null ? <Txt v={tv} style={{ color: on ? pal.on : pal.off, opacity: 0.7 }}>{s.count}</Txt> : null}
+            <Txt v={tv} {...FIT_LINE} style={{ color: on ? pal.on : pal.off, flexShrink: 1, minWidth: fitRoom(s.label, type[tv].fontSize, scroll ? undefined : 40) }}>{s.label}</Txt>
+            {s.count != null ? <Txt v={tv} maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: on ? pal.on : pal.off, opacity: 0.7, flexShrink: 0 }}>{s.count}</Txt> : null}
           </Pressable>
         );
       })}
@@ -169,11 +170,12 @@ function TabCell({ label, glyph, focused, driver, badge, onPress, onLongPress, o
         {glyph ? <Icon name={glyph} size={iconS} color={color} strokeWidth={1.75} /> : renderIcon?.({ focused: false, color, size: iconS })}
         {badge != null ? (
           <View style={{ position: 'absolute', top: -space.xs, right: space.sm - 2, minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: c.dangerSolid, alignItems: 'center', justifyContent: 'center', borderWidth: size.ring, borderColor: c.bgChrome }}>
-            <Txt v="badge" style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{badge}</Txt>
+            <Txt v="badge" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{badge}</Txt>
           </View>
         ) : null}
       </Animated.View>
-      <Txt v={driver ? 'tabLabelDriver' : 'tabLabel'} numberOfLines={1} style={{ color: focused ? c.textStrong : c.textMuted, minWidth: textRoom(label, (driver ? type.tabLabelDriver : type.tabLabel).fontSize) }} maxFontSizeMultiplier={1.2}>{label}</Txt>
+      {/* 5 tab 360 dp da ~62 dp katak: yorliq katakdan chiqmaydi — kichrayadi (1.2× shrift chegarasi) */}
+      <Txt v={driver ? 'tabLabelDriver' : 'tabLabel'} {...FIT_LINE} style={{ color: focused ? c.textStrong : c.textMuted, maxWidth: '100%', minWidth: fitRoom(label, (driver ? type.tabLabelDriver : type.tabLabel).fontSize, 44) }}>{label}</Txt>
     </Pressable>
   );
 }

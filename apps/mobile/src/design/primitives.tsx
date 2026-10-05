@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleProp,
   StyleSheet,
+  LayoutChangeEvent,
   Text,
   TextInput,
   TextInputProps,
@@ -15,13 +16,14 @@ import {
   View,
   ViewProps,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import i18n from '@/core/i18n';
 import Animated from 'react-native-reanimated';
 import { ENTER_ITEM, Shimmer, haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
 import { Icon, IconName, IconTone } from './icons';
-import { FONT, FontWeight, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
+import { CHROME_SCALE, FONT, FontWeight, MIN_FONT_SCALE, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, fitRoom, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
 
 // ───────────────────────── Matn ─────────────────────────
 
@@ -54,7 +56,25 @@ export function Txt({ v = 'body', color, mono, align, style, ...p }: TextProps &
   const { fontWeight, ...rest } = flat;
   const family = mono ? FONT.mono : fontWeight ? WEIGHT_FAMILY[String(fontWeight)] : undefined;
   const auto = rest.fontSize && !rest.lineHeight ? { lineHeight: Math.round(rest.fontSize * 1.4) } : null;
-  return <Text {...p} style={[type[v], { color: col }, align ? { textAlign: align } : null, rest, family ? { fontFamily: family } : null, auto]} maxFontSizeMultiplier={1.4} />;
+  return <Text {...p} style={[type[v], { color: col }, align ? { textAlign: align } : null, rest, family ? { fontFamily: family } : null, auto]} maxFontSizeMultiplier={p.maxFontSizeMultiplier ?? 1.4} />;
+}
+
+/**
+ * Bir qatorli xrom yorlig'i (tugma, chip, tab, nishon): bitta qator, sig'masa `MIN_FONT_SCALE`gacha kichrayadi,
+ * shrift kattalashtirish `CHROME_SCALE` bilan cheklangan. Qator ichida `flexShrink: 1` bilan birga ishlatiladi.
+ */
+export const FIT_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: MIN_FONT_SCALE, maxFontSizeMultiplier: CHROME_SCALE, textBreakStrategy: 'simple' } as const;
+
+/**
+ * Konteyner kengligini o'lchaydi va yorliq (taxminiy, shrift masshtabi bilan) + `chrome` (ikonka, padding) sig'masligini aytadi.
+ * `tight` bo'lsa chaqiruvchi ikonkani yashiradi / paddingni kamaytiradi. Kenglik hali o'lchanmagan bo'lsa — `false`.
+ */
+export function useTightFit(text: string, fontSize: number, chrome: number) {
+  const { fontScale } = useWindowDimensions();
+  const [w, setW] = useState(0);
+  const textW = textRoom(text, fontSize) * Math.min(Math.max(fontScale, 1), CHROME_SCALE);
+  const onLayout = React.useCallback((e: LayoutChangeEvent) => { const nw = Math.round(e.nativeEvent.layout.width); setW((o) => (o === nw ? o : nw)); }, []);
+  return { width: w, textW, tight: w > 0 && textW + chrome > w, onLayout };
 }
 
 // ───────────────────────── Joylashuv ─────────────────────────
@@ -100,7 +120,7 @@ export function SectionHead({ title, action, onAction, count, icon, unit, style 
         <Txt v="sectionTitle" numberOfLines={1} style={{ flexShrink: 1 }} accessibilityRole="header">{title}</Txt>
         {count != null ? (
           <View style={{ minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs + 2, borderRadius: radius.pill, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt v="badge" color="body">{count > 99 ? '99+' : count}</Txt>
+            <Txt v="badge" color="body" maxFontSizeMultiplier={CHROME_SCALE}>{count > 99 ? '99+' : count}</Txt>
           </View>
         ) : null}
       </View>
@@ -157,6 +177,13 @@ export function Button({
   const iconSize = sizeKey === 'xl' || sizeKey === 'stickyXl' ? size.iconLg : sizeKey === 'md' ? size.iconSm : size.iconMd;
   const off = !!(disabled || loading);
   const ps = usePressScale();
+  // Tor joyda (360 dp, yonma-yon tugmalar, katta tizim shrifti): avval ikonka yashiriladi, keyin padding kamayadi,
+  // oxirida matn `MIN_FONT_SCALE`gacha kichrayadi. Faqat to'liq enli tugmada — o'z kengligidagi (`full={false}`) tugma tor bo'lmaydi.
+  const padX = sizeKey === 'md' ? space.lg + space.xs : space.xl;
+  const iconsW = (icon ? iconSize + space.sm : 0) + (iconRight ? iconSize + space.sm : 0);
+  const fit = useTightFit(title, type[txt].fontSize, iconsW + 2 * padX);
+  const tight = full && fit.tight;
+  const cramped = tight && fit.textW + 2 * padX > fit.width;
   const lift: ViewStyle | null = off ? null
     : variant === 'primary' ? glow(c.brand)
     : variant === 'danger' ? glow(c.dangerSolid)
@@ -173,9 +200,10 @@ export function Button({
         onPressIn={(e) => { ps.onPressIn(); p.onPressIn?.(e); }}
         onPressOut={(e) => { ps.onPressOut(); p.onPressOut?.(e); }}
         onPress={(e) => { haptic.light(); onPress?.(e); }}
+        onLayout={(e) => { fit.onLayout(e); p.onLayout?.(e); }}
         android_ripple={{ color: variant === 'primary' ? c.brandHover : c.bgMuted }}
         style={({ pressed }) => [
-          { height, minHeight: size.touch, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: sizeKey === 'md' ? space.lg + space.xs : space.xl, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
+          { height, minHeight: size.touch, minWidth: 0, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: cramped ? space.md : padX, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
           off && { opacity: 0.5 },
           Platform.OS === 'ios' && pressed && { opacity: 0.88 },
           style,
@@ -183,10 +211,11 @@ export function Button({
       >
         {loading ? <ActivityIndicator color={fg} /> : (
           <>
-            {icon ? <Icon name={icon} size={iconSize} color={fg} strokeWidth={2} /> : null}
-            {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — zaxira kenglik */}
-            <Text style={[type[txt], { color: fg, minWidth: textRoom(title, type[txt].fontSize) }]} maxFontSizeMultiplier={1.4} numberOfLines={1}>{title}</Text>
-            {iconRight ? <Icon name={iconRight} size={iconSize} color={fg} strokeWidth={2} /> : null}
+            {icon && !tight ? <Icon name={icon} size={iconSize} color={fg} strokeWidth={2} /> : null}
+            {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — cheklangan zaxira kenglik;
+                uzun yorliq tugmadan chiqmaydi: qisqaradi (flexShrink) va kichrayadi (adjustsFontSizeToFit) */}
+            <Text style={[type[txt], { color: fg, flexShrink: 1, minWidth: fitRoom(title, type[txt].fontSize) }]} {...FIT_LINE}>{title}</Text>
+            {iconRight && !tight ? <Icon name={iconRight} size={iconSize} color={fg} strokeWidth={2} /> : null}
           </>
         )}
       </Pressable>
@@ -222,7 +251,7 @@ export function IconButton({ icon, label, onPress, tone = 'body', variant = 'gho
         <Icon name={icon} size={size.iconMd} tone={active ? 'brand' : tone} />
         {badge ? (
           <View style={{ position: 'absolute', top: num ? space.xs : space.sm, right: num ? space.xs : space.sm, minWidth: num ? space.lg : size.dot, height: num ? space.lg : size.dot, borderRadius: radius.pill, backgroundColor: c.dangerSolid, borderWidth: size.ring, borderColor: variant === 'secondary' ? c.bgSurface : c.bgChrome, alignItems: 'center', justifyContent: 'center', paddingHorizontal: num ? 3 : 0 }}>
-            {num ? <Txt v="overlineXs" color="onSolid" style={{ letterSpacing: 0 }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
+            {num ? <Txt v="overlineXs" color="onSolid" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ letterSpacing: 0 }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
           </View>
         ) : null}
       </Pressable>
@@ -371,9 +400,9 @@ export function Badge({ label, tone = 'neutral', icon, style }: { label: string;
   const t = (['neutral', 'brand', 'success', 'warning', 'danger', 'info'] as Tone[]).includes(tone as Tone) ? (tone as Tone) : 'neutral';
   const { ink, bg } = toneColors(c, t);
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm + 2, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg, flexShrink: 0 }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.sm + 2, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg, flexShrink: 1, maxWidth: '100%' }, style]}>
       {icon ? <Icon name={icon} size={size.iconSm - 4} color={ink} strokeWidth={2} /> : null}
-      <Txt v="badge" style={{ color: ink, minWidth: textRoom(label, type.badge.fontSize) }} numberOfLines={1}>{label}</Txt>
+      <Txt v="badge" style={{ color: ink, flexShrink: 1, minWidth: fitRoom(label, type.badge.fontSize) }} {...FIT_LINE}>{label}</Txt>
     </View>
   );
 }
@@ -450,7 +479,7 @@ export function ListItem({ title, subtitle, subtitleLines = 2, right, value, bad
   const lg = sz === 'lg';
   const rightCol = value || badge ? (
     <View style={{ alignItems: 'flex-end', gap: space.xs, maxWidth: '45%', flexShrink: 0 }}>
-      {value ? <Txt v="listValue" numberOfLines={1}>{value}</Txt> : null}
+      {value ? <Txt v="listValue" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{value}</Txt> : null}
       {badge ? <Badge label={badge.text} tone={badge.tone} /> : null}
     </View>
   ) : null;
@@ -492,7 +521,7 @@ export function Delta({ text, tone = 'neutral', dir, onInverse }: { text: string
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 2, paddingHorizontal: space.xs + 2, minHeight: space.xl, borderRadius: radius.pill, backgroundColor: bg }}>
       <Icon name={d === 'down' ? 'arrow-down-right' : 'arrow-up-right'} size={size.iconSm - 4} color={col} strokeWidth={2.25} />
-      <Txt v="caption" numberOfLines={1} style={{ color: col, fontFamily: FONT[600] }}>{text}</Txt>
+      <Txt v="caption" {...FIT_LINE} style={{ color: col, fontFamily: FONT[600], flexShrink: 1 }}>{text}</Txt>
     </View>
   );
 }

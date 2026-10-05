@@ -8,16 +8,16 @@
  * ustunlar prujina bilan o'sadi; chiziqlar to'ladi; bosish — prujina 0.96 + haptika. Reduce motion — hammasi bir zumda.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, LayoutChangeEvent, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { Image, LayoutChangeEvent, Pressable, StyleProp, View, ViewStyle, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, Path, Pattern, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { Appear, DUR, EASE_ENTER, PressScale, SPRING_GROW, SPRING_SLIDE, Shimmer, Stagger, haptic, useCountUp, useCountUpText, usePop, usePressScale } from './motion';
-import { Button, Delta, IconButton, IconTile, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
+import { Button, Delta, FIT_LINE, IconButton, IconTile, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
 import { SegmentTrack, fmtShort, toast } from './ui';
-import { DEMO_SCALE, FONT, ModuleTone, Palette, Tone, TypeVariant, elevation, radius, size, space, toneColors } from './tokens';
+import { CHROME_SCALE, DEMO_SCALE, FONT, ModuleTone, Palette, Tone, TypeVariant, elevation, radius, size, space, textRoom, toneColors, type } from './tokens';
 
 export { SectionHead, ListGroup, Delta };
 
@@ -100,7 +100,7 @@ function HeaderIcon({ icon, label, onPress, badge }: HeaderAction) {
         <Icon name={icon} size={size.iconMd} color={c.textBody} strokeWidth={1.75} />
         {badge ? (
           <Animated.View style={[{ position: 'absolute', top: num ? space.xs : space.sm - 2, right: num ? space.xs - 2 : space.sm, minWidth: num ? space.xl : size.bellDot + size.ring * 2, height: num ? space.xl : size.bellDot + size.ring * 2, paddingHorizontal: num ? 3 : 0, borderRadius: radius.pill, backgroundColor: c.dangerSolid, borderWidth: size.ring, borderColor: c.bgChrome, alignItems: 'center', justifyContent: 'center' }, pop]}>
-            {num ? <Txt v="badge" style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
+            {num ? <Txt v="badge" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: c.textOnSolid, fontFamily: FONT[700] }}>{(badge as number) > 99 ? '99+' : badge}</Txt> : null}
           </Animated.View>
         ) : null}
       </Pressable>
@@ -152,8 +152,8 @@ export function PageHeader({ overline, title, avatar, onAvatar, actions, bell, r
       {onBack ? <IconButton icon="arrow-left" label="Orqaga" onPress={onBack} tone="strong" size={size.headerAvatar} /> : null}
       {av ? (onAvatar ? <PressScale onPress={onAvatar} accessibilityRole="button" accessibilityLabel={avatar?.name ?? 'Profil'} hitSlop={space.xs}>{av}</PressScale> : av) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
-        {overline ? <Txt v="appbarOverline" numberOfLines={1}>{overline}</Txt> : null}
-        <Txt v="appbarTitle" numberOfLines={1} accessibilityRole="header">{title}</Txt>
+        {overline ? <Txt v="appbarOverline" numberOfLines={1} maxFontSizeMultiplier={CHROME_SCALE}>{overline}</Txt> : null}
+        <Txt v="appbarTitle" {...FIT_LINE} minimumFontScale={0.85} accessibilityRole="header">{title}</Txt>
       </View>
       {right}
       {all.map((a) => <HeaderIcon key={a.label} {...a} />)}
@@ -292,7 +292,7 @@ export function HeroCard({ label, value, unit, format, delta, spark, periods, pe
           {delta ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm, paddingVertical: 3, marginBottom: space.xs, borderRadius: radius.sm - 4, backgroundColor: solid }}>
               <Icon name={delta.dir === 'down' ? 'arrow-down' : 'arrow-up'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={2.25} />
-              <Txt v="heroDelta" style={{ color: c.textOnSolid }}>{delta.text}</Txt>
+              <Txt v="heroDelta" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: c.textOnSolid }}>{delta.text}</Txt>
             </View>
           ) : null}
         </View>
@@ -336,9 +336,10 @@ function KpiCell({ item }: { item: KpiItem }) {
       >
         {item.icon ? <IconTile icon={item.icon} module={item.module} size={size.tile} /> : null}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt v="tSm" numberOfLines={1}>{item.label}</Txt>
-          <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit style={{ color: valueColor }}>{shown}</Txt>
-          {item.delta ? <Txt v="kpiDelta" numberOfLines={1} style={{ color: deltaColor }}>{item.delta.text}</Txt> : null}
+          {/* 360 dp da 2 ustunli setkada yorliqqa ~80 dp qoladi — "Yetkazuvchiga qarz" ikki qatorga o'tadi, kesilmaydi */}
+          <Txt v="tSm" numberOfLines={2} maxFontSizeMultiplier={CHROME_SCALE}>{item.label}</Txt>
+          <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={CHROME_SCALE} style={{ color: valueColor }}>{shown}</Txt>
+          {item.delta ? <Txt v="kpiDelta" {...FIT_LINE} style={{ color: deltaColor }}>{item.delta.text}</Txt> : null}
         </View>
       </Pressable>
     </Animated.View>
@@ -376,10 +377,12 @@ function ActionCell({ a, primary }: { a: ActionItem; primary: boolean }) {
         style={[{ flex: 1, alignItems: 'center', gap: space.sm - 1, paddingVertical: space.md - 1, paddingHorizontal: 3, borderRadius: radius.action, borderCurve: 'continuous', backgroundColor: primary ? c.brand : c.bgSurface }, elevation(c).sh1]}
       >
         <IconTile icon={a.icon} module={a.module} size={size.actionTile} bg={primary ? c.brandTile : undefined} ink={primary ? c.textOnBrand : undefined} />
-        <Txt v="actionLabel" align="center" numberOfLines={2} style={{ color: primary ? c.textOnBrand : c.textBody }}>{a.label}</Txt>
+        {/* 360 dp da plitka ~74 dp: yorliq 2 qatorgacha markazda; bitta uzun so'z ("Yetkazuvchiga") sig'masa
+            shrift ozgina kichrayadi, undan keyin — ellipsis. Tizim shrifti 1.2× bilan cheklangan. */}
+        <Txt v="actionLabel" align="center" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.72} maxFontSizeMultiplier={CHROME_SCALE} textBreakStrategy="simple" style={{ alignSelf: 'stretch', color: primary ? c.textOnBrand : c.textBody }}>{a.label}</Txt>
         {a.badge ? (
           <View style={{ position: 'absolute', top: space.xs + 2, right: space.sm, minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: c.dangerSolid, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt v="badge" style={{ color: c.textOnSolid }}>{a.badge > 99 ? '99+' : a.badge}</Txt>
+            <Txt v="badge" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: c.textOnSolid }}>{a.badge > 99 ? '99+' : a.badge}</Txt>
           </View>
         ) : null}
       </Pressable>
@@ -846,6 +849,7 @@ export interface StickyPrimary {
  * Pastki amal paneli — demo `.sticky`: fonsiz (ekran foni ko'rinadi), padding 12×16, pill tugmalar 60 dp (44 css):
  * asosiy — brend + nur soyasi (flex 1.4); ikkilamchi — yuza + sh1 (flex 1); `more` — 60 dp doira.
  * `xl` — haydovchi rejimi (76 dp, 56 css). Yopiq asosiy tugma bosilganda `disabledReason`ni toast'da aytadi (jim turmaydi).
+ * Ikki yorliq yonma-yon sig'masa (360 dp, uzun o'zbekcha matn, katta tizim shrifti) — ustma-ust joylashadi.
  */
 export function StickyActionBar({ primary, secondary, more, xl, style }: {
   primary: StickyPrimary;
@@ -867,26 +871,50 @@ export function StickyActionBar({ primary, secondary, more, xl, style }: {
   };
   const sz = xl ? 'stickyXl' as const : 'sticky' as const;
   const h = xl ? size.stickyButtonXl : size.stickyButton;
-  return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.tight, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Math.max(insets.bottom, space.lg) + space.xs }, style]}>
-      {more ? <IconButton icon={more.icon ?? 'ellipsis'} label={more.label} onPress={more.onPress} variant="secondary" size={h} tone="strong" /> : null}
-      {secondary ? (
-        <View style={{ flex: 1 }}>
-          <Button title={secondary.title} icon={secondary.icon} onPress={secondary.onPress} variant="secondary" size={sz} textColor={secondary.tone === 'danger' ? c.danger : undefined} />
-        </View>
-      ) : null}
-      <View style={{ flex: secondary ? 1.4 : 1 }}>
-        <Button
-          title={primary.title}
-          icon={locked ? 'lock' : primary.icon}
-          size={sz}
-          variant={locked ? 'secondary' : primary.variant ?? 'primary'}
-          loading={primary.loading}
-          onPress={press}
-          accessibilityHint={locked ? primary.disabledReason : undefined}
-          style={locked ? { opacity: 0.6 } : undefined}
-        />
-      </View>
+  // Yonma-yon yoki ustma-ust: panel kengligi o'lchanadi. Ikkala yorliq (ikonkasiz, siqilgan padding bilan,
+  // ko'pi bilan 10% kichraytirib) o'z ulushiga sig'masa — tugmalar ustunga tushadi (asosiy tepada, to'liq enli).
+  const { fontScale } = useWindowDimensions();
+  const [barW, setBarW] = useState(0);
+  const fs = (xl ? type.buttonXl : type.button).fontSize;
+  const need = (t: string) => textRoom(t, fs) * Math.min(Math.max(fontScale, 1), CHROME_SCALE) * 0.9 + 2 * space.md;
+  const avail = barW - 2 * space.lg - (more ? h + space.tight : 0) - space.tight;
+  const needS = secondary ? need(secondary.title) : 0;
+  const needP = need(primary.title);
+  // Asosiy tugma kamida 1.4 baravar keng; uzun asosiy yorliqqa ko'proq ulush
+  const k = secondary ? Math.max(1.4, needP / Math.max(needS, 1)) : 1;
+  const stacked = !!secondary && barW > 0 && (needS > avail / (1 + k) || needP > (avail * k) / (1 + k));
+  const moreBtn = more ? <IconButton icon={more.icon ?? 'ellipsis'} label={more.label} onPress={more.onPress} variant="secondary" size={h} tone="strong" /> : null;
+  const secBtn = secondary ? (
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <Button title={secondary.title} icon={secondary.icon} onPress={secondary.onPress} variant="secondary" size={sz} textColor={secondary.tone === 'danger' ? c.danger : undefined} />
+    </View>
+  ) : null;
+  const priBtn = (
+    <View style={stacked ? null : { flex: secondary ? k : 1, minWidth: 0 }}>
+      <Button
+        title={primary.title}
+        icon={locked ? 'lock' : primary.icon}
+        size={sz}
+        variant={locked ? 'secondary' : primary.variant ?? 'primary'}
+        loading={primary.loading}
+        onPress={press}
+        accessibilityHint={locked ? primary.disabledReason : undefined}
+        style={locked ? { opacity: 0.6 } : undefined}
+      />
+    </View>
+  );
+  const pad: ViewStyle = { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Math.max(insets.bottom, space.lg) + space.xs };
+  const onLayout = (e: LayoutChangeEvent) => { const w = Math.round(e.nativeEvent.layout.width); setBarW((o) => (o === w ? o : w)); };
+  return stacked ? (
+    <View onLayout={onLayout} style={[{ gap: space.sm }, pad, style]}>
+      {priBtn}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.tight }}>{moreBtn}{secBtn}</View>
+    </View>
+  ) : (
+    <View onLayout={onLayout} style={[{ flexDirection: 'row', alignItems: 'center', gap: space.tight }, pad, style]}>
+      {moreBtn}
+      {secBtn}
+      {priBtn}
     </View>
   );
 }

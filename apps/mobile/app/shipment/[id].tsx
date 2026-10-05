@@ -22,7 +22,7 @@ import { PhotoAttachments, usePhotoAttachments, withUploadedPhotos } from '@/fea
 
 const FLOW = ['NEW', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'DELIVERED', 'CONFIRMED'];
 const LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', LOADING: 'Yuklanmoqda', EN_ROUTE: "Yo'lda", DELIVERED: 'Yetkazildi', CONFIRMED: 'Qabul qilindi (tasdiq)' };
-const NEXT_LABEL: Record<string, string> = { NEW: 'Qabul qilish', ACCEPTED: 'Omborda — yuklashni boshladim', LOADING: "Yukladim — yo'lga chiqdim", EN_ROUTE: 'Yetkazdim' };
+const NEXT_LABEL: Record<string, string> = { NEW: 'Qabul qilish', ACCEPTED: 'Yuklashni boshladim', LOADING: "Yo'lga chiqdim", EN_ROUTE: 'Yetkazdim' };
 const STEPS = ['Ombor', 'Yuklash', "Yo'l", 'Obyekt'];
 
 /** Yuk: Warehouse → GPS → Construction site. Haydovchi bitta katta tugma; Quruvchi/Tadbirkor tasdiqlaydi. */
@@ -131,7 +131,7 @@ export default function ShipmentScreen() {
                 {['ACCEPTED', 'LOADING', 'EN_ROUTE'].includes(s.status) ? <><Gap h={space.sm} /><Button title="Navigatorda ochish" icon="navigation" variant="secondary" onPress={navigate} /></> : null}</>
             )
           ) : null}
-          {(role === 'QURUVCHI' || role === 'TADBIRKOR') && s.status === 'DELIVERED' ? <Button title="Materialni qabul qildim (tasdiqlash)" size="xl" icon="package-check" loading={tr.isPending} onPress={() => tr.mutate({ to: 'CONFIRMED' }, { onError: err })} /> : null}
+          {(role === 'QURUVCHI' || role === 'TADBIRKOR') && s.status === 'DELIVERED' ? <Button title="Qabul qildim" size="xl" icon="package-check" loading={tr.isPending} onPress={() => tr.mutate({ to: 'CONFIRMED' }, { onError: err })} /> : null}
           {s.status === 'CONFIRMED' ? <View style={{ alignItems: 'center' }}><Badge label="Yakunlangan · zaxira va xarajat yangilandi" tone="success" icon="circle-check" /></View> : null}
           {s.status === 'CANCELLED' ? <View style={{ alignItems: 'center' }}><Badge label="Bekor qilingan" tone="danger" icon="circle-x" /></View> : null}
         </Appear>
@@ -193,7 +193,7 @@ function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, s
               <View style={{ marginTop: space.sm }}><StatusLine icon="map-pin" tone="info" text={`Obyektdan ${SITE_RADIUS_M} m ichida bosiladi — joylashuv va vaqt yoziladi`} /></View>
             </Card>
           ) : next ? (
-            <BigAction title={{ NEW: 'Qabul qilish', ACCEPTED: 'Yuklashni boshladim', LOADING: "Yukladim — yo'lga chiqdim" }[s.status] ?? next} icon={s.status === 'NEW' ? 'circle-check' : s.status === 'ACCEPTED' ? 'package' : 'navigation'} loading={tr.isPending} onPress={() => tr.mutate({ to: next }, { onError: err })} />
+            <BigAction title={{ NEW: 'Qabul qilish', ACCEPTED: 'Yuklashni boshladim', LOADING: "Yo'lga chiqdim" }[s.status] ?? next} icon={s.status === 'NEW' ? 'circle-check' : s.status === 'ACCEPTED' ? 'package' : 'navigation'} loading={tr.isPending} onPress={() => tr.mutate({ to: next }, { onError: err })} />
           ) : s.status === 'DELIVERED' ? (
             <Card style={{ alignItems: 'center', paddingVertical: space.xl, gap: space.sm }}><Icon name="hourglass" size={size.iconXl} tone="warning" /><Txt v="titleSm" align="center">Qabul qiluvchi tasdiqlashini kuting</Txt></Card>
           ) : <View style={{ alignItems: 'center' }}><Badge label={s.status === 'CONFIRMED' ? 'Yakunlangan · haq hisobingizda' : 'Bekor qilingan'} tone={s.status === 'CONFIRMED' ? 'success' : 'danger'} icon={s.status === 'CONFIRMED' ? 'circle-check' : 'circle-x'} /></View>}

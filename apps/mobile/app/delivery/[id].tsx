@@ -170,7 +170,7 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
         <Txt v="titleSm">Yakunlash</Txt>
         <Txt color="muted">Quruvchi o'z telefonida imzolaydi. Ilovasi bo'lmasa — uning Telegram'iga keladigan qabul kodi:</Txt>
         <Gap />
-        {otpSent ? <Txt v="caption">Kod {otpSent} raqamining Telegram'iga yuborildi</Txt> : <Button title="Quruvchiga Telegram orqali kod yuborish" variant="secondary" icon="send" onPress={() => requestAcceptOtp(d.id).then((r) => setOtpSent(r.sentTo)).catch(err)} />}
+        {otpSent ? <Txt v="caption">Kod {otpSent} raqamining Telegram'iga yuborildi</Txt> : <Button title="Kodni Telegram'ga yuborish" variant="secondary" icon="send" onPress={() => requestAcceptOtp(d.id).then((r) => setOtpSent(r.sentTo)).catch(err)} />}
         <Gap />
         <Input label="Quruvchi aytgan 4 xonali kod" mono value={otp} onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" />
         <Button title={t('driver.UNLOADING')} size="xl" icon="check-check" disabled={otp.length !== 4} loading={sign.isPending} onPress={() => sign.mutate({ otpCode: otp, acceptedM3: Number(d.loadedM3 ?? d.plannedM3) }, { onError: err })} />
