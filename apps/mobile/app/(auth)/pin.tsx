@@ -78,8 +78,10 @@ export default function PinScreen() {
     if (r.wiped) {
       haptic.error();
       setPin('');
+      // Chiqish darhol (dialogni kutmasdan) — aks holda ilova yopilsa PINsiz sessiya qolardi
+      void signOut();
       dialog('PIN o\'chirildi', 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
-        { text: 'Kirish', onPress: () => void signOut() },
+        { text: 'Kirish' },
       ]);
       return;
     }

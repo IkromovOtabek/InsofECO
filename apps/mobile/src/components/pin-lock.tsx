@@ -131,8 +131,11 @@ export function PinLock() {
     dots.current?.shake();
     if (r.wiped) {
       setPin('');
+      // Chiqish darhol — dialog tugmasini kutmaymiz: ilova shu yerda yopilsa PIN allaqachon o'chgan,
+      // sessiya esa qolgan bo'lardi va keyingi ochilishda ilova PINsiz to'g'ridan-to'g'ri ochilardi.
+      void signOut();
       dialog("PIN o'chirildi", 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
-        { text: 'Kirish', onPress: () => { setLocked(false); void signOut(); } },
+        { text: 'Kirish', onPress: () => setLocked(false) },
       ], { tone: 'danger', icon: 'lock' });
       return;
     }
