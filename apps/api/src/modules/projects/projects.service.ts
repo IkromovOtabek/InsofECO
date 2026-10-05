@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
 import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
@@ -15,6 +16,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly storage: StorageService,
   ) {}
 
   /** Tadbirkor — tashkilotning barcha loyihalari; Quruvchi — a'zo bo'lgan loyihalar. */
@@ -80,6 +82,7 @@ export class ProjectsService {
       const { status, photoKeys, comment } = input;
       input = { status, photoKeys, comment };
     }
+    if (input.photoKeys) input = { ...input, photoKeys: await this.storage.verifyKeys(a.userId, input.photoKeys, ['report'], t.photoKeys) };
     const updated = await this.prisma.task.update({ where: { id: taskId }, data: { ...input, ...(input.status === 'DONE' ? { completedAt: new Date() } : {}) } });
     await this.recalcProgress(t.projectId);
     if (input.status === 'REVIEW') this.events.emit('task.submitted', { taskId, projectId: t.projectId, byUserId: a.userId, orgId: a.orgId });

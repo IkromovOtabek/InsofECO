@@ -17,6 +17,7 @@ import {
 } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { SmsPort } from '../../infra/sms/sms.port';
+import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { tashkentDayRange } from '../../common/time';
 import { VISIBLE_MEMBER } from '../../common/auth/superadmin';
@@ -39,6 +40,7 @@ export class DeliveriesService {
     private readonly orders: OrdersService,
     private readonly sms: SmsPort,
     @InjectQueue(SLA_QUEUE) private readonly slaQueue: Queue,
+    private readonly storage: StorageService,
   ) {}
 
   private readonly include = {
@@ -96,12 +98,14 @@ export class DeliveriesService {
       assertAtSite(input.location, knownPoint(d.order.lat, d.order.lng), input.to === 'ARRIVED' ? 'Yetib keldim' : 'Tushirishni boshladim');
     }
 
+    // Foto kaliti: faqat chaqiruvchining o'z prefiksidagi, omborda haqiqatan bor fayl
+    const photoKey = await this.storage.verifyKey(a.userId, input.photoKey, ['waybill', 'report']);
     const now = input.at > new Date() ? new Date() : input.at; // kelajak vaqt qabul qilinmaydi
     const data: Prisma.DeliveryUpdateInput = { status: input.to };
     if (input.to === 'EN_ROUTE') { data.departedAt = now; if (input.loadedM3) data.loadedM3 = new Prisma.Decimal(input.loadedM3); }
     if (input.to === 'ARRIVED') data.arrivedAt = now;
     if (input.to === 'COMPLETED') data.completedAt = now;
-    if (input.photoKey && ['EN_ROUTE', 'COMPLETED'].includes(input.to)) data.waybillPhotoKey = input.photoKey;
+    if (photoKey && ['EN_ROUTE', 'COMPLETED'].includes(input.to)) data.waybillPhotoKey = photoKey;
     if (input.to === 'ACCEPTED') {
       const busy = await this.prisma.delivery.count({ where: { driverId: d.driverId, status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'] }, NOT: { id } } });
       if (busy > 0) throw new DomainError('DELIVERY_DRIVER_BUSY', 'Avval joriy reysni yakunlang');
@@ -114,7 +118,7 @@ export class DeliveriesService {
       if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', "Reys holati allaqachon o'zgargan — sahifani yangilang", { from, to: input.to });
       const u = await tx.delivery.update({ where: { id }, data, include: this.include });
       await tx.deliveryEvent.create({
-        data: { deliveryId: id, from, to: input.to, byUserId: a.userId, byRole: role, at: now, lat: input.location?.lat, lng: input.location?.lng, photoKey: input.photoKey, note: input.note, clientEventId },
+        data: { deliveryId: id, from, to: input.to, byUserId: a.userId, byRole: role, at: now, lat: input.location?.lat, lng: input.location?.lng, photoKey, note: input.note, clientEventId },
       });
       return u;
     })
@@ -134,13 +138,15 @@ export class DeliveriesService {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirilayotgan reys imzolanadi');
     const role = this.effectiveRole(a, d);
+    // Imzo fayli: o'zi yuklagan (u/<userId>/signature/...) va omborda mavjud bo'lishi shart
+    const signatureKey = await this.storage.verifyKey(a.userId, input.signatureKey, ['signature']);
 
     if (role === 'HAYDOVCHI') {
       // Haydovchi telefonidan: faqat SMS-kod bilan (quruvchi ilovasiz holat)
       if (!input.otpCode || !d.acceptOtpHash || !(await argon2.verify(d.acceptOtpHash, input.otpCode))) {
         throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'SMS-kod noto\'g\'ri');
       }
-    } else if (!input.signatureKey) {
+    } else if (!signatureKey) {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Imzo kerak');
     }
 
@@ -158,7 +164,7 @@ export class DeliveriesService {
       if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Reys allaqachon yakunlangan');
       const u = await tx.delivery.update({
         where: { id },
-        data: { status: 'COMPLETED', completedAt: now, acceptedM3: new Prisma.Decimal(input.acceptedM3), signatureKey: input.signatureKey, acceptOtpHash: null },
+        data: { status: 'COMPLETED', completedAt: now, acceptedM3: new Prisma.Decimal(input.acceptedM3), signatureKey: signatureKey ?? null, acceptOtpHash: null },
         include: this.include,
       });
       await tx.deliveryEvent.create({ data: { deliveryId: id, from: 'UNLOADING', to: 'COMPLETED', byUserId: a.userId, byRole: role, at: now, note: input.note, clientEventId } });
@@ -189,12 +195,13 @@ export class DeliveriesService {
     const d = await this.get(a, id);
     if (this.effectiveRole(a, d) !== 'QURUVCHI' && d.order.clientOrgId !== a.orgId) throw DomainError.forbidden();
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida e\'tiroz bildiriladi');
+    const photoKeys = await this.storage.verifyKeys(a.userId, input.photoKeys, ['dispute', 'report']);
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       const r = await tx.delivery.updateMany({ where: { id, status: 'UNLOADING' }, data: { status: 'DISPUTED' } });
       if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', "Reys holati allaqachon o'zgargan");
       const u = await tx.delivery.update({ where: { id }, data: { status: 'DISPUTED', disputeReason: input.reason, disputeComment: input.comment }, include: this.include });
-      await tx.deliveryEvent.create({ data: { deliveryId: id, from: 'UNLOADING', to: 'DISPUTED', byUserId: a.userId, byRole: 'QURUVCHI', at: now, note: `${input.reason}: ${input.comment ?? ''}`, photoKey: input.photoKeys[0] } });
+      await tx.deliveryEvent.create({ data: { deliveryId: id, from: 'UNLOADING', to: 'DISPUTED', byUserId: a.userId, byRole: 'QURUVCHI', at: now, note: `${input.reason}: ${input.comment ?? ''}`, photoKey: photoKeys[0] } });
       return u;
     });
     this.events.emit(DELIVERY_EVENTS.disputed, { deliveryId: id, orderId: d.orderId, reason: input.reason });

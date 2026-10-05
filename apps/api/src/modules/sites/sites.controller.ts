@@ -4,6 +4,7 @@ import { GeoPointSchema } from '@insof/shared';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
 import { Zod } from '../../common/validation/zod-validation.pipe';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 
 const SiteSchema = z.object({ name: z.string().min(2).max(120), address: z.string().min(5).max(200), location: GeoPointSchema });
@@ -13,7 +14,10 @@ const ReportSchema = z.object({ date: z.coerce.date(), text: z.string().min(2).m
 @Controller({ path: 'sites', version: '1' })
 @Roles('QURUVCHI', 'TADBIRKOR')
 export class SitesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   list(@CurrentUser() a: AuthContext) {
@@ -51,7 +55,8 @@ export class SitesController {
     await this.ownSite(a, siteId);
     // Bosqich shu obyektniki bo'lsin — aks holda o'z obyekti id'si bilan begona bosqichga hisobot yozilardi
     if (!(await this.prisma.stage.count({ where: { id: stageId, siteId } }))) throw DomainError.notFound('Bosqich');
-    return this.prisma.dailyReport.create({ data: { stageId, createdBy: a.userId, ...b } });
+    const photoKeys = await this.storage.verifyKeys(a.userId, b.photoKeys, ['report']);
+    return this.prisma.dailyReport.create({ data: { stageId, createdBy: a.userId, ...b, photoKeys } });
   }
 
   private async ownSite(a: AuthContext, siteId: string) {

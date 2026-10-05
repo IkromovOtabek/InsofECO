@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { SHIPMENT_TRANSITIONS, ShipmentStatus, ShipmentTransitionSchema, canTransition } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
 import { assertAtSite, knownPoint } from '../deliveries/geofence';
@@ -25,6 +26,7 @@ export class ShipmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly storage: StorageService,
   ) {}
 
   list(a: AuthContext, status?: string) {
@@ -72,8 +74,10 @@ export class ShipmentsService {
       const busy = await this.prisma.shipment.count({ where: { driverUserId: a.userId, status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE'] } } });
       if (busy > 0) throw new DomainError('DELIVERY_DRIVER_BUSY', 'Avval joriy yukni yetkazing');
     }
+    // Foto: faqat haydovchining o'zi yuklagan, omborda mavjud fayl
+    const photoKey = input.to === 'DELIVERED' ? await this.storage.verifyKey(a.userId, input.photoKey, ['waybill', 'report']) : undefined;
     const now = new Date();
-    const stamps: Prisma.ShipmentUncheckedUpdateManyInput = { ACCEPTED: { acceptedAt: now, driverUserId: a.userId }, LOADING: { loadedAt: now }, EN_ROUTE: { departedAt: now }, DELIVERED: { deliveredAt: now, photoKey: input.photoKey, receiverName: input.receiverName, deliveredLat: input.location?.lat, deliveredLng: input.location?.lng }, CONFIRMED: { confirmedAt: now } }[input.to as string] ?? {};
+    const stamps: Prisma.ShipmentUncheckedUpdateManyInput = { ACCEPTED: { acceptedAt: now, driverUserId: a.userId }, LOADING: { loadedAt: now }, EN_ROUTE: { departedAt: now }, DELIVERED: { deliveredAt: now, photoKey, receiverName: input.receiverName, deliveredLat: input.location?.lat, deliveredLng: input.location?.lng }, CONFIRMED: { confirmedAt: now } }[input.to as string] ?? {};
 
     // Holat o'tishi atomar (compare-and-set): ikki haydovchi bir vaqtda "Qabul qilaman" bossa yoki
     // qabul qiluvchi "Tasdiqlash"ni ikki marta yuborsa — faqat bittasi o'tadi. Ilgari ikkalasi ham

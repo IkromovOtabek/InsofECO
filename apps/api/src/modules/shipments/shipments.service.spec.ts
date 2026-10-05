@@ -21,7 +21,7 @@ function setup(s: ReturnType<typeof shipment>, claimedCount: number, stockCount 
     $transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
   };
   const events = { emit: jest.fn() };
-  return { svc: new ShipmentsService(prisma as never, events as never), tx, events };
+  return { svc: new ShipmentsService(prisma as never, events as never, { verifyKey: jest.fn(async (_u: string, k?: string) => k) } as never), tx, events };
 }
 
 describe('ShipmentsService.transition — poyga', () => {

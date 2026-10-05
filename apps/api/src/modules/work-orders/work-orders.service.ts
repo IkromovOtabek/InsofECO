@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { WORK_ORDER_TRANSITIONS, WorkOrderCreateSchema, WorkOrderReviewSchema, WorkOrderStatus, WorkOrderSubmitSchema, canTransition } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
 
@@ -19,6 +20,7 @@ export class WorkOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly storage: StorageService,
   ) {}
 
   list(a: AuthContext, status?: string) {
@@ -87,8 +89,11 @@ export class WorkOrdersService {
     return this.transition(a, id, 'IN_PROGRESS');
   }
 
-  submit(a: AuthContext, id: string, input: z.infer<typeof WorkOrderSubmitSchema>) {
-    return this.transition(a, id, 'REVIEW', { photoKeys: input.photoKeys, workerComment: input.comment });
+  async submit(a: AuthContext, id: string, input: z.infer<typeof WorkOrderSubmitSchema>) {
+    const wo = await this.get(a, id);
+    // Fotolar: quruvchining o'zi yuklagan fayllar (avval saqlanganlari qayta tekshirilmaydi)
+    const photoKeys = await this.storage.verifyKeys(a.userId, input.photoKeys, ['report'], wo.photoKeys);
+    return this.transition(a, id, 'REVIEW', { photoKeys, workerComment: input.comment });
   }
 
   /** Tadbirkor tekshiradi: approve → DONE (+Payout +Expense +Project.spent +reyting), aks holda → IN_PROGRESS. */
