@@ -37,6 +37,7 @@ import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { PolicyGuard } from './common/auth/policy.guard';
 import { IdempotencyInterceptor } from './common/idempotency/idempotency.interceptor';
 import { HealthController } from './health.controller';
+import { AppVersionModule } from './common/app-version/app-version.middleware';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { HealthController } from './health.controller';
     ErpIntegrationModule,
     AdminModule,
     UserGateModule,
+    AppVersionModule,
   ],
   controllers: [HealthController],
   providers: [
