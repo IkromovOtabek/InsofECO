@@ -1,45 +1,104 @@
-# Insof ECO — App Store va Google Play'ga chiqarish yo'l xaritasi
+# Insof ECO — relizlar va do'konlarga chiqarish
 
-Yangilangan: 2026-10-02. Holat: EAS loyihasi tayyor, production env o'zgaruvchilari bor, OTA ulangan,
-`/maxfiylik` sahifasi ochiq, hisobni o'chirish ilovada bor. Android `preview` APK buildlari chiqqan (1.0.0).
-**iOS build hali yo'q — Apple Developer hisobi ochilishi kutilmoqda** (pastda "iOS TestFlight" bo'limi).
+Yangilangan: 2026-10-05. Joriy versiya: **1.0.1** (`app.config.ts`), `runtimeVersion: appVersion` — 1.0.1 buildlari
+faqat 1.0.1 OTA'larini oladi, 1.0.0 o'rnatilgan telefonlar yangi APK/build'siz 1.0.1 JS'ini OLMAYDI.
+Holat: production API (`https://api.insof-erp.uz/v1/health`) va `/maxfiylik`, `/maxfiylik/hisobni-ochirish` 200.
+Android 1.0.0 APK xodimlarda; iOS build hali yo'q (Apple Developer hisobi kutilmoqda).
 
-## Muddat (real baho)
+## ⛔ Do'konga chiqishdan oldin yopilishi shart (bloklovchi)
 
-| Yo'l | Kimga | Qachon qo'lda bo'ladi |
+| # | Muammo | Kim |
 |---|---|---|
-| Android APK (EAS `preview`) — do'konsiz, to'g'ridan-to'g'ri o'rnatish | Zavod xodimlari (haydovchi, brigadir, logist) | 1–2 kun |
-| iOS TestFlight (Apple hisobi kerak) | Xodimlar va sinovchi mijozlar, 10 000 kishigacha | Apple hisobi tayyor bo'lgach 2–3 kun |
-| Google Play — ochiq nashr | Mijozlar (do'kon) | Tashkilot hisobi: 1–2 hafta. Shaxsiy hisob: kamida 3–4 hafta (12 sinovchi × 14 kun yopiq test shart) |
-| App Store — ochiq nashr | Mijozlar (do'kon) | Hisob bor bo'lsa 1 hafta. Shaxsiy hisob ochish +2–3 kun. Tashkilot (D-U-N-S) +2–4 hafta |
+| 1 | **Google Play targetSdk.** Expo SDK 52 (RN 0.76) `targetSdkVersion 34` beradi. Play yangi ilova/yangilanish uchun API 35 (2025-08-31 dan), 2026-08-31 dan **API 36** talab qiladi; Android 15+ uchun 16 KB sahifa o'lchami ham shart. APK (ERP orqali) va TestFlight'ga ta'siri yo'q. Yechim: Expo SDK 54+ ga ko'tarish (RN 0.81, Yandex MapKit 16 KB mos versiya), keyin `expo-build-properties` bilan target 36. | Dasturchi |
+| 2 | **Android push.** `google-services.json` yo'q → Android'da Expo push token olinmaydi, bildirishnoma kelmaydi. Firebase → `uz.insofeco.app` → faylni EAS'ga `eas env:create --environment production --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json`, FCM V1 kalitini `eas credentials` ga. `app.config.ts` uni o'zi ulaydi. Keyin yangi build. | Siz |
+| 3 | **Demo hisoblar** production bazada: mijoz (telefon + parol, SMS'siz kiradi) va ERP xodim (haydovchi, reys bilan). `08-app-store-matnlari.md` dagi `<…>` joylarini to'ldiring. | Siz |
+| 4 | **Play fon joylashuv deklaratsiyasi** + 30 s video ("Yo'lga chiqdim" → tushuntirish oynasi `src/core/bg-disclosure.ts` → "Har doim ruxsat" → xarita). | Siz |
+| 5 | Skrinshotlar: iPhone 6.9"/6.7" (1290×2796) va Android telefon, 4–6 ta. | Siz |
 
-Xulosa: **xodimlar 1–2 kunda production'da ishlay oladi** (APK + TestFlight), do'konlar orqali mijozlar uchun
-**2–4 hafta** — asosan hisob tekshiruvi va do'kon reviewiga ketadi, kodga emas.
+## 1.0.1 reliz tartibi (har relizda shu ketma-ketlik)
 
-## Foydalanuvchi qiladigan ishlar (kod bilan hal bo'lmaydi)
+**Tartib: ECO API → ERP → ilova.** Server avval yangi va eski ilovani birga qabul qiladi, keyin ilova chiqadi.
+`scripts/deploy.sh` (ERP repo) ERP'ni OLDIN, ECO'ni KEYIN yangilaydi — shuning uchun ECO'ni alohida birinchi qiling:
 
-1. **Apple Developer Program** — developer.apple.com, 99 $/yil. Shaxsiy hisob 1–2 kunda ochiladi.
-   Tashkilot nomidan bo'lsa D-U-N-S raqami kerak (bepul, 5–30 kun).
-2. **Google Play Console** — play.google.com/console, 25 $ bir marta. Shaxsiy hisobda ID tekshiruvi 1–3 kun,
-   lekin **12 sinovchi 14 kun uzluksiz** yopiq test shart. Tashkilot hisobi (D-U-N-S) bu talabdan ozod.
-   Tavsiya: tashkilot hisobi.
-3. **Firebase loyihasi** (Android push uchun): console.firebase.google.com → Android ilova `uz.insofeco.app` →
-   `google-services.json` ni `apps/mobile/` ga qo'yish, FCM V1 xizmat hisobini `eas credentials` ga yuklash.
-4. **Yandex MapKit kaliti**: developer.tech.yandex.ru → MapKit SDK. EAS'ga
-   `EXPO_PUBLIC_YANDEX_MAPKIT_KEY` sifatida (`production` muhit) qo'shiladi; lokal build uchun `apps/mobile/.env`.
-   Kalitsiz build'da xaritalar o'rnida ro'yxat/raqamlar chiqadi (ilova yiqilmaydi).
-5. Birinchi build interaktiv: `eas build -p android --profile production` (keystore yaratadi),
-   `eas build -p ios --profile production` (Apple ID bilan kiradi, sertifikat yaratadi).
+```bash
+# 1) ECO API (serverda, deploy foydalanuvchisi)
+cd /var/www/insof-eco && git pull --ff-only
+yarn install --frozen-lockfile && yarn workspace @insof/shared build
+cd apps/api && npx prisma migrate deploy && npx prisma generate && npx nest build   # migratsiya restartdan OLDIN
+sudo systemctl restart insof-eco
+for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:3010/v1/health && break; sleep 2; done   # 60 s gacha
+bash /var/www/insof-eco/infra/smoke.sh   # ixtiyoriy
 
-## Kod tomonida qolgan ishlar
+# 2) ERP (ECO'ga qayta tegmaydi)
+cd /var/www/insof-erp && SKIP_ECO=1 bash scripts/deploy.sh
 
-- [x] Hisobni ilova ichida o'chirish (Apple 5.1.1(v), Play siyosati) — Profil → "Hisobni o'chirish".
-- [x] Kamera/galereya ruxsat matnlari haqiqiy ishlatilishga mos: profil rasmi, nakladnoy, yetkazish fotosi, davomat selfisi.
-- [ ] Fon joylashuv uchun Play deklaratsiyasi + 30 s video (haydovchi reysi: "Yo'lga chiqdim" → xarita).
-- [ ] Skrinshotlar: iPhone 6.7" (1290×2796) va Android telefon, 4–6 ta: do'kon, mahsulot, haydovchi reysi, xarita, bildirishnoma.
-- [x] `version` 1.0.0 (`app.config.ts`), runtimeVersion shunga bog'liq.
-- [x] Production API sinovi (2026-10-02): `/v1/health` 200, `/v1/auth/login` 422 (validatsiya), `/api/public/shop` 200, `/maxfiylik` 200.
-- [ ] App Review uchun demo hisoblar production bazada (mijoz va `reviewer` xodim) — TestFlight tashqi sinovidan oldin.
+# 3) Ilova — pastdagi "Ilovani tarqatish"
+```
+
+ECO uchun avtomatik rollback yo'q: `nest build` joyida (`dist/`) yoziladi. Qaytarish: `git checkout <oldingi sha>` →
+build → restart. Migratsiyalar orqaga qaytmaydi — faqat kengaytiruvchi migratsiya (ustun qo'shish) yozing.
+
+### Koordinata bayroqlari (geofence) — bosqichma-bosqich
+
+| Bayroq | Qayerda | Hozir |
+|---|---|---|
+| `SITE_COORDS_REQUIRED` | ECO `apps/api/.env` | `false` |
+| `MOBILE_SITE_COORDS_REQUIRED` | ERP `tenants/*.env` | `false` |
+
+1. Server `false` bilan chiqadi: 1.0.1 koordinata yuboradi (300 m tekshiriladi), 1.0.0 koordinatasiz ham reysni yopadi.
+2. 1.0.1 APK/build HAMMA haydovchida o'rnatilgach (logist ro'yxat bo'yicha tekshiradi) — avval ERP'da
+   `MOBILE_SITE_COORDS_REQUIRED=true` (restart), bir kun kuzating, keyin ECO'da `SITE_COORDS_REQUIRED=true`.
+3. Eski ilova shundan keyin "yetkazdim" da xato oladi (ERP 426, ECO 4xx) — ilovada majburiy yangilash ekrani yo'q,
+   shuning uchun 2-qadamni shoshirmang. Muammo bo'lsa bayroqni `false` ga qaytarish yetarli (restart).
+
+## Ilovani tarqatish
+
+**Muhit o'zgaruvchilari (EAS → production):** `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_ERP_URL`,
+`EXPO_PUBLIC_YANDEX_MAPKIT_KEY`, `EXPO_PUBLIC_YANDEX_GEOSUGGEST_KEY`, `EXPO_PUBLIC_YANDEX_GEOCODER_KEY` — bor
+(2026-10-05, `eas env:list --environment production`). Qo'shish kerak: `GOOGLE_SERVICES_JSON` (file).
+`preview` profili ham `environment: production` ni oladi. Namuna: `apps/mobile/.env.example`.
+
+| Kanal | Buyruq | Kimga |
+|---|---|---|
+| Android APK (ERP orqali) | `eas build -p android --profile preview` → APK'ni serverga `…/uploads/app/insof-eco.apk` (yoki `tenants/insof.env` → `APK_PATH`) | Xodimlar: ERP → `/api/app/android`; taklif SMS'idagi `ECO_APP_URL` |
+| TestFlight | `eas build -p ios --profile production --auto-submit` | Xodimlar, sinovchilar |
+| Play internal | `eas build -p android --profile production` → `eas submit -p android --profile production` (track `internal`, `draft`) | Ichki sinov (targetSdk bloklovchisi yopilgach) |
+| OTA (faqat JS) | `eas update --channel production --environment production --message "..."` | 1.0.1 o'rnatilganlar |
+
+- ⚠️ `eas update` ni **har doim `--environment production`** bilan: busiz lokal `apps/mobile/.env` (Wi-Fi IP) to'plamga
+  yoziladi va production ilova LAN manzilga ulanadi.
+- Native o'zgarish (kutubxona, ruxsat, plugin, ikonka, ovoz) → `version` ni oshiring (1.0.2) va yangi build; OTA emas.
+- Android keystore: EAS'da (remote, `appVersionSource: remote`, `autoIncrement`). `eas credentials -p android` →
+  keystore'ni yuklab, parol menejerida saqlang — yo'qolsa Play'ga yangilanish chiqmaydi.
+- iOS push: birinchi `eas build -p ios` da "Push Notifications key" — *Yes* (APNs .p8 kalit EAS'da saqlanadi;
+  `aps-environment` entitlement `expo-notifications` plugini qo'shadi).
+- Play `submit` uchun `apps/mobile/google-play-service-account.json` (git'da yo'q) kerak.
+
+## Reliz oldi tekshiruv ro'yxati (1.0.1)
+
+- [x] `version` 1.0.1, `runtimeVersion: appVersion`, bundle/package `uz.insofeco.app`, `ITSAppUsesNonExemptEncryption=false`.
+- [x] Ruxsat matnlari o'zbekcha va haqiqiy: kamera, galereya, joylashuv (when-in-use / always). Mikrofon so'ralmaydi
+  (`microphonePermission: false`), Face ID yo'q.
+- [x] iOS `PrivacyInfo.xcprivacy` (`ios.privacyManifests`): UserDefaults, FileTimestamp, SystemBootTime, DiskSpace.
+- [x] Android: `ACCESS_BACKGROUND_LOCATION` + `FOREGROUND_SERVICE_LOCATION` (Android 14), `POST_NOTIFICATIONS`,
+  navigator `<queries>`; bildirishnoma ikonkasi — oq siluet (`adaptive-icon.png`), rang `#0b4fd6`.
+- [x] Fon joylashuv tushuntirish oynasi tizim so'rovidan OLDIN (`src/core/bg-disclosure.ts`, ECO va ERP haydovchi).
+- [x] Hisobni o'chirish: ECO — Sozlamalar/Profil → "Hisobni o'chirish" (mijoz darhol, haydovchi — direktor tasdig'i);
+  ERP xodim — Menyu → "Hisobni o'chirish" (so'rov direktorga). Veb: `/maxfiylik/hisobni-ochirish`.
+- [x] Maxfiylik siyosati ilovadan ochiladi: Sozlamalar → "Maxfiylik siyosati", ro'yxatdan o'tishda rozilik havolasi.
+- [ ] Demo hisoblar (bloklovchi #3), Play deklaratsiya (#4), skrinshotlar (#5).
+- [ ] Haqiqiy telefonda: kirish (ECO va ERP), reys "Yo'lga chiqdim" → fon joylashuv → "Yetkazdim", push (Android ham), foto yuklash, hisobni o'chirish.
+- [ ] Server: `infra/backup.sh` cron'da (pastda), ECO health ERP `health-watch.sh` ga qo'shilgan.
+
+## Server: zaxira, loglar, kuzatuv
+
+- **Zaxira:** ERP `server-backup.sh` ECO bazasini OLMAYDI. ECO uchun `infra/backup.sh` (pg_dump + avatarlar + MinIO,
+  14 kun): `45 2 * * * /var/www/insof-eco/infra/backup.sh >> /var/log/insof-eco-backup.log 2>&1`. Server tashqarisiga
+  nusxa — ERP backup'ining rclone/restic manziliga `/var/backups/insof-eco` ni qo'shing. Oyda bir marta tiklashni sinang.
+- **Loglar:** API — journald (`journalctl -u insof-eco`); docker xizmatlari — `json-file` 20 MB × 5
+  (`infra/docker-compose.prod.yml`, `up -d` bilan qayta yaratilganda kuchga kiradi).
+- **Kuzatuv:** ERP `health-watch.sh` faqat ERP'ni tekshiradi — ECO `http://127.0.0.1:3010/v1/health` ni ham qo'shing.
+  Crash hisobotlari (Sentry yoki muqobil) mobil va API'da yo'q — ilova yiqilishi faqat foydalanuvchi aytganda ma'lum bo'ladi.
 
 ## iOS TestFlight — qadamma-qadam
 
@@ -82,7 +141,7 @@ savoli chiqmaydi (`usesNonExemptEncryption: false`).
 - *Tashqi sinovchilar* (10 000 tagacha, ommaviy havola bilan) — Beta App Review (odatda 1 kun). Kerak:
   sinov tavsifi, fikr-mulohaza emaili, demo hisob (pastdagi "Review uchun izohlar"), maxfiylik siyosati URL.
 
-**5. Keyingi relizlar.** JS o'zgarishi — `eas update --channel production` (TestFlight buildiga ham yetadi).
+**5. Keyingi relizlar.** JS o'zgarishi — `eas update --channel production --environment production` (TestFlight buildiga ham yetadi).
 Native o'zgarish — `eas build -p ios --profile production --auto-submit` (buildNumber o'zi oshadi).
 Ommaviy TestFlight havolasini ERP'dagi `ECO_APP_URL` ga qo'yish mumkin (taklif SMS'idagi havola).
 
@@ -112,23 +171,25 @@ Joylashuv faqat faol reys vaqtida, haydovchi "Yo'lga chiqdim" bosganidan "Yetkaz
 
 ## Review uchun izohlar (App Review Notes / Play "App access")
 
-Demo hisob: mijoz — telefon +998 90 000 00 01 / parol (reviewer uchun alohida yaratiladi);
-xodim — login `reviewer` (SALES). Fon joylashuv: faqat DRIVER roli, reys ochiq paytda.
+To'liq inglizcha matn va demo hisob maydonlari — `08-app-store-matnlari.md` → "App Review Information".
+Mijoz demo hisobi telefon + parol bilan kiradi (SMS kod kerak emas); xodim — login/parol ("Login va parol bilan kirish").
+Fon joylashuv faqat haydovchi rolida, reys ochiq paytda.
 
 ## Buyruqlar
 
 ```bash
-# Android — xodimlar uchun APK (do'konsiz)
+cd apps/mobile
+# Android — xodimlar uchun APK (do'konsiz, ERP orqali tarqatiladi)
 eas build -p android --profile preview
 
-# Do'kon buildlari (birinchi marta interaktiv)
+# Do'kon buildlari
 eas build -p android --profile production
-eas build -p ios --profile production
+eas build -p ios --profile production --auto-submit
 
 # Yuborish
 eas submit -p android --profile production
 eas submit -p ios --profile production
 
-# JS o'zgarishi (buildsiz)
-eas update --channel production --message "..."
+# JS o'zgarishi (buildsiz) — --environment SHART
+eas update --channel production --environment production --message "..."
 ```

@@ -2,9 +2,17 @@ name: CI
 on:
   push: { branches: [main] }
   pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://insof:insof@localhost:5432/insof_test
+      REDIS_URL: redis://localhost:6379
+      EXPO_NO_TELEMETRY: "1"
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -20,10 +28,24 @@ jobs:
         with: { node-version: 22, cache: yarn }
       - run: yarn install --frozen-lockfile
       - run: yarn workspace @insof/shared build
-      - run: yarn typecheck
-      - run: yarn lint
+
+      # Prisma: sxema to'g'ri, client yaratilgan (API typecheck undan OLDIN bo'lishi shart),
+      # migratsiyalar toza PostGIS bazaga xatosiz qo'llanadi — prod'dagi `prisma migrate deploy` bilan bir xil.
+      - name: Prisma validate
+        run: yarn workspace @insof/api prisma validate
       - run: yarn workspace @insof/api prisma:generate
+      - name: Prisma migrate deploy (toza baza)
+        run: yarn workspace @insof/api prisma:deploy
+
+      # Typecheck: api — tsconfig.json, mobil — tsconfig.check.json (apps/mobile "typecheck" skripti)
+      - run: yarn typecheck
+      # Lint: api — eslint, mobil — scripts/design-lint.mjs + tsconfig.check.json (apps/mobile "lint" skripti)
+      - run: yarn lint
+
+      # Mobil konfiguratsiya: app.config.ts va config pluginlari (Yandex MapKit, navigator queries...) xatosiz baholanadi
+      - name: Expo config
+        working-directory: apps/mobile
+        run: npx expo config --type public --json > /dev/null
+
+      # API testlari (jest) — DATABASE_URL/REDIS_URL yuqoridagi job env'dan
       - run: yarn test
-        env:
-          DATABASE_URL: postgresql://insof:insof@localhost:5432/insof_test
-          REDIS_URL: redis://localhost:6379

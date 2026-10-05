@@ -9,11 +9,19 @@
 #
 #   docker compose --env-file /var/www/insof-eco/apps/api/.env -f infra/docker-compose.prod.yml up -d
 name: insof-eco-prod
+
+# Konteyner loglari cheksiz o'smasin (json-file standartda aylantirilmaydi — disk to'lib qoladi).
+# API o'zi systemd (insof-eco) ostida: loglari journald'da, u o'zi aylantiradi (SystemMaxUse).
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "20m", max-file: "5" }
+
 services:
   postgres:
     # PostGIS shart: schema.prisma da `extensions = [postgis]`
     image: postgis/postgis:16-3.4
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-insof}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?parol .env da bo'lsin}
@@ -29,19 +37,31 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes"]
     ports: ["127.0.0.1:6382:6379"]
     volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   minio:
     image: quay.io/minio/minio:latest
     restart: unless-stopped
+    logging: *logging
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:?kalit .env da bo'lsin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?kalit .env da bo'lsin}
     ports: ["127.0.0.1:9010:9000", "127.0.0.1:9011:9001"]
     volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:

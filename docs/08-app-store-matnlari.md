@@ -50,8 +50,8 @@ Insof ECO — приложение бетонного завода Insof для 
 
 Аккаунт можно удалить в любой момент: Профиль → «Удалить аккаунт».
 
-**What's New (1.0.0):**
-Первая версия: каталог завода, заказ, отслеживание миксера на карте, уведомления.
+**What's New (1.0.1):**
+Подсказки адреса и выбор точки на карте, открытие маршрута в Яндекс Навигаторе, 2GIS, Google Maps или Waze, выгрузка отчётов в Excel, исправления.
 
 ---
 
@@ -84,8 +84,8 @@ Location is used only during a driver's active trip — from "On my way" until "
 
 You can delete your account at any time: Profile → "Delete account".
 
-**What's New (1.0.0):**
-First release: plant catalog, ordering, live mixer tracking, notifications.
+**What's New (1.0.1):**
+Address suggestions and map point picker, open the route in Yandex Navigator, 2GIS, Google Maps or Waze, Excel report export, fixes.
 
 ---
 
@@ -113,18 +113,43 @@ Insof ECO is the customer and staff app of Insof concrete plant (Uzbekistan). Th
    it starts when the driver taps "Yo'lga chiqdim" (On my way) and stops at "Yetkazdim" (Delivered).
    Before starting, the app shows an explanation screen. The customer and dispatcher see the truck on the map.
 
-4) Account deletion: Profile -> "Hisobni o'chirish" (Delete account). Customer accounts are deleted immediately;
-   staff accounts are created by the plant director, so deletion sends a request that the director approves.
+4) Account deletion: customer — Settings ("Sozlamalar") or Profile -> "Hisobni o'chirish" (Delete account), deleted
+   immediately. Staff (login) — "Menyu" tab -> "Hisobni o'chirish": staff accounts are created by the plant director,
+   so deletion sends a request that the director approves.
    Web form: https://insof-erp.uz/maxfiylik/hisobni-ochirish
 ```
 
 ## App Privacy (so'rovnoma)
 
-Data Used to Track You: **No**. Quyidagilar "Linked to you", maqsadi **App Functionality**:
+Haqiqiy to'planadigan ma'lumot (kod bo'yicha tekshirilgan, 2026-10-05). Data Used to Track You: **No**.
+Hammasi "Linked to you", maqsadi **App Functionality**. Third-party SDK reklama/analitika yo'q (Sentry ham yo'q).
 
 | Tur | Nima uchun |
 |---|---|
-| Contact Info → Name, Phone Number | Mijoz hisobi, buyurtma bo'yicha qo'ng'iroq |
-| Location → Precise Location | Haydovchi reysi (faqat faol reys), obyekt manzili |
-| Identifiers → User ID | Hisob |
-| Other Data → Device push token | Bildirishnomalar |
+| Contact Info → Name, Phone Number | Hisob, buyurtma bo'yicha qo'ng'iroq |
+| Location → Precise Location | Haydovchi reysi (faqat faol reys, fon rejimida ham), obyekt manzilini tanlash |
+| User Content → Photos or Videos | Profil rasmi, nakladnoy/yetkazish fotosi, davomat selfisi (xodim) |
+| User Content → Other User Content | Buyurtma izohlari, ichki xabarlar |
+| Identifiers → User ID, Device ID | Hisob; qurilma ID (sessiya va push manzili) |
+| Purchases → Purchase History | Buyurtmalar va to'lov qaydlari tarixi |
+
+Yig'ilmaydi: kontaktlar, mikrofon/audio, sog'liq, moliyaviy karta ma'lumoti (to'lov ilovada emas), brauzer tarixi,
+reklama ID. Agar crash hisobotchi (Sentry) qo'shilsa — "Diagnostics → Crash Data" ni ham belgilang.
+
+## Google Play — Data safety
+
+| Bo'lim | Javob |
+|---|---|
+| Ma'lumot to'planadimi / ulashiladimi | To'planadi; uchinchi tomonga **ulashilmaydi** (zavod — ilova egasi) |
+| Shifrlash (in transit) | Ha (HTTPS) |
+| O'chirish so'rovi | Ha — ilovada va https://insof-erp.uz/maxfiylik/hisobni-ochirish |
+| Location → Precise, Approximate | App functionality; fon rejimida — faqat faol reys |
+| Personal info → Name, Phone number, User IDs | Account management, App functionality |
+| Photos and videos → Photos | App functionality (ixtiyoriy) |
+| Messages → Other in-app messages | App functionality |
+| Financial info → Purchase history | App functionality |
+| App info → Crash logs | Yo'q (Sentry qo'shilsa — Ha) |
+| Device or other IDs | App functionality (push, sessiya) |
+
+Play Console → App content: **Location permissions** deklaratsiyasi (fon joylashuv, video), **Foreground service**
+(`location` turi: "faol reysda haydovchi joylashuvini dispetcherga uzatish"), Target audience 18+, Ads — No.
