@@ -189,7 +189,8 @@ export default function Login() {
       {/* Kirish tugmasi ostida — ro'yxatdan o'tish va parolni tiklash */}
       <Appear delay={280} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
         <TextLink onPress={() => router.push('/(auth)/register')}>Ro&apos;yxatdan o&apos;tish</TextLink>
-        <TextLink onPress={() => router.push('/(auth)/forgot')}>Parolni unutdingizmi?</TextLink>
+        {/* Parol faqat "Login va parol" rejimida kerak — telefon (kod) rejimida ko'rsatilmaydi */}
+        {mode === 'password' ? <TextLink onPress={() => router.push('/(auth)/forgot')}>Parolni unutdingizmi?</TextLink> : null}
       </Appear>
 
       <Appear delay={300}>
