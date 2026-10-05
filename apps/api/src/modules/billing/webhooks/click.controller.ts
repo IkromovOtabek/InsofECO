@@ -23,7 +23,8 @@ export class ClickWebhookController {
     const action = Number(b.action);
     const base = `${b.click_trans_id}${b.service_id}${secret}${b.merchant_trans_id}${action === 1 ? b.merchant_prepare_id : ''}${b.amount}${b.action}${b.sign_time}`;
     const sign = createHash('md5').update(base).digest('hex');
-    if (process.env.NODE_ENV === 'production' && sign !== b.sign_string) return { error: -1, error_note: 'SIGN CHECK FAILED' };
+    // Prod'da maxfiy kalit bo'sh bo'lsa imzoni har kim hisoblay oladi — kalitsiz prod rad etadi
+    if (process.env.NODE_ENV === 'production' && (!secret || sign !== b.sign_string)) return { error: -1, error_note: 'SIGN CHECK FAILED' };
 
     const invoice = await this.prisma.invoice.findUnique({ where: { id: b.merchant_trans_id ?? '' } });
     if (!invoice) return { error: -5, error_note: 'Faktura topilmadi' };

@@ -28,6 +28,9 @@ export class DispatchService {
     const volumes = splitVolumeIntoTrips(order.totalVolumeM3.toNumber(), cap);
 
     await this.prisma.$transaction(async (tx) => {
+      // Atomar: "Rejalashtirish" ikki marta bosilsa reyslar ikki barobar yaratilmasin (ikkinchisi rad etiladi)
+      const claimed = await tx.order.updateMany({ where: { id: orderId, status: 'CONFIRMED' }, data: { status: 'SCHEDULED' } });
+      if (claimed.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', 'Reyslar allaqachon yaratilgan');
       await tx.delivery.createMany({
         data: volumes.map((v, i) => ({
           orderId,
@@ -37,7 +40,6 @@ export class DispatchService {
           status: 'ASSIGNED' as DeliveryStatus, // haydovchi biriktirilmaguncha "kutilmoqda" — driverId null
         })),
       });
-      await tx.order.update({ where: { id: orderId }, data: { status: 'SCHEDULED' } });
     });
     return this.orders.get(a, orderId);
   }

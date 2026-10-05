@@ -108,12 +108,22 @@ export class DeliveriesService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Atomar: shu orada boshqa so'rov (ikkinchi telefon, oflayn navbat, ERP) holatni o'zgartirgan bo'lsa —
+      // rad etiladi. Ilgari ikkala so'rov ham o'tib, ikkita hodisa, ikki marta bildirishnoma va ERP webhook ketardi.
+      const r = await tx.delivery.updateMany({ where: { id, status: from }, data: { status: input.to } });
+      if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', "Reys holati allaqachon o'zgargan — sahifani yangilang", { from, to: input.to });
       const u = await tx.delivery.update({ where: { id }, data, include: this.include });
       await tx.deliveryEvent.create({
         data: { deliveryId: id, from, to: input.to, byUserId: a.userId, byRole: role, at: now, lat: input.location?.lat, lng: input.location?.lng, photoKey: input.photoKey, note: input.note, clientEventId },
       });
       return u;
-    });
+    })
+      .catch(async (e) => {
+        // Bir xil Idempotency-Key bilan parallel takror: birinchisi o'tgan — ikkinchisiga o'sha natija
+        if (clientEventId && (await this.prisma.deliveryEvent.findUnique({ where: { clientEventId } }))) return null;
+        throw e;
+      });
+    if (!updated) return this.get(a, id);
 
     await this.afterTransition(updated, from, input.to, a.userId, now);
     return updated;
@@ -134,8 +144,18 @@ export class DeliveriesService {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Imzo kerak');
     }
 
+    // Qabul qilingan hajm yuklangandan (yoki rejadan) ko'p bo'lolmaydi: faktura shu hajm bo'yicha yoziladi —
+    // haydovchi SMS-kod bilan yakunlaganda xato/ataylab katta son mijozga ortiqcha schyot bo'lardi.
+    const maxM3 = Prisma.Decimal.max(d.loadedM3 ?? d.plannedM3, d.plannedM3);
+    if (new Prisma.Decimal(input.acceptedM3).gt(maxM3)) {
+      throw new DomainError('VALIDATION', `Qabul qilingan hajm ${maxM3.toString()} m³ dan oshmasin`, { acceptedM3: input.acceptedM3, maxM3: maxM3.toNumber() });
+    }
+
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Imzo ikki marta yuborilsa (quruvchi + haydovchi OTP bir vaqtda) — faqat bittasi yakunlaydi
+      const r = await tx.delivery.updateMany({ where: { id, status: 'UNLOADING' }, data: { status: 'COMPLETED' } });
+      if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Reys allaqachon yakunlangan');
       const u = await tx.delivery.update({
         where: { id },
         data: { status: 'COMPLETED', completedAt: now, acceptedM3: new Prisma.Decimal(input.acceptedM3), signatureKey: input.signatureKey, acceptOtpHash: null },
@@ -171,6 +191,8 @@ export class DeliveriesService {
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida e\'tiroz bildiriladi');
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.delivery.updateMany({ where: { id, status: 'UNLOADING' }, data: { status: 'DISPUTED' } });
+      if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', "Reys holati allaqachon o'zgargan");
       const u = await tx.delivery.update({ where: { id }, data: { status: 'DISPUTED', disputeReason: input.reason, disputeComment: input.comment }, include: this.include });
       await tx.deliveryEvent.create({ data: { deliveryId: id, from: 'UNLOADING', to: 'DISPUTED', byUserId: a.userId, byRole: 'QURUVCHI', at: now, note: `${input.reason}: ${input.comment ?? ''}`, photoKey: input.photoKeys[0] } });
       return u;

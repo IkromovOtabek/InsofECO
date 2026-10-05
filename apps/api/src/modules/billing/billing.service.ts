@@ -15,11 +15,17 @@ export class BillingService {
   async addDeliveryLine(deliveryId: string) {
     const d = await this.prisma.delivery.findUniqueOrThrow({ where: { id: deliveryId }, include: { order: { include: { items: true } }, invoiceLine: true } });
     if (d.invoiceLine) return d.invoiceLine;
+    // ERP'dan kelgan buyurtma: schyot va summa ERP'niki (PUT /erp/invoices). Bu yerda qator qo'shilsa ERP summasi
+    // ustiga reyslar yana qo'shilib, mijoz qarzi ikki barobar ko'rinardi (kredit limiti ham noto'g'ri "oshdi" derdi).
+    if (d.order.externalRef) return null;
     const qty = d.acceptedM3 ?? d.loadedM3 ?? d.plannedM3;
     // Sodda: buyurtmada bitta marka bo'lsa uning narxi; ko'p bo'lsa o'rtacha vaznli
     const items = d.order.items;
     const totalVol = items.reduce((s, i) => s.plus(i.volumeM3), new D(0));
-    const unitPrice = items.reduce((s, i) => s.plus(i.unitPriceSnapshot.mul(i.volumeM3)), new D(0)).div(totalVol);
+    if (totalVol.lte(0)) return null; // hajmsiz buyurtma — narxni aniqlab bo'lmaydi (0 ga bo'lish)
+    // Narx 2 xonagacha yaxlitlanadi va summa SHU narxdan hisoblanadi: DB'da unitPrice Decimal(14,2) —
+    // ilgari summa yaxlitlanmagan narxdan chiqib, qatorda "hajm × narx ≠ summa" bo'lardi
+    const unitPrice = items.reduce((s, i) => s.plus(i.unitPriceSnapshot.mul(i.volumeM3)), new D(0)).div(totalVol).toDecimalPlaces(2);
     const amount = qty.mul(unitPrice).toDecimalPlaces(2);
 
     return this.prisma.$transaction(async (tx) => {
@@ -40,11 +46,14 @@ export class BillingService {
   async issueForOrder(orderId: string) {
     const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
     const invoice = await this.prisma.invoice.findUnique({ where: { orderId } });
-    if (!invoice) return null;
-    return this.prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { amount: { increment: order.deliveryFee }, issuedAt: invoice.issuedAt ?? new Date() },
+    if (!invoice || order.externalRef) return null;
+    // Idempotent: order.delivered qayta kelsa (qayta urinish, poyga) yetkazish haqi ikkinchi marta qo'shilmaydi
+    if (invoice.issuedAt) return invoice;
+    await this.prisma.invoice.updateMany({
+      where: { id: invoice.id, issuedAt: null },
+      data: { amount: { increment: order.deliveryFee }, issuedAt: new Date() },
     });
+    return this.prisma.invoice.findUnique({ where: { id: invoice.id } });
   }
 
   /** Idempotent to'lov: externalId unique (Payme/Click qayta yuborsa ham bir marta). */
@@ -54,6 +63,8 @@ export class BillingService {
       if (exists) return exists;
     }
     return this.prisma.$transaction(async (tx) => {
+      const target = await tx.invoice.findUniqueOrThrow({ where: { id: input.invoiceId }, select: { status: true } });
+      if (target.status === 'VOID') throw new DomainError('VALIDATION', 'Faktura bekor qilingan — to\'lov qabul qilinmaydi');
       const p = await tx.payment.create({ data: { invoiceId: input.invoiceId, method: input.method, amount: new D(input.amount), externalId: input.externalId, recordedByUserId: input.byUserId } });
       const inv = await tx.invoice.update({ where: { id: input.invoiceId }, data: { paidAmount: { increment: p.amount } } });
       const status = inv.paidAmount.gte(inv.amount) ? 'PAID' : inv.paidAmount.gt(0) ? 'PARTIALLY_PAID' : 'OPEN';

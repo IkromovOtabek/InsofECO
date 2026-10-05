@@ -22,6 +22,14 @@ const D = Prisma.Decimal;
 const ALL_STATUSES = Object.values(OrderStatus) as OrderStatus[];
 type ConfirmInput = z.infer<typeof ConfirmOrderSchema>;
 
+/** O'tmishdagi vaqtga buyurtma bo'lmaydi (15 daqiqa — soat farqi va forma to'ldirish uchun zaxira). */
+const PAST_GRACE_MS = 15 * 60_000;
+export function assertNotPast(at: Date, now = new Date()) {
+  if (at.getTime() < now.getTime() - PAST_GRACE_MS) {
+    throw new DomainError('VALIDATION', "Yetkazish vaqti o'tib ketgan — kelajakdagi vaqtni tanlang", { scheduledAt: at.toISOString() });
+  }
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -70,6 +78,7 @@ export class OrdersService {
   /** Quruvchi (CONTRACTOR a'zosi) yoki Tadbirkor (mijoz nomidan — clientOrgId beriladi). */
   async create(a: AuthContext, input: CreateOrderInput, clientOrgIdOverride?: string) {
     const clientOrgId = clientOrgIdOverride ?? a.orgId!;
+    assertNotPast(input.scheduledAt);
     const mixes = await this.prisma.concreteMix.findMany({
       where: { id: { in: input.items.map((i) => i.mixId) }, organizationId: input.plantOrgId, isActive: true },
     });
@@ -114,6 +123,8 @@ export class OrdersService {
   }
 
   async submit(a: AuthContext, id: string) {
+    // Qoralama kechikib yuborilsa — vaqti o'tib ketgan buyurtma zavodga bormasin
+    assertNotPast((await this.get(a, id)).scheduledAt);
     const order = await this.transition(a, id, 'SUBMITTED');
     // Kredit limiti — bloklamaydi, faqat bayroq; Tadbirkor tasdiqlashda ko'radi
     const credit = await this.creditCheck(order.plantOrgId, order.clientOrgId, order.totalAmount);
@@ -125,8 +136,12 @@ export class OrdersService {
     const order = await this.get(a, id);
     if (order.plantOrgId !== a.orgId) throw DomainError.forbidden();
     this.assertTransition(order.status as OrderStatus, 'CONFIRMED', a.role!);
+    if (input.scheduledAt) assertNotPast(input.scheduledAt);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Atomar: ikki dispetcher/ikki marta bosish — bitta tasdiq (ikkinchisi narxni qayta yozmaydi)
+      const claimed = await tx.order.updateMany({ where: { id, status: order.status }, data: { status: 'CONFIRMED' } });
+      if (claimed.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "Buyurtma holati allaqachon o'zgargan", { from: order.status, to: 'CONFIRMED' });
       for (const po of input.priceOverrides ?? []) {
         await tx.orderItem.updateMany({ where: { id: po.itemId, orderId: id }, data: { unitPriceSnapshot: new D(po.unitPrice) } });
       }
@@ -152,6 +167,9 @@ export class OrdersService {
 
   async cancel(a: AuthContext, id: string, reason?: string) {
     const order = await this.get(a, id);
+    // Beton yuklangan/yo'lda bo'lsa bekor qilib bo'lmaydi — reysni dispetcher FAILED qiladi
+    const started = order.deliveries.filter((d) => ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'COMPLETED', 'DISPUTED'].includes(d.status));
+    if (started.length) throw new DomainError('ORDER_INVALID_TRANSITION', `Buyurtma reyslari boshlangan (${started.length} ta) — bekor qilib bo'lmaydi`);
     const penalty = ['CONFIRMED', 'SCHEDULED'].includes(order.status)
       ? cancellationPenalty(order.totalAmount.toNumber(), order.scheduledAt, new Date(), await this.rules(order.plantOrgId))
       : 0;
@@ -165,10 +183,14 @@ export class OrdersService {
     const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
     if (order.status === to) return order;
     if (!ORDER_TRANSITIONS.some((t) => t.from === order.status && t.to === to)) return order; // tizim o'tishi — jim
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
+    // Atomar: oxirgi ikki reys bir vaqtda yakunlansa ikkalasi ham "DELIVERED" chaqiradi — hodisa
+    // (bildirishnoma, faktura chiqarish) bir marta ketsin
+    const r = await this.prisma.order.updateMany({
+      where: { id: orderId, status: order.status },
       data: { status: to, ...(to === 'DELIVERED' ? { completedAt: new Date() } : {}) },
     });
+    if (r.count !== 1) return this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    const updated = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
     this.emitStatus(updated, order.status as OrderStatus, to, byUserId);
     if (to === 'DELIVERED') this.events.emit(ORDER_EVENTS.delivered, { orderId });
     return updated;
@@ -192,7 +214,18 @@ export class OrdersService {
     const order = await this.get(a, id);
     // Egalik: Quruvchi faqat o'z tashkiloti buyurtmasini; Tadbirkor PLANT/CONTRACTOR — o'z tomonini
     this.assertTransition(order.status as OrderStatus, to, a.role!);
-    const updated = await this.prisma.order.update({ where: { id }, data: { status: to, ...extra }, include: this.include });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Atomar: holat tekshiruvi va yozuv orasida boshqa o'tish bo'lsa (masalan, mijoz bekor qildi, zavod esa
+      // shu payt tasdiqladi) — ikkinchisi rad etiladi, ikkala hodisa/bildirishnoma ketmaydi
+      const r = await tx.order.updateMany({ where: { id, status: order.status }, data: { status: to } });
+      if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "Buyurtma holati allaqachon o'zgargan", { from: order.status, to });
+      if (to === 'CANCELLED') {
+        // Bekor qilingan buyurtmaning hali boshlanmagan reyslari ham yopiladi — aks holda haydovchi
+        // bekor qilingan buyurtmani qabul qilib, beton yuklab ketishi mumkin edi
+        await tx.delivery.updateMany({ where: { orderId: id, status: { in: ['ASSIGNED', 'DECLINED', 'ACCEPTED'] } }, data: { status: 'CANCELLED' } });
+      }
+      return tx.order.update({ where: { id }, data: extra, include: this.include });
+    });
     this.emitStatus(updated, order.status as OrderStatus, to, a.userId);
     return updated;
   }

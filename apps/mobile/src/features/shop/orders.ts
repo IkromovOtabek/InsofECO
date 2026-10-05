@@ -13,11 +13,26 @@ export interface SubmitOutcome {
   skipped: CartLine[];
 }
 
+/** ERP izohi chegarasi (`note` max 1000) — savat ro'yxati shunga sig'diriladi. */
+const NOTE_MAX = 1000;
+
+/** Savat qatorlari izoh uchun: "1) M300 beton (B-300) — 8 m³". */
+export function cartNote(lines: CartLine[], baseNote?: string): string {
+  const list = lines.map((l, i) => `${i + 1}) ${l.name}${l.code ? ` (${l.code})` : ''} — ${l.qty} ${l.unitLabel}`).join('; ');
+  const head = lines.length > 1 ? `Savat (${lines.length} ta mahsulot): ${list}` : '';
+  const full = [head, baseNote].filter(Boolean).join('. ');
+  return full.length > NOTE_MAX ? `${full.slice(0, NOTE_MAX - 1)}…` : full;
+}
+
 /**
- * Savatni yuborish: har qator — alohida, mavjud `ShopOrderInput` (`POST /api/public/shop/order`),
- * KETMA-KET (server bir vaqtda ko'p ariza olmasin, natija tartibi aniq bo'lsin).
- * Server bitta qatorni rad etsa (4xx) — qolganlari davom etadi; tarmoq uzilsa — to'xtaydi,
- * qolganlari `skipped` bo'lib savatda qoladi. Hech narsa "yuborildi" deb soxta belgilanmaydi.
+ * Savatni yuborish — BITTA ariza (`POST /api/public/shop/order`), qolgan mahsulotlar izohda ro'yxat bo'lib boradi.
+ *
+ * Nega bitta: ERP bitta telefondan 2 daqiqa ichida faqat bitta ariza yozadi (`lib/leads.ts`, THROTTLE_MS),
+ * keyingilariga ham `ok: true` ("allaqachon qabul qilingan") qaytaradi. Ilgari har qator alohida yuborilardi —
+ * 2-, 3-... mahsulotlar ERP'ga YOZILMAS, ilova esa ularni "yuborildi" deb savatdan olib tashlardi (buyurtma yo'qolardi).
+ *
+ * Asosiy mahsulotni server rad etsa (4xx: vitrinadan olingan, kam hajm) — u `failed`, keyingisi asosiy bo'lib
+ * qayta uriniladi. Tarmoq uzilsa — to'xtaydi, qolganlari `skipped` bo'lib savatda qoladi.
  */
 export async function submitCart(
   lines: CartLine[],
@@ -27,10 +42,13 @@ export async function submitCart(
   const out: SubmitOutcome = { done: [], failed: [], skipped: [] };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
+    const rest = lines.slice(i);
     try {
-      const result = await shopFetch<ShopOrderResult>('/order', { method: 'POST', body: { ...base, productId: line.productId, qty: line.qty } satisfies ShopOrderInput });
-      out.done.push({ line, result });
+      const body = { ...base, productId: line.productId, qty: line.qty, note: cartNote(rest, base.note) || undefined } satisfies ShopOrderInput;
+      const result = await shopFetch<ShopOrderResult>('/order', { method: 'POST', body });
+      for (const l of rest) out.done.push({ line: l, result });
       onProgress?.(out.done.length);
+      break;
     } catch (e) {
       if (e instanceof ApiException) {
         out.failed.push({ line, error: e.message });

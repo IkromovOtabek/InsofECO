@@ -41,6 +41,9 @@ export class WorkOrdersService {
   }
 
   async create(a: AuthContext, input: z.infer<typeof WorkOrderCreateSchema>) {
+    // Boshqa tashkilot loyihasi/quruvchisi ko'rsatilsa: xarajat begona loyihaga, haq begona odamga yozilardi
+    if (input.projectId && !(await this.prisma.project.count({ where: { id: input.projectId, organizationId: a.orgId! } }))) throw DomainError.notFound('Loyiha');
+    if (input.workerUserId && !(await this.prisma.membership.count({ where: { userId: input.workerUserId, organizationId: a.orgId!, role: 'QURUVCHI', isActive: true } }))) throw DomainError.notFound('Quruvchi');
     const wo = await this.prisma.workOrder.create({
       data: { organizationId: a.orgId!, createdByUserId: a.userId, ...input, price: new D(input.price), status: input.workerUserId ? 'WORKER_ASSIGNED' : 'NEW', acceptedAt: input.workerUserId ? new Date() : null },
       include,
@@ -55,7 +58,12 @@ export class WorkOrdersService {
       throw new DomainError('ORDER_INVALID_TRANSITION', `${wo.status} → ${to} (${a.role}) mumkin emas`);
     }
     const stamps: Prisma.WorkOrderUpdateInput = { ACCEPTED: { acceptedAt: new Date() }, IN_PROGRESS: { startedAt: new Date() }, REVIEW: { submittedAt: new Date() }, DONE: { completedAt: new Date() }, PAID: { paidAt: new Date() } }[to as string] ?? {};
-    const updated = await this.prisma.workOrder.update({ where: { id }, data: { status: to, ...stamps, ...extra }, include });
+    // Atomar: holat shu orada o'zgargan bo'lsa (ikki marta bosish, ikki xodim) — rad etiladi
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.workOrder.updateMany({ where: { id, status: wo.status }, data: { status: to } });
+      if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "Ish holati allaqachon o'zgargan — sahifani yangilang");
+      return tx.workOrder.update({ where: { id }, data: { ...stamps, ...extra }, include });
+    });
     this.events.emit('work_order.status_changed', { workOrderId: id, number: wo.number, title: wo.title, from: wo.status, to, orgId: a.orgId, workerUserId: updated.workerUserId, byUserId: a.userId });
     return updated;
   }
@@ -72,7 +80,9 @@ export class WorkOrdersService {
   async take(a: AuthContext, id: string) {
     const wo = await this.get(a, id);
     if (wo.status === 'ACCEPTED' && !wo.workerUserId) {
-      await this.prisma.workOrder.update({ where: { id }, data: { status: 'WORKER_ASSIGNED', workerUserId: a.userId } });
+      // Ikki quruvchi bir vaqtda olsa — faqat birinchisi (aks holda ikkinchisi birinchisining ustiga yozardi)
+      const r = await this.prisma.workOrder.updateMany({ where: { id, status: 'ACCEPTED', workerUserId: null }, data: { status: 'WORKER_ASSIGNED', workerUserId: a.userId } });
+      if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', 'Bu ishni boshqa quruvchi oldi');
     }
     return this.transition(a, id, 'IN_PROGRESS');
   }
@@ -87,7 +97,9 @@ export class WorkOrdersService {
     const wo = await this.get(a, id);
     if (wo.status !== 'REVIEW') throw new DomainError('ORDER_INVALID_TRANSITION', 'Faqat tekshiruvdagi ish yakunlanadi');
     await this.prisma.$transaction(async (tx) => {
-      await tx.workOrder.update({ where: { id }, data: { status: 'DONE', completedAt: new Date(), reviewComment: input.comment } });
+      // Ikki marta "Qabul qilish" — ikki marta haq/xarajat yozilmasin
+      const r = await tx.workOrder.updateMany({ where: { id, status: 'REVIEW' }, data: { status: 'DONE', completedAt: new Date(), reviewComment: input.comment } });
+      if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', 'Ish allaqachon qabul qilingan');
       if (wo.workerUserId) {
         await tx.payout.create({ data: { organizationId: a.orgId!, userId: wo.workerUserId, workOrderId: id, amount: wo.price, description: `№${wo.number} ${wo.title}` } });
         await tx.workerProfile.upsert({ where: { userId: wo.workerUserId }, create: { userId: wo.workerUserId, completedJobs: 1 }, update: { completedJobs: { increment: 1 } } });

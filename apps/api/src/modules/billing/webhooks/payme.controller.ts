@@ -20,7 +20,8 @@ export class PaymeWebhookController {
   @HttpCode(200)
   async handle(@Body() rpc: { id: number; method: string; params: Record<string, unknown> }, @Headers('authorization') auth?: string) {
     const expected = 'Basic ' + Buffer.from(`Paycom:${process.env.PAYME_KEY ?? ''}`).toString('base64');
-    if (process.env.NODE_ENV === 'production' && auth !== expected) return this.err(rpc.id, -32504, 'Ruxsat yo\'q');
+    // Prod'da kalit bo'sh bo'lsa "Paycom:" — har kim hisoblay oladigan sarlavha; kalitsiz prod rad etadi
+    if (process.env.NODE_ENV === 'production' && (!process.env.PAYME_KEY || auth !== expected)) return this.err(rpc.id, -32504, 'Ruxsat yo\'q');
 
     const account = rpc.params.account as { invoice_id?: string } | undefined;
     const amountTiyin = Number(rpc.params.amount ?? 0);
@@ -43,9 +44,14 @@ export class PaymeWebhookController {
       case 'PerformTransaction': {
         const p = await this.prisma.payment.findUnique({ where: { externalId: `payme:${txId}` } });
         if (!p) return this.err(rpc.id, -31003, 'Tranzaksiya topilmadi');
-        if (p.status !== 'CONFIRMED') {
+        // Bekor qilingan tranzaksiyani o'tkazib bo'lmaydi (Payme: -31008). Ilgari CANCELLED ham CONFIRMED bo'lib,
+        // fakturaga pul yozilardi.
+        if (p.status === 'CANCELLED') return this.err(rpc.id, -31008, 'Tranzaksiya bekor qilingan');
+        if (p.status === 'PENDING') {
           await this.prisma.$transaction(async (tx) => {
-            await tx.payment.update({ where: { id: p.id }, data: { status: 'CONFIRMED', paidAt: new Date() } });
+            // Atomar: Payme PerformTransaction'ni qayta yuborsa (timeout) — paidAmount ikki marta oshmasin
+            const r = await tx.payment.updateMany({ where: { id: p.id, status: 'PENDING' }, data: { status: 'CONFIRMED', paidAt: new Date() } });
+            if (r.count !== 1) return;
             const inv = await tx.invoice.update({ where: { id: p.invoiceId }, data: { paidAmount: { increment: p.amount } } });
             await tx.invoice.update({ where: { id: inv.id }, data: { status: inv.paidAmount.gte(inv.amount) ? 'PAID' : 'PARTIALLY_PAID' } });
           });

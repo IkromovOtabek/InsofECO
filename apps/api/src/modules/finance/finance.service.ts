@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ExpenseCreateSchema, IncomeCreateSchema } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AuthContext } from '../../common/auth/decorators';
+import { DomainError } from '../../common/errors/domain.error';
 import { startOfTashkentDay, startOfTashkentMonth, startOfTashkentWeek, tashkentParts } from '../../common/time';
 
 const D = Prisma.Decimal;
@@ -52,12 +53,22 @@ export class FinanceService {
   }
 
   async addExpense(a: AuthContext, input: z.infer<typeof ExpenseCreateSchema>) {
-    const e = await this.prisma.expense.create({ data: { organizationId: a.orgId!, createdByUserId: a.userId, ...input, amount: new D(input.amount) } });
-    if (input.projectId) await this.prisma.project.update({ where: { id: input.projectId }, data: { spent: { increment: input.amount } } });
-    return e;
+    await this.assertOwnProject(a, input.projectId);
+    // Xarajat va loyiha sarfi birga: biri yozilib ikkinchisi yiqilsa hisobot loyiha sarfidan farq qilardi
+    return this.prisma.$transaction(async (tx) => {
+      const e = await tx.expense.create({ data: { organizationId: a.orgId!, createdByUserId: a.userId, ...input, amount: new D(input.amount) } });
+      if (input.projectId) await tx.project.update({ where: { id: input.projectId }, data: { spent: { increment: new D(input.amount) } } });
+      return e;
+    });
   }
-  addIncome(a: AuthContext, input: z.infer<typeof IncomeCreateSchema>) {
+  async addIncome(a: AuthContext, input: z.infer<typeof IncomeCreateSchema>) {
+    await this.assertOwnProject(a, input.projectId);
     return this.prisma.income.create({ data: { organizationId: a.orgId!, ...input, amount: new D(input.amount) } });
+  }
+
+  /** Boshqa tashkilot loyihasiga xarajat/daromad yozib (va uning `spent`ini oshirib) bo'lmasin. */
+  private async assertOwnProject(a: AuthContext, projectId?: string) {
+    if (projectId && !(await this.prisma.project.count({ where: { id: projectId, organizationId: a.orgId! } }))) throw DomainError.notFound('Loyiha');
   }
 
   /** Quruvchi / Haydovchi: bugun, hafta, oy; to'langan/kutilayotgan; ro'yxat. */

@@ -276,10 +276,12 @@ export class ErpService {
         note: i === toIdx ? (input.note ?? 'ERP') : 'ERP: avtomatik oraliq bosqich',
         ...(step === 'EN_ROUTE' && input.loadedM3 ? { loadedM3: input.loadedM3 } : {}),
       };
+      if (step === 'COMPLETED' && input.acceptedM3) {
+        // COMPLETED dan OLDIN: `delivery.completed` hodisasi (faktura qatori, ERP webhook) darhol ishlaydi va
+        // ilgari acceptedM3 hali yozilmagan bo'lib, faktura reja/yuklangan hajm bo'yicha chiqib qolardi.
+        await this.prisma.delivery.update({ where: { id: d.id }, data: { acceptedM3: new D(input.acceptedM3) } });
+      }
       await this.deliveries.transition(ctx, d.id, body, `erp:${ref}:${step}:${at.getTime()}`);
-    }
-    if (input.to === 'COMPLETED' && input.acceptedM3) {
-      await this.prisma.delivery.update({ where: { id: d.id }, data: { acceptedM3: new D(input.acceptedM3) } });
     }
     return this.getTrip(a, ref);
   }
@@ -592,6 +594,10 @@ export class ErpService {
     const order = await this.prisma.order.findUnique({ where: { plantOrgId_externalRef: { plantOrgId: a.orgId!, externalRef: input.orderRef } }, include: { invoice: true } });
     if (!order) throw DomainError.notFound(`Zayavka ${input.orderRef} (avval zayavkani yuboring)`);
     if (!order.invoice) throw DomainError.notFound(`${input.orderRef} uchun schyot (avval schyotni yuboring)`);
+    // externalId butun tizimda unique (Payme/Click ham shu ustunda) — boshqa zavod schyotidagi to'lovni
+    // shu kalit bilan ustidan yozib (summasini o'zgartirib) bo'lmasin
+    const prev = await this.prisma.payment.findUnique({ where: { externalId: ref }, select: { invoiceId: true } });
+    if (prev && prev.invoiceId !== order.invoice.id) throw DomainError.forbidden("Bu to'lov boshqa schyotga tegishli");
     const data = { amount: new D(input.amount), method: input.method ?? 'CASH', paidAt: input.paidAt ?? new Date(), status: 'CONFIRMED', recordedByUserId: a.userId };
     const pay = await this.prisma.payment.upsert({
       where: { externalId: ref },

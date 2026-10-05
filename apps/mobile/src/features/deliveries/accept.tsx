@@ -151,7 +151,8 @@ export function AcceptDelivery({ d }: { d: Delivery }) {
               <Txt v="listTitle" numberOfLines={1}>Qabul qilingan hajm</Txt>
               <Txt v="tSm" numberOfLines={1}>{`Hujjat bo'yicha ${m3(doc)}`}</Txt>
             </View>
-            <Stepper value={accepted} onChange={setAccepted} min={0} max={doc} />
+            {/* 0 m³ server rad etadi (acceptedM3 > 0): umuman qabul qilinmagan bo'lsa — "E'tiroz" */}
+            <Stepper value={accepted} onChange={setAccepted} min={Math.min(0.5, doc)} max={doc} />
           </View>
         </Appear>
 

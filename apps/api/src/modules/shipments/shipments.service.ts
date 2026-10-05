@@ -56,6 +56,11 @@ export class ShipmentsService {
     const from = s.status as ShipmentStatus;
     if (a.role === 'HAYDOVCHI' && s.driverUserId && s.driverUserId !== a.userId) throw DomainError.forbidden('Bu yuk boshqa haydovchiga biriktirilgan');
     if (!canTransition(SHIPMENT_TRANSITIONS, from, input.to, a.role!)) throw new DomainError('DELIVERY_INVALID_TRANSITION', `${from} → ${input.to} (${a.role}) mumkin emas`);
+    // Quruvchi faqat o'zi a'zo loyihaga kelgan yukni tasdiqlaydi (ro'yxat ham shunday filtrlanadi)
+    if (a.role === 'QURUVCHI' && s.request?.requestedByUserId !== a.userId) {
+      const member = await this.prisma.project.count({ where: { id: s.projectId, members: { some: { userId: a.userId } } } });
+      if (!member) throw DomainError.forbidden('Bu yuk sizning loyihangizga tegishli emas');
+    }
 
     // "Yetkazdim" — faqat obyekt yonida. Ilgari ilova koordinata yubormas, server esa
     // tekshirmas edi: haydovchi yo'lning yarmida bossa ham yuk "Yetkazildi" bo'lib qolardi.
@@ -68,11 +73,22 @@ export class ShipmentsService {
       if (busy > 0) throw new DomainError('DELIVERY_DRIVER_BUSY', 'Avval joriy yukni yetkazing');
     }
     const now = new Date();
-    const stamps: Prisma.ShipmentUpdateInput = { ACCEPTED: { acceptedAt: now, driver: { connect: { id: a.userId } } }, LOADING: { loadedAt: now }, EN_ROUTE: { departedAt: now }, DELIVERED: { deliveredAt: now, photoKey: input.photoKey, receiverName: input.receiverName, deliveredLat: input.location?.lat, deliveredLng: input.location?.lng }, CONFIRMED: { confirmedAt: now } }[input.to as string] ?? {};
+    const stamps: Prisma.ShipmentUncheckedUpdateManyInput = { ACCEPTED: { acceptedAt: now, driverUserId: a.userId }, LOADING: { loadedAt: now }, EN_ROUTE: { departedAt: now }, DELIVERED: { deliveredAt: now, photoKey: input.photoKey, receiverName: input.receiverName, deliveredLat: input.location?.lat, deliveredLng: input.location?.lng }, CONFIRMED: { confirmedAt: now } }[input.to as string] ?? {};
+
+    // Holat o'tishi atomar (compare-and-set): ikki haydovchi bir vaqtda "Qabul qilaman" bossa yoki
+    // qabul qiluvchi "Tasdiqlash"ni ikki marta yuborsa — faqat bittasi o'tadi. Ilgari ikkalasi ham
+    // o'tardi: yuk oxirgi bosganga yozilardi, CONFIRMED esa ombordan ikki marta ayirib, haydovchiga
+    // ikki marta haq yozardi.
+    const claim = (tx: Prisma.TransactionClient) =>
+      tx.shipment.updateMany({
+        where: { id, status: from, ...(input.to === 'ACCEPTED' ? { OR: [{ driverUserId: null }, { driverUserId: a.userId }] } : {}) },
+        data: { status: input.to, ...stamps },
+      });
+    const lost = () => new DomainError('DELIVERY_INVALID_TRANSITION', input.to === 'ACCEPTED' ? 'Bu yukni boshqa haydovchi oldi' : 'Yuk holati allaqachon o\'zgargan — sahifani yangilang', { from, to: input.to });
 
     if (input.to === 'CONFIRMED') {
       await this.prisma.$transaction(async (tx) => {
-        await tx.shipment.update({ where: { id }, data: { status: 'CONFIRMED', ...stamps } });
+        if ((await claim(tx)).count !== 1) throw lost();
         if (s.request) {
           await tx.inventoryItem.update({ where: { warehouseId_materialId: { warehouseId: s.warehouseId, materialId: s.request.materialId } }, data: { quantity: { decrement: s.quantity } } });
           await tx.materialRequest.update({ where: { id: s.request.id }, data: { status: 'CONFIRMED' } });
@@ -87,10 +103,12 @@ export class ShipmentsService {
         }
       });
     } else {
-      await this.prisma.shipment.update({ where: { id }, data: { status: input.to, ...stamps } });
-      if (s.request && (input.to === 'LOADING' || input.to === 'DELIVERED')) {
-        await this.prisma.materialRequest.update({ where: { id: s.request.id }, data: { status: input.to === 'LOADING' ? 'LOADING' : 'DELIVERED' } });
-      }
+      await this.prisma.$transaction(async (tx) => {
+        if ((await claim(tx)).count !== 1) throw lost();
+        if (s.request && (input.to === 'LOADING' || input.to === 'DELIVERED')) {
+          await tx.materialRequest.update({ where: { id: s.request.id }, data: { status: input.to === 'LOADING' ? 'LOADING' : 'DELIVERED' } });
+        }
+      });
     }
     const updated = await this.get(a, id);
     this.events.emit('shipment.status_changed', { shipmentId: id, number: s.number, cargo: s.cargo, from, to: input.to, orgId: s.organizationId, driverUserId: updated.driverUserId, requesterUserId: s.request?.requestedByUserId ?? null, byUserId: a.userId });

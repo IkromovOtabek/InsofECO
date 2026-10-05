@@ -50,6 +50,8 @@ export class MaterialsService {
         create: { warehouseId: w.id, materialId: m.id, quantity: new D(input.delta) },
         update: { quantity: { increment: input.delta } },
       });
+      // Chiqim zaxiradan ko'p bo'lsa — manfiy qoldiq bo'lmasin (tranzaksiya qaytariladi)
+      if (item.quantity.lt(0)) throw new DomainError('VALIDATION', `Omborda ${m.name} yetarli emas (chiqim ${Math.abs(input.delta)} ${m.unit})`);
       if (input.delta > 0) {
         await tx.expense.create({ data: { organizationId: a.orgId!, category: 'MATERIAL', amount: m.price.mul(input.delta), description: `Omborga kirim: ${m.name} ${input.delta} ${m.unit}${input.note ? ` (${input.note})` : ''}`, createdByUserId: a.userId } });
       }
@@ -94,6 +96,9 @@ export class MaterialsService {
 
     const dist = warehouse.lat && r.project.lat ? haversineKm(warehouse.lat, warehouse.lng!, r.project.lat, r.project.lng!) : null;
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Ikki marta "Tasdiqlash" — ikkinchisi aniq xato oladi (ikkinchi yuk yaratilmaydi)
+      const claimed = await tx.materialRequest.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'APPROVED' } });
+      if (claimed.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "So'rov allaqachon ko'rib chiqilgan");
       const sh = await tx.shipment.create({
         data: {
           organizationId: a.orgId!, materialRequestId: r.id, projectId: r.projectId, warehouseId: warehouse.id,
