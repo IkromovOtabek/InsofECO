@@ -56,7 +56,7 @@ export class BillingService {
     return this.prisma.invoice.findUnique({ where: { id: invoice.id } });
   }
 
-  /** Idempotent to'lov: externalId unique (Payme/Click qayta yuborsa ham bir marta). */
+  /** Idempotent to'lov: externalId unique (tashqi tizim, masalan ERP, qayta yuborsa ham bir marta). */
   async recordPayment(input: { invoiceId: string; method: PaymentMethod; amount: number; externalId?: string; byUserId?: string }) {
     if (input.externalId) {
       const exists = await this.prisma.payment.findUnique({ where: { externalId: input.externalId } });

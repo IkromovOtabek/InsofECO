@@ -45,7 +45,7 @@ import { AppVersionModule } from './common/app-version/app-version.middleware';
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
-        // ERP integratsiyasining API kaliti ham log'ga tushmasin (authorization — Payme Basic ham shu yerda)
+        // ERP integratsiyasining API kaliti ham log'ga tushmasin (authorization ham)
         redact: ['req.headers.authorization', 'req.headers["x-api-key"]', 'req.headers.cookie', 'req.body.phone', 'req.body.code'],
         transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
       },

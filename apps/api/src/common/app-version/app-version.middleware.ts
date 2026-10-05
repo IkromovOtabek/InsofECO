@@ -28,7 +28,6 @@ export const EXEMPT_PREFIXES = [
   'catalog',
   'organizations/plants',
   'avatars',
-  'billing/payments',
   'erp',
 ];
 

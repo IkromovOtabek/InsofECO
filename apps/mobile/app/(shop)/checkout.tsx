@@ -20,8 +20,6 @@ import { MiniArt } from '@/features/shop/ui';
 
 const PAYS: { key: string; label: string; icon: IconName }[] = [
   { key: 'Naqd', label: 'Naqd', icon: 'banknote' },
-  { key: 'Click', label: 'Click', icon: 'wallet' },
-  { key: 'Payme', label: 'Payme', icon: 'wallet' },
   { key: "Bank o'tkazma", label: "Bank o'tkazma", icon: 'receipt' },
 ];
 const SLOTS = ['08:00–10:00', '10:00–12:00', '12:00–14:00', '14:00–16:00', '16:00–18:00'];
