@@ -46,7 +46,7 @@ type Verify = { ok: true; method: string } | { ok: false; message: string };
 const NOT_SET = "Telefoningizda Face ID, barmoq izi yoki ekran qulfi (PIN / parol) sozlanmagan. Telefon sozlamalarida yoqing va qayta urining.";
 
 /** Telefon egasini OS orqali tasdiqlash. Kamera ishlatilmaydi. */
-async function verifyOwner(): Promise<Verify> {
+export async function verifyOwner(): Promise<Verify> {
   const LA = loadLA();
   if (!LA) return { ok: false, message: "Face ID uchun ilovaning yangi versiyasi kerak — do'kondan yangilang." };
   try {

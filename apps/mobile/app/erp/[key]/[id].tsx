@@ -19,6 +19,7 @@ import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
+import { verifyOwner } from '@/features/erp/attendance';
 import i18n from '@/core/i18n';
 
 /**
@@ -235,6 +236,14 @@ export default function ErpDetail() {
       return;
     }
     if (!(await siteGate(a))) return;
+    // "Keldi — Face ID": kamera emas, telefonning Face ID / barmoq izi skaneri; tanilsa darhol yoziladi
+    if (a.id === 'att.face') {
+      setChecking(true);
+      const v = await verifyOwner().finally(() => setChecking(false));
+      if (!v.ok) { toast.error(v.message, 'Davomat yozilmadi'); return; }
+      void execute(a, { biometric: true, method: v.method });
+      return;
+    }
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       dialog(a.label, a.confirm, [
