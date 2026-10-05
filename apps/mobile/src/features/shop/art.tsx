@@ -2,7 +2,8 @@ import React from 'react';
 import { Image, StyleProp, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, Path, Pattern, Polygon, Rect } from 'react-native-svg';
 import { useTheme } from '@/design/theme';
-import { size } from '@/design/tokens';
+import { radius, size, space } from '@/design/tokens';
+import { Txt } from '@/design/primitives';
 import { photoUrl, type ShopItem } from './api';
 
 /**
@@ -100,13 +101,39 @@ export function ProdArt({ kind, style, cover }: { kind: ArtKind; style?: StylePr
  * ota konteynerning `overflow: 'hidden'` + radiusi bilan kesiladi (kvadrat surat dumaloq plitka ichida
  * "orolcha" bo'lib qolmaydi). `cover` — chizma (surat yo'q bo'lsa) ham butun maydonni to'ldiradi.
  */
+/**
+ * ERP'dagi namuna rasmlar (`/photo/demo-*.png`) — 800×600 tayyor plakat (ichida "M100 · Beton B7,5" yozuvi).
+ * Kichik dumaloq/kvadrat plitkaga `cover` bilan kesilganda yozuv qirqilib, xira ko'rinadi — ular o'rniga
+ * aniq vektor chizma + marka yoziladi. Haqiqiy yuklangan surat odatdagidek ko'rsatiladi.
+ */
+const isDemoPhoto = (p: string | null | undefined) => !!p && /\/demo-[^/]*$/i.test(p);
+
+/** Marka yorlig'i: kod (M100) yoki nomdagi "M300"/"D500"/"B25" — bo'lmasa yo'q. */
+const gradeOf = (it: { code?: string | null; name?: string | null }) =>
+  (it.code && it.code.length <= 8 ? it.code : null) ?? it.name?.match(/\b[MDB]\d{2,3}(?:[.,]\d)?\b/i)?.[0]?.toUpperCase() ?? null;
+
 export function ProductImage({ item, style, cover }: { item: Pick<ShopItem, 'photo' | 'name' | 'group' | 'code' | 'unit'>; style?: StyleProp<ViewStyle>; /** Chizma ham to'liq to'ldirsin (chetlari kesiladi). */ cover?: boolean }) {
-  const uri = photoUrl(item.photo);
+  const { c } = useTheme();
+  const demo = isDemoPhoto(item.photo);
+  const uri = demo ? null : photoUrl(item.photo);
   const [failed, setFailed] = React.useState(false);
+  const [w, setW] = React.useState(0);
   React.useEffect(() => setFailed(false), [uri]);
   // Surat yuklanmasa (404, internet yo'q) — bo'sh kulrang joy emas, mahsulot chizmasi
   if (uri && !failed) return <Image source={{ uri }} style={[{ width: '100%', height: '100%' }, style as object]} resizeMode="cover" onError={() => setFailed(true)} accessibilityIgnoresInvertColors />;
-  return <ProdArt kind={artKind(item)} style={style} cover={cover} />;
+  const grade = gradeOf(item);
+  return (
+    <View style={[{ width: '100%', height: '100%' }, style]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+      {/* Kichik plitkada (toifa) to'ldiradi, katta kartada chizma to'liq ko'rinadi — tepasi kesilmaydi */}
+      <ProdArt kind={artKind(item)} cover={cover && w > 0 && w < 110} style={{ width: '100%', height: '100%' }} />
+      {/* Marka faqat yetarli joyda (karta, mahsulot sahifasi) — 72 dp toifa plitkasida chizmaning o'zi */}
+      {grade && w >= 110 ? (
+        <View pointerEvents="none" style={{ position: 'absolute', left: space.sm, bottom: space.sm, paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: c.bgInverse }}>
+          <Txt v={w >= 260 ? 'titleSm' : 'badge'} style={{ color: c.textOnInverse }}>{grade}</Txt>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 /** To'q (bgInverse) karta ustidagi xira katak — demo Chizma hero foni (14 css → 19 dp). */

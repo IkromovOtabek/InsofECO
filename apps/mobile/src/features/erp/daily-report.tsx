@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import * as Sharing from 'expo-sharing';
 import { Button, Callout, IconButton, Txt } from '@/design/primitives';
 import { ChipGroup } from '@/design/blocks';
 import { Sheet, toast } from '@/design/ui';
@@ -46,7 +45,10 @@ export function DailyReportSheet({ open, onClose }: { open: boolean; onClose: ()
     setBusy(true); setError(null);
     try {
       const uri = await downloadDailyReport(ymd(day));
-      if (await Sharing.isAvailableAsync()) {
+      // Kech yuklanadi: expo-sharing native moduli yo'q eski build'da (OTA) butun ilova yiqilmasin
+      let Sharing: typeof import('expo-sharing') | null = null;
+      try { Sharing = require('expo-sharing') as typeof import('expo-sharing'); } catch { Sharing = null; }
+      if (Sharing && (await Sharing.isAvailableAsync())) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           UTI: 'org.openxmlformats.spreadsheetml.sheet',

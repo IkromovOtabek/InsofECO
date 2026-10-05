@@ -1,8 +1,8 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Callout, Card, ListItem, Txt } from '@/design/primitives';
+import { Button, Card, ListItem, Txt } from '@/design/primitives';
 import { ListGroup, PageHeader, Reveal } from '@/design/blocks';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/ui';
@@ -11,7 +11,6 @@ import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
 import { useLogout } from '@/features/auth/logout';
-import { useTelegramLogin } from '@/features/auth/telegram';
 import { erpRoleConfig } from '@/features/erp/roles';
 import { InverseGrid } from '@/features/shop/art';
 import { useCart } from '@/features/shop/cart';
@@ -22,8 +21,8 @@ const ROLE_GROUP = { TADBIRKOR: '(tadbirkor)', QURUVCHI: '(quruvchi)', HAYDOVCHI
 const PERKS = ['Mikser jonli xaritada', 'Hisob-faktura va akt-sverka', 'Bir nechta obyekt va jamoa'];
 
 /**
- * Profil — demo CLIENT[7] (mehmon): to'q karta — hisob foydalari, "Telegram orqali kirish", "yoki telefon raqam
- * va SMS"; ostida Til, Yordam (Aloqa), Saralanganlar. Kirgan foydalanuvchida — kabinet, sozlamalar, chiqish.
+ * Profil — demo CLIENT[7] (mehmon): to'q karta — hisob foydalari, "Kirish" va "Ro'yxatdan o'tish"
+ * (Telegram/SMS tanlovi login ekranida); ostida Til, Yordam (Aloqa), Saralanganlar. Kirgan foydalanuvchida — kabinet, sozlamalar, chiqish.
  */
 export default function ShopProfile() {
   const router = useRouter();
@@ -32,7 +31,6 @@ export default function ShopProfile() {
   const { status, kind, user, active, erp } = useSession();
   const { confirm: logoutConfirm } = useLogout();
   const favs = useCart((s) => s.favs.length);
-  const tg = useTelegramLogin();
 
   const goHome = () => {
     if (kind === 'erp' && erp) return router.replace(`/${erpRoleConfig(erp.role).group}` as never);
@@ -93,19 +91,13 @@ export default function ShopProfile() {
                     </View>
                   ))}
                 </View>
-                <Button
-                  title={tg.waiting ? 'Telegram kutilmoqda…' : 'Telegram orqali kirish'}
-                  icon="send" size="sticky" loading={tg.starting}
-                  onPress={() => void tg.start()}
-                  style={{ marginTop: space.xs }}
-                />
-                <Pressable accessibilityRole="link" onPress={() => router.push('/(auth)/login')} hitSlop={space.sm} style={({ pressed }) => ({ alignSelf: 'center', opacity: pressed ? 0.6 : 1 })}>
-                  <Txt v="tSm" style={{ color: c.textOnInverseMuted }}>yoki telefon raqam va SMS</Txt>
-                </Pressable>
+                {/* Mehmon uchun ikki yo'l: kirish (raqam/parol yoki kod — login ekranida) va ro'yxatdan o'tish */}
+                <View style={{ gap: space.sm, marginTop: space.xs }}>
+                  <Button title="Kirish" icon="log-in" size="sticky" onPress={() => router.push('/(auth)/login')} />
+                  <Button title="Ro'yxatdan o'tish" variant="secondary" size="sticky" onPress={() => router.push('/(auth)/register')} />
+                </View>
               </View>
             </View>
-            {tg.waiting ? <Callout tone="info">Telegram botida raqamingizni ulashing — keyin ilovaga qayting, kirish o&apos;zi tugaydi.</Callout> : null}
-            {tg.error ? <Callout tone="danger">{tg.error}</Callout> : null}
             {common}
           </Reveal>
         )}
