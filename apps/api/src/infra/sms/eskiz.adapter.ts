@@ -25,7 +25,8 @@ export class EskizAdapter extends SmsPort {
     const form = new FormData();
     form.set('email', email);
     form.set('password', password);
-    const r = await fetch('https://notify.eskiz.uz/api/auth/login', { method: 'POST', body: form });
+    // Vaqt chegarasisiz Eskiz osilib qolsa OTP so'rovi (va foydalanuvchi) cheksiz kutardi
+    const r = await fetch('https://notify.eskiz.uz/api/auth/login', { method: 'POST', body: form, signal: AbortSignal.timeout(10_000) });
     const body = await r.text();
     if (!r.ok) throw new Error(`Eskiz token olinmadi (${r.status}): ${body.slice(0, 200)}`);
 
@@ -49,6 +50,7 @@ export class EskizAdapter extends SmsPort {
       method: 'POST',
       headers: { authorization: `Bearer ${token}` },
       body: form,
+      signal: AbortSignal.timeout(10_000),
     });
   }
 

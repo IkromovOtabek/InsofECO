@@ -46,7 +46,11 @@ export class MessagesService {
 
   async messages(a: AuthContext, conversationId: string, since?: Date) {
     await this.member(a, conversationId);
-    const msgs = await this.prisma.message.findMany({ where: { conversationId, ...(since ? { createdAt: { gt: since } } : {}) }, include: { sender: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'asc' }, take: 200 });
+    // `since` siz — OXIRGI 200 ta (eskisidan yangisiga). Avval `asc + take` ENG ESKI 200 tani berardi:
+    // 200 dan oshgan suhbatda yangi xabarlar umuman ko'rinmay qolardi.
+    const msgs = since
+      ? await this.prisma.message.findMany({ where: { conversationId, createdAt: { gt: since } }, include: { sender: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'asc' }, take: 200 })
+      : (await this.prisma.message.findMany({ where: { conversationId }, include: { sender: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'desc' }, take: 200 })).reverse();
     await this.prisma.conversationParticipant.update({ where: { conversationId_userId: { conversationId, userId: a.userId } }, data: { lastReadAt: new Date() } });
     return msgs;
   }

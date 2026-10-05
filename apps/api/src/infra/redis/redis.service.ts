@@ -7,8 +7,12 @@ export class RedisService implements OnModuleDestroy {
 
   /** Sliding-window rate limit: true = ruxsat. */
   async allow(key: string, limit: number, windowSeconds: number): Promise<boolean> {
-    const n = await this.client.incr(key);
-    if (n === 1) await this.client.expire(key, windowSeconds);
+    // INCR va TTL bitta safarda. Avval `n === 1` dagina EXPIRE qo'yilardi: shu ikki buyruq orasida
+    // ulanish uzilsa kalit muddatsiz qolib, raqam (masalan OTP) abadiy bloklanardi.
+    const res = await this.client.multi().incr(key).ttl(key).exec();
+    const n = Number(res?.[0]?.[1] ?? 0);
+    const ttl = Number(res?.[1]?.[1] ?? -1);
+    if (ttl < 0) await this.client.expire(key, windowSeconds);
     return n <= limit;
   }
 

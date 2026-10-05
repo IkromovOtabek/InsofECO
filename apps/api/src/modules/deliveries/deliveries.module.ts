@@ -17,7 +17,13 @@ export function redisConnection() {
   imports: [
     OrdersModule,
     // forRoot — AppModule'da (global config); bu yerda connection aniq beriladi, chunki registerQueue root configni faqat AppModule'dan oladi
-    BullModule.registerQueue({ name: SLA_QUEUE, connection: redisConnection() }),
+    BullModule.registerQueue({
+      name: SLA_QUEUE,
+      connection: redisConnection(),
+      // DB/Redis bir lahza uzilsa SLA belgisi yo'qolmasin (markSlaBreach idempotent — qayta urinish xavfsiz);
+      // muvaffaqiyatsizlar Redis'da cheksiz yig'ilmasin.
+      defaultJobOptions: { attempts: 5, backoff: { type: 'exponential', delay: 10_000 }, removeOnComplete: true, removeOnFail: 1000 },
+    }),
   ],
   controllers: [DeliveriesController],
   providers: [DeliveriesService, SlaProcessor],

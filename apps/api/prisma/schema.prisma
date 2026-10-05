@@ -389,6 +389,8 @@ model OrderItem {
 
   order Order       @relation(fields: [orderId], references: [id])
   mix   ConcreteMix @relation(fields: [mixId], references: [id])
+
+  @@index([orderId])
 }
 
 // ───────────────────────────── Deliveries ─────────────────────────────
@@ -532,6 +534,8 @@ model InvoiceLine {
 
   invoice  Invoice  @relation(fields: [invoiceId], references: [id])
   delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([invoiceId])
 }
 
 model Payment {
@@ -547,6 +551,8 @@ model Payment {
   createdAt      DateTime      @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
 }
 
 model CreditLimit {
@@ -558,6 +564,7 @@ model CreditLimit {
   client Organization @relation("creditClient", fields: [clientOrgId], references: [id])
 
   @@unique([plantOrgId, clientOrgId])
+  @@index([clientOrgId])
 }
 
 // ───────────────────────────── Notifications ─────────────────────────────
@@ -656,6 +663,7 @@ model ProjectMember {
   user    User    @relation(fields: [userId], references: [id])
 
   @@unique([projectId, userId])
+  @@index([userId])
 }
 
 enum TaskStatus {
@@ -737,6 +745,7 @@ model WorkOrder {
 
   @@index([organizationId, status, deadline])
   @@index([workerUserId, status])
+  @@index([projectId])
 }
 
 // ───────────── Materiallar / Ombor ─────────────
@@ -816,6 +825,7 @@ model MaterialRequest {
   shipment  Shipment?
 
   @@index([organizationId, status])
+  @@index([projectId])
 }
 
 enum ShipmentStatus {
@@ -866,6 +876,7 @@ model Shipment {
 
   @@index([driverUserId, status])
   @@index([organizationId, status])
+  @@index([projectId])
 }
 
 // ───────────── Moliya ─────────────
@@ -978,6 +989,7 @@ model ConversationParticipant {
   user         User         @relation(fields: [userId], references: [id])
 
   @@id([conversationId, userId])
+  @@index([userId])
 }
 
 model Message {
