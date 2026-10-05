@@ -7,6 +7,7 @@ import { dialog, fmtShort, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { MaterialRequest, useAction, useMaterialRequests } from '@/features/eco/api';
+import i18n from '@/core/i18n';
 
 const STEPS = ['PENDING', 'APPROVED', 'LOADING', 'DELIVERED', 'CONFIRMED'];
 const STEP_LABEL: Record<string, string> = { PENDING: 'Kutilmoqda', APPROVED: 'Tasdiqlandi', LOADING: 'Yuklanmoqda', DELIVERED: 'Yetkazildi', CONFIRMED: 'Qabul qilindi', REJECTED: 'Rad etildi' };
@@ -29,7 +30,7 @@ export default function QuruvchiMaterials() {
   const accept = (r: MaterialRequest) => dialog(
     'Materialni qabul qildingizmi?',
     `${r.material.name} — ${fmtUnit(r.quantity, r.material.unit)}`,
-    [{ text: 'Bekor', style: 'cancel' }, { text: 'Qabul qildim', onPress: () => confirm.mutate(r.shipment!.id, { onSuccess: () => toast.success('Material qabul qilindi'), onError: (e) => toast.error(e.message, 'Xato') }) }],
+    [{ text: i18n.t('ui.cancel'), style: 'cancel' }, { text: 'Qabul qildim', onPress: () => confirm.mutate(r.shipment!.id, { onSuccess: () => toast.success('Material qabul qilindi'), onError: (e) => toast.error(e.message, 'Xato') }) }],
     { tone: 'success', icon: 'package-check' },
   );
   return (

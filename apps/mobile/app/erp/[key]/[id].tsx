@@ -19,6 +19,7 @@ import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
+import i18n from '@/core/i18n';
 
 /**
  * Insof ERP hujjat kartochkasi — barcha bo'limlar uchun bitta ekran.
@@ -237,7 +238,7 @@ export default function ErpDetail() {
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       dialog(a.label, a.confirm, [
-        { text: 'Bekor', style: 'cancel' },
+        { text: i18n.t('ui.cancel'), style: 'cancel' },
         { text: a.label, style: a.tone === 'danger' ? 'destructive' : 'default', onPress: () => void execute(a) },
       ]);
       return;

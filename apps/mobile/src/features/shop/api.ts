@@ -5,7 +5,8 @@
  */
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { config } from '@/core/config';
-import { ApiException } from '@/core/api';
+import { ApiException, fetchWithTimeout, parseJsonSafe } from '@/core/api';
+import { appHeaders, checkUpdateRequired } from '@/core/app-update';
 import type { ApiError } from '@insof/shared';
 
 export interface ShopItem {
@@ -48,15 +49,27 @@ export interface ShopOrderInput { productId: string; qty: number; name: string; 
 
 export const photoUrl = (p: string | null) => (p ? `${config.erpUrl}${p}` : null);
 
-export async function shopFetch<T>(path: string, init?: { method?: 'POST'; body?: unknown }): Promise<T> {
-  const res = await fetch(`${config.erpUrl}/api/public/shop${path}`, {
+/**
+ * Do'kon so'rovi: 30 s vaqt chegarasi (`fetchWithTimeout` — yarim ochiq mobil aloqada abadiy osilmaydi),
+ * versiya sarlavhalari va majburiy yangilanish (426) tekshiruvi. JSON bo'lmagan javob (proksi 502 HTML) — SyntaxError emas.
+ *
+ * `idempotencyKey` — bitta buyurtma urinishiga bitta kalit (har bosishga emas). Hozirgi ERP ommaviy
+ * endpointi bu sarlavhani o'qimaydi (takrordan uni telefon bo'yicha 2 daqiqalik cheklov va ilovadagi
+ * `inFlight` qulfi saqlaydi); server qo'llab-quvvatlay boshlasa — ilovani o'zgartirish shart emas.
+ */
+export async function shopFetch<T>(path: string, init?: { method?: 'POST'; body?: unknown; idempotencyKey?: string }): Promise<T> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json', ...appHeaders() };
+  if (init?.idempotencyKey) headers['idempotency-key'] = init.idempotencyKey;
+  const res = await fetchWithTimeout(`${config.erpUrl}/api/public/shop${path}`, {
     method: init?.method ?? 'GET',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    headers,
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
-  });
-  const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : null;
-  if (!res.ok) throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
+  }, 30_000);
+  const json = parseJsonSafe(await res.text());
+  if (!res.ok) {
+    checkUpdateRequired(res.status, json);
+    throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
+  }
   return json as T;
 }
 

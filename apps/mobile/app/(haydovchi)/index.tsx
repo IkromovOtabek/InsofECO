@@ -16,6 +16,7 @@ import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
 import { openInNavigator } from '@/core/navigate';
 import { useOutboxSize } from '@/shared/hooks';
+import i18n from '@/core/i18n';
 
 /** Holatga qarab bitta asosiy tugma: Qabul qilish → Yuklashni boshladim → Yo'lga chiqdim → Yetkazdim. */
 const NEXT: Record<string, { label: string; icon: IconName }> = {
@@ -103,7 +104,7 @@ export default function DriverToday() {
   const accept = (s: Shipment) => {
     if (active) { haptic.warning(); toast.warning('Avval faol yukni yakunlang'); return; }
     dialog(s.cargo, `${s.warehouse.name} → ${s.project.name}\nHaq: ${fmtShort(s.driverFee)} so'm${s.distanceKm ? ` · ${fmtUnit(s.distanceKm, 'km')}` : ''}`, [
-      { text: 'Bekor', style: 'cancel' },
+      { text: i18n.t('ui.cancel'), style: 'cancel' },
       { text: 'Qabul qilish', onPress: () => tr.mutate({ id: s.id, to: 'ACCEPTED' }, { onSuccess: () => toast.success('Yuk qabul qilindi'), onError: (e) => toast.error(e.message, 'Xato') }) },
     ]);
   };

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, ApiException } from '@/core/api';
+import { api, ApiException, uuid } from '@/core/api';
 import { useSession } from '@/core/session';
 import { usePollInterval } from '@/shared/hooks';
 import { orderKeys, type Order } from '@/features/orders/api';
@@ -38,6 +38,8 @@ export async function submitCart(
   lines: CartLine[],
   base: Omit<ShopOrderInput, 'productId' | 'qty'>,
   onProgress?: (doneCount: number) => void,
+  /** Shu buyurtma urinishining barqaror kaliti (`useOrderAttemptKey`) — qayta yuborishda o'zgarmaydi. */
+  attemptKey?: string,
 ): Promise<SubmitOutcome> {
   const out: SubmitOutcome = { done: [], failed: [], skipped: [] };
   for (let i = 0; i < lines.length; i++) {
@@ -45,7 +47,7 @@ export async function submitCart(
     const rest = lines.slice(i);
     try {
       const body = { ...base, productId: line.productId, qty: line.qty, note: cartNote(rest, base.note) || undefined } satisfies ShopOrderInput;
-      const result = await shopFetch<ShopOrderResult>('/order', { method: 'POST', body });
+      const result = await shopFetch<ShopOrderResult>('/order', { method: 'POST', body, idempotencyKey: attemptKey ? `${attemptKey}:${line.productId}` : undefined });
       for (const l of rest) out.done.push({ line: l, result });
       onProgress?.(out.done.length);
       break;
@@ -76,3 +78,12 @@ export function useClientOrders() {
 
 /** Yo'ldagi / yuklanayotgan reys holatlari — faqat shularda jonli kuzatish bor. */
 export const LIVE_STATUSES = ['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'];
+
+/**
+ * Buyurtma urinishining idempotentlik kaliti: bir xil savat va ma'lumotlar qayta yuborilsa (tarmoq
+ * uzilib, "Qayta urinish" bosilsa) — o'sha kalit; tarkib o'zgarsa — yangi kalit (boshqa buyurtma).
+ */
+export function orderAttemptKey(prev: { sig: string; key: string } | null, payload: unknown): { sig: string; key: string } {
+  const sig = JSON.stringify(payload);
+  return prev && prev.sig === sig ? prev : { sig, key: uuid() };
+}

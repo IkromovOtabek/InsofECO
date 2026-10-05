@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, Card, EmptyState, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
-import { Avatar, Confirm, dialog, fmtShort, tabIcon, toast } from '@/design/ui';
+import { Avatar, Confirm, fmtShort, tabIcon, toast } from '@/design/ui';
 import {
   ActionGrid, AttentionList, BarChartCard, BreakdownCard, ChipGroup, HBarList, HeroCard, KpiGrid, ListGroup, OfflineBanner, PageHeader,
   ProgressCard, Reveal, SectionHead, SkeletonDashboard, SkeletonList, type ActionItem, type AttentionItem, type KpiItem,
@@ -14,6 +14,7 @@ import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom
 import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { Appear, PressScale, stagger, useHeaderRaise, useReducedMotion } from '@/design/motion';
 import { useSession } from '@/core/session';
+import { LogoutButton } from '@/features/auth/logout';
 import { MapView, Marker } from '@/core/map';
 import { config } from '@/core/config';
 import { erpAuth, type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
@@ -784,7 +785,7 @@ export function ErpMenu() {
   const { c } = useTheme();
   const router = useRouter();
   const raise = useHeaderRaise();
-  const { erp, signOut } = useSession();
+  const { erp } = useSession();
   const cfg = erp ? erpRoleConfig(erp.role) : null;
   const module = roleModule(erp?.role ?? 'DIRECTOR');
   const [hasPin, setHasPin] = React.useState(false);
@@ -909,7 +910,7 @@ export function ErpMenu() {
         </Appear>
 
         <Appear delay={stagger(6)} style={{ marginTop: space.xl }}>
-          <Button variant="secondary" icon="log-out" title="Chiqish" textColor={c.danger} onPress={() => dialog('Chiqasizmi?', "Qayta kirish uchun login va parol kerak bo'ladi.", [{ text: 'Chiqish', style: 'destructive', onPress: () => void signOut() }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
+          <LogoutButton size="md" textColor={c.danger} />
         </Appear>
       </ScrollView>
       <Confirm

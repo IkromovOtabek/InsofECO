@@ -9,6 +9,7 @@ import { radius, size, space } from '@/design/tokens';
 import { SkeletonList } from '@/design/blocks';
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { Conversation, useAction, useContacts, useConversations } from '@/features/eco/api';
+import i18n from '@/core/i18n';
 
 const ROLE: Record<string, string> = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' };
 
@@ -58,7 +59,7 @@ export function MessagesList() {
   const start = () => {
     const list = (contacts.data ?? []).slice(0, 6);
     if (!list.length) { toast.info(contacts.isError ? "Kontaktlar yuklanmadi — qayta urinib ko'ring" : "Tashkilotda boshqa a'zo yo'q", 'Yangi suhbat'); return; }
-    dialog('Yangi suhbat', 'Kim bilan?', [...list.map((x) => ({ text: `${x.user.fullName ?? x.user.phone} · ${ROLE[x.role] ?? x.role}`, onPress: () => create.mutate({ participantUserIds: [x.user.id] }, { onSuccess: (cv) => router.push(`/chat/${cv.id}`), onError: (e) => toast.error(e.message, 'Xato') }) })), { text: 'Bekor', style: 'cancel' }]);
+    dialog('Yangi suhbat', 'Kim bilan?', [...list.map((x) => ({ text: `${x.user.fullName ?? x.user.phone} · ${ROLE[x.role] ?? x.role}`, onPress: () => create.mutate({ participantUserIds: [x.user.id] }, { onSuccess: (cv) => router.push(`/chat/${cv.id}`), onError: (e) => toast.error(e.message, 'Xato') }) })), { text: i18n.t('ui.cancel'), style: 'cancel' }]);
   };
   const data = q.data ?? [];
 

@@ -41,10 +41,12 @@ const currentOwner = (): string | null => {
 
 /**
  * Qayta urinsa bo'ladigan javoblar: server vaqtincha ishlamayapti (5xx), vaqt tugadi (408),
- * cheklov (429), sessiya tugagan (401 — qayta kirilgach yuboriladi). Boshqa 4xx — server
+ * cheklov (429), sessiya tugagan (401 — qayta kirilgach yuboriladi), ilova eskirgan (426). Boshqa 4xx — server
  * amalni rad etdi, qayta yuborish foydasiz.
  */
-const retryable = (status: number) => status >= 500 || status === 401 || status === 408 || status === 429;
+const retryable = (status: number) => status >= 500 || status === 401 || status === 408 || status === 429
+  // 426 — ilova eskirgan ("Ilovani yangilang" ekrani): amal tashlanmaydi, yangilangach yuboriladi
+  || status === 426;
 /** 5 s, 10 s, 20 s ... eng ko'pi 5 daqiqa. */
 const backoffMs = (attempts: number) => Math.min(5_000 * 2 ** Math.max(0, attempts - 1), 5 * 60_000);
 
@@ -64,6 +66,21 @@ export const outbox = {
     notify();
     void outbox.flush();
     return item;
+  },
+
+  /**
+   * Chiqishdan oldin: egasi yozilmagan (eski versiyadan qolgan) elementlarga joriy egani yozadi —
+   * aks holda keyingi kirgan hisob ularni o'ziniki deb yuborardi. Qayta urinish taymeri to'xtatiladi.
+   * Elementlar o'chirilmaydi: egasi qaytib kirsa yuboriladi (TTL ichida).
+   */
+  sealOwnership() {
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    const owner = currentOwner();
+    if (!owner) return;
+    const items = read();
+    if (!items.some((i) => !i.owner)) return;
+    write(items.map((i) => (i.owner ? i : { ...i, owner })));
+    notify();
   },
 
   flushing: false,

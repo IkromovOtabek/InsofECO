@@ -3,12 +3,14 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar, StickyPrimary } from '@/design/blocks';
-import { Badge, Button, Card, EmptyState, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Card, EmptyState, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { dialog, Avatar, IconName, Stars, daysLeft, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useWorkOrder, useWorkers } from '@/features/eco/api';
 import { useSession } from '@/core/session';
+import { PhotoAttachments, usePhotoAttachments, withUploadedPhotos } from '@/features/files/photos';
+import i18n from '@/core/i18n';
 
 const FLOW = ['NEW', 'ACCEPTED', 'WORKER_ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'DONE', 'PAID'];
 const FLOW_LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', WORKER_ASSIGNED: 'Quruvchi biriktirildi', IN_PROGRESS: 'Jarayonda', REVIEW: 'Tekshiruv', DONE: 'Tugallandi', PAID: "To'lov olindi" };
@@ -29,7 +31,9 @@ export default function WorkOrderScreen() {
   const accept = useAction(() => ({ path: `/work-orders/${id}/accept` }), inv);
   const assign = useAction<string>((w) => ({ path: `/work-orders/${id}/assign`, body: { workerUserId: w } }), inv);
   const start = useAction(() => ({ path: `/work-orders/${id}/start` }), inv);
-  const submit = useAction(() => ({ path: `/work-orders/${id}/submit`, body: { photoKeys: ['photo/demo.jpg'], comment } }), inv);
+  /** Bajarilgan ish fotolari (10 tagacha, ixtiyoriy) — orqa kamera, presign orqali yuklanadi. */
+  const photos = usePhotoAttachments('report', 10);
+  const submit = useAction<string[]>((photoKeys) => ({ path: `/work-orders/${id}/submit`, body: { photoKeys, comment } }), inv);
   const review = useAction<{ approve: boolean; rating?: number }>((v) => ({ path: `/work-orders/${id}/review`, body: { ...v, comment } }), inv);
   const pay = useAction(() => ({ path: `/work-orders/${id}/pay` }), inv);
   const cancel = useAction(() => ({ path: `/work-orders/${id}/cancel` }), inv);
@@ -54,15 +58,15 @@ export default function WorkOrderScreen() {
   if (isTadbirkor && o.status === 'NEW') {
     bar = {
       primary: { title: 'Qabul qilish', icon: 'check', loading: accept.isPending, onPress: () => accept.mutate(undefined, { onError: err }) },
-      secondary: { title: 'Bekor', icon: 'x', onPress: () => dialog('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: "Yo'q", style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }], { tone: 'danger', icon: 'circle-x' }) },
+      secondary: { title: i18n.t('ui.cancel'), icon: 'x', onPress: () => dialog('Bekor qilish', 'Ish buyurtmasi bekor qilinadi. Davom etasizmi?', [{ text: "Yo'q", style: 'cancel' }, { text: 'Ha', style: 'destructive', onPress: () => cancel.mutate(undefined, { onError: err }) }], { tone: 'danger', icon: 'circle-x' }) },
     };
   } else if (isWorker && ['ACCEPTED', 'WORKER_ASSIGNED'].includes(o.status)) {
     bar = { primary: { title: o.status === 'ACCEPTED' ? 'Qabul qilish va boshlash' : 'Ishni boshlash', icon: 'hammer', loading: start.isPending, onPress: () => start.mutate(undefined, { onError: err }) } };
   } else if (isWorker && o.status === 'IN_PROGRESS') {
-    bar = { primary: { title: 'Ishni topshirish', icon: 'check-check', variant: 'success', loading: submit.isPending, onPress: () => submit.mutate(undefined, { onError: err }) } };
+    bar = { primary: { title: 'Ishni topshirish', icon: 'check-check', variant: 'success', loading: submit.isPending || photos.busy, onPress: () => { if (!submit.isPending && !photos.busy) void withUploadedPhotos(photos, (keys) => submit.mutate(keys, { onError: err, onSuccess: photos.clear })); } } };
   } else if (isTadbirkor && o.status === 'REVIEW') {
     bar = {
-      primary: { title: 'Qabul va baho', icon: 'star', loading: review.isPending, onPress: () => dialog('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: 'Bekor', style: 'cancel' as const }]) },
+      primary: { title: 'Qabul va baho', icon: 'star', loading: review.isPending, onPress: () => dialog('Baho', 'Quruvchini baholang', [...[5, 4, 3].map((r) => ({ text: `${r} yulduz`, onPress: () => review.mutate({ approve: true, rating: r }, { onError: err }) })), { text: i18n.t('ui.cancel'), style: 'cancel' as const }]) },
       secondary: { title: 'Qayta ishlash', icon: 'refresh-cw', onPress: () => review.mutate({ approve: false }, { onError: err }) },
     };
   } else if (isTadbirkor && o.status === 'DONE') {
@@ -140,7 +144,7 @@ export default function WorkOrderScreen() {
             {isWorker && o.status === 'IN_PROGRESS' ? [
               <SectionHead key="sh" title="Ishni topshirish" />,
               <Card key="sc" style={{ gap: space.md }}>
-                <Button title="Foto yuklash" icon="camera" variant="secondary" onPress={() => dialog('Foto', 'Kamera — presigned S3 (keyingi versiya). Demo foto biriktiriladi.')} />
+                <PhotoAttachments att={photos} label="Foto qo'shish" hint="Bajarilgan ishni suratga oling — tadbirkor tekshiruvda ko'radi" />
                 <Input label="Izoh" value={comment} onChangeText={setComment} placeholder="Nima qilindi, nimaga e'tibor berish kerak" multiline containerStyle={{ marginBottom: 0 }} />
               </Card>,
             ] : null}

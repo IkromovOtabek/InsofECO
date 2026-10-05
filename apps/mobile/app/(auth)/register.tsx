@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { RegisterSchema } from '@insof/shared';
-import { Card, IconButton, IconTile, Input, Label, Select, Txt } from '@/design/primitives';
+import { Button, Callout, Card, IconButton, IconTile, Input, Label, Select, Txt } from '@/design/primitives';
 import { Icon, IconName } from '@/design/icons';
 import { radius, size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -12,19 +12,18 @@ import { Appear, PressScale, stagger } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { useTelegramLogin } from '@/features/auth/telegram';
 import { PhotoPicker, PickedPhoto } from '@/features/auth/photo-picker';
-import { copyText, toast } from '@/design/ui';
+import { copyText, dialog, toast } from '@/design/ui';
 import { afterLogin } from '@/features/shop/after-login';
-import { AuthScreen, ConsentCheck, Divider, GhostButton, ErrorBox, FooterLink, Hint, PhonePrefix, PrimaryButton, Steps, Strength, TextLink, Title, generatePassword } from '@/features/auth/ui';
+import { AuthScreen, ErrorBox, FooterLink, Hint, PrimaryButton, REGISTER_STEPS, Steps, Strength, TextLink, Title, generatePassword } from '@/features/auth/ui';
 
 /**
- * Ro'yxatdan o'tish — uch qadamli oqim.
- *   1) Ma'lumotlar: kim sifatida va shaxsiy/tashkilot ma'lumotlari;
- *   2) SMS tasdiq: ro'yxatdan o'tgach raqam tasdiqlanadi (OTP ekrani);
- *   3) Tayyor.
- * Serverda ro'yxatdan o'tish bitta so'rov — shuning uchun 2-qadam parol bilan kirgandan
- * keyin, xohlasa, telefonni tasdiqlash uchun ishlatiladi.
+ * Ro'yxatdan o'tish — uch qadamli oqim:
+ *   1) Telefon (`phone?mode=register`) — rozilik va raqam, kod Telegram'ga yoki SMS'ga;
+ *   2) Kod (`otp?mode=register`) — raqam egaligi tasdiqlanadi, server bir martalik
+ *      `phoneVerificationToken` beradi (10 daqiqa, shu raqamga bog'langan);
+ *   3) Shu ekran: rol (Mijoz / Haydovchi), ism, parol, haydovchiga — zavod.
+ * Tokensiz (to'g'ridan-to'g'ri ochilgan) bo'lsa — 1-qadamga yo'naltiriladi.
  */
 type RoleKey = 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI';
 const ROLES: { key: RoleKey; icon: IconName; title: string; desc: string }[] = [
@@ -37,25 +36,34 @@ const ROLES: { key: RoleKey; icon: IconName; title: string; desc: string }[] = [
 export default function Register() {
   const router = useRouter();
   const signIn = useSession((s) => s.signIn);
-  // Parolsiz tez yo'l: raqam Telegram'da tasdiqlanadi, keyin rol tanlash ekranida «Mijoz sifatida davom etish»
-  const tg = useTelegramLogin();
+  // Kod tasdig'idan keyin otp.tsx beradi; yo'q bo'lsa — telefon qadamiga
+  const { phone = '', token = '' } = useLocalSearchParams<{ phone?: string; token?: string }>();
   const [role, setRole] = useState<RoleKey | null>(null);
   const [fullName, setFullName] = useState('');
-  const [local, setLocal] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [orgName, setOrgName] = useState('');
   const [orgType, setOrgType] = useState<'PLANT' | 'CONTRACTOR'>('PLANT');
-  const [agree, setAgree] = useState(false);
   const [plants, setPlants] = useState<{ id: string; name: string; address?: string | null }[]>([]);
+  /** Zavodlar ro'yxati holati: yiqilsa abadiy "yuklanmoqda" emas — xato va "Qayta urinish". */
+  const [plantsState, setPlantsState] = useState<'idle' | 'loading' | 'error' | 'ready'>('idle');
   const [plantOrgId, setPlantOrgId] = useState<string>();
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { if (role === 'HAYDOVCHI' && plants.length === 0) authApi.plants().then(setPlants).catch(() => {}); }, [role, plants.length]);
+  const loadPlants = useCallback(() => {
+    setPlantsState('loading');
+    authApi.plants()
+      .then((list) => { setPlants(list); setPlantsState('ready'); })
+      .catch(() => setPlantsState('error'));
+  }, []);
+  useEffect(() => { if (role === 'HAYDOVCHI' && plantsState === 'idle') loadPlants(); }, [role, plantsState, loadPlants]);
 
-  const phone = `+998${local.replace(/\D/g, '')}`;
+  if (!token || !phone) return <Redirect href={{ pathname: '/(auth)/phone', params: { mode: 'register' } }} />;
+
+  // Tasdiq muddati o'tgan / token ishlatilgan — raqamni qayta tasdiqlash
+  const reverify = () => router.replace({ pathname: '/(auth)/phone', params: { mode: 'register' } });
 
   // Ishonchli parol — ko'rinib turadi va darhol buferga olinadi (keyin menejerga yoki eslatmaga saqlasin)
   const makePassword = async () => {
@@ -71,8 +79,7 @@ export default function Register() {
   };
 
   const submit = async () => {
-    if (!role) return;
-    if (!agree) return setErrors({ form: "Davom etish uchun maxfiylik siyosatiga rozilik bildiring" });
+    if (!role || loading) return;
     const raw = {
       fullName: fullName.trim(), phone, password, role,
       organization: role === 'TADBIRKOR' ? { name: orgName.trim(), type: orgType } : role === 'QURUVCHI' && orgName.trim() ? { name: orgName.trim(), type: 'CONTRACTOR' as const } : undefined,
@@ -88,7 +95,7 @@ export default function Register() {
     setErrors({}); setLoading(true);
     try {
       const { device: _d, ...input } = parsed.data; void _d;
-      const r = await authApi.register(input);
+      const r = await authApi.register({ ...input, phoneVerificationToken: token });
       await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
       // Rasm — hisob ochilgach, sessiya bilan. Yiqilsa ro'yxat bekor bo'lmaydi: keyin profildan qo'yiladi
       if (photo) {
@@ -100,32 +107,42 @@ export default function Register() {
       if (back) { toast.success("Ro'yxatdan o'tdingiz — endi buyurtma bera olasiz"); router.dismissTo(back as never); return; }
       router.replace('/(auth)/done');
     } catch (e) {
+      const reason = e instanceof ApiException ? (e.body.details as { reason?: string } | undefined)?.reason : undefined;
+      if (reason === 'PHONE_NOT_VERIFIED') {
+        dialog('Raqamni qayta tasdiqlang', "Tasdiq kodi muddati tugagan (10 daqiqa). Raqamga yangi kod yuboramiz — kiritgan ma'lumotlaringizni qayta to'ldirasiz.", [
+          { text: 'Kodni qayta olish', onPress: reverify },
+        ], { tone: 'warning', icon: 'clock' });
+        return;
+      }
       setErrors({ form: e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring' });
     } finally { setLoading(false); }
   };
 
-  // Rozilik bermaguncha ma'lumotlar formasiga o'tilmaydi — rol bosilsa sababi aytiladi
-  const CONSENT_MSG = "Davom etish uchun maxfiylik siyosatiga rozilik bildiring";
+  // Maxfiylik siyosatiga rozilik telefon qadamida berilgan
   const pickRole = (key: RoleKey) => {
-    if (!agree) {
-      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      toast.warning("Avval pastdagi maxfiylik siyosatiga rozilik belgisini qo'ying", 'Rozilik kerak');
-      return setErrors({ form: CONSENT_MSG });
-    }
     if (Platform.OS === 'ios') void Haptics.selectionAsync();
+    setErrors({});
     setRole(key);
   };
+
+  /** Tasdiqlangan raqam — o'zgartirib bo'lmaydi (boshqa raqam = yangi kod). */
+  const verifiedPhone = (
+    <Callout tone="success" icon="shield-check">
+      <Txt v="bodySm"><Txt v="bodySm" mono color="strong">{phone}</Txt> raqami tasdiqlandi</Txt>
+    </Callout>
+  );
 
   // ── 1-ekran: kim sifatida ──
   if (!role) {
     return (
       <AuthScreen
-        onBack={() => router.replace('/(auth)/login')}
+        onBack={reverify}
         footer={<FooterLink text="Hisobingiz bormi?" action="Kirish" onPress={() => router.replace('/(auth)/login')} />}
       >
-        <Steps labels={["Ma'lumotlar", "Kod tasdig'i", 'Tayyor']} current={0} />
+        <Steps labels={REGISTER_STEPS} current={2} />
         <Title hint="Keyinchalik bitta hisobga boshqa rollar ham qo'shiladi.">Kim sifatida ro&apos;yxatdan o&apos;tasiz?</Title>
-        <View style={{ marginTop: space.xxl, gap: space.md }}>
+        <Appear delay={30} style={{ marginTop: space.lg }}>{verifiedPhone}</Appear>
+        <View style={{ marginTop: space.xl, gap: space.md }}>
           {ROLES.map((r, i) => (
             <Appear key={r.key} delay={stagger(i, 60)}>
               <PressScale
@@ -133,9 +150,8 @@ export default function Register() {
                 haptic={false}
                 accessibilityRole="button"
                 accessibilityLabel={`${r.title}. ${r.desc}`}
-                accessibilityHint={agree ? undefined : "Avval maxfiylik siyosatiga rozilik bildiring"}
               >
-                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, opacity: agree ? 1 : 0.55 }}>
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
                   <IconTile icon={r.icon} module="brand" />
                   <View style={{ flex: 1 }}>
                     <Txt v="bodyStrong">{r.title}</Txt>
@@ -147,22 +163,7 @@ export default function Register() {
             </Appear>
           ))}
         </View>
-        <Appear delay={300}>
-          <Divider />
-          <ConsentCheck value={agree} onChange={(v) => { setAgree(v); setErrors((e) => ({ ...e, form: '' })); }} />
-          <GhostButton
-            title={tg.waiting ? "Telegram'da raqamni ulashing…" : tg.starting ? 'Telegram ochilmoqda…' : "Telegram orqali ro'yxatdan o'tish"}
-            icon="send"
-            onPress={() => (agree ? void tg.start() : setErrors({ form: "Davom etish uchun maxfiylik siyosatiga rozilik bildiring" }))}
-          />
-          {tg.waiting ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
-              <Txt v="caption">Botda raqamingizni ulashing — hisob o&apos;zi ochiladi</Txt>
-              <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
-            </View>
-          ) : null}
-          <ErrorBox text={errors.form || tg.error} />
-        </Appear>
+        <ErrorBox text={errors.form} />
       </AuthScreen>
     );
   }
@@ -174,7 +175,7 @@ export default function Register() {
       onBack={() => setRole(null)}
       footer={<FooterLink text="Hisobingiz bormi?" action="Kirish" onPress={() => router.replace('/(auth)/login')} />}
     >
-      <Steps labels={["Ma'lumotlar", "Kod tasdig'i", 'Tayyor']} current={0} />
+      <Steps labels={REGISTER_STEPS} current={2} />
 
       <Appear delay={60} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xxl }}>
         <IconTile icon={meta.icon} module="brand" />
@@ -193,21 +194,9 @@ export default function Register() {
         <Input label="Ism va familiya" value={fullName} onChangeText={setFullName} placeholder="Rustam Yusupov" textContentType="name" autoComplete="name" error={errors.fullName} />
       </Appear>
 
-      <Appear delay={150}>
+      <Appear delay={150} style={{ marginBottom: space.lg }}>
         <Label>Telefon raqam</Label>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.sm }}>
-          <PhonePrefix />
-          <Input
-            value={local}
-            onChangeText={(v) => setLocal(v.replace(/\D/g, '').slice(0, 9))}
-            keyboardType="number-pad"
-            placeholder="90 123 45 67"
-            accessibilityLabel="Telefon raqam"
-            mono
-            error={errors.phone}
-            containerStyle={{ flex: 1 }}
-          />
-        </View>
+        {verifiedPhone}
       </Appear>
 
       {role === 'TADBIRKOR' ? (
@@ -230,10 +219,27 @@ export default function Register() {
 
       {role === 'HAYDOVCHI' ? (
         <Appear delay={190}>
-          {plants.length === 0 ? (
+          {plantsState !== 'ready' || plants.length === 0 ? (
             <View style={{ marginBottom: space.lg }}>
               <Label>Qaysi zavodda ishlaysiz</Label>
-              <Hint>Zavodlar yuklanmoqda…</Hint>
+              {plantsState === 'error' ? (
+                <Callout tone="danger">
+                  <View style={{ gap: space.sm }}>
+                    <Txt v="bodySm">Zavodlar ro&apos;yxati yuklanmadi. Internetni tekshirib, qayta urinib ko&apos;ring.</Txt>
+                    <Button title="Qayta urinish" icon="refresh-cw" variant="secondary" size="md" full={false} onPress={loadPlants} />
+                  </View>
+                </Callout>
+              ) : plantsState === 'ready' ? (
+                <Callout tone="warning">
+                  <View style={{ gap: space.sm }}>
+                    <Txt v="bodySm">Hozircha ro&apos;yxatda zavod yo&apos;q. Zavod dispetcheridan so&apos;rang yoki keyinroq qayta urinib ko&apos;ring.</Txt>
+                    <Button title="Yangilash" icon="refresh-cw" variant="secondary" size="md" full={false} onPress={loadPlants} />
+                  </View>
+                </Callout>
+              ) : (
+                <Hint>Zavodlar yuklanmoqda…</Hint>
+              )}
+              {errors.plantOrgId ? <Txt v="caption" color="danger" style={{ marginTop: space.xs }}>{errors.plantOrgId}</Txt> : null}
             </View>
           ) : (
             <Select
@@ -279,14 +285,10 @@ export default function Register() {
         </Pressable>
       </Appear>
 
-      <Appear delay={270} style={{ marginTop: space.lg }}>
-        <ConsentCheck value={agree} onChange={(v) => { setAgree(v); setErrors((e) => ({ ...e, form: '' })); }} />
-      </Appear>
-
       <ErrorBox text={errors.form} />
 
       <Appear delay={310} style={{ marginTop: space.xl }}>
-        <PrimaryButton title={loading ? 'Yuborilmoqda…' : 'Davom etish'} onPress={submit} loading={loading} disabled={!agree} />
+        <PrimaryButton title={loading ? 'Yuborilmoqda…' : "Ro'yxatdan o'tish"} onPress={submit} loading={loading} disabled={role === 'HAYDOVCHI' && !plantOrgId} />
       </Appear>
     </AuthScreen>
   );

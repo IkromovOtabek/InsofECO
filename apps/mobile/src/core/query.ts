@@ -62,14 +62,19 @@ export const persister = createAsyncStoragePersister({ storage: AsyncStorage, ke
 const identity = (s: ReturnType<typeof useSession.getState>) =>
   s.status !== 'authed' ? 'anon' : s.kind === 'erp' ? `erp:${s.erp?.id ?? ''}` : `eco:${s.user?.id ?? ''}:${s.admin ? 'admin' : s.active?.organization.id ?? ''}:${s.active?.role ?? ''}`;
 
-useSession.subscribe((next, prev) => {
-  // Sovuq start (loading → authed) — diskdagi kesh shu hisobniki, tozalanmaydi (oflayn ochilish)
-  if (prev.status === 'loading') return;
-  if (identity(next) === identity(prev)) return;
+/** Hisobga bog'langan kesh (xotira + disk) va soketni tozalash — hisob almashganda va chiqishda (`logout()`). */
+export function clearAccountCache() {
   queryClient.cancelQueries().catch(() => {});
   queryClient.clear();
   void persister.removeClient();
   closeSocket();
+}
+
+useSession.subscribe((next, prev) => {
+  // Sovuq start (loading → authed) — diskdagi kesh shu hisobniki, tozalanmaydi (oflayn ochilish)
+  if (prev.status === 'loading') return;
+  if (identity(next) === identity(prev)) return;
+  clearAccountCache();
   if (next.status !== 'authed') {
     // Chiqildi — fon GPS'i boshqa birovning telefonida yurib qolmasin (batareya + shaxsiy hayot)
     void stopTracking().catch(() => {});

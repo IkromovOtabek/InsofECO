@@ -6,6 +6,7 @@ import { dialog, fmtShort, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useAction, useDrivers, useMaterialRequests, useMaterials } from '@/features/eco/api';
+import i18n from '@/core/i18n';
 
 type SegKey = 'requests' | 'stock';
 
@@ -25,7 +26,7 @@ export default function Materials() {
     dialog('Haydovchi biriktirish', 'Yuk kimga beriladi?', [
       ...free.slice(0, 3).map((d) => ({ text: `${d.fullName} (${d.vehicle?.plateNumber ?? '—'})`, onPress: () => approve.mutate({ id, driverUserId: d.userId, vehicleId: d.vehicle?.id }, { onError: (e) => toast.error(e.message, 'Xato') }) })),
       { text: 'Keyinroq (ochiq yuk)', onPress: () => approve.mutate({ id }, { onError: (e) => toast.error(e.message, 'Xato') }) },
-      { text: 'Bekor', style: 'cancel' },
+      { text: i18n.t('ui.cancel'), style: 'cancel' },
     ]);
   };
   const pending = (reqs.data ?? []).filter((r) => r.status === 'PENDING');

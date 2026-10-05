@@ -1,5 +1,6 @@
 import { Linking, Platform } from 'react-native';
 import { dialog, toast, type DialogButton } from '@/design/ui';
+import i18n from './i18n';
 
 /**
  * Obyektgacha yo'l — haydovchi O'ZI tanlagan navigator ilovasida.
@@ -91,7 +92,7 @@ async function choose(t: NavTarget): Promise<NavResult> {
     const buttons: DialogButton[] = [
       ...apps.map((a) => ({ text: a.name, onPress: () => void pick(a.url(t), webRouteUrl(t)) })),
       { text: 'Brauzerda (Yandex Xarita)', onPress: () => void pick(webRouteUrl(t)) },
-      { text: 'Bekor', style: 'cancel' as const, onPress: () => resolve('cancelled') },
+      { text: i18n.t('ui.cancel'), style: 'cancel' as const, onPress: () => resolve('cancelled') },
     ];
     dialog('Qaysi ilovada ochamiz?', t.label ? `Manzil: ${t.label}` : "Yo'l tanlangan ilovada quriladi", buttons, { icon: 'navigation', tone: 'brand' });
   });
@@ -108,7 +109,7 @@ export async function openInNavigator(target: NavTarget): Promise<boolean> {
 
 /**
  * Eski imzo — ERP kartochkasi va boshqa joylar shu bilan chaqiradi.
- * Foydalanuvchi o'zi "Bekor" desa — bu xato emas, shuning uchun `true`
+ * Foydalanuvchi o'zi "Bekor qilish" desa — bu xato emas, shuning uchun `true`
  * ("navigator topilmadi" degan ogohlantirish chiqmasin).
  */
 export async function openNavigation(lat: number, lng: number, label?: string): Promise<boolean> {

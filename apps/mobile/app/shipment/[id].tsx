@@ -18,6 +18,7 @@ import { Appear, PressScale } from '@/design/motion';
 import { useAction, useShipment } from '@/features/eco/api';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
+import { PhotoAttachments, usePhotoAttachments, withUploadedPhotos } from '@/features/files/photos';
 
 const FLOW = ['NEW', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'DELIVERED', 'CONFIRMED'];
 const LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', LOADING: 'Yuklanmoqda', EN_ROUTE: "Yo'lda", DELIVERED: 'Yetkazildi', CONFIRMED: 'Qabul qilindi (tasdiq)' };
@@ -36,6 +37,8 @@ export default function ShipmentScreen() {
   /** GPS tekshiruvi + so'rov davomida ikkinchi bosish bo'lmasin (ikki oyna / ikki so'rov). */
   const busy = useRef(false);
   const tr = useAction<TrVars>((v) => ({ path: `/shipments/${id}/transition`, body: v }), ['shipments', 'dash', 'material-requests', 'materials', 'finance']);
+  /** Yetkazish fotosi (ixtiyoriy): orqa kamera, presign orqali yuklanadi, kaliti "Yetkazdim" bilan ketadi. */
+  const photo = usePhotoAttachments('waybill', 1);
   const err = (e: Error) => toast.error(e.message, 'Xato');
   const s = q.data;
   if (!s) {
@@ -64,7 +67,14 @@ export default function ShipmentScreen() {
     setChecking(true);
     const here = await confirmAtSite(to ? { lat: to.latitude, lng: to.longitude } : null, 'Yetkazdim').finally(() => setChecking(false));
     if (here === null) { busy.current = false; return; }
-    tr.mutate({ to: 'DELIVERED', receiverName: receiver.trim() || undefined, photoKey: 'photo/demo.jpg', location: here ? { lat: here.lat, lng: here.lng } : undefined }, {
+    setChecking(true);
+    // Foto olingan bo'lsa — avval yuklanadi; olinmagan bo'lsa (server ruxsat beradi) fotosiz ketadi
+    await withUploadedPhotos(photo, ([photoKey]) => send(here, photoKey), () => { busy.current = false; });
+    setChecking(false);
+  };
+  const send = (here: { lat: number; lng: number } | undefined, photoKey: string | undefined) => {
+    busy.current = true;
+    tr.mutate({ to: 'DELIVERED', receiverName: receiver.trim() || undefined, photoKey, location: here ? { lat: here.lat, lng: here.lng } : undefined }, {
       onSettled: () => { busy.current = false; },
       onSuccess: () => toast.success('Qabul qiluvchi tasdiqlagach haq hisobingizga tushadi', 'Yetkazildi'),
       onError: (e) => dialog('«Yetkazdim» belgilanmadi', e instanceof ApiException ? e.message : "Internet yo'q — ulanib, qayta bosing", [
@@ -79,7 +89,7 @@ export default function ShipmentScreen() {
 
   const refreshing = q.isRefetching;
   const onRefresh = () => void q.refetch();
-  if ((role as string) === 'HAYDOVCHI') return <DriverView refreshing={refreshing} onRefresh={onRefresh} s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || tr.isPending} from={from} to={to} />;
+  if ((role as string) === 'HAYDOVCHI') return <DriverView refreshing={refreshing} onRefresh={onRefresh} s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || photo.busy || tr.isPending} from={from} to={to} photo={photo} />;
   return (
     <Screen padded={false}>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
@@ -111,10 +121,10 @@ export default function ShipmentScreen() {
             s.status === 'EN_ROUTE' ? (
               <Card>
                 <Txt v="titleSm">Yuk yetkazildi</Txt><Gap h={space.sm} />
-                <Button title="Foto" icon="camera" variant="secondary" size="md" onPress={() => dialog('Foto', 'Kamera — keyingi versiya, demo foto biriktiriladi')} /><Gap h={space.sm} />
+                <PhotoAttachments att={photo} label="Yetkazish fotosi" hint="Ixtiyoriy: yuk va qabul joyini suratga oling" /><Gap h={space.sm} />
                 <StatusLine icon="map-pin" tone="info" text="Joylashuv avtomatik qo'shiladi" />
                 <Input value={receiver} onChangeText={setReceiver} placeholder="Qabul qiluvchi ismi" accessibilityLabel="Qabul qiluvchi ismi" autoCapitalize="words" />
-                <Button title="Yetkazdim" size="xl" icon="flag" loading={tr.isPending || checking} onPress={() => void deliver()} />
+                <Button title="Yetkazdim" size="xl" icon="flag" loading={tr.isPending || checking || photo.busy} onPress={() => void deliver()} />
               </Card>
             ) : (
               <><Button title={NEXT_LABEL[s.status] ?? LABEL[next] ?? next} size="xl" loading={tr.isPending} onPress={() => tr.mutate({ to: next }, { onError: err })} />
@@ -133,7 +143,7 @@ export default function ShipmentScreen() {
 /** Shafyor ko'rinishi: katta stepper, marshrut, bitta asosiy tugma, qo'ng'iroq/navigatsiya. Ekran o'chmaydi. */
 type TrVars = { to: string; receiverName?: string; photoKey?: string; location?: { lat: number; lng: number } };
 
-function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to }: { refreshing: boolean; onRefresh: () => void; s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
+function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to, photo }: { photo: ReturnType<typeof usePhotoAttachments>; refreshing: boolean; onRefresh: () => void; s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
   const { c } = useTheme();
   useKeepAwake();
   const call = () => { if (s.contact?.phone) void Linking.openURL(`tel:${s.contact.phone}`); else toast.warning('Buyurtmachi raqami ko\'rsatilmagan — dispetcher bilan bog\'laning', 'Aloqa'); };
@@ -177,6 +187,8 @@ function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, s
               <Txt v="titleMd">Obyektga yetdim</Txt>
               <Gap h={space.md} />
               <Input value={receiver} onChangeText={setReceiver} placeholder="Kim qabul qildi? (ism)" left="user" accessibilityLabel="Qabul qiluvchi ismi" autoCapitalize="words" />
+              <PhotoAttachments att={photo} label="Yetkazish fotosi" hint="Ixtiyoriy: yuk va qabul joyini suratga oling" />
+              <Gap h={space.md} />
               <BigAction title="Yetkazdim" icon="flag" loading={delivering} onPress={deliver} />
               <View style={{ marginTop: space.sm }}><StatusLine icon="map-pin" tone="info" text={`Obyektdan ${SITE_RADIUS_M} m ichida bosiladi — joylashuv va vaqt yoziladi`} /></View>
             </Card>

@@ -34,7 +34,13 @@ interface SessionState {
   selectAdmin: () => void;
   /** Superadmin bo'limidan chiqish — rol tanlash ekraniga. */
   exitAdmin: () => void;
-  signOut: () => Promise<void>;
+  /**
+   * Sessiyani tozalash. `revoke` — serverdagi sessiyani bekor qilish (ECO `/auth/logout`, ERP
+   * `/auth/logout`): push o'chirilgandan KEYIN, tokenlar o'chirilishidan OLDIN chaqiriladi
+   * (unga token kerak). Javob kutilmaydi: eng ko'pi 4 s, xato bo'lsa ham chiqish davom etadi.
+   * Odatda to'g'ridan-to'g'ri emas — `features/auth/logout.tsx` → `logout()` orqali.
+   */
+  signOut: (opts?: { revoke?: () => Promise<unknown> }) => Promise<void>;
 }
 
 /** signOut ichidan yana signOut chaqirilsa (refresh xatosi) — ikkinchisi darhol qaytadi. */
@@ -129,7 +135,7 @@ export const useSession = create<SessionState>((set, get) => ({
     set({ admin: false, active: null });
   },
 
-  async signOut() {
+  async signOut(opts) {
     // Qayta kirish qulfi: push'ni o'chirish so'rovi 401 olsa refresh ishlaydi, refresh
     // muvaffaqiyatsiz bo'lsa yana signOut() chaqiriladi — qulfsiz ikkalasi bir-birini
     // kutib qolardi va "Chiqish" tugmasi hech narsa qilmasdi.
@@ -140,6 +146,7 @@ export const useSession = create<SessionState>((set, get) => ({
       // ishdan ketgan xodimning ekranida zavod xabarlari chiqib turardi. Server javob
       // bermasa ham chiqish kutib qolmaydi (3 s).
       await Promise.race([unregisterPush(get().kind === 'erp' ? 'erp' : 'eco'), new Promise<void>((r) => setTimeout(r, 3000))]);
+      if (opts?.revoke) await Promise.race([opts.revoke().catch(() => undefined), new Promise<void>((r) => setTimeout(r, 4000))]);
       await Promise.all([secure.del(KEYS.access), secure.del(KEYS.refresh), secure.del(KEYS.erpAccess), secure.del(KEYS.erpRefresh)]);
       kv.delete('session.user');
       kv.delete(ACTIVE_KEY);

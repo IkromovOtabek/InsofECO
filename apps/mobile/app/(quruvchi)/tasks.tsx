@@ -6,6 +6,7 @@ import { dialog, IconName, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { Tone, space } from '@/design/tokens';
 import { Task, useAction, useMyTasks } from '@/features/eco/api';
+import i18n from '@/core/i18n';
 
 const STATUS_ICON: Record<string, { icon: IconName; tone: Tone }> = {
   DONE: { icon: 'circle-check', tone: 'success' }, REVIEW: { icon: 'clock', tone: 'warning' }, IN_PROGRESS: { icon: 'circle-dot', tone: 'brand' }, TODO: { icon: 'circle', tone: 'neutral' },
@@ -39,7 +40,7 @@ export default function Tasks() {
   const count = (s: Seg) => (q.data ? all.filter(FILTER[s]).length : undefined);
   const open = (t: Task) => dialog(t.title, t.description ?? "Holatni o'zgartirish", [
     { text: t.status === 'TODO' ? 'Boshlash' : 'Tekshiruvga topshirish', onPress: () => upd.mutate({ id: t.id, status: next(t.status) }, { onError: (e) => toast.error(e.message, 'Xato') }) },
-    { text: 'Bekor', style: 'cancel' },
+    { text: i18n.t('ui.cancel'), style: 'cancel' },
   ]);
   return (
     <Screen padded={false}>

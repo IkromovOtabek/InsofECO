@@ -7,6 +7,7 @@ import { ECO_ROLE_NAME, ModuleTone, RoleKey, radius, size, space } from '@/desig
 import { Appear, PressScale, stagger } from '@/design/motion';
 import { useSession } from '@/core/session';
 import { authApi } from '@/features/auth/api';
+import { useLogout } from '@/features/auth/logout';
 import { ApiException } from '@/core/api';
 import { AuthScreen, Callout, ErrorBox, GhostButton, InfoCard, PrimaryButton } from '@/features/auth/ui';
 
@@ -66,7 +67,8 @@ function SuperAdminCard() {
 }
 
 export default function SelectRole() {
-  const { user, selectMembership, selectAdmin, signOut, setUser } = useSession();
+  const { user, selectMembership, selectAdmin, setUser } = useSession();
+  const { confirm: confirmLogout } = useLogout();
   // Server tasdiqlagan bayroq (/me). Faqat menyu: /admin/* ni server baribir o'zi tekshiradi
   const superAdmin = !!user?.isSuperAdmin;
   const list = user?.memberships ?? [];
@@ -136,7 +138,7 @@ export default function SelectRole() {
 
       <Appear delay={240} style={{ marginTop: 'auto', paddingTop: space.xxl, gap: space.md }}>
         <GhostButton title="Yangilash" icon="refresh-cw" onPress={() => authApi.me().then(setUser).catch(() => {})} />
-        <GhostButton title="Chiqish" icon="log-out" onPress={() => void signOut()} />
+        <GhostButton title="Chiqish" icon="log-out" onPress={confirmLogout} />
       </Appear>
     </AuthScreen>
   );

@@ -2,18 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconTile, ListGroup, ListItem, Txt } from '@/design/primitives';
-import { StatusLine } from '@/design/ui';
+import { StatusLine, toast } from '@/design/ui';
 import { elevation, radius, size, space, type } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { Appear, haptic } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { AuthScreen, ErrorBox, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
+import { AuthScreen, ErrorBox, PrimaryButton, REGISTER_STEPS, Steps, TextLink, Title } from '@/features/auth/ui';
 
 /**
  * Tasdiqlash kodi (Telegram Gateway yoki SMS — `via`) — oltita alohida katak.
- * `mode=reset` bo'lsa kod tekshirilgach yangi parol ekraniga o'tadi,
+ * `mode=reset` bo'lsa kod tekshirilgach yangi parol ekraniga o'tadi;
+ * `mode=register` — ro'yxatdan o'tish: kod raqam egaligini tasdiqlaydi va ma'lumotlar formasi
+ * bir martalik token bilan ochiladi (raqam tizimda bor bo'lsa — egasi shu kod bilan kiradi);
  * aks holda kod darhol tizimga kiritadi.
  */
 const LEN = 6;
@@ -36,6 +38,7 @@ export default function OtpScreen() {
 
   const code = digits.join('');
   const isReset = mode === 'reset';
+  const isRegister = mode === 'register';
 
   useEffect(() => {
     if (left <= 0) return;
@@ -48,6 +51,17 @@ export default function OtpScreen() {
     if (isReset) { router.push({ pathname: '/(auth)/new-password', params: { phone, code: value } }); return; }
     setLoading(true); setError(undefined);
     try {
+      if (isRegister) {
+        const r = await authApi.verifyRegisterPhone(phone, value);
+        if (r.status === 'verified') {
+          router.replace({ pathname: '/(auth)/register', params: { phone, token: r.phoneVerificationToken } });
+          return;
+        }
+        // Raqam tizimda bor — yangi hisob ochilmaydi, egasi kod bilan kirdi
+        await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
+        toast.info("Parolni keyin «Parolni unutdim» orqali o'rnatishingiz mumkin", 'Bu raqam tizimda bor — hisobingizga kirdingiz');
+        return;
+      }
       const r = await authApi.verifyOtp(phone, value);
       await signIn({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
     } catch (e) {
@@ -91,6 +105,7 @@ export default function OtpScreen() {
 
   return (
     <AuthScreen>
+      {isRegister ? <Steps labels={REGISTER_STEPS} current={1} /> : null}
       <Appear delay={60} style={{ marginTop: space.xxl }}>
         <IconTile icon={tg ? 'send' : 'message-square'} module="brand" size={size.iconTile + space.md} />
       </Appear>

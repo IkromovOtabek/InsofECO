@@ -360,7 +360,7 @@ export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%
 
 /**
  * Markazdagi oyna — tasdiq va qisqa forma. `tone`/`icon` berilsa tepada holat belgisi chiqadi.
- * `actions` — tugmalar ustunda, to'liq enli (asosiy — tepada, "Bekor" — pastda).
+ * `actions` — tugmalar ustunda, to'liq enli (asosiy — tepada, "Bekor qilish" — pastda).
  */
 export function Modal({ open, onClose, title, message, tone, icon, children, actions }: { open: boolean; onClose: () => void; title?: string; message?: string; tone?: Tone; icon?: IconName; children?: React.ReactNode; actions?: React.ReactNode }) {
   useBackClose(open, onClose);

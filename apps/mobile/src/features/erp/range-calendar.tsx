@@ -5,6 +5,7 @@ import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { Appear, haptic } from '@/design/motion';
 import { radius, shadow, size, space } from '@/design/tokens';
+import i18n from '@/core/i18n';
 
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 const WEEK = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
@@ -116,7 +117,7 @@ export function RangeCalendar({ from, to, onApply, onClose }: { from?: string | 
         </View>
 
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <View style={{ flex: 1 }}><Button title="Bekor" variant="secondary" onPress={onClose} /></View>
+          <View style={{ flex: 1 }}><Button title={i18n.t('ui.cancel')} variant="secondary" onPress={onClose} /></View>
           <View style={{ flex: 1 }}><Button title="Qo'llash" icon="check" disabled={!a} onPress={() => a && onApply(ymd(a), ymd(b ?? a))} /></View>
         </View>
       </View>

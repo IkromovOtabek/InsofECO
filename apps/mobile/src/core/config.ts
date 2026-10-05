@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 /**
@@ -14,6 +15,16 @@ const clean = (v?: string | null) => (v && v.trim() ? v.trim().replace(/\/+$/, '
 
 const apiUrl = clean(process.env.EXPO_PUBLIC_API_URL) ?? clean(extra?.apiUrl) ?? 'http://localhost:3010';
 const erpUrl = clean(process.env.EXPO_PUBLIC_ERP_URL) ?? clean(extra?.erpUrl) ?? 'http://localhost:3000';
+/**
+ * Majburiy yangilanish ekrani uchun zaxira havolalar (server 426 javobida havola bermasa).
+ * Android — Play Market sahifasi (paket nomi `app.config.ts` bilan bir xil). iOS — App Store havolasi
+ * `EXPO_PUBLIC_IOS_STORE_URL` bilan beriladi; bo'lmasa — yordam sayti.
+ */
+const storeUrl = Platform.OS === 'android'
+  ? clean(process.env.EXPO_PUBLIC_ANDROID_STORE_URL) ?? 'https://play.google.com/store/apps/details?id=uz.insofeco.app'
+  : clean(process.env.EXPO_PUBLIC_IOS_STORE_URL) ?? 'https://insof-erp.uz';
+/** Qo'llab-quvvatlash Telegram'i (`https://t.me/...`) — ixtiyoriy, bo'lmasa tugma ko'rinmaydi. */
+const supportTelegram = clean(process.env.EXPO_PUBLIC_SUPPORT_TELEGRAM) ?? null;
 const yandexMapKitKey = clean(process.env.EXPO_PUBLIC_YANDEX_MAPKIT_KEY) ?? clean(extra?.yandexMapKitKey) ?? '';
 
 export const config = {
@@ -31,4 +42,8 @@ export const config = {
    * xato logi), shuning uchun kalit yo'q build'da xarita joyini ro'yxat/raqamlar egallaydi.
    */
   mapsEnabled: !!yandexMapKitKey,
+  /** Ilovani yangilash havolasi (do'kon / APK) — 426 javobida havola bo'lmasa. */
+  storeUrl,
+  /** Qo'llab-quvvatlash Telegram havolasi yoki `null`. */
+  supportTelegram,
 };

@@ -2,6 +2,7 @@ import { ApiError } from '@insof/shared';
 import { config } from './config';
 import { KEYS, kv, secure } from './storage';
 import { useSession } from './session';
+import { appHeaders, checkUpdateRequired } from './app-update';
 
 export class ApiException extends Error {
   constructor(readonly status: number, readonly body: ApiError) {
@@ -38,7 +39,9 @@ async function refreshAccess(): Promise<string | null> {
   refreshing = (async () => {
     const refreshToken = await secure.get(KEYS.refresh);
     if (!refreshToken) return null;
-    const r = await fetchWithTimeout(`${config.apiUrl}/v1/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }) }, 15_000);
+    const r = await fetchWithTimeout(`${config.apiUrl}/v1/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json', ...appHeaders() }, body: JSON.stringify({ refreshToken }) }, 15_000);
+    // Majburiy yangilanish — sessiya saqlanadi (yangilangach ilova o'sha hisob bilan ochiladi)
+    if (r.status === 426) { checkUpdateRequired(426, parseJsonSafe(await r.text())); return null; }
     if (!r.ok) { if (refreshRejected(r.status)) await useSession.getState().signOut(); return null; }
     const j = (await r.json()) as { accessToken: string; refreshToken: string };
     await secure.set(KEYS.access, j.accessToken);
@@ -57,7 +60,7 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const doFetch = async (token: string | null) => {
     // FormData (fayl yuklash) — content-type'ni fetch o'zi qo'yadi (boundary bilan)
     const form = typeof FormData !== 'undefined' && body instanceof FormData;
-    const headers: Record<string, string> = form ? { accept: 'application/json' } : { 'content-type': 'application/json', accept: 'application/json' };
+    const headers: Record<string, string> = form ? { accept: 'application/json', ...appHeaders() } : { 'content-type': 'application/json', accept: 'application/json', ...appHeaders() };
     if (token) headers.authorization = `Bearer ${token}`;
     const org = useSession.getState().active?.organization.id;
     if (org) headers['x-org-id'] = org;
@@ -75,7 +78,10 @@ export async function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   const json = parseJsonSafe(text);
-  if (!res.ok) throw new ApiException(res.status, (json as ApiError | null) ?? { code: 'INTERNAL', message: 'Xato' });
+  if (!res.ok) {
+    checkUpdateRequired(res.status, json);
+    throw new ApiException(res.status, (json as ApiError | null) ?? { code: 'INTERNAL', message: 'Xato' });
+  }
   return json as T;
 }
 

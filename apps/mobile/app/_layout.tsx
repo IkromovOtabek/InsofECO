@@ -25,6 +25,8 @@ import { ERP_GROUPS, erpRoleConfig } from '@/features/erp/roles';
 import { afterLogin } from '@/features/shop/after-login';
 import { initMaps } from '@/core/map';
 import { RouteErrorBoundary } from '@/components/route-error';
+import { UpdateRequired } from '@/components/update-required';
+import { takeLogoutRedirect } from '@/features/auth/logout';
 
 /** Ekran chizishdagi kutilmagan xato — oq ekran o'rniga "Qayta urinish" (expo-router chegarasi). */
 export { RouteErrorBoundary as ErrorBoundary };
@@ -52,7 +54,13 @@ function Gate() {
     const group = segs[0];
     // Mehmon uchun birinchi ekran — do'kon (E-commerce), login emas. Kirish ekranlariga o'zi o'tadi.
     // Sozlamalar (mavzu, til) mehmonga ham ochiq — do'kon profilidan kiriladi
-    if (status === 'anon') { if (group !== '(auth)' && group !== '(shop)' && group !== 'settings') router.replace('/(shop)'); return; }
+    if (status === 'anon') {
+      // "Chiqish" (logout()) — kirish ekraniga; boshqa holatda (sessiya tugadi) do'konga
+      const after = takeLogoutRedirect();
+      if (after) { router.replace(after as never); return; }
+      if (group !== '(auth)' && group !== '(shop)' && group !== 'settings') router.replace('/(shop)');
+      return;
+    }
     // Kirgan holda ham ochiladigan auth ekranlari: xavfsizlik sozlamalari va yakun
     const security = group === '(auth)' && ['pin', 'change-password', 'done'].includes(segs[1] ?? '');
     if (security) return;
@@ -213,6 +221,8 @@ export default function RootLayout() {
           <ResultHost />
           <ReceiptHost />
           <DialogHost />
+          {/* Server 426 / APP_UPDATE_REQUIRED — "Ilovani yangilang", hamma narsaning ustida */}
+          <UpdateRequired />
           <LaunchOverlay />
         </ThemeProvider>
       </PersistQueryClientProvider>

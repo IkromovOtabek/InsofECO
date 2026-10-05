@@ -22,6 +22,7 @@ import { startTracking, stopTracking } from '@/core/location';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
 import { AcceptDelivery } from '@/features/deliveries/accept';
+import i18n from '@/core/i18n';
 
 /**
  * Umumiy reys ekrani. Rolga qarab pastki qism:
@@ -191,7 +192,7 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
         <Button title={t('driver.problem')} variant="danger" size="md" icon="triangle-alert" onPress={() => dialog('Muammo', 'Sababni tanlang', [
           { text: 'Nosozlik', onPress: () => tr.mutate({ to: 'FAILED', note: 'Nosozlik' }) },
           { text: 'Yo\'l yopiq', onPress: () => tr.mutate({ to: 'FAILED', note: 'Yo\'l yopiq' }) },
-          { text: 'Bekor', style: 'cancel' },
+          { text: i18n.t('ui.cancel'), style: 'cancel' },
         ])} />
       ) : null}
     </View>

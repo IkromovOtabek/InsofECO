@@ -10,7 +10,7 @@ import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors } from '@/design/tokens';
 import { useAction, useProjects, useWorkers } from '@/features/eco/api';
 import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
-import { DayStrip, atTime, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
+import { DayStrip, dayLabelLong, isoAt, startOfToday, tashkentHour, ymd } from '@/features/address/DayStrip';
 
 const SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 /** Kun lentasi — 2 hafta; uzoqroq muddat (oy, chorak) — kalendardan. */
@@ -61,13 +61,13 @@ export default function NewWorkOrder() {
   const set = (k: keyof typeof f) => (v: string) => setF((s) => ({ ...s, [k]: v }));
   const create = useAction<Record<string, unknown>, { id: string }>((body) => ({ path: '/work-orders', body }), ['work-orders', 'dash']);
   const today = ymd(startOfToday());
-  const nowH = new Date().getHours();
+  const nowH = tashkentHour();
   const slotOff = (s: string) => day === today && Number(s.slice(0, 2)) <= nowH;
   /** Bugungi barcha slotlar o'tgan bo'lsa bugun yopiq. */
   const dayFull = (k: string) => k === today && SLOTS.every((x) => Number(x.slice(0, 2)) <= nowH);
-  // Muddat — telefon vaqtida yig'iladi va ISO (UTC) bo'lib ketadi. Ilgari "YYYY-MM-DDTHH:mm"
-  // satri mintaqasiz yuborilardi va UTC serverda 5 soat siljirdi (18:00 → 23:00).
-  const deadline = day && time ? atTime(day, time).toISOString() : '';
+  // Muddat — Toshkent vaqti, mintaqasi aniq ("…T18:00:00+05:00"): telefon boshqa mintaqada bo'lsa ham
+  // siljimaydi. Ilgari mintaqasiz satr UTC serverda 5 soat siljirdi (18:00 → 23:00).
+  const deadline = day && time ? isoAt(day, time) : '';
 
   // Tez ikki bosish — ikkita ish buyurtmasi yaratilmasin (har mutate yangi idempotency kalit)
   const sending = useRef(false);
@@ -76,7 +76,8 @@ export default function NewWorkOrder() {
     const parsed = WorkOrderCreateSchema.safeParse({ projectId: f.projectId || undefined, title: f.title, description: f.description || undefined, address: f.address, price: Number(f.price.replace(/\s/g, '')), deadline, workerUserId: f.workerUserId || undefined });
     if (!parsed.success) return toast.error(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n'), 'Tekshiring');
     sending.current = true;
-    create.mutate(parsed.data as never, { onSettled: () => { sending.current = false; }, onSuccess: (o) => router.replace(`/work-order/${o.id}`), onError: (e) => toast.error(e.message, 'Xato') });
+    // Muddat — asl `…+05:00` satri (Zod `coerce.date` Date'ga aylantirgan, JSON'da UTC bo'lib ketardi)
+    create.mutate({ ...parsed.data, deadline } as never, { onSettled: () => { sending.current = false; }, onSuccess: (o) => router.replace(`/work-order/${o.id}`), onError: (e) => toast.error(e.message, 'Xato') });
   };
   const projectOptions = (projects.data ?? []).filter((p) => p.status !== 'COMPLETED').map((p) => ({ value: p.id, label: p.name, hint: p.address }));
   const workerOptions = [

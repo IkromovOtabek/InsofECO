@@ -9,6 +9,7 @@ import { space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
 import { useAction, useProject } from '@/features/eco/api';
 import { useSession } from '@/core/session';
+import i18n from '@/core/i18n';
 
 const TABS = [{ key: 'overview', label: 'Umumiy' }, { key: 'tasks', label: 'Vazifalar' }, { key: 'team', label: 'Quruvchilar' }, { key: 'materials', label: 'Materiallar' }, { key: 'transport', label: 'Transport' }, { key: 'finance', label: 'Moliya' }, { key: 'docs', label: 'Hujjatlar' }] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -178,7 +179,7 @@ export default function ProjectScreen() {
         <StickyActionBar
           primary={{
             title: "Holatni o'zgartirish", icon: 'refresh-cw', loading: setStatus.isPending,
-            onPress: () => dialog('Loyiha holati', undefined, [{ text: 'Faol', onPress: () => change('ACTIVE') }, { text: 'Kechikmoqda', onPress: () => change('DELAYED') }, { text: "To'xtatish", onPress: () => change('ON_HOLD') }, { text: 'Tugallandi', onPress: () => change('COMPLETED') }, { text: 'Bekor', style: 'cancel' }]),
+            onPress: () => dialog('Loyiha holati', undefined, [{ text: 'Faol', onPress: () => change('ACTIVE') }, { text: 'Kechikmoqda', onPress: () => change('DELAYED') }, { text: "To'xtatish", onPress: () => change('ON_HOLD') }, { text: 'Tugallandi', onPress: () => change('COMPLETED') }, { text: i18n.t('ui.cancel'), style: 'cancel' }]),
           }}
         />
       ) : null}

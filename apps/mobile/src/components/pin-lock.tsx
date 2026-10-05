@@ -10,6 +10,8 @@ import { Avatar, Icon, dialog } from '@/design/ui';
 import { PIN_LEN, pinStore } from '@/core/pin';
 import { useDisplayName, useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
+import { logout } from '@/features/auth/logout';
+import i18n from '@/core/i18n';
 
 /** Ilova orqa fonda shuncha turgach qaytsa — PIN qayta so'raladi. */
 const RELOCK_AFTER_MS = 60_000;
@@ -153,8 +155,8 @@ export function PinLock() {
   };
 
   const forgot = () => dialog('PIN esdan chiqdimi?', "Hisobdan chiqib, parol (yoki Telegram yoki SMS kodi) bilan qaytadan kiring. Keyin yangi PIN o'rnatishingiz mumkin.", [
-    { text: 'Bekor', style: 'cancel' },
-    { text: 'Chiqish', style: 'destructive', onPress: () => { setLocked(false); void signOut(); } },
+    { text: i18n.t('ui.cancel'), style: 'cancel' },
+    { text: 'Chiqish', style: 'destructive', onPress: () => { setLocked(false); void logout(); } },
   ]);
 
   if (!locked) return null;
@@ -183,7 +185,7 @@ export function PinLock() {
       </Appear>
       <Appear delay={180} style={{ flexDirection: 'row', justifyContent: 'center', gap: KEY_GAP_X }}>
         <LockLink onPress={forgot} tone="brand">PIN esdan chiqdimi?</LockLink>
-        <LockLink onPress={() => { setLocked(false); void signOut(); }} tone="muted">Boshqa hisob</LockLink>
+        <LockLink onPress={() => { setLocked(false); void logout(); }} tone="muted">Boshqa hisob</LockLink>
       </Appear>
     </View>
   );

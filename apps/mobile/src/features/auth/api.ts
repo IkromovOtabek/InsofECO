@@ -19,7 +19,14 @@ export const authApi = {
   requestOtp: (phone: string) => api<{ retryAfter: number; channel?: OtpChannel }>('/auth/otp/request', { method: 'POST', body: { phone }, auth: false }),
   verifyOtp: (phone: string, code: string) =>
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/otp/verify', { method: 'POST', body: { phone, code, device: deviceInfo() }, auth: false }),
-  register: (input: { fullName: string; phone: string; password: string; role: 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI'; organization?: { name: string; type: 'PLANT' | 'CONTRACTOR' }; plantOrgId?: string }) =>
+  /**
+   * Ro'yxatdan o'tish, kod tasdig'i: yangi raqam — bir martalik `phoneVerificationToken` (10 daqiqa);
+   * raqam tizimda bor — egasi kodni kiritdi, oddiy kirish sessiyasi qaytadi.
+   */
+  verifyRegisterPhone: (phone: string, code: string) =>
+    api<{ status: 'verified'; phoneVerificationToken: string; expiresIn: number } | { status: 'existing'; accessToken: string; refreshToken: string; user: Profile }>(
+      '/auth/register/verify', { method: 'POST', body: { phone, code, device: deviceInfo() }, auth: false }),
+  register: (input: { fullName: string; phone: string; password: string; role: 'TADBIRKOR' | 'QURUVCHI' | 'HAYDOVCHI'; organization?: { name: string; type: 'PLANT' | 'CONTRACTOR' }; plantOrgId?: string; phoneVerificationToken: string }) =>
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/register', { method: 'POST', body: { ...input, device: deviceInfo() }, auth: false }),
   login: (phone: string, password: string) =>
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/login', { method: 'POST', body: { phone, password, device: deviceInfo() }, auth: false }),

@@ -1,8 +1,9 @@
 import { config } from './config';
 import { KEYS, secure } from './storage';
-import { ApiException, fetchWithTimeout, parseJsonSafe, refreshRejected } from './api';
+import { ApiException, deviceId, fetchWithTimeout, parseJsonSafe, refreshRejected } from './api';
 import type { ApiError } from '@insof/shared';
 import { useSession } from './session';
+import { appHeaders, checkUpdateRequired } from './app-update';
 
 /**
  * Insof ERP backend klienti — zavod xodimlari uchun (login + parol).
@@ -184,8 +185,9 @@ async function refreshAccess(): Promise<string | null> {
     const refreshToken = await secure.get(KEYS.erpRefresh);
     if (!refreshToken) return null;
     const r = await fetchWithTimeout(`${config.erpUrl}/api/mobile/auth/refresh`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }),
+      method: 'POST', headers: { 'content-type': 'application/json', ...appHeaders() }, body: JSON.stringify({ refreshToken }),
     }, 15_000);
+    if (r.status === 426) { checkUpdateRequired(426, parseJsonSafe(await r.text())); return null; }
     if (!r.ok) { if (refreshRejected(r.status)) await useSession.getState().signOut(); return null; }
     const j = (await r.json()) as ErpTokens;
     await secure.set(KEYS.erpAccess, j.accessToken);
@@ -204,7 +206,7 @@ export async function erpApi<T>(path: string, opts: ErpOpts = {}): Promise<T> {
     ? '?' + Object.entries(query).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')
     : '';
   const doFetch = async (token: string | null) => {
-    const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json' };
+    const headers: Record<string, string> = { 'content-type': 'application/json', accept: 'application/json', ...appHeaders() };
     if (token) headers.authorization = `Bearer ${token}`;
     // Rasm (base64) yuboriladigan formalar uchun chegara kengroq
     return fetchWithTimeout(`${config.erpUrl}/api/mobile${path}${qs}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }, 60_000);
@@ -220,7 +222,10 @@ export async function erpApi<T>(path: string, opts: ErpOpts = {}): Promise<T> {
   const json = parseJsonSafe(text);
   // ERP xato kodlari ECO'nikidan boshqa ro'yxat (BAD_CREDENTIALS, FORBIDDEN…) — shakli bir xil,
   // ApiException faqat `code` va `message` ni o'qiydi.
-  if (!res.ok) throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
+  if (!res.ok) {
+    checkUpdateRequired(res.status, json);
+    throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
+  }
   return json as T;
 }
 
@@ -228,6 +233,8 @@ export const erpAuth = {
   login: (login: string, password: string) =>
     erpApi<ErpTokens & { user: ErpUser }>('/auth/login', { method: 'POST', body: { login, password }, auth: false }),
   me: () => erpApi<ErpUser>('/me'),
+  /** Shu qurilmaning access/refresh tokenlarini serverda bekor qiladi (boshqa qurilmalar chiqarilmaydi). */
+  logout: async () => erpApi<{ ok: true }>('/auth/logout', { method: 'POST', body: { refreshToken: (await secure.get(KEYS.erpRefresh)) ?? undefined, deviceId: deviceId() } }),
   home: (params?: Record<string, string>) => erpApi<ErpHomeData>('/home', { query: params }),
   list: (key: string, q?: string, filter?: string) => erpApi<ErpListData>('/list', { query: { key, q, filter } }),
   detail: (key: string, id: string) => erpApi<ErpDetailData>('/detail', { query: { key, id } }),

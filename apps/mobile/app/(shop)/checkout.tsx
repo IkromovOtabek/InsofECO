@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, EmptyState, Input, ListItem, Txt, fmtNum } from '@/design/primitives';
 import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
-import { DayStrip, addDays, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
+import { DayStrip, addDays, dayLabelLong, startOfToday, tashkentHour, ymd } from '@/features/address/DayStrip';
 import { ListGroup, PageHeader, Reveal, StickyActionBar } from '@/design/blocks';
 import { Icon, type IconName } from '@/design/icons';
 import { PressScale, haptic } from '@/design/motion';
@@ -14,7 +14,7 @@ import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { afterLogin } from '@/features/shop/after-login';
 import { cartTotal, useCart, type SentOrder } from '@/features/shop/cart';
-import { submitCart } from '@/features/shop/orders';
+import { orderAttemptKey, submitCart } from '@/features/shop/orders';
 import { OrderSuccess } from '@/features/shop/order-success';
 import { MiniArt } from '@/features/shop/ui';
 
@@ -28,8 +28,8 @@ const SLOTS = ['08:00–10:00', '10:00–12:00', '12:00–14:00', '14:00–16:00
 /** Kun lentasi — 2 hafta, kalendar — 2 oygacha (sotuv bo'limi uzoqroq rejani qabul qilmaydi). */
 const STRIP_DAYS = 14;
 const MAX_DAYS = 60;
-/** Bugun uchun: slot boshlanishi o'tib ketgan bo'lsa — yopiq. */
-const slotPast = (day: string, s: string) => day === ymd(startOfToday()) && Number(s.slice(0, 2)) <= new Date().getHours();
+/** Bugun uchun: slot boshlanishi o'tib ketgan bo'lsa — yopiq (Toshkent soati, telefon mintaqasi emas). */
+const slotPast = (day: string, s: string) => day === ymd(startOfToday()) && Number(s.slice(0, 2)) <= tashkentHour();
 const dayFull = (day: string) => SLOTS.every((s) => slotPast(day, s));
 
 const mln = (n: number) => fmtShort(n).replace('.', ',');
@@ -79,6 +79,8 @@ export default function Checkout() {
   const [placed, setPlaced] = useState<SentOrder[] | null>(null);
   // Ikki marta tez bosilsa (tugma `loading` bo'lib ulgurmasdan) buyurtmalar ikki marta ketmasin
   const inFlight = useRef(false);
+  /** Shu buyurtma urinishining barqaror kaliti — har bosishda yangisi emas (`orderAttemptKey`). */
+  const attempt = useRef<{ sig: string; key: string } | null>(null);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/(shop)/(tabs)/savat' as never));
 
@@ -111,7 +113,9 @@ export default function Checkout() {
     setSending(0);
     let out: Awaited<ReturnType<typeof submitCart>>;
     try {
-      out = await submitCart(lines, { name: name.trim(), phone: phone.trim(), address: address.trim(), note }, (n) => setSending(n));
+      const base = { name: name.trim(), phone: phone.trim(), address: address.trim(), note };
+      attempt.current = orderAttemptKey(attempt.current, { lines: lines.map((l) => [l.productId, l.qty]), base });
+      out = await submitCart(lines, base, (n) => setSending(n), attempt.current.key);
     } finally {
       inFlight.current = false;
       setSending(null);

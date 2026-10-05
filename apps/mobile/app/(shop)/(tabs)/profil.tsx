@@ -5,11 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, Card, ListItem, Txt } from '@/design/primitives';
 import { ListGroup, PageHeader, Reveal } from '@/design/blocks';
 import { Icon } from '@/design/icons';
-import { Avatar, dialog } from '@/design/ui';
+import { Avatar } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
+import { useLogout } from '@/features/auth/logout';
 import { useTelegramLogin } from '@/features/auth/telegram';
 import { erpRoleConfig } from '@/features/erp/roles';
 import { InverseGrid } from '@/features/shop/art';
@@ -28,7 +29,8 @@ export default function ShopProfile() {
   const router = useRouter();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { status, kind, user, active, erp, signOut } = useSession();
+  const { status, kind, user, active, erp } = useSession();
+  const { confirm: logoutConfirm } = useLogout();
   const favs = useCart((s) => s.favs.length);
   const tg = useTelegramLogin();
 
@@ -73,7 +75,7 @@ export default function ShopProfile() {
             </ListGroup>
             {common}
             <ListGroup>
-              <ListItem icon="log-out" tone="danger" title="Chiqish" chevron={false} onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
+              <ListItem icon="log-out" tone="danger" title="Chiqish" chevron={false} onPress={logoutConfirm} />
             </ListGroup>
           </Reveal>
         ) : (

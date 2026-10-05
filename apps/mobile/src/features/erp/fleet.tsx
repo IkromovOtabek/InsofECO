@@ -100,7 +100,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const navigate = async (t: ErpFleetItem) => {
     const p = t.dest ?? (t.gps ? { lat: t.gps.lat, lng: t.gps.lng } : null);
     if (!p) { toast.warning("Na obyekt nuqtasi, na GPS bor — navigatorga yo'nalish berib bo'lmaydi"); return; }
-    // "Bekor" ham `false` qaytaradi, xato holatini esa `openInNavigator` o'zi aytadi — bu yerda qo'shimcha toast yo'q
+    // "Bekor qilish" ham `false` qaytaradi, xato holatini esa `openInNavigator` o'zi aytadi — bu yerda qo'shimcha toast yo'q
     await openInNavigator({ lat: p.lat, lng: p.lng, label: t.dest ? `${t.customer}${t.address ? ` · ${t.address}` : ''}` : `${t.plate} · ${t.driver}` });
   };
 

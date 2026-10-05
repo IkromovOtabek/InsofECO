@@ -231,3 +231,6 @@ export function FooterLink({ text, action, onPress }: { text: string; action: st
 export function TextLink({ children, onPress, style }: { children: string; onPress: () => void; style?: object }) {
   return <Pressable onPress={onPress} accessibilityRole="link" hitSlop={space.sm} style={[{ minHeight: size.touch, justifyContent: 'center' }, style]}><Txt v="label" color="brand">{children}</Txt></Pressable>;
 }
+
+/** Ro'yxatdan o'tish qadamlari: telefon → kod → ma'lumotlar (phone, otp va register ekranlari bir xil yozadi). */
+export const REGISTER_STEPS = ['Telefon', "Kod tasdig'i", "Ma'lumotlar"];

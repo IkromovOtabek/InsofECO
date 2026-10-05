@@ -5,7 +5,7 @@ import { CreateOrderSchema } from '@insof/shared';
 import { HeroCard, ListGroup, SectionHead, StickyActionBar, Toggle } from '@/design/blocks';
 import { Callout, Card, Gap, IconButton, Input, ListItem, Screen, Select, Txt, fmtM3, fmtNum, fmtSum } from '@/design/primitives';
 import { AddressPicker, type AddressValue } from '@/features/address/AddressPicker';
-import { DayStrip, addDays, atTime, dayLabelLong, startOfToday, ymd } from '@/features/address/DayStrip';
+import { DayStrip, addDays, atTime, dayLabelLong, isoAt, startOfToday, ymd } from '@/features/address/DayStrip';
 import { Appear, PressScale, haptic } from '@/design/motion';
 import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -27,7 +27,7 @@ const INTERVAL_STEP = 5;
 const INTERVAL_MAX = 240;
 
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
-/** Kun (mahalliy `YYYY-MM-DD`) + soat → mahalliy vaqt; serverga ISO (UTC) bo'lib ketadi — siljish yo'q. */
+/** Kun (Toshkent `YYYY-MM-DD`) + soat (Toshkent vaqti) → vaqt nuqtasi; serverga `isoAt` (+05:00) bilan ketadi. */
 const slotAt = (day: string, h: number) => atTime(day, hh(h));
 const slotPast = (day: string, h: number) => slotAt(day, h).getTime() < Date.now() + LEAD_HOURS * 3_600_000;
 /** Kunning barcha slotlari o'tib ketgan — lentada yopiq. */
@@ -80,8 +80,8 @@ export default function NewOrder() {
 
   const payload = useMemo(() => ({
     plantOrgId: plantId, siteId, address: (site?.address ?? address).trim(), location: site ? { lat: site.lat, lng: site.lng } : loc ?? undefined,
-    items: mixId ? [{ mixId, volumeM3: vol }] : [], scheduledAt: scheduled ?? undefined, intervalMinutes: interval, needsPump, note: note.trim() || undefined,
-  }), [plantId, siteId, site, address, loc, mixId, vol, scheduled, interval, needsPump, note]);
+    items: mixId ? [{ mixId, volumeM3: vol }] : [], scheduledAt: scheduled && slot != null ? isoAt(day, hh(slot)) : undefined, intervalMinutes: interval, needsPump, note: note.trim() || undefined,
+  }), [plantId, siteId, site, address, loc, mixId, vol, scheduled, day, slot, interval, needsPump, note]);
 
   // Qadam bo'yicha yopiq sabab — tugma jim turmaydi, sababni aytadi.
   const volError = volume && !(vol > 0 && vol <= 500 && Number.isInteger(vol * 2)) ? "Hajm 0,5 m³ qadam bilan, 500 m³ gacha" : undefined;
@@ -102,7 +102,9 @@ export default function NewOrder() {
       return toast.error(msgs.join('\n'), 'Tekshiring');
     }
     sending.current = true;
-    create.mutate(parsed.data, {
+    // Zod `coerce.date` satrni Date'ga aylantiradi (JSON'da UTC "Z" bo'lib ketardi) — serverga Toshkent
+    // mintaqasi aniq yozilgan asl satr (`…+05:00`) yuboriladi; server ham `coerce.date` bilan o'qiydi.
+    create.mutate({ ...parsed.data, scheduledAt: (payload.scheduledAt ?? parsed.data.scheduledAt) as unknown as Date }, {
       onSettled: () => { sending.current = false; },
       onSuccess: (o) => { toast.success(`Buyurtma №${o.number} zavodga yuborildi. Tasdiqlanganda xabar keladi.`, 'Yuborildi'); router.replace(`/order/${o.id}`); },
       onError: (e) => toast.error(e instanceof ApiException ? e.message : "Tarmoq xatosi — internetni tekshirib qayta urinib ko'ring", 'Xato'),

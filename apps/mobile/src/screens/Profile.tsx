@@ -1,13 +1,14 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, Screen, Txt } from '@/design/primitives';
-import { Avatar, dialog } from '@/design/ui';
+import { Screen, Txt } from '@/design/primitives';
+import { Avatar } from '@/design/ui';
 import { Appear, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
-import { authApi, avatarUri } from '@/features/auth/api';
+import { avatarUri } from '@/features/auth/api';
+import { LogoutButton } from '@/features/auth/logout';
 import { DeleteAccountRow } from '@/features/auth/delete-account';
 import { SetGroup, SetRow } from '@/components/set-row';
 
@@ -25,7 +26,7 @@ const Over = ({ children }: { children: string }) => (
 export function Profile({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
   const { c } = useTheme();
-  const { user, active, selectMembership, selectAdmin, signOut } = useSession();
+  const { user, active, selectMembership, selectAdmin } = useSession();
   const memberships = user?.memberships.filter((m) => m.isActive) ?? [];
 
   return (
@@ -84,7 +85,7 @@ export function Profile({ children }: { children?: React.ReactNode }) {
         </Appear>
 
         <Appear delay={stagger(4)} style={{ marginTop: space.lg }}>
-          <Button title="Chiqish" variant="secondary" icon="log-out" size="lg" textColor={c.danger} onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void authApi.logout().catch(() => {}); void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
+          <LogoutButton textColor={c.danger} />
         </Appear>
       </ScrollView>
     </Screen>

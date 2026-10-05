@@ -3,6 +3,7 @@ import { dialog, toast } from '@/design/ui';
 import { useSession } from '@/core/session';
 import { SetRow } from '@/components/set-row';
 import { authApi } from './api';
+import i18n from '@/core/i18n';
 
 /**
  * "Hisobni o'chirish" qatori (App Store / Google Play talabi) — `SetGroup` ichida ishlatiladi.
@@ -45,7 +46,7 @@ export function DeleteAccountRow() {
       : "Telefon raqamingiz, ismingiz va kirish ma'lumotlaringiz butunlay o'chiriladi. Buyurtma tarixi shaxsga bog'lanmagan holda qoladi. Qaytarib bo'lmaydi.",
     [
       { text: isDriver ? "So'rov yuborish" : "Ha, o'chirish", style: 'destructive', onPress: () => void remove() },
-      { text: 'Bekor', style: 'cancel' },
+      { text: i18n.t('ui.cancel'), style: 'cancel' },
     ],
   );
 

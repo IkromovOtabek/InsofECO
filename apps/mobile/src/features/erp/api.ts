@@ -5,6 +5,7 @@ import { erpApi, erpAuth, type ErpFleetTruck, type ErpTripRoute } from '@/core/e
 import { config } from '@/core/config';
 import { KEYS, secure } from '@/core/storage';
 import { ApiException } from '@/core/api';
+import { appHeaders, checkUpdateRequired } from '@/core/app-update';
 import type { ApiError } from '@insof/shared';
 import { usePollInterval } from '@/shared/hooks';
 
@@ -174,7 +175,7 @@ export async function downloadDailyReport(date: string): Promise<string> {
   // Shu kunning eski fayli qolgan bo'lsa (avvalgi yuklash) — ustiga yozish iOS'da xato beradi
   await FileSystem.deleteAsync(target, { idempotent: true }).catch(() => undefined);
   const res = await FileSystem.downloadAsync(`${config.erpUrl}/api/mobile/report/daily?date=${encodeURIComponent(date)}`, target, {
-    headers: { authorization: `Bearer ${token ?? ''}`, accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json' },
+    headers: { authorization: `Bearer ${token ?? ''}`, accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json', ...appHeaders() },
   });
   if (res.status !== 200) {
     let message = res.status === 404 ? "Serverda kunlik hisobot hali yo'q — ERP yangilanishi kerak" : 'Hisobot yuklanmadi';
@@ -183,6 +184,7 @@ export async function downloadDailyReport(date: string): Promise<string> {
       const j = JSON.parse(await FileSystem.readAsStringAsync(res.uri)) as { code?: string; message?: string };
       if (j.message && res.status !== 404) message = j.message;
       if (j.code) code = j.code;
+      checkUpdateRequired(res.status, j);
     } catch { /* JSON emas */ }
     await FileSystem.deleteAsync(res.uri, { idempotent: true }).catch(() => undefined);
     throw new ApiException(res.status, { code, message } as ApiError);

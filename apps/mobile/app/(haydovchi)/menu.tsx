@@ -2,19 +2,20 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ListGroup, OfflineBanner } from '@/design/blocks';
-import { Badge, Button, Card, Gap, ListItem, ProgressBar, Screen, Txt } from '@/design/primitives';
-import { Avatar, dialog, fmtShort } from '@/design/ui';
+import { Badge, Card, Gap, ListItem, ProgressBar, Screen, Txt } from '@/design/primitives';
+import { Avatar, fmtShort } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
 import { useOutboxSize } from '@/shared/hooks';
 import { useConversations, useHaydovchiDashboard } from '@/features/eco/api';
-import { authApi, avatarUri } from '@/features/auth/api';
+import { avatarUri } from '@/features/auth/api';
+import { LogoutButton } from '@/features/auth/logout';
 
 /** Kabina "Men": haydovchi → mashina (yoqilg'i) → Daromad, Tarix, Xabarlar, Profil (64 pt qatorlar) → Chiqish. */
 export default function HaydovchiMenu() {
   const router = useRouter();
-  const { user, active, signOut } = useSession();
+  const { user, active } = useSession();
   const conv = useConversations(); const d = useHaydovchiDashboard();
   const pending = useOutboxSize();
   const unread = (conv.data ?? []).reduce((s, x) => s + x.unread, 0);
@@ -55,7 +56,7 @@ export default function HaydovchiMenu() {
         </ListGroup>
 
         <Gap h={space.section} />
-        <Button title="Chiqish" variant="danger" size="xl" icon="log-out" onPress={() => dialog('Chiqasizmi?', 'Qayta kirish uchun login yoki telefon kodi kerak bo\'ladi.', [{ text: 'Chiqish', style: 'destructive', onPress: () => { void authApi.logout().catch(() => {}); void signOut(); } }, { text: 'Bekor', style: 'cancel' }], { tone: 'warning', icon: 'log-out' })} />
+        <LogoutButton variant="danger" size="xl" />
       </ScrollView>
     </Screen>
   );

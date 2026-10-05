@@ -12,6 +12,7 @@ import { DEMO_SCALE, elevation, radius, size, space } from '@/design/tokens';
 import { api } from '@/core/api';
 import { SignaturePad, SignaturePadHandle } from '@/components/signature-pad';
 import { Delivery, useDispute, useSignDelivery } from './api';
+import i18n from '@/core/i18n';
 
 /**
  * Betonni qabul qilish — demo "Betonni qabul qilish" (docs/redesign/shots/27). Quruvchi/tadbirkor, reys `UNLOADING` da.
@@ -122,7 +123,7 @@ export function AcceptDelivery({ d }: { d: Delivery }) {
     { text: 'Hajm kam', onPress: () => raise('VOLUME') },
     { text: 'Sifat', onPress: () => raise('QUALITY') },
     { text: 'Kech keldi', onPress: () => raise('LATE') },
-    { text: 'Bekor', style: 'cancel' },
+    { text: i18n.t('ui.cancel'), style: 'cancel' },
   ]);
 
   return (

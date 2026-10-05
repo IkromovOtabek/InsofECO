@@ -7,6 +7,7 @@ import { Avatar, Confirm, Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { ECO_ROLE_NAME, size, space } from '@/design/tokens';
 import { Membership, useSession } from '@/core/session';
+import { logout } from '@/features/auth/logout';
 import { AppConfigRow, useAdminAction, useAdminConfig } from '@/features/admin/api';
 
 const ROLE_GROUP = { TADBIRKOR: '(tadbirkor)', QURUVCHI: '(quruvchi)', HAYDOVCHI: '(haydovchi)' } as const;
@@ -19,7 +20,7 @@ const show = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v));
 export default function AdminSettings() {
   const router = useRouter();
   const { c } = useTheme();
-  const { user, selectMembership, exitAdmin, signOut } = useSession();
+  const { user, selectMembership, exitAdmin } = useSession();
   const cfg = useAdminConfig();
   const [edit, setEdit] = useState<Partial<AppConfigRow> | null>(null);
   const [del, setDel] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export default function AdminSettings() {
         title="Sozlama o'chirilsinmi?" message={del ?? undefined} confirmLabel="O'chirish"
         onConfirm={() => del && remove.mutate(del, { onSuccess: () => { setDel(null); toast.success("O'chirildi"); }, onError: (e) => toast.error(e.message, 'Bajarilmadi') })}
       />
-      <Confirm open={out} onClose={() => setOut(false)} title="Chiqasizmi?" confirmLabel="Chiqish" onConfirm={() => { setOut(false); void signOut(); }} />
+      <Confirm open={out} onClose={() => setOut(false)} title="Chiqasizmi?" confirmLabel="Chiqish" onConfirm={() => { setOut(false); void logout(); }} />
     </Screen>
   );
 }
