@@ -87,6 +87,7 @@ export class MaterialsService {
     const r = await this.prisma.materialRequest.findFirst({ where: { id, organizationId: a.orgId! }, include: { material: true, project: true } });
     if (!r) throw DomainError.notFound("So'rov");
     if (r.status !== 'PENDING') throw new DomainError('ORDER_INVALID_TRANSITION', "So'rov allaqachon ko'rib chiqilgan");
+    await this.assertDriverAndVehicle(a.orgId!, input.driverUserId, input.vehicleId);
     const warehouse = input.warehouseId
       ? await this.prisma.warehouse.findFirst({ where: { id: input.warehouseId, organizationId: a.orgId! } })
       : await this.prisma.warehouse.findFirst({ where: { organizationId: a.orgId!, inventory: { some: { materialId: r.materialId, quantity: { gte: r.quantity } } } } });
@@ -111,6 +112,21 @@ export class MaterialsService {
     });
     this.events.emit('material_request.approved', { requestId: id, number: r.number, byUserId: r.requestedByUserId, material: r.material.name, shipmentId: updated.shipment?.id, driverUserId: input.driverUserId });
     return updated;
+  }
+
+  /**
+   * IDOR: haydovchi — shu tashkilotning faol HAYDOVCHI a'zosi, mashina — shu tashkilotniki bo'lishi shart.
+   * Aks holda begona zavod haydovchisiga yuk (va to'lov) yozib yuborish mumkin edi.
+   */
+  private async assertDriverAndVehicle(orgId: string, driverUserId?: string | null, vehicleId?: string | null) {
+    if (driverUserId) {
+      const m = await this.prisma.membership.findFirst({ where: { userId: driverUserId, organizationId: orgId, role: 'HAYDOVCHI', isActive: true }, select: { id: true } });
+      if (!m) throw DomainError.notFound('Haydovchi');
+    }
+    if (vehicleId) {
+      const v = await this.prisma.vehicle.findFirst({ where: { id: vehicleId, organizationId: orgId }, select: { id: true } });
+      if (!v) throw DomainError.notFound('Mashina');
+    }
   }
 
   async reject(a: AuthContext, id: string, reason: string) {

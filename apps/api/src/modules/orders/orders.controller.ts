@@ -43,7 +43,7 @@ export class OrdersController {
   @Post('on-behalf')
   createOnBehalf(@CurrentUser() a: AuthContext, @Body(Zod(CreateByPlant)) body: z.infer<typeof CreateByPlant>) {
     const { clientOrgId, ...rest } = body;
-    return this.orders.create(a, rest, clientOrgId);
+    return this.orders.createOnBehalf(a, rest, clientOrgId);
   }
 
   @Roles('QURUVCHI', 'TADBIRKOR') @Post(':id/submit') @HttpCode(200)

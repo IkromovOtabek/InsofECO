@@ -8,10 +8,10 @@ const shipment = (over: Record<string, unknown> = {}) => ({
   project: { id: 'p1', name: 'Uy', lat: null, lng: null }, request: null, payouts: [], ...over,
 });
 
-function setup(s: ReturnType<typeof shipment>, claimedCount: number) {
+function setup(s: ReturnType<typeof shipment>, claimedCount: number, stockCount = 1) {
   const tx = {
     shipment: { updateMany: jest.fn().mockResolvedValue({ count: claimedCount }) },
-    inventoryItem: { update: jest.fn() }, materialRequest: { update: jest.fn() },
+    inventoryItem: { updateMany: jest.fn().mockResolvedValue({ count: stockCount }) }, materialRequest: { update: jest.fn() },
     expense: { create: jest.fn() }, project: { update: jest.fn() }, payout: { create: jest.fn() },
   };
   const prisma = {
@@ -36,7 +36,7 @@ describe('ShipmentsService.transition — poyga', () => {
     const s = shipment({ status: 'DELIVERED', driverUserId: 'd1', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
     const { svc, tx } = setup(s, 0);
     await expect(svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CONFIRMED' })).rejects.toThrow();
-    expect(tx.inventoryItem.update).not.toHaveBeenCalled();
+    expect(tx.inventoryItem.updateMany).not.toHaveBeenCalled();
     expect(tx.payout.create).not.toHaveBeenCalled();
   });
 
@@ -44,7 +44,19 @@ describe('ShipmentsService.transition — poyga', () => {
     const s = shipment({ status: 'DELIVERED', driverUserId: 'd1', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
     const { svc, tx } = setup(s, 1);
     await svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CONFIRMED' });
-    expect(tx.inventoryItem.update).toHaveBeenCalledTimes(1);
+    expect(tx.inventoryItem.updateMany).toHaveBeenCalledWith({
+      where: { warehouseId: 'w1', materialId: 'm1', quantity: { gte: new D(10) } },
+      data: { quantity: { decrement: new D(10) } },
+    });
     expect(tx.payout.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('CONFIRMED — zaxira yetmasa (parallel tasdiq) xato, haq va xarajat yozilmaydi', async () => {
+    const s = shipment({ status: 'DELIVERED', driverUserId: 'd1', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
+    const { svc, tx, events } = setup(s, 1, 0);
+    await expect(svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CONFIRMED' })).rejects.toThrow('yetarli emas');
+    expect(tx.materialRequest.update).not.toHaveBeenCalled();
+    expect(tx.payout.create).not.toHaveBeenCalled();
+    expect(events.emit).not.toHaveBeenCalled();
   });
 });

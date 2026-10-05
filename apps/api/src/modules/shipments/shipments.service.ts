@@ -90,7 +90,13 @@ export class ShipmentsService {
       await this.prisma.$transaction(async (tx) => {
         if ((await claim(tx)).count !== 1) throw lost();
         if (s.request) {
-          await tx.inventoryItem.update({ where: { warehouseId_materialId: { warehouseId: s.warehouseId, materialId: s.request.materialId } }, data: { quantity: { decrement: s.quantity } } });
+          // Atomar shartli ayirish: zaxira >= miqdor bo'lsagina. Parallel tasdiqlar qoldiqni manfiyga tushira olmaydi —
+          // yetmasa butun tranzaksiya (holat, xarajat, haq) qaytariladi.
+          const taken = await tx.inventoryItem.updateMany({
+            where: { warehouseId: s.warehouseId, materialId: s.request.materialId, quantity: { gte: s.quantity } },
+            data: { quantity: { decrement: s.quantity } },
+          });
+          if (taken.count !== 1) throw new DomainError('VALIDATION', `Omborda ${s.cargo} uchun zaxira yetarli emas`, { warehouseId: s.warehouseId, materialId: s.request.materialId });
           await tx.materialRequest.update({ where: { id: s.request.id }, data: { status: 'CONFIRMED' } });
           const cost = s.request.material.price.mul(s.quantity);
           await tx.expense.create({ data: { organizationId: s.organizationId, projectId: s.projectId, category: 'MATERIAL', amount: cost, description: `${s.cargo} → ${s.project.name}`, refType: 'MATERIAL_REQUEST', refId: s.request.id, createdByUserId: a.userId } });

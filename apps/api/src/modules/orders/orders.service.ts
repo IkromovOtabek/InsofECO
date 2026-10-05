@@ -122,6 +122,28 @@ export class OrdersService {
     });
   }
 
+  /**
+   * Tadbirkor (zavod) mijoz nomidan. IDOR: buyurtma faqat chaqiruvchining o'z zavodiga va faqat shu zavodning
+   * mavjud mijoziga (buyurtmasi yoki kredit limiti bor — account.service bilan bir xil ta'rif) yoziladi.
+   */
+  async createOnBehalf(a: AuthContext, input: CreateOrderInput, clientOrgId: string) {
+    if (input.plantOrgId !== a.orgId) throw DomainError.forbidden("Faqat o'z zavodingiz nomidan buyurtma berish mumkin");
+    if (!(await this.isPlantClient(a.orgId!, clientOrgId))) throw DomainError.notFound('Mijoz');
+    return this.create(a, input, clientOrgId);
+  }
+
+  /** "Zavod mijozi": CONTRACTOR tashkilot, shu zavodga buyurtmasi yoki kredit limiti bor. */
+  async isPlantClient(plantOrgId: string, clientOrgId: string) {
+    const org = await this.prisma.organization.findFirst({
+      where: {
+        id: clientOrgId, type: 'CONTRACTOR', deletedAt: null,
+        OR: [{ ordersAsClient: { some: { plantOrgId } } }, { creditLimits: { some: { plantOrgId } } }],
+      },
+      select: { id: true },
+    });
+    return !!org;
+  }
+
   async submit(a: AuthContext, id: string) {
     // Qoralama kechikib yuborilsa — vaqti o'tib ketgan buyurtma zavodga bormasin
     assertNotPast((await this.get(a, id)).scheduledAt);
@@ -160,6 +182,9 @@ export class OrdersService {
   }
 
   async reject(a: AuthContext, id: string, reason: string) {
+    // Rad etish — faqat buyurtma berilgan zavod (mijoz tomonidagi TADBIRKOR o'z buyurtmasini "rad" qila olmaydi)
+    const current = await this.get(a, id);
+    if (current.plantOrgId !== a.orgId) throw DomainError.forbidden();
     const order = await this.transition(a, id, 'REJECTED', { rejectReason: reason });
     this.events.emit(ORDER_EVENTS.rejected, { orderId: id, reason });
     return order;
