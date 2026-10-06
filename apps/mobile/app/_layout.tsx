@@ -172,6 +172,10 @@ function Nav() {
         <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar' }} />
         {/* Reyslar xaritasi — sarlavha ekranning o'zida; e'lon qilinmasa birinchi kadrda "erp/fleet" sarlavhasi miltillaydi */}
         <Stack.Screen name="erp/fleet" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/davomat" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/davomat-xodim" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/haydovchilar" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/reyslarim" options={{ headerShown: false }} />
         {/* Haydovchi marshruti — "Yo'lga chiqdim" dan keyin ochiladi */}
         <Stack.Screen name="yolda/[id]" options={{ title: 'Marshrut' }} />
         <Stack.Screen name="delivery/[id]" options={{ title: 'Reys' }} />
