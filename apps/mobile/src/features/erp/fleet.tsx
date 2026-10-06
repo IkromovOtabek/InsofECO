@@ -7,13 +7,17 @@ import { Badge, Button, Callout, EmptyState, IconButton, KVList, ListGroup, List
 import { ChipGroup, PageHeader, SectionHead, SkeletonList } from '@/design/blocks';
 import { Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
+import { radius, size, space, textRoom, toneColors, type, type Tone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { MapUnavailable, MapView, Marker, type MapHandle } from '@/core/map';
 import { RouteLine } from '@/core/route';
 import { config } from '@/core/config';
 import { openInNavigator } from '@/core/navigate';
 import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
+
+/** Xarita plitkasi o'lchami — davlat raqami sig'adigan qat'iy kenglik (shrift masshtabisiz). */
+const PLATE_H = 24;
+const plateW = (plate: string) => Math.ceil(textRoom(plate, type.overline.fontSize, 0.9)) + space.sm * 2 + 6;
 
 /**
  * Jonli reyslar xaritasi — direktor (bosh sahifa → "Reyslar xaritada", menyu) va logistika uchun.
@@ -181,8 +185,10 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                         zIndex={active ? 3 : tone === 'danger' ? 2 : 1}
                         onPress={() => focus(t)}
                       >
-                        <View style={{ paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: col.solid, borderWidth: active ? size.ring + 1 : size.ring, borderColor: active ? c.textStrong : c.bgSurface }}>
-                          <Txt v="overline" style={{ color: tone === 'brand' ? c.textOnBrand : tone === 'neutral' ? c.bgSurface : c.textOnSolid }} numberOfLines={1}>{t.plate}</Txt>
+                        {/* MapKit belgini rasmga aylantiradi: o'lcham ANIQ bo'lmasa plitka xarita kengligigacha
+                            cho'zilib, yozuvsiz uzun "palasa" bo'lib chiqardi — shuning uchun kenglik/balandlik qat'iy */}
+                        <View collapsable={false} style={{ width: plateW(t.plate), height: PLATE_H, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: col.solid, borderWidth: active ? size.ring + 1 : size.ring, borderColor: active ? c.textStrong : c.bgSurface }}>
+                          <Txt v="overline" allowFontScaling={false} style={{ color: tone === 'brand' ? c.textOnBrand : tone === 'neutral' ? c.bgSurface : c.textOnSolid }} numberOfLines={1}>{t.plate}</Txt>
                         </View>
                       </Marker>
                     );
@@ -231,8 +237,8 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                       module="logistics"
                       tone={t.openIssues ? 'danger' : undefined}
                       title={`${t.plate} · ${t.driver}`}
-                      subtitle={`${t.customer}${t.address ? ` · ${t.address}` : ''}\n${line2}`}
-                      subtitleLines={2}
+                      subtitle={`${t.customer}${t.address ? ` · ${t.address}` : ''}${t.product ? `\n${t.product}${t.qty ? ` · ${t.qty}` : ''}` : ''}\n${line2}`}
+                      subtitleLines={3}
                       badge={{ text: t.openIssues ? `${t.openIssues} muammo` : t.delay && t.delayTone ? t.delay : LEGEND.find((l) => l.tone === tone)?.label ?? t.phase, tone }}
                       style={selected === t.tripId ? { backgroundColor: c.bgMuted } : undefined}
                       onPress={() => focus(t)}

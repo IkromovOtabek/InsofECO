@@ -119,6 +119,8 @@ export type ErpFleetItem = ErpFleetTruck & {
   qty?: string;
   /** Obyekt nuqtasi — "Navigatorda ochish" uchun. */
   dest?: { lat: number; lng: number } | null;
+  /** Nima olib ketyapti — "Beton M300 (B22.5)". */
+  product?: string | null;
 };
 export interface ErpFleetData { at: string; trucks: ErpFleetItem[]; gpsError: string | null }
 
