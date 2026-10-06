@@ -7,7 +7,8 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "node": "22.20.0"
     },
     "preview": {
       "distribution": "internal",
@@ -15,12 +16,17 @@
         "buildType": "apk"
       },
       "channel": "preview",
-      "environment": "production"
+      "environment": "production",
+      "node": "22.20.0"
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
-      "environment": "production"
+      "environment": "production",
+      "node": "22.20.0",
+      "ios": {
+        "image": "latest"
+      }
     }
   },
   "submit": {
@@ -30,7 +36,13 @@
         "releaseStatus": "draft",
         "serviceAccountKeyPath": "./google-play-service-account.json"
       },
-      "ios": {}
+      "ios": {
+        "ascAppId": "6819408076",
+        "appleTeamId": "KT45JW6RSH",
+        "ascApiKeyPath": "/Users/otabek/AppleKeys/AuthKey_322PMBYPRU.p8",
+        "ascApiKeyIssuerId": "fcc4e961-daa6-4453-b0c6-a2e55704c209",
+        "ascApiKeyId": "322PMBYPRU"
+      }
     }
   }
 }
