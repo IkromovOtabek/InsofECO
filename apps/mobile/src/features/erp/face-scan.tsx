@@ -174,6 +174,28 @@ const MAX_B64 = 2_000_000;
 const SETTLE_MS = 1200;
 /** "Tanildi" ko'rinib turadigan vaqt. */
 const OK_HOLD_MS = 900;
+/** Server tekshiruvi kutiladigan eng uzoq vaqt — keyin "Server javob bermadi" (kech javob e'tiborsiz). */
+const VERIFY_TIMEOUT_MS = 20_000;
+/** Kadr o'lchami: yuzni solishtirishga ~640 px yetadi; 12 MP kadr base64'da chegaradan oshadi. */
+const MIN_SIDE_PX = 640;
+
+/**
+ * `getAvailablePictureSizesAsync` ro'yxatidan ("1920x1080", iOS'da yana "Photo"/"Medium" kabi presetlar)
+ * katta tomoni ≥ 640 px bo'lgan eng kichik o'lchamni tanlaydi; topilmasa — iOS "Medium" yoki standart (undefined).
+ */
+function pickPictureSize(sizes: string[]): string | undefined {
+  let best: { s: string; area: number } | null = null;
+  for (const str of sizes) {
+    const m = /(\d+)\s*x\s*(\d+)/i.exec(str);
+    if (!m) continue;
+    const w = Number(m[1]);
+    const h = Number(m[2]);
+    if (Math.max(w, h) < MIN_SIDE_PX) continue;
+    if (!best || w * h < best.area) best = { s: str, area: w * h };
+  }
+  if (best) return best.s;
+  return sizes.includes('Medium') ? 'Medium' : undefined;
+}
 
 const AEllipse = Animated.createAnimatedComponent(Ellipse);
 
@@ -189,13 +211,19 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const [phase, setPhase] = useState<Phase>('align');
   const [msg, setMsg] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Kamera ochilmasa (onMountError) "Qayta urinish" CameraView'ni qaytadan yaratadi (key orqali)
+  const [mount, setMount] = useState(0);
+  const mountFailed = useRef(false);
+  const [pictureSize, setPictureSize] = useState<string | undefined>(undefined);
+  const sized = useRef(false);
   const busy = useRef(false);
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
   const self = facing === 'front';
   const close = () => {
-    if (phase === 'verify' || phase === 'ok') return; // server javobi kutilmoqda / yopilmoqda
+    if (phase === 'ok') return; // "Tanildi" — o'zi yopilmoqda
+    // Tekshiruv paytida ham yopsa bo'ladi: kech kelgan javob e'tiborsiz (finish id bo'yicha, komponent esa yo'q)
     finish(req.id, { ok: false, message: phase === 'fail' && msg ? msg : CANCELLED });
   };
   useBack(close);
@@ -213,11 +241,22 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       dropFile(pic?.uri);
       if (!alive.current) return;
       if (!pic?.base64) { fail("Kadr olinmadi — qayta urining."); return; }
+      if (pic.base64.length > MAX_B64) { fail("Kadr hajmi juda katta — qayta urinib ko'ring."); return; }
       const photo = `data:image/jpeg;base64,${pic.base64}`;
       if (!req.opts.verify) { haptic.success(); finish(req.id, { ok: true, photo }); return; }
       setPhase('verify');
       let v: FaceVerifyResult;
-      try { v = await req.opts.verify(photo); } catch (e) { v = { ok: false, message: (e as Error).message || "Tekshirib bo'lmadi — internetni tekshirib qayta urining." }; }
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<FaceVerifyResult>((res) => {
+        timer = setTimeout(() => res({ ok: false, message: "Server javob bermadi — qayta urinib ko'ring" }), VERIFY_TIMEOUT_MS);
+      });
+      try {
+        v = await Promise.race([req.opts.verify(photo), timeout]);
+      } catch {
+        v = { ok: false, message: "Tekshirib bo'lmadi — internetni tekshirib qayta urining." };
+      } finally {
+        clearTimeout(timer);
+      }
       if (!alive.current) return;
       if (!v.ok) { fail(v.message); return; }
       setMsg(v.message ?? null);
@@ -241,8 +280,32 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, attempt, facing]);
 
-  const retry = () => { setMsg(null); setPhase('align'); setAttempt((a) => a + 1); };
-  const flip = () => { if (busy.current || phase === 'verify' || phase === 'ok') return; setMsg(null); setFacing((f) => (f === 'front' ? 'back' : 'front')); };
+  const retry = () => {
+    setMsg(null);
+    setPhase('align');
+    if (mountFailed.current) { mountFailed.current = false; setReady(false); setMount((k) => k + 1); }
+    setAttempt((a) => a + 1);
+  };
+  const flip = () => {
+    if (busy.current || phase === 'verify' || phase === 'ok') return;
+    setMsg(null);
+    setReady(false); // yangi kamera tayyor bo'lgach kadr olinadi (oldingisining "ready"si emas)
+    sized.current = false;
+    setPictureSize(undefined);
+    setFacing((f) => (f === 'front' ? 'back' : 'front'));
+  };
+  // Kamera tayyor: avval kichik kadr o'lchamini tanlaymiz (bir marta), keyin skanerlash boshlanadi
+  const onReady = async () => {
+    if (!sized.current && ref.current) {
+      sized.current = true;
+      try {
+        const size = pickPictureSize(await ref.current.getAvailablePictureSizesAsync());
+        if (!alive.current) return;
+        if (size) setPictureSize(size);
+      } catch { /* ro'yxat yo'q — standart o'lcham, hajm baribir tekshiriladi */ }
+    }
+    if (alive.current) setReady(true);
+  };
 
   // Oval ramka: ekran kengligining ~70%, yuz shaklida cho'zinchoq, yuqoriroqda
   const rx = Math.min(W * 0.35, 150);
@@ -288,12 +351,14 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   return (
     <View style={StyleSheet.absoluteFill}>
       <CameraView
+        key={`${facing}:${mount}`}
         ref={ref}
         style={StyleSheet.absoluteFill}
         facing={facing}
+        pictureSize={pictureSize}
         animateShutter={false}
-        onCameraReady={() => setReady(true)}
-        onMountError={() => fail("Kamera ochilmadi — ilovani qayta ochib urining.")}
+        onCameraReady={() => void onReady()}
+        onMountError={() => { mountFailed.current = true; setReady(false); fail("Kamera ochilmadi — qayta urinib ko'ring."); }}
       />
       <Svg width={W} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
         <Path d={hole} fill={c.scrim} fillRule="evenodd" />
@@ -313,7 +378,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
       {/* Yuqori panel: yopish, sarlavha, kamerani almashtirish */}
       <View style={{ position: 'absolute', top: insets.top + space.sm, left: space.lg, right: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <RoundBtn icon="x" label="Yopish" onPress={close} disabled={phase === 'verify' || phase === 'ok'} />
+        <RoundBtn icon="x" label="Yopish" onPress={close} disabled={phase === 'ok'} />
         <Txt v="titleMd" color="onSolid" align="center" numberOfLines={1} style={{ flex: 1 }}>{req.opts.title ?? 'Yuz skaneri'}</Txt>
         {req.opts.allowFlip ? <RoundBtn icon="refresh-cw" label="Kamerani almashtirish" onPress={flip} disabled={phase === 'verify' || phase === 'ok'} /> : <View style={{ width: size.touch }} />}
       </View>

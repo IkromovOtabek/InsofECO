@@ -302,7 +302,7 @@ export function ErpHome() {
       setParams((prev) => ({ ...prev, [filtered.filterParam!]: 'custom', from, to }));
     };
 
-    // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (Face ID + GPS) va rahbarga "Xodimlar davomati" ──
+    // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (GPS + yuz skaneri) va rahbarga "Xodimlar davomati" ──
     if (data.selfAttendance || data.attendanceManage) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
 
     if (error) blocks.push(<OfflineBanner key="off" visible title="Yangilab bo'lmadi" onRetry={() => void refetch()} />);

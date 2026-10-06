@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space, type ModuleTone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
-import { deviceId } from '@/core/api';
+import { ApiException, deviceId } from '@/core/api';
 import { currentFix, ensureForegroundLocation, metersBetween } from '@/core/location';
 import { erpAuth, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance, type ErpSelfMarkResult } from '@/core/erp';
 import { scanFace } from '@/features/erp/face-scan';
@@ -30,6 +30,9 @@ type Stage = 'idle' | 'gps' | 'scan';
 const STAGE_TEXT: Record<Stage, string> = { idle: '', gps: 'Joylashuv aniqlanmoqda…', scan: 'Yuz skaneri…' };
 /** Serverdagi `MAX_ACCURACY_M` bilan bir xil — bundan yomon nuqta bilan kamerani ochib o'tirmaymiz. */
 const MAX_ACCURACY_M = 150;
+const NET_ERROR = "Tarmoq xatosi. Internetni tekshirib, qayta urinib ko'ring";
+/** Serverning o'zbekcha xabari — faqat `ApiException` da; boshqasi ("Network request failed" va h.k.) — umumiy matn. */
+const errText = (e: unknown) => (e instanceof ApiException && e.message ? e.message : NET_ERROR);
 const meters = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
 
 /** "Keldim" / "Ketdim" oqimi. Muvaffaqiyatda bosh sahifa keshi darhol yangilanadi. */
@@ -38,12 +41,15 @@ function useSelfMark() {
   const [stage, setStage] = useState<Stage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  // Ikki marta tez bosish: `stage` yopilma (closure) ichida eskirgan bo'ladi — bayroq ref'da, sinxron qo'yiladi
+  const busyRef = useRef(false);
 
   const run = async (s: ErpSelfAttendance) => {
-    if (!s.next || stage !== 'idle') return;
+    if (!s.next || busyRef.current) return;
+    busyRef.current = true;
     setError(null);
-    if (!s.workplace) { setError("Ish joyi koordinatasi sozlanmagan — administratorga murojaat qiling."); return; }
     try {
+      if (!s.workplace) { setError("Ish joyi koordinatasi sozlanmagan — administratorga murojaat qiling."); return; }
       // 1) Joylashuv ruxsati va yangi GPS nuqta — kamera ochilishidan oldin (uzoqda bo'lsa skaner ochilmaydi)
       const access = await ensureForegroundLocation();
       if (access === 'services-off') { setError("Telefonda joylashuv (GPS) o'chiq — yoqib qayta urining."); return; }
@@ -74,7 +80,7 @@ function useSelfMark() {
             });
             return { ok: true, message: done.message };
           } catch (e) {
-            return { ok: false, message: (e as Error).message || "Yuborib bo'lmadi — internetni tekshirib qayta urining." };
+            return { ok: false, message: errText(e) };
           }
         },
       });
@@ -86,8 +92,9 @@ function useSelfMark() {
       void qc.invalidateQueries({ queryKey: ['erp', 'my-att'] });
       if (r.already) toast.info(r.message); else toast.success(r.message, 'Davomat');
     } catch (e) {
-      setError((e as Error).message || "Yuborib bo'lmadi — internetni tekshirib qayta urining.");
+      setError(errText(e));
     } finally {
+      busyRef.current = false;
       setStage('idle');
     }
   };
@@ -125,11 +132,13 @@ export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module
               size="lg"
               variant={s.next === 'in' ? 'primary' : 'success'}
               icon={s.next === 'in' ? 'scan-line' : 'log-out'}
-              title={m.busy ? STAGE_TEXT[m.stage] : s.next === 'in' ? 'Keldim' : 'Ketdim'}
+              title={s.next === 'in' ? 'Keldim' : 'Ketdim'}
               loading={m.busy}
               onPress={() => void m.run(s)}
             />
           ) : null}
+          {/* Tugma yuklanishda yozuvini yashiradi — bosqich matni tugma ostida */}
+          {s.next && m.busy && STAGE_TEXT[m.stage] ? <Txt v="caption" align="center">{STAGE_TEXT[m.stage]}</Txt> : null}
           {m.error ? (
             <Callout tone="danger">
               <View style={{ gap: space.sm }}>

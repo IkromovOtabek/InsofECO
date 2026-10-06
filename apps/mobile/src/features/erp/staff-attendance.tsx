@@ -150,7 +150,7 @@ const MONTH_COLS: Col<EmployeeMonthDay>[] = [
   { key: 'h', title: 'Soat', width: 52, align: 'right', cell: (r) => (r.minutes != null ? { text: hoursNum(r.minutes), strong: true } : null) },
   { key: 'late', title: 'Kechikdi', width: 84, align: 'right', cell: (r) => (r.lateMin ? { text: lateText(r.lateMin), color: 'danger', strong: true } : null) },
   { key: 'early', title: 'Erta ketdi', width: 84, align: 'right', cell: (r) => (r.earlyMin ? { text: lateText(r.earlyMin), color: 'warning' } : null) },
-  { key: 'st', title: 'Holat', width: 104, cell: (r) => (r.statusLabel ? statusCell(r.status, r.statusLabel) : { text: r.weekend ? 'Yakshanba' : '—', color: 'faint' }) },
+  { key: 'st', title: 'Holat', width: 104, cell: (r) => (r.statusLabel ? statusCell(r.status, r.statusLabel) : { text: r.weekend ? 'Dam olish' : '—', color: 'faint' }) },
   { key: 'src', title: 'Manba', width: 100, cell: (r) => (r.source ? { text: r.source, color: 'muted' } : null) },
   { key: 'note', title: 'Izoh', width: 160, cell: (r) => (r.note ? { text: r.note, color: 'muted' } : null) },
 ];

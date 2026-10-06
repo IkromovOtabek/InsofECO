@@ -174,6 +174,7 @@ function Nav() {
         <Stack.Screen name="erp/fleet" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomat" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomat-xodim" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/davomatim" options={{ headerShown: false }} />
         <Stack.Screen name="erp/haydovchilar" options={{ headerShown: false }} />
         <Stack.Screen name="erp/reyslarim" options={{ headerShown: false }} />
         {/* Haydovchi marshruti — "Yo'lga chiqdim" dan keyin ochiladi */}

@@ -236,7 +236,7 @@ export default function ErpDetail() {
       return;
     }
     if (!(await siteGate(a))) return;
-    // "Keldi — yuz skaneri": ilova ichidagi skaner (old kamera; rahbar orqa kamerani xodimga qaratishi uchun almashtirish tugmasi);
+    // "Keldi — yuz skaneri": ilova ichidagi skaner (orqa kamera — rahbar xodimga qaratadi; almashtirish tugmasi bor);
     // kadr o'zi olinadi va skaner ochiq turganda server profil surati bilan solishtiradi — natija skaner ichida
     if (a.id === 'att.face') {
       if (inFlight.current) return;
@@ -245,7 +245,7 @@ export default function ErpDetail() {
       try {
         const r = await scanFace({
           title: data?.title ?? 'Yuz skaneri',
-          facing: 'front',
+          facing: 'back', // rahbar xodimning yuzini skanerlaydi — orqa kamera; o'zi uchun almashtirsa bo'ladi
           allowFlip: true,
           verify: async (photo) => {
             try {

@@ -309,6 +309,6 @@ export const erpAuth = {
   aiAsk: (question: string, history: ErpAiTurn[]) => erpApi<ErpAiReply>('/ai', { method: 'POST', body: { mode: 'chat', question, history } }),
   /** "Mening davomatim": bugungi holat va oy (`YYYY-MM`, berilmasa — joriy). Faqat o'ziniki. */
   myAttendance: (month?: string) => erpApi<ErpMyAttendance>('/attendance/self', { query: { month } }),
-  /** "Keldim" / "Ketdim" — Face ID / barmoq izidan va GPS'dan keyin. Geofence va takror tekshiruvi serverda. */
+  /** "Keldim" / "Ketdim" — GPS va ilova ichidagi yuz skaneridan keyin. Geofence va takror tekshiruvi serverda. */
   markSelf: (body: ErpSelfMarkBody) => erpApi<ErpSelfMarkResult>('/attendance/self', { method: 'POST', body }),
 };
