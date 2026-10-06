@@ -11,6 +11,7 @@ import { Loader } from '@/design/loader';
 import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { Circle, MapUnavailable, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
+import { useLiveRoute } from '@/core/route';
 import { openInNavigator } from '@/core/navigate';
 import { SITE_RADIUS_M, ensureForegroundLocation } from '@/core/location';
 import { arrivalClock, distanceLabel, durationLabel, haversineMeters } from '@/core/geo';
@@ -21,8 +22,9 @@ import { useShipment } from '@/features/eco/api';
  *
  * Mashina (o'z GPS'imiz, yo'nalish o'qi bilan), obyekt va uning 300 m doirasi ("Yetkazdim"
  * shu doira ichida ochiladi), qolgan masofa va taxminiy yetib borish vaqti, "kuzatish" rejimi.
- * Yuk uchun server yo'l chizig'ini bermaydi — shuning uchun to'g'ri chiziq (punktir) va
- * masofa "to'g'ri chiziq bo'yicha" deb halol yoziladi; ovozli yo'l — "Navigatorda ochish".
+ * Yo'l — Yandex MapKit'dan, ko'chalar bo'ylab va tirbandlik bilan (`core/route.tsx`). Topilmasa
+ * (aloqa yo'q) to'g'ri chiziq punktir bilan va masofa "to'g'ri chiziq" deb halol yoziladi;
+ * ovozli yo'l — "Navigatorda ochish".
  */
 
 const MOVING_KMH = 4;
@@ -80,14 +82,20 @@ export default function ShipmentMap() {
     if (follow && fix) map.current?.animateCamera({ latitude: fix.lat, longitude: fix.lng }, 600);
   }, [fix, follow]);
 
-  const dest = s?.project.lat && s.project.lng ? { lat: s.project.lat, lng: s.project.lng } : null;
+  const dest = useMemo(() => (s?.project.lat && s.project.lng ? { lat: s.project.lat, lng: s.project.lng } : null), [s?.project.lat, s?.project.lng]);
   const straightM = fix && dest ? haversineMeters(fix, dest) : null;
+  const road = useLiveRoute(fix, dest);
+  /** Qolgan yo'l: Yandex yo'li bo'ylab, u bo'lmasa to'g'ri chiziq. */
+  const remainingM = road.along ? road.along.remainingM : straightM;
   const etaMin = useMemo(() => {
-    if (straightM == null) return null;
+    if (remainingM == null) return null;
     const moving = speeds.current.filter((x) => x.kmh >= MOVING_KMH);
-    const kmh = moving.length >= 3 ? moving.reduce((a, x) => a + x.kmh, 0) / moving.length : CITY_KMH;
-    return Math.round(((straightM * ROAD_FACTOR) / 1000 / kmh) * 60);
-  }, [straightM]);
+    const r = road.route;
+    // Hali yurilmagan bo'lsa — Yandex'ning tirbandlik bilan hisoblagan tezligi
+    const planned = r && r.seconds > 0 ? (r.meters / 1000) / (r.seconds / 3600) : CITY_KMH;
+    const kmh = moving.length >= 3 ? moving.reduce((a, x) => a + x.kmh, 0) / moving.length : planned;
+    return Math.round(((road.along ? remainingM : remainingM * ROAD_FACTOR) / 1000 / kmh) * 60);
+  }, [remainingM, road.along, road.route]);
 
   const fitAll = useCallback(() => {
     if (!fix || !dest) return;
@@ -117,8 +125,13 @@ export default function ShipmentMap() {
               ref={(r) => { map.current = r; }} style={{ flex: 1 }}
               initialRegion={{ latitude: fix?.lat ?? dest.lat, longitude: fix?.lng ?? dest.lng, latitudeDelta: 0.04, longitudeDelta: 0.04 }}
               onPanDrag={() => setFollow(false)}
+              traffic
             >
-              {fix ? <Polyline coordinates={[{ latitude: fix.lat, longitude: fix.lng }, { latitude: dest.lat, longitude: dest.lng }]} strokeColor={c.brand} strokeWidth={4} lineDashPattern={[8, 6]} /> : null}
+              {road.line.length >= 2 ? (
+                <Polyline coordinates={road.line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={6} />
+              ) : fix && road.failed ? (
+                <Polyline coordinates={[{ latitude: fix.lat, longitude: fix.lng }, { latitude: dest.lat, longitude: dest.lng }]} strokeColor={c.brand} strokeWidth={4} lineDashPattern={[8, 6]} />
+              ) : null}
               <Circle center={{ latitude: dest.lat, longitude: dest.lng }} radius={SITE_RADIUS_M} strokeColor={c.successSolid + '99'} fillColor={c.successSolid + '1A'} />
               <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} tone="success" />
               {s.warehouse.lat && s.warehouse.lng ? <Marker coordinate={{ latitude: s.warehouse.lat, longitude: s.warehouse.lng }} tone="info" /> : null}
@@ -143,7 +156,7 @@ export default function ShipmentMap() {
         <Txt v="bodyStrong" numberOfLines={1}>{s.project.name}</Txt>
         <Txt v="caption" numberOfLines={1}>{s.project.address}</Txt>
         <Card style={{ flexDirection: 'row', padding: space.md, gap: space.md, marginTop: space.md, marginBottom: space.md }}>
-          <Metric label="Qolgani" value={straightM != null ? distanceLabel(straightM) : '—'} unit="to'g'ri chiziq" tone="brand" />
+          <Metric label="Qolgani" value={remainingM != null ? distanceLabel(remainingM) : '—'} unit={road.along ? "yo'l bo'yicha" : "to'g'ri chiziq"} tone="brand" />
           <Metric label="Yetib borish" value={etaMin != null ? arrivalClock(etaMin) : '—'} unit={etaMin != null ? `~${durationLabel(etaMin)}` : 'GPS kutilmoqda'} />
           <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
         </Card>

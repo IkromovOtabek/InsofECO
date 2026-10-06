@@ -210,7 +210,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* Superadmin ma'lumoti (barcha foydalanuvchilar, telefonlar) diskka yozilmaydi — faqat xotirada */}
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000, dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.queryKey[0] !== 'admin' } }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000, dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.queryKey[0] !== 'admin' && q.queryKey[0] !== 'drive' } }}>
         <ThemeProvider>
           <Gate />
           <PushRouting />

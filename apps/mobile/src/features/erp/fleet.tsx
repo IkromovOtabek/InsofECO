@@ -10,6 +10,7 @@ import { useTheme } from '@/design/theme';
 import { radius, size, space, toneColors, type Tone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { MapUnavailable, MapView, Marker, type MapHandle } from '@/core/map';
+import { RouteLine } from '@/core/route';
 import { config } from '@/core/config';
 import { openInNavigator } from '@/core/navigate';
 import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
@@ -20,6 +21,8 @@ import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
  * Ma'lumot `GET /api/mobile/fleet` dan, 12 s da yangilanadi. Belgilar holat rangida: yo'lda — brend,
  * yuklangan — sariq, kutilmoqda — ko'k, muammo bor — qizil. Belgi yoki qator bosilsa pastdan oyna:
  * davlat raqami, haydovchi, zayavka, ETA, qo'ng'iroq, navigatorda ochish, reys kartochkasi.
+ * Yo'ldagi mashinalardan obyektgacha — Yandex yo'li (ko'chalar bo'ylab, `core/route.tsx`),
+ * xaritada tirbandlik qatlami; tanlangan mashinaning yo'li va obyekt pini ajralib turadi.
  * Xarita kaliti yo'q build'da (`config.mapsEnabled` false) — ro'yxat va administrator uchun izoh.
  */
 
@@ -38,6 +41,11 @@ const LEGEND: { tone: Tone; label: string }[] = [
 
 /** Tanlangan mashinaga yaqinlashish (~1 km). */
 const FOCUS_DELTA = 0.012;
+/** Shuncha mashinagacha hammasining yo'li chiziladi; ko'p bo'lsa — faqat tanlanganiniki (xarita chalkashmasin). */
+const MAX_ROUTES = 6;
+
+type Routable = ErpFleetItem & { gps: NonNullable<ErpFleetItem['gps']>; dest: NonNullable<ErpFleetItem['dest']> };
+const routable = (t: ErpFleetItem | null): t is Routable => !!t?.gps && !!t.dest;
 
 function agoLabel(iso: string) {
   const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
@@ -72,6 +80,9 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const located = trucks.filter((t): t is ErpFleetItem & { gps: NonNullable<ErpFleetItem['gps']> } => !!t.gps);
   const coords = located.map((t) => ({ latitude: t.gps.lat, longitude: t.gps.lng }));
   const sel = selected ? all.find((t) => t.tripId === selected) ?? null : null;
+  const onRoad = trucks.filter(routable).filter((t) => t.status === 'ON_ROAD');
+  const routed = (onRoad.length <= MAX_ROUTES ? onRoad : []).filter((t) => t.tripId !== selected);
+  const selRoute = routable(sel) ? sel : null;
 
   // Boshlang'ich ko'rinish — birinchi yuklangan nuqtalar bo'yicha (keyingi yangilanishlar kamerani sakratmaydi)
   const initial = useRef<{ latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number } | null>(null);
@@ -150,7 +161,13 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                   initialRegion={initial.current}
                   rotateEnabled={false}
                   pitchEnabled={false}
+                  traffic
                 >
+                  {routed.map((t) => (
+                    <RouteLine key={`r:${t.tripId}`} from={{ latitude: t.gps.lat, longitude: t.gps.lng }} to={{ latitude: t.dest.lat, longitude: t.dest.lng }} color={toneColors(c, toneOf(t)).solid} width={4} />
+                  ))}
+                  {selRoute ? <RouteLine key={`r:${selRoute.tripId}`} from={{ latitude: selRoute.gps.lat, longitude: selRoute.gps.lng }} to={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} color={toneColors(c, toneOf(selRoute)).solid} width={6} /> : null}
+                  {selRoute ? <Marker key={`d:${selRoute.tripId}`} coordinate={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} tone="success" /> : null}
                   {located.map((t) => {
                     const tone = toneOf(t);
                     const active = selected === t.tripId;

@@ -6,6 +6,7 @@ import * as Location from 'expo-location';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useKeepAwake } from 'expo-keep-awake';
 import { MapUnavailable, MapView, Marker } from '@/core/map';
+import { RouteLine } from '@/core/route';
 import { openInNavigator } from '@/core/navigate';
 import { ApiException, api, uuid } from '@/core/api';
 import { confirmAtSite } from '@/features/address/site-check';
@@ -74,6 +75,8 @@ export default function DeliveryScreen() {
           {config.mapsEnabled ? (
           <View style={{ height: 220, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
             <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
+              {/* Mashinadan obyektgacha — ko'chalar bo'ylab (Yandex), o'tilgan qismi chizilmaydi */}
+              {truck && d.status === 'EN_ROUTE' ? <RouteLine from={truck} to={dest} width={4} /> : null}
               <Marker coordinate={dest} tone="brand" />
               {truck ? <Marker coordinate={truck} tone="info" /> : null}
             </MapView>

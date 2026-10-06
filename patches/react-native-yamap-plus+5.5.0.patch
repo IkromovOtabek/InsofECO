@@ -1,3 +1,33 @@
+diff --git a/node_modules/react-native-yamap-plus/android/src/mapkit/full/TransportModuleImpl.kt b/node_modules/react-native-yamap-plus/android/src/mapkit/full/TransportModuleImpl.kt
+index 5c74845..3b6958d 100644
+--- a/node_modules/react-native-yamap-plus/android/src/mapkit/full/TransportModuleImpl.kt
++++ b/node_modules/react-native-yamap-plus/android/src/mapkit/full/TransportModuleImpl.kt
+@@ -32,6 +32,11 @@ import com.yandex.runtime.Error
+ import ru.yamap.utils.PointUtil
+ 
+ class TransportModuleImpl {
++    // MapKit sessiya va tinglovchini kuchsiz ushlaydi: mahalliy o'zgaruvchida qolsa GC so'rovni
++    // bekor qiladi va promise hech qachon qaytmaydi. Oxirgi so'rov shu yerda saqlanadi.
++    private var drivingRouter: com.yandex.mapkit.directions.driving.DrivingRouter? = null
++    private var drivingSession: com.yandex.mapkit.directions.driving.DrivingSession? = null
++    private var drivingListener: DrivingRouteListener? = null
+ 
+     fun findRoutes(jsPoints: ReadableArray, jsVehicles: ReadableArray?, promise: Promise?) {
+         val points = PointUtil.jsPointsToPoints(jsPoints)
+@@ -77,9 +82,11 @@ class TransportModuleImpl {
+                 _points.add(_p)
+             }
+ 
++            drivingListener = listener
+             runOnUiThread {
+-                val drivingRouter = DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE)
+-                drivingRouter.requestRoutes(
++                val router = drivingRouter ?: DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.ONLINE)
++                drivingRouter = router
++                drivingSession = router.requestRoutes(
+                     _points,
+                     DrivingOptions().setRoutesCount(1),
+                     VehicleOptions(),
 diff --git a/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt b/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt
 index 593c2b8..50395fe 100644
 --- a/node_modules/react-native-yamap-plus/android/src/newarch/ru/yamap/YamapPackage.kt

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Callout, IconButton, Txt } from '@/design/primitives';
+import { Button, Callout, Txt } from '@/design/primitives';
+import { Icon } from '@/design/icons';
 import { ChipGroup } from '@/design/blocks';
 import { Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
@@ -8,10 +9,12 @@ import { haptic } from '@/design/motion';
 import { radius, size, space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
 import { downloadDailyReport, ymd } from './api';
+import { DayCalendar } from './range-calendar';
 
 /**
  * "Kunlik hisobot (Excel)" — direktor bosh sahifasi va menyusidan ochiladi.
- * Kun tanlanadi (standart — bugun), fayl ERP'dan Bearer token bilan yuklanadi
+ * Kun tanlanadi: "Bugun" / "Kecha" tugmalari yoki kalendardan istalgan o'tgan kun
+ * (standart — bugun). Fayl ERP'dan Bearer token bilan yuklanadi
  * (`GET /api/mobile/report/daily?date=`), so'ng tizimning "Ulashish / Ochish" oynasi chiqadi
  * (Excel, Telegram, Google Sheets…). Varaqlar: xulosa, sotuv, ishlab chiqarish, reyslar, to'lovlar, muammolar.
  */
@@ -29,15 +32,12 @@ export function DailyReportSheet({ open, onClose }: { open: boolean; onClose: ()
   const [day, setDay] = useState(today);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isToday = day.getTime() === today.getTime();
-  const chip = isToday ? 'today' : day.getTime() === addDays(today, -1).getTime() ? 'yesterday' : 'other';
+  const chip = day.getTime() === today.getTime() ? 'today' : day.getTime() === addDays(today, -1).getTime() ? 'yesterday' : 'other';
 
-  const move = (n: number) => {
-    const next = addDays(day, n);
-    if (next > today) return;
-    haptic.selection();
+  const pick = (d: Date) => {
+    if (d > today) return;
     setError(null);
-    setDay(next);
+    setDay(d);
   };
 
   const run = async () => {
@@ -77,14 +77,13 @@ export function DailyReportSheet({ open, onClose }: { open: boolean; onClose: ()
         <ChipGroup
           items={[{ key: 'today', label: 'Bugun' }, { key: 'yesterday', label: 'Kecha' }, ...(chip === 'other' ? [{ key: 'other', label: ymd(day).split('-').reverse().join('.') }] : [])]}
           value={chip}
-          onChange={(k) => { setError(null); if (k === 'today') setDay(today); else if (k === 'yesterday') setDay(addDays(today, -1)); }}
+          onChange={(k) => { haptic.selection(); if (k === 'today') pick(today); else if (k === 'yesterday') pick(addDays(today, -1)); }}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm, borderRadius: radius.pill, backgroundColor: c.bgSubtle }}>
-          <IconButton icon="chevron-left" label="Oldingi kun" variant="secondary" size={size.touch - space.xs} onPress={() => move(-1)} />
-          <View style={{ flex: 1, alignItems: 'center' }} accessibilityLiveRegion="polite">
-            <Txt v="titleSm" align="center" numberOfLines={1}>{longDay(day)}</Txt>
-          </View>
-          <IconButton icon="chevron-right" label="Keyingi kun" variant="secondary" size={size.touch - space.xs} onPress={() => move(1)} disabled={isToday} style={isToday ? { opacity: 0.4 } : undefined} />
+        {/* Istalgan o'tgan kun — kalendardan; tanlangani pastda to'liq yoziladi */}
+        <DayCalendar value={day} onChange={pick} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: size.touch - space.sm, paddingHorizontal: space.md, borderRadius: radius.pill, backgroundColor: c.brandSoft }} accessibilityLiveRegion="polite">
+          <Icon name="calendar-days" tone="brand" size={size.iconSm} />
+          <Txt v="label" color="strong" style={{ flex: 1 }} numberOfLines={1}>{longDay(day)}</Txt>
         </View>
         <Txt v="bodySm" color="muted">
           Varaqlar: xulosa, sotuv, ishlab chiqarish, reyslar, mijoz to&apos;lovlari, kirim-chiqim va muammolar. Fayl Excel, Telegram yoki boshqa ilovada ochiladi.

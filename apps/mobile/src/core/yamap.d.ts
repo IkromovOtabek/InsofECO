@@ -19,6 +19,8 @@ declare module 'react-native-yamap-plus' {
     fitAllMarkers(duration?: number): void;
     setZoom(zoom: number, duration?: number): void;
     getCameraPosition(callback: (position: CameraPosition) => void): void;
+    /** Tirbandlik qatlami (yo'llar yashil / sariq / qizil). */
+    setTrafficVisible(isVisible: boolean): void;
   }
 
   export interface YamapProps extends ViewProps {
@@ -75,6 +77,19 @@ declare module 'react-native-yamap-plus' {
     strokeWidth?: number;
     zIndex?: number;
   }): JSX.Element;
+
+  /** Yo'l bo'yicha marshrut (Full MapKit). `time*` — tayyor matn ("1 ч 6 мин"), soniya emas. */
+  export interface DrivingRoutes {
+    routes: {
+      sections: {
+        points: Point[];
+        routeInfo: { time: string; timeWithTraffic?: string; distance?: number };
+      }[];
+    }[];
+  }
+  export const Transport: {
+    findDrivingRoutes(points: Point[]): Promise<DrivingRoutes>;
+  };
 
   export const YamapInstance: {
     init(apiKey: string): void;

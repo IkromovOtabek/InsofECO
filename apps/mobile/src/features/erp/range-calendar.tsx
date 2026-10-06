@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Button, IconButton, Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
@@ -122,5 +122,59 @@ export function RangeCalendar({ from, to, onApply, onClose }: { from?: string | 
         </View>
       </View>
     </Appear>
+  );
+}
+
+/**
+ * Bitta kun tanlash kalendari — "Kunlik hisobot" oynasida. Bosilgan kun darhol tanlanadi
+ * ("Qo'llash" yo'q); kelajak kunlari yopiq (hisobot hali yo'q), bugun — halqa.
+ * Kun tashqaridan o'zgarsa ("Bugun" / "Kecha") — o'sha oy ochiladi.
+ */
+export function DayCalendar({ value, onChange }: { value: Date; onChange: (d: Date) => void }) {
+  const { c } = useTheme();
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const [view, setView] = useState(() => new Date(value.getFullYear(), value.getMonth(), 1));
+  useEffect(() => { setView(new Date(value.getFullYear(), value.getMonth(), 1)); }, [value]);
+
+  const cells = useMemo(() => {
+    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const lead = (first.getDay() + 6) % 7; // dushanbadan
+    const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    return [...Array.from({ length: lead }, () => null), ...Array.from({ length: days }, (_, i) => new Date(view.getFullYear(), view.getMonth(), i + 1))];
+  }, [view]);
+
+  const shift = (n: number) => { haptic.selection(); setView((v) => new Date(v.getFullYear(), v.getMonth() + n, 1)); };
+  const nextDisabled = view.getFullYear() === today.getFullYear() && view.getMonth() === today.getMonth();
+  const cellW = `${100 / 7}%` as const;
+
+  return (
+    <View style={{ backgroundColor: c.bgSubtle, borderRadius: radius.card, borderCurve: 'continuous', padding: space.sm, gap: space.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <IconButton icon="chevron-left" label="Oldingi oy" variant="secondary" size={size.touch - space.xs} onPress={() => shift(-1)} />
+        <Txt v="titleSm" align="center" style={{ flex: 1 }} accessibilityLiveRegion="polite">{MONTHS[view.getMonth()]} {view.getFullYear()}</Txt>
+        <IconButton icon="chevron-right" label="Keyingi oy" variant="secondary" size={size.touch - space.xs} onPress={() => shift(1)} disabled={nextDisabled} style={nextDisabled ? { opacity: 0.4 } : undefined} />
+      </View>
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: space.xs }}>
+          {WEEK.map((w, i) => <Txt key={w} v="overline" color={i >= 5 ? 'faint' : 'muted'} align="center" style={{ width: cellW }}>{w}</Txt>)}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 2 }}>
+          {cells.map((d, i) => {
+            if (!d) return <View key={`e${i}`} style={{ width: cellW, height: CELL_H }} />;
+            const future = d > today;
+            const on = d.getTime() === value.getTime();
+            const isToday = d.getTime() === today.getTime();
+            return (
+              <Pressable key={ymd(d)} disabled={future} onPress={() => { haptic.selection(); onChange(d); }} accessibilityRole="button" accessibilityLabel={ymd(d)} accessibilityState={{ selected: on, disabled: future }}
+                style={{ width: cellW, height: CELL_H, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: DOT, height: DOT, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.brand : undefined, borderWidth: isToday && !on ? size.ring : 0, borderColor: c.brandRing }}>
+                  <Txt v={on || isToday ? 'bodyStrong' : 'body'} style={{ color: on ? c.textOnBrand : future ? c.textFaint : c.textBody }}>{d.getDate()}</Txt>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
   );
 }

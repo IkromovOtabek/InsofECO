@@ -76,6 +76,8 @@ type MapProps = {
   pitchEnabled?: boolean;
   /** Tizimning joylashuv belgisi (ko'k nuqta). */
   showsUserLocation?: boolean;
+  /** Tirbandlik qatlami — yo'llar yashil / sariq / qizil (Yandex Navigator'dagidek). */
+  traffic?: boolean;
   /** Xarita foydalanuvchi qo'li bilan surildi — "mashina ortidan yurish" shu bilan o'chadi. */
   onPanDrag?: () => void;
   /**
@@ -88,7 +90,7 @@ type MapProps = {
 };
 
 export const MapView = forwardRef<MapHandle, MapProps>(function MapView(
-  { style, initialRegion, interactive = true, scrollEnabled = true, zoomEnabled = true, rotateEnabled = true, pitchEnabled = true, showsUserLocation, onPanDrag, onRegionChangeComplete, onPress, children },
+  { style, initialRegion, interactive = true, scrollEnabled = true, zoomEnabled = true, rotateEnabled = true, pitchEnabled = true, showsUserLocation, traffic = false, onPanDrag, onRegionChangeComplete, onPress, children },
   ref,
 ) {
   const map = useRef<YamapRef | null>(null);
@@ -110,6 +112,10 @@ export const MapView = forwardRef<MapHandle, MapProps>(function MapView(
     },
   }), []);
 
+  // Qatlam prop emas, buyruq. Xarita yuklangach ham qayta beriladi — yuklanmasdan oldingi buyruq
+  // ba'zi qurilmalarda e'tiborsiz qoladi
+  useEffect(() => { if (traffic) map.current?.setTrafficVisible(true); }, [traffic]);
+
   return (
     <Yamap
       ref={map}
@@ -129,6 +135,7 @@ export const MapView = forwardRef<MapHandle, MapProps>(function MapView(
         onRegionChangeComplete({ latitude: p.point.lat, longitude: p.point.lon }, p.reason === 'GESTURES');
       } : undefined}
       onMapPress={onPress ? () => onPress() : undefined}
+      onMapLoaded={traffic ? () => map.current?.setTrafficVisible(true) : undefined}
     >
       {children}
     </Yamap>

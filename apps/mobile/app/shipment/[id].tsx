@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MapUnavailable, MapView, Marker, Polyline } from '@/core/map';
+import { MapUnavailable, MapView, Marker } from '@/core/map';
+import { RouteLine } from '@/core/route';
 import { openInNavigator } from '@/core/navigate';
 import { ApiException } from '@/core/api';
 import { confirmAtSite } from '@/features/address/site-check';
@@ -101,7 +102,7 @@ export default function ShipmentScreen() {
             <View style={{ height: 200, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
               <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }}>
                 <Marker coordinate={from} tone="info" /><Marker coordinate={to} tone="brand" />
-                <Polyline coordinates={[from, to]} strokeColor={c.brand} strokeWidth={3} lineDashPattern={[6, 6]} />
+                <RouteLine from={from} to={to} width={4} />
               </MapView>
             </View>
           ) : null}
@@ -164,7 +165,7 @@ function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, s
               style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', marginTop: space.md, borderWidth: size.hairline, borderColor: c.borderDefault }}>
               <View pointerEvents="none" style={{ flex: 1 }}>
                 <MapView style={{ flex: 1 }} initialRegion={from ? { latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 } : { ...to, latitudeDelta: 0.05, longitudeDelta: 0.05 }} interactive={false}>
-                  {from ? <Marker coordinate={from} tone="info" /> : null}<Marker coordinate={to} tone="brand" />{from ? <Polyline coordinates={[from, to]} strokeColor={c.brand} strokeWidth={4} lineDashPattern={[8, 6]} /> : null}
+                  {from ? <Marker coordinate={from} tone="info" /> : null}<Marker coordinate={to} tone="brand" /><RouteLine from={from} to={to} />
                 </MapView>
               </View>
               <View pointerEvents="none" style={{ position: 'absolute', right: space.sm, bottom: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs }}>

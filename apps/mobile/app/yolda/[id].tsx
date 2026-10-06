@@ -13,6 +13,7 @@ import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
 import { openInNavigator } from '@/core/navigate';
 import { Circle, MapUnavailable, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
+import { useLiveRoute } from '@/core/route';
 import { SITE_RADIUS_M, type Fix as SiteFix } from '@/core/location';
 import { confirmAtSite } from '@/features/address/site-check';
 import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
@@ -29,9 +30,12 @@ import { Loader } from '@/design/loader';
  * yopish uchun qaytib kirishi kerak bo'ladi. Bu yerda yo'l ham, raqamlar ham, "Yetkazdim"
  * tugmasi ham bitta ekranda.
  *
- * Mehnat taqsimoti: server yo'l CHIZIG'ini va bosib o'tilgan masofani beradi (logistika
- * ko'rayotgan raqam bilan bir xil bo'lishi uchun), ilova esa har GPS nuqtasida qolgan
- * masofani shu chiziq bo'ylab qayta hisoblaydi — aloqasiz joyda ham raqamlar tirik.
+ * Mehnat taqsimoti: yo'l CHIZIG'I — Yandex MapKit'dan, telefonning o'zida (`core/route.tsx`):
+ * ko'chalar bo'ylab, tirbandlik hisobga olingan vaqt bilan, Yandex Navigator'dagidek. Server
+ * bosib o'tilgan masofani beradi (logistika ko'rayotgan raqam bilan bir xil bo'lishi uchun) va
+ * zaxira chiziqni — MapKit yo'l topa olmasa (aloqa yo'q, kalit cheklangan) o'sha chiziladi.
+ * Ilova har GPS nuqtasida qolgan masofani chiziq bo'ylab qayta hisoblaydi — aloqasiz joyda ham
+ * raqamlar tirik.
  *
  * Fon kuzatuvi bu ekranga bog'liq emas: u "Yo'lga chiqdim" da yoqilgan va ilova yopiq
  * bo'lsa ham ishlaydi (`core/erp-track.ts`). Bu yerdagi kuzatuv faqat ko'rsatkichlar uchun.
@@ -184,21 +188,34 @@ export default function TripRoute() {
   // Chiziq kelgach qayta so'rash shart emas — keyingi safar keshdagisi ishlatiladi
   useEffect(() => { if (data?.line.length) needLineRef.current = false; }, [data]);
 
-  const line = data?.line ?? [];
   const dest = data?.destination ?? null;
+  /** Yandex yo'li — mashina turgan joydan; yo'ldan chiqilsa o'zi qayta quriladi. */
+  const road = useLiveRoute(fix ?? data?.origin ?? null, dest);
+  const serverLine = data?.line ?? [];
+  const onRoad = !!road.route || data?.routeSource === 'ROUTE';
 
   /** Qolgan yo'l — marshrut chizig'i bo'ylab; chiziq yo'q bo'lsa to'g'ri masofa. */
-  const along = useMemo(() => (fix && line.length ? alongRoute(line, fix) : null), [fix, line]);
-  const remainingM = along ? along.remainingM : dest && fix ? Math.round(haversineMeters(fix, dest)) : data?.routeMeters ?? 0;
+  const serverAlong = useMemo(() => (!road.route && fix && serverLine.length ? alongRoute(serverLine, fix) : null), [road.route, fix, serverLine]);
+  const along = road.along ?? serverAlong;
+  const remainingM = along ? along.remainingM : dest && fix ? Math.round(haversineMeters(fix, dest)) : road.route?.meters ?? data?.routeMeters ?? 0;
+  /**
+   * Xaritadagi chiziq: Yandex yo'lining o'tilmagan qismi; u bo'lmasa server yo'li. Server ham
+   * faqat to'g'ri chiziq bergan bo'lsa — Yandex javobi kutiladi, topilmasa punktir (taxminiy).
+   */
+  const drawLine = road.line.length >= 2 ? road.line
+    : data?.routeSource === 'ROUTE' ? serverAlong?.ahead ?? serverLine
+    : road.failed ? serverLine : [];
+  const dashed = road.line.length < 2 && data?.routeSource !== 'ROUTE';
 
-  // Yo'ldan chiqib ketilgan bo'lsa marshrut qayta quriladi
+  // Server chizig'i ishlatilayotgan bo'lsa va yo'ldan chiqib ketilgan bo'lsa — u qayta quriladi
+  // (Yandex yo'li `useLiveRoute` ichida o'zi qayta quriladi)
   useEffect(() => {
-    if (!along || along.offRouteM < OFF_ROUTE_M) return;
+    if (!along || road.route || along.offRouteM < OFF_ROUTE_M) return;
     if (Date.now() - rerouteRef.current < REROUTE_EVERY_MS) return;
     rerouteRef.current = Date.now();
     needLineRef.current = true; // boshqa ko'chaga burilgan — yo'l qayta qurilsin
     void refetch();
-  }, [along, refetch]);
+  }, [along, road.route, refetch]);
 
   /**
    * Yetib borish vaqti. Asos — so'nggi daqiqalardagi haqiqiy tezlik: haydovchi tirbandlikda
@@ -207,10 +224,13 @@ export default function TripRoute() {
   const etaMin = useMemo(() => {
     const moving = speedsRef.current.filter((s) => s.kmh >= MOVING_KMH);
     const live = moving.length >= 3 ? moving.reduce((s, x) => s + x.kmh, 0) / moving.length : 0;
-    const planned = data && data.routeSeconds > 0 ? (data.routeMeters / 1000) / (data.routeSeconds / 3600) : 0;
+    // Yandex vaqti joriy tirbandlik bilan — server vaqtidan aniqroq
+    const r = road.route;
+    const planned = r && r.seconds > 0 ? (r.meters / 1000) / (r.seconds / 3600)
+      : data && data.routeSeconds > 0 ? (data.routeMeters / 1000) / (data.routeSeconds / 3600) : 0;
     const kmh = live || planned || 30;
     return Math.round((remainingM / 1000 / kmh) * 60);
-  }, [remainingM, data, fix]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remainingM, data, road.route, fix]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * "Yetkazdim" radiusi — server aytgani (ERP, odatda 1 km) va ilovadagi `SITE_RADIUS_M`
@@ -338,13 +358,14 @@ export default function TripRoute() {
             ref={(r) => { mapRef.current = r; }}
             style={{ flex: 1 }}
             initialRegion={region}
+            traffic
             // Tizimning ko'k nuqtasi emas, o'z belgimiz (pastda): u har doim chiziladi
             // va ko'rinishini biz boshqaramiz — haydovchi "men qayerdaman?" degan savolga
             // bir qarashda javob topishi kerak.
             onPanDrag={() => setFollow(false)}
           >
             {/* Yo'l — brend; obyekt va yetib borish doirasi — yashil; mashina — ko'k */}
-            <Polyline coordinates={line.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={5} />
+            <Polyline coordinates={drawLine.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={dashed ? 4 : 6} lineDashPattern={dashed ? [8, 6] : undefined} />
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
               center={{ latitude: dest.lat, longitude: dest.lng }}
@@ -406,7 +427,7 @@ export default function TripRoute() {
           <Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.md, marginTop: space.md, marginBottom: space.md }}>
             <Metric label="Tezlik" value={`${Math.round(fix?.speedKmh ?? 0)}`} unit="km/soat" />
             <Metric label="Bosib o'tildi" value={distanceLabel(data.traveledMeters)} unit={data.traveledMinutes > 0 ? durationLabel(data.traveledMinutes) : '—'} />
-            <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={data.routeSource === 'ROUTE' ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
+            <Metric label="Qolgani" value={distanceLabel(remainingM)} unit={onRoad ? 'yo\'l bo\'yicha' : 'taxminan'} tone="brand" />
             <Metric label="Yetib borish" value={arrivalClock(etaMin)} unit={durationLabel(etaMin)} />
           </Card>
 

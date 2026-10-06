@@ -33,7 +33,7 @@ function onSegment(p: LatLng, a: LatLng, b: LatLng) {
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (P.x * B.x + P.y * B.y) / len2));
   const dx = P.x - B.x * t, dy = P.y - B.y * t;
   const len = Math.sqrt(len2);
-  return { away: Math.sqrt(dx * dx + dy * dy), toEnd: len * (1 - t) };
+  return { away: Math.sqrt(dx * dx + dy * dy), toEnd: len * (1 - t), t };
 }
 
 export interface AlongRoute {
@@ -41,6 +41,11 @@ export interface AlongRoute {
   remainingM: number;
   /** Mashina chiziqdan qancha chetda, metr — ko'p bo'lsa yo'l qayta so'raladi. */
   offRouteM: number;
+  /**
+   * Chiziqning hali o'tilmagan qismi — mashinaning chiziqdagi proyeksiyasidan manzilgacha.
+   * Xaritada shu chiziladi: navigatordagidek yo'l mashinadan boshlanadi, orqada qolgani yo'qoladi.
+   */
+  ahead: LatLng[];
 }
 
 /**
@@ -50,7 +55,7 @@ export interface AlongRoute {
 export function alongRoute(line: LatLng[], pos: LatLng): AlongRoute {
   const first = line[0];
   if (line.length < 2 || !first) {
-    return { remainingM: first ? Math.round(haversineMeters(pos, first)) : 0, offRouteM: 0 };
+    return { remainingM: first ? Math.round(haversineMeters(pos, first)) : 0, offRouteM: 0, ahead: line };
   }
   // Kesmalar uzunligi oxiridan boshlab yig'iladi: `tail[i]` — i-nuqtadan manzilgacha qolgan yo'l
   const tail = new Array<number>(line.length).fill(0);
@@ -61,13 +66,16 @@ export function alongRoute(line: LatLng[], pos: LatLng): AlongRoute {
 
   let bestAway = Infinity;
   let bestRemaining = tail[0] ?? 0;
+  let bestI = 0, bestT = 0;
   for (let i = 0; i < line.length - 1; i++) {
     const a = line[i], b = line[i + 1];
     if (!a || !b) continue;
     const s = onSegment(pos, a, b);
-    if (s.away < bestAway) { bestAway = s.away; bestRemaining = s.toEnd + (tail[i + 1] ?? 0); }
+    if (s.away < bestAway) { bestAway = s.away; bestRemaining = s.toEnd + (tail[i + 1] ?? 0); bestI = i; bestT = s.t; }
   }
-  return { remainingM: Math.max(0, Math.round(bestRemaining)), offRouteM: Math.round(bestAway) };
+  const a = line[bestI]!, b = line[bestI + 1]!;
+  const snap = { lat: a.lat + (b.lat - a.lat) * bestT, lng: a.lng + (b.lng - a.lng) * bestT };
+  return { remainingM: Math.max(0, Math.round(bestRemaining)), offRouteM: Math.round(bestAway), ahead: [snap, ...line.slice(bestI + 1)] };
 }
 
 /** `12437` → `12.4 km`, `840` → `840 m` — ERP dagi `distanceLabel` bilan bir xil. */
