@@ -28,6 +28,7 @@ import { ErpAiChat } from './ai-chat';
 import { DailyReportSheet } from './daily-report';
 import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
+import { StaffAttendanceScreen } from './staff-attendance';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
@@ -96,6 +97,7 @@ export function ErpTabRoute({ role, route }: { role: ErpRole; route: string }) {
     case 'map': return <ErpMapTab title={title} />;
     case 'road': return <ErpRoadTab title={title} />;
     case 'menu': return <ErpMenu />;
+    case 'attendance': return <StaffAttendanceScreen />;
     case 'notifications':
     case 'sections':
     default: return <ErpSections title={title} />;
@@ -785,6 +787,24 @@ function ErpRoadTab({ title }: { title: string }) {
 
 // ───────────────────────── Profil / menyu ─────────────────────────
 
+/**
+ * Menyudagi "Davomat va reyslar" — ish haqi asosi. Otdel kadrda davomat — alohida tab, shuning uchun bu yerda yo'q.
+ * Ruxsat serverda ham tekshiriladi (`lib/mobile/staff-attendance.ts`).
+ */
+function payLinksFor(role: ErpRole): { href: string; title: string; subtitle: string; icon: IconName; module?: ModuleTone }[] {
+  const out: { href: string; title: string; subtitle: string; icon: IconName; module?: ModuleTone }[] = [];
+  if (role === 'DIRECTOR' || role === 'PRODUCTION' || role === 'SUPERVISOR') {
+    out.push({ href: '/erp/davomat', title: 'Xodimlar davomati', subtitle: 'Keldi, ketdi, soat, kechikish — barcha xodimlar', icon: 'clock' });
+  }
+  if (role === 'DIRECTOR' || role === 'HR' || role === 'LOGISTICS') {
+    out.push({ href: '/erp/haydovchilar', title: 'Haydovchilar: reyslar va davomat', subtitle: "Oy bo'yicha reys, hajm, km, ish kunlari", icon: 'truck', module: 'logistics' });
+  }
+  if (role === 'DRIVER') {
+    out.push({ href: '/erp/reyslarim', title: 'Mening reyslarim', subtitle: "Oy bo'yicha reyslar, hajm va ish kunlari", icon: 'truck', module: 'logistics' });
+  }
+  return out;
+}
+
 export function ErpMenu() {
   const { c } = useTheme();
   const router = useRouter();
@@ -808,6 +828,7 @@ export function ErpMenu() {
   const [reportOpen, setReportOpen] = useState(false);
   const isDirector = erp?.role === 'DIRECTOR';
   const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
+  const payLinks = erp ? payLinksFor(erp.role) : [];
   const [delBusy, setDelBusy] = useState(false);
   const [delPending, setDelPending] = useState<boolean | null>(null);
   useEffect(() => { erpAuth.deletionStatus().then((r) => setDelPending(r.pending)).catch(() => setDelPending(false)); }, []);
@@ -873,6 +894,15 @@ export function ErpMenu() {
               {isDirector ? (
                 <ListItem icon="download" module={module} title="Kunlik hisobot (Excel)" subtitle="Kunni tanlang — fayl ulashiladi yoki ochiladi" onPress={() => setReportOpen(true)} />
               ) : null}
+            </ListGroup>
+          </Appear>
+        ) : null}
+
+        {payLinks.length ? (
+          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+            <SectionHead title="Davomat va reyslar" />
+            <ListGroup>
+              {payLinks.map((l) => <ListItem key={l.href} icon={l.icon} module={l.module ?? module} title={l.title} subtitle={l.subtitle} onPress={() => router.push(l.href as never)} />)}
             </ListGroup>
           </Appear>
         ) : null}

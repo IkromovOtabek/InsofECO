@@ -36,6 +36,8 @@ export type ErpTabScreen =
   | { kind: 'notifications' }
   | { kind: 'map' }
   | { kind: 'road' }
+  /** Davomat jadvali — barcha xodimlar: keldi / ketdi / soat / kechikish (`features/erp/staff-attendance.tsx`). */
+  | { kind: 'attendance' }
   | { kind: 'menu' };
 
 export interface ErpTabSpec { route: string; title: string; icon: IconName; screen: ErpTabScreen }
@@ -62,7 +64,7 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   PROCUREMENT: { group: '(erp-procurement)', label: 'Snabjeniye',       homeTitle: 'Xaridlar',  homeIcon: 'house', listKey: 'receipts',   workTitle: 'Kirimlar',   workIcon: 'package' , tabs: [HOME('Xaridlar'), LIST('zayavka', 'Zayavka', 'clipboard-list', 'snabjeniye'), WORK('Kirimlar', 'package'), LIST('suppliers', 'Yetkazuv', 'users', 'suppliers'), MENU()] },
   ACCOUNTING:  { group: '(erp-accounting)',  label: 'Buxgalteriya',     homeTitle: 'Hisob',     homeIcon: 'house', listKey: 'invoices',   workTitle: 'Schyotlar',  workIcon: 'receipt' , tabs: [HOME('Hisob'), WORK('Schyotlar', 'receipt'), { route: 'hujjatlar', title: 'Hujjatlar', icon: 'file-text', screen: { kind: 'sections' } }, LIST('soliq', 'Soliq', 'calendar-days', 'cashflow'), MENU()] },
   FINANCE:     { group: '(erp-finance)',     label: 'Moliya',           homeTitle: 'Moliya',    homeIcon: 'house', listKey: 'cashflow',   workTitle: 'Oqim',       workIcon: 'trending-up' , tabs: [HOME('Moliya'), WORK('Oqim', 'trending-up'), LIST('qarzlar', 'Qarzlar', 'receipt', 'customers'), LIST('tolovlar', "To'lovlar", 'calendar-days', 'supply'), MENU()] },
-  HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',   homeIcon: 'house', listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'users' , tabs: [HOME('Kadrlar'), WORK('Xodimlar', 'users'), LIST('davomat', 'Davomat', 'clock', 'sex-emp'), LIST('tabel', 'Tabel', 'clipboard-list', 'brigades'), MENU()] },
+  HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',   homeIcon: 'house', listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'users' , tabs: [HOME('Kadrlar'), WORK('Xodimlar', 'users'), { route: 'davomat', title: 'Davomat', icon: 'clock', screen: { kind: 'attendance' } }, LIST('tabel', 'Tabel', 'clipboard-list', 'brigades'), MENU()] },
   CASHIER:     { group: '(erp-cashier)',     label: 'Kassa / bank',     homeTitle: 'Kassa',     homeIcon: 'house', listKey: 'payments',   workTitle: "To'lovlar",  workIcon: 'banknote' , tabs: [HOME('Kassa'), WORK("To'lovlar", 'banknote'), LIST('bank', 'Bank', 'layers', 'cashflow'), LIST('chek', 'Chek', 'receipt', 'invoices'), MENU()] },
   MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',   homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'route' , tabs: [HOME('Nazorat'), LIST('texnika', 'Texnika', 'truck', 'drivers'), LIST('xizmat', 'Xizmat', 'wrench', 'stock'), WORK('Reyslar', 'route'), MENU()] },
   DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'truck' , tabs: [HOME('Bugun'), WORK('Reyslarim', 'truck'), { route: 'yol', title: "Yo'l", icon: 'navigation', screen: { kind: 'road' } }, MENU('user')] },
