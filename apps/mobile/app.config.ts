@@ -24,7 +24,7 @@ const config: ExpoConfig = {
   name: 'Insof ECO',
   slug: 'insof-eco',
   owner: 'otabekikromov',
-  version: '1.0.3',
+  version: '1.0.4',
   scheme: 'insofeco',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
