@@ -189,7 +189,8 @@ export interface ErpSelfAttendance {
 }
 export interface ErpSelfMarkBody {
   kind: 'in' | 'out'; lat: number; lng: number; accuracy: number | null;
-  biometric: true; method: string; deviceId: string; at: string; mocked: boolean;
+  /** Yuz skaneri kadri — `data:image/jpeg;base64,...` (server profil surati bilan solishtiradi). */
+  photo: string; deviceId: string; at: string; mocked: boolean;
 }
 export interface ErpSelfMarkResult { ok: true; already: boolean; message: string; attendance: ErpSelfAttendance }
 export interface ErpMyAttendanceDay {

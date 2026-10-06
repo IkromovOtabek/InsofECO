@@ -10,78 +10,27 @@ import { useTheme } from '@/design/theme';
 import { space, type ModuleTone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { deviceId } from '@/core/api';
-import { currentFix, ensureForegroundLocation } from '@/core/location';
-import { erpAuth, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance } from '@/core/erp';
+import { currentFix, ensureForegroundLocation, metersBetween } from '@/core/location';
+import { erpAuth, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance, type ErpSelfMarkResult } from '@/core/erp';
+import { scanFace } from '@/features/erp/face-scan';
 
 /**
  * Xodimning o'z davomati — bosh sahifadagi "Keldim / Ketdim" kartasi va "Mening davomatim" ekrani.
  *
  * Tugma bosilganda:
- *   1) joylashuv ruxsati (tizim oynalari Face ID bilan ustma-ust chiqmasin deb — oldin);
- *   2) Face ID / barmoq izi — FAQAT OS oynasi (`expo-local-authentication`). Kamera OCHILMAYDI, rasm olinmaydi
- *      va yuborilmaydi: serverga faqat "tasdiqlandi" belgisi va usul (face / fingerprint / passcode) boradi.
- *      Biometriya yo'q telefonda — ekran qulfi paroli (OS o'zi taklif qiladi); hech narsa sozlanmagan bo'lsa — aniq xabar;
- *   3) yangi GPS nuqta (keshdagi emas), aniqligi ko'rsatiladi, Android soxta joylashuvi rad etiladi;
- *   4) `POST /api/mobile/attendance/self` — geofence, takror va soat tekshiruvi serverda.
- * Bekor qilinsa yoki tasdiqlanmasa — hech narsa yozilmaydi, "Qayta urinish" chiqadi.
+ *   1) joylashuv ruxsati va yangi GPS nuqta (keshdagi emas); soxta joylashuv, past aniqlik va ish joyidan
+ *      uzoqlik shu yerda — kamera ochilmasdan oldin — aytiladi (yakuniy qaror baribir serverda);
+ *   2) ilova ichidagi yuz skaneri (`face-scan.tsx`): old kamera, kadr o'zi olinadi (tugma, galereya yo'q);
+ *   3) skaner ochiq turganda `POST /api/mobile/attendance/self` — server kadrni profil surati bilan
+ *      solishtiradi, geofence/takror/soatni tekshiradi; natija ("Tanildi" / "Tanilmadi") skaner ichida.
+ * Bekor qilinsa yoki tanilmasa — hech narsa yozilmaydi, "Qayta urinish" chiqadi.
  */
 
-type LA = typeof import('expo-local-authentication');
-
-/**
- * Native modul eski build'da yo'q (OTA yangi JS'ni eski ilovaga olib kelsa) — import yiqitmasin,
- * o'rniga "ilovani yangilang" deyiladi.
- */
-function loadLA(): LA | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('expo-local-authentication') as LA;
-  } catch {
-    return null;
-  }
-}
-
-type Verify = { ok: true; method: string } | { ok: false; message: string };
-
-const NOT_SET = "Telefoningizda Face ID, barmoq izi yoki ekran qulfi (PIN / parol) sozlanmagan. Telefon sozlamalarida yoqing va qayta urining.";
-
-/** Telefon egasini OS orqali tasdiqlash. Kamera ishlatilmaydi. */
-export async function verifyOwner(): Promise<Verify> {
-  const LA = loadLA();
-  if (!LA) return { ok: false, message: "Face ID uchun ilovaning yangi versiyasi kerak — do'kondan yangilang." };
-  try {
-    const [hasHw, enrolled, level, types] = await Promise.all([
-      LA.hasHardwareAsync(), LA.isEnrolledAsync(), LA.getEnrolledLevelAsync(), LA.supportedAuthenticationTypesAsync(),
-    ]);
-    if (level === LA.SecurityLevel.NONE) return { ok: false, message: NOT_SET };
-    const bio = hasHw && enrolled;
-    const r = await LA.authenticateAsync({
-      promptMessage: 'Davomat: shaxsingizni tasdiqlang',
-      cancelLabel: 'Bekor qilish',
-      fallbackLabel: 'Parol bilan',
-      // Biometriya o'tmasa yoki yo'q bo'lsa — telefon paroli (OS taklif qiladi)
-      disableDeviceFallback: false,
-    });
-    if (!r.success) {
-      const e = r.error;
-      if (e === 'user_cancel' || e === 'system_cancel' || e === 'app_cancel') return { ok: false, message: 'Tasdiqlash bekor qilindi — davomat yozilmadi.' };
-      if (e === 'lockout') return { ok: false, message: "Urinishlar ko'p bo'ldi. Telefonni qulfdan chiqarib, qayta urining." };
-      if (e === 'not_enrolled' || e === 'passcode_not_set' || e === 'not_available') return { ok: false, message: NOT_SET };
-      return { ok: false, message: 'Shaxsingiz tasdiqlanmadi — davomat yozilmadi.' };
-    }
-    const T = LA.AuthenticationType;
-    const method = !bio ? 'passcode'
-      : types.includes(T.FACIAL_RECOGNITION) ? 'face'
-      : types.includes(T.FINGERPRINT) ? 'fingerprint'
-      : types.includes(T.IRIS) ? 'iris' : 'biometric';
-    return { ok: true, method };
-  } catch {
-    return { ok: false, message: 'Face ID / barmoq izi ishlamadi — qayta urining.' };
-  }
-}
-
-type Stage = 'idle' | 'auth' | 'gps' | 'send';
-const STAGE_TEXT: Record<Stage, string> = { idle: '', auth: 'Shaxs tasdiqlanmoqda…', gps: 'Joylashuv aniqlanmoqda…', send: 'Yuborilmoqda…' };
+type Stage = 'idle' | 'gps' | 'scan';
+const STAGE_TEXT: Record<Stage, string> = { idle: '', gps: 'Joylashuv aniqlanmoqda…', scan: 'Yuz skaneri…' };
+/** Serverdagi `MAX_ACCURACY_M` bilan bir xil — bundan yomon nuqta bilan kamerani ochib o'tirmaymiz. */
+const MAX_ACCURACY_M = 150;
+const meters = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
 
 /** "Keldim" / "Ketdim" oqimi. Muvaffaqiyatda bosh sahifa keshi darhol yangilanadi. */
 function useSelfMark() {
@@ -95,29 +44,42 @@ function useSelfMark() {
     setError(null);
     if (!s.workplace) { setError("Ish joyi koordinatasi sozlanmagan — administratorga murojaat qiling."); return; }
     try {
-      // 1) Joylashuv ruxsati — Face ID oynasidan oldin
+      // 1) Joylashuv ruxsati va yangi GPS nuqta — kamera ochilishidan oldin (uzoqda bo'lsa skaner ochilmaydi)
       const access = await ensureForegroundLocation();
       if (access === 'services-off') { setError("Telefonda joylashuv (GPS) o'chiq — yoqib qayta urining."); return; }
       if (access !== 'granted') {
         setError(access === 'blocked' ? "Joylashuv ruxsati berilmagan — telefon Sozlamalaridan ilovaga ruxsat bering." : 'Davomat uchun joylashuv ruxsati kerak.');
         return;
       }
-      // 2) Face ID / barmoq izi (kamera yo'q)
-      setStage('auth');
-      const v = await verifyOwner();
-      if (!v.ok) { setError(v.message); return; }
-      // 3) Yangi GPS nuqta
       setStage('gps');
       const fix = await currentFix(15_000);
       if (!fix) { setError("GPS javob bermadi. Ochiq joyga chiqib qayta urining."); return; }
       setAccuracy(fix.accuracyM != null ? Math.round(fix.accuracyM) : null);
       if (fix.mocked) { setError("Soxta joylashuv (mock GPS) yoqilgan — o'chirib qayta urining."); return; }
-      // 4) Server: geofence, takror, soat
-      setStage('send');
-      const r = await erpAuth.markSelf({
-        kind: s.next, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, biometric: true, method: v.method,
-        deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
+      if (fix.accuracyM != null && fix.accuracyM > MAX_ACCURACY_M) { setError(`GPS aniqligi past (±${Math.round(fix.accuracyM)} m). Ochiq joyga chiqib qayta urining.`); return; }
+      const far = metersBetween(fix, s.workplace);
+      if (far > s.workplace.radiusM) { setError(`Siz ish joyidan ${meters(far)} uzoqdasiz (ruxsat: ${s.workplace.radiusM} m). Ish joyiga kelib qayta urining.`); return; }
+      // 2) Yuz skaneri; 3) skaner ochiq turganda server tekshiradi (yuz, geofence, takror, soat)
+      setStage('scan');
+      const kind = s.next;
+      let done: ErpSelfMarkResult | null = null;
+      const scan = await scanFace({
+        title: kind === 'in' ? 'Keldim — yuz skaneri' : 'Ketdim — yuz skaneri',
+        facing: 'front',
+        verify: async (photo) => {
+          try {
+            done = await erpAuth.markSelf({
+              kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, photo,
+              deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
+            });
+            return { ok: true, message: done.message };
+          } catch (e) {
+            return { ok: false, message: (e as Error).message || "Yuborib bo'lmadi — internetni tekshirib qayta urining." };
+          }
+        },
       });
+      const r = done as ErpSelfMarkResult | null;
+      if (!scan.ok || !r) { setError(scan.ok ? "Davomat yozilmadi — qayta urining." : scan.message); return; }
       // Bosh sahifa kartasi darhol yangi holatda (server javobidan), keyin to'liq yangilanadi
       qc.setQueriesData<ErpHomeData>({ queryKey: ['erp', 'home'] }, (old) => (old ? { ...old, selfAttendance: r.attendance } : old));
       void qc.invalidateQueries({ queryKey: ['erp', 'home'] });
@@ -150,7 +112,7 @@ export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module
       {s ? (
         <Card style={{ gap: space.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <IconTile icon={s.state === 'none' ? 'fingerprint' : s.state === 'out' ? 'log-out' : 'log-in'} module={module} />
+            <IconTile icon={s.state === 'none' ? 'scan-line' : s.state === 'out' ? 'log-out' : 'log-in'} module={module} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Txt v="overline" color="muted" numberOfLines={1}>Davomat · bugun</Txt>
               <Txt v="titleMd" numberOfLines={1}>{s.label}</Txt>
@@ -162,7 +124,7 @@ export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module
             <Button
               size="lg"
               variant={s.next === 'in' ? 'primary' : 'success'}
-              icon={s.next === 'in' ? 'fingerprint' : 'log-out'}
+              icon={s.next === 'in' ? 'scan-line' : 'log-out'}
               title={m.busy ? STAGE_TEXT[m.stage] : s.next === 'in' ? 'Keldim' : 'Ketdim'}
               loading={m.busy}
               onPress={() => void m.run(s)}
@@ -204,7 +166,7 @@ const dayTone = (d: ErpMyAttendanceDay) =>
 function DayRow({ d, module }: { d: ErpMyAttendanceDay; module: ModuleTone }) {
   const present = d.status === 'PRESENT';
   const sub = present
-    ? `${d.checkIn ?? '—'} – ${d.checkOut ?? '…'}${d.lateMin ? ` · ${d.lateMin} daq kechikdi` : ''}${d.self ? ' · Face ID' : ''}`
+    ? `${d.checkIn ?? '—'} – ${d.checkOut ?? '…'}${d.lateMin ? ` · ${d.lateMin} daq kechikdi` : ''}${d.self ? ' · o\'zi' : ''}`
     : d.mark ?? (d.weekend ? 'Dam olish kuni' : 'Belgi yo\'q');
   return (
     <ListItem

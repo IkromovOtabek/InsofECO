@@ -27,6 +27,7 @@ import { initMaps } from '@/core/map';
 import { RouteErrorBoundary } from '@/components/route-error';
 import { UpdateRequired } from '@/components/update-required';
 import { takeLogoutRedirect } from '@/features/auth/logout';
+import { FaceScanHost } from '@/features/erp/face-scan';
 
 /** Ekran chizishdagi kutilmagan xato — oq ekran o'rniga "Qayta urinish" (expo-router chegarasi). */
 export { RouteErrorBoundary as ErrorBoundary };
@@ -221,6 +222,8 @@ export default function RootLayout() {
           <ResultHost />
           <ReceiptHost />
           <DialogHost />
+          {/* Davomat yuz skaneri (kamera) — butun ekran, dialoglar ustida */}
+          <FaceScanHost />
           {/* Server 426 / APP_UPDATE_REQUIRED — "Ilovani yangilang", hamma narsaning ustida */}
           <UpdateRequired />
           <LaunchOverlay />

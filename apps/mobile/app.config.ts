@@ -10,9 +10,13 @@ const GOOGLE_SERVICES = process.env.GOOGLE_SERVICES_JSON ?? (existsSync('./googl
 // (plugin aks holda NSLocationAlwaysUsageDescription ga inglizcha standart matn yozadi).
 const LOC_WHEN_IN_USE = 'Obyekt manzilini aniqlash va reys holatini belgilash uchun.';
 const LOC_ALWAYS = "Faol reys davomida mashina joylashuvini quruvchi va dispetcherga ko'rsatish uchun (faqat reys vaqtida).";
-// Face ID: xodim o'z telefonidan "Keldim / Ketdim" bosganda shaxsini tasdiqlaydi (kamera ochilmaydi, rasm saqlanmaydi).
-// Bitta matn uchta joyga: infoPlist, expo-local-authentication va expo-secure-store plaginlari (aks holda inglizcha standart).
+// Face ID matni — davomat endi ilova ichidagi yuz skaneri bilan (expo-camera); bu matn expo-secure-store va
+// 1.0.3 da qo'shilgan expo-local-authentication uchun qoladi (ziyonsiz). Bitta matn uchta joyga: infoPlist, expo-local-authentication va expo-secure-store plaginlari (aks holda inglizcha standart).
 const FACE_ID = 'Davomatni tasdiqlash uchun Face ID ishlatiladi';
+
+// Kamera matni (iOS'da bitta NSCameraUsageDescription) — expo-camera va expo-image-picker plaginlari bir xil matnni
+// yozsin, aks holda keyingi plagin oldingisini almashtiradi.
+const CAMERA = "Davomat uchun yuzingizni skanerlash, profil rasmi, nakladnoy va yetkazish fotosini olish uchun kamera kerak.";
 
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9';
 
@@ -78,6 +82,9 @@ const config: ExpoConfig = {
     ['expo-secure-store', { faceIDPermission: FACE_ID }],
     // Android: USE_BIOMETRIC / USE_FINGERPRINT ruxsatlari plagindan; iOS: Face ID matni. Native — yangi build kerak.
     ['expo-local-authentication', { faceIDPermission: FACE_ID }],
+    // Davomat yuz skaneri (ilova ichida, src/features/erp/face-scan.tsx): faqat kamera, mikrofon kerak emas —
+    // aks holda plugin RECORD_AUDIO va inglizcha NSMicrophoneUsageDescription qo'shadi. Native: yangi build kerak.
+    ['expo-camera', { cameraPermission: CAMERA, microphonePermission: false, recordAudioAndroid: false }],
     ['expo-location', {
       locationWhenInUsePermission: LOC_WHEN_IN_USE,
       locationAlwaysAndWhenInUsePermission: LOC_ALWAYS,
@@ -99,7 +106,7 @@ const config: ExpoConfig = {
     './plugins/withNavigatorQueries.js',
     // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
     // Apple review matn haqiqiy ishlatilishga mos bo'lishini tekshiradi — yangi foto holati qo'shilsa shu yerga ham yozing.
-    ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: "Profil rasmi, nakladnoy va yetkazish fotosini olish hamda ishga kelganda davomat uchun selfi tushirish uchun.",
+    ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: CAMERA,
       // Faqat rasm (mediaTypes: ['images']) — mikrofon ishlatilmaydi. `false` bo'lmasa plugin Android'ga RECORD_AUDIO va
       // iOS'ga inglizcha NSMicrophoneUsageDescription qo'shadi: ishlatilmagan ruxsat — review'da rad etish sababi.
       microphonePermission: false }],
