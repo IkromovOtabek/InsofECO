@@ -30,6 +30,9 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, doc);
   }
 
-  await app.listen(Number(process.env.PORT ?? 3000));
+  // Prod'da faqat 127.0.0.1 — API'ga tashqaridan faqat nginx (api.insof-erp.uz) orqali kiriladi, to'g'ridan-to'g'ri
+  // :3010 internetga ochiq bo'lmasin. Lokal ishlab chiqishda telefon Mac'ning LAN IP'siga ulanadi — 0.0.0.0.
+  const host = process.env.LISTEN_HOST ?? (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
+  await app.listen(Number(process.env.PORT ?? 3000), host);
 }
 void bootstrap();
