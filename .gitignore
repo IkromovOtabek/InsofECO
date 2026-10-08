@@ -20,3 +20,8 @@ apps/mobile/google-services.json
 
 # Foydalanuvchi yuklagan fayllar (profil rasmlari)
 apps/api/uploads/
+
+# Imzo kalitlari (EAS keystore) — hech qachon repoga tushmasin
+*.jks
+*.keystore
+!apps/mobile/android/app/debug.keystore
