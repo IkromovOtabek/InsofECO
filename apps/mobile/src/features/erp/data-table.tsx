@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { Card, IconButton, Txt, type TxtColor } from '@/design/primitives';
+import { Card, FitTxt, IconButton, Txt, type TxtColor } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
 
@@ -96,7 +96,7 @@ export function PeriodSwitch({ title, sub, onPrev, onNext }: { title: string; su
     <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm, paddingHorizontal: space.sm }}>
       <IconButton icon="chevron-left" label="Oldingi" onPress={onPrev} />
       <View style={{ flex: 1, minWidth: 0, alignItems: 'center' }}>
-        <Txt v="titleSm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{title}</Txt>
+        <FitTxt v="titleSm" align="center">{title}</FitTxt>
         {sub ? <Txt v="caption" numberOfLines={1}>{sub}</Txt> : null}
       </View>
       <IconButton icon="chevron-right" label="Keyingi" onPress={onNext ?? undefined} disabled={!onNext} tone={onNext ? 'body' : 'faint'} />

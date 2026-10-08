@@ -95,6 +95,31 @@ export function clearError(errors: FieldErrors, name: string): FieldErrors {
   return next;
 }
 
+/**
+ * Qiymatni yozadi va unga bog'liq (`dependsOn`) tanlovlarni tekshiradi: tanlangan variant yangi qiymatga
+ * mos kelmasa (masalan boshqa mijozning schyoti) — tozalanadi. Variant o'zi shu maydonni to'ldirgan bo'lsa
+ * (schyot tanlanib, mijoz avtomatik qo'yilgan) — saqlanadi.
+ */
+export function withChange(fields: ErpFormField[], values: Values, name: string, v: string | ItemRow[]): Values {
+  const next: Values = { ...values, [name]: v };
+  const want = typeof v === 'string' ? v : '';
+  for (const f of fields) {
+    if (f.dependsOn !== name) continue;
+    const cur = str(next[f.name]);
+    const own = f.options?.find((o) => o.value === cur)?.extra?.[name];
+    if (cur && want && own && own !== want) next[f.name] = '';
+  }
+  return next;
+}
+
+/** `dependsOn` bo'yicha ko'rinadigan variantlar: bog'langan maydon bo'sh bo'lsa — hammasi. */
+export function dependentOptions(field: ErpFormField, values: Values): ErpFormOption[] {
+  const all = field.options ?? [];
+  const dep = field.dependsOn;
+  const parent = dep ? str(values[dep]) : '';
+  return dep && parent ? all.filter((o) => !o.extra?.[dep] || o.extra[dep] === parent) : all;
+}
+
 /** Serverga yuboriladigan ko'rinish: ko'rinmaydigan maydonlar tushib qoladi. */
 export function toPayload(fields: ErpFormField[], values: Values): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -137,7 +162,7 @@ export function FieldInput({ field, values, onChange, errors }: { field: ErpForm
     case 'select':
       return (
         <View>
-          <SelectField field={field} value={value} error={error} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />
+          <SelectField field={field} options={dependentOptions(field, values)} value={value} error={error} onChange={(v, o) => { onChange(field.name, v); autofill(field, o, values, onChange); }} />
           {field.hint && !error ? <Txt v="caption" style={{ marginTop: -space.md, marginBottom: space.lg }}>{field.hint}</Txt> : null}
         </View>
       );
@@ -250,8 +275,8 @@ type FormOption = SelectOption & Pick<ErpFormOption, 'extra'>;
  * Umumiy `Select` ustidagi yupqa qatlam: variant tanlanganda `extra`si bilan qaytaradi —
  * `Select` faqat {value,label} biladi, marka → narx to'ldirish uchun asl variant kerak.
  */
-function SelectField({ field, value, onChange, compact, error }: { field: ErpFormField; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean; error?: string }) {
-  const all: FormOption[] = field.options ?? [];
+function SelectField({ field, options, value, onChange, compact, error }: { field: ErpFormField; /** `dependsOn` bilan saralangan variantlar. */ options?: ErpFormOption[]; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean; error?: string }) {
+  const all: FormOption[] = options ?? field.options ?? [];
   return (
     <Select
       label={field.label}

@@ -500,7 +500,9 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
   const hasList = (k: string) => data.quick.some((q) => q.kind === 'list' && q.key === k);
   const out: ActionItem[] = [];
   const add = (label: string, icon: ActionItem['icon'], href: string, m: ModuleTone = module) => out.push({ label, icon, module: m, onPress: () => go(href) });
-  for (const q of specs) {
+  for (const spec of specs) {
+    // Forma rolga ochiq bo'lmasa (eski server / direktor ruxsat bermagan) — zaxira manzil
+    const q = spec.to.kind === 'new' && !hasNew(spec.to.key) && spec.orElse ? spec.orElse : spec;
     const t = q.to;
     if (t.kind === 'new' && hasNew(t.key)) add(q.label, q.icon, `/erp/new/${t.key}`);
     else if (t.kind === 'list') {

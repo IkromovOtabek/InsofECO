@@ -44,7 +44,8 @@ export type ErpSectionChart =
   | { kind: 'donut'; items: { label: string; value: number; text: string }[]; total: string; totalLabel?: string };
 export interface ErpSection { title: string; empty: string; rows: ErpRow[]; target?: string; icon?: string; chart?: ErpSectionChart }
 export interface ErpField { label: string; value: string; tone?: Tone }
-export interface ErpFormOption { value: string; label: string; extra?: Record<string, string> }
+/** `hint` — variant ostidagi kichik izoh (qoldiq, sana). */
+export interface ErpFormOption { value: string; label: string; extra?: Record<string, string>; hint?: string }
 export interface ErpFormField {
   name: string;
   label: string;
@@ -57,6 +58,8 @@ export interface ErpFormField {
   options?: ErpFormOption[];
   /** Boshqa maydon shu qiymatda bo'lsagina ko'rinadi. */
   showIf?: { field: string; equals: string };
+  /** `select`: faqat `option.extra[dependsOn]` shu maydon qiymatiga teng variantlar (masalan mijozning schyotlari). */
+  dependsOn?: string;
   /** `photo` uchun: old/orqa kamera va faqat jonli kadr (galereya yo'q) — yuz bilan davomat shunday. */
   camera?: 'front' | 'back';
   cameraOnly?: boolean;

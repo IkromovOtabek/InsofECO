@@ -425,14 +425,41 @@ export const textRoom = (text: string, fontSize: number, extra = 0) => text.leng
 /**
  * Chegaralangan zaxira kenglik — `minWidth` uchun. To'liq `textRoom` uzun yorliqni konteynerdan
  * TASHQARIGA itarardi (360 dp telefonda "Materialni qabul qildim…" tugmadan chiqib ketardi).
- * Qisqa so'zlar ("Kirish") to'liq himoyalanadi, uzunlari `flexShrink` + `adjustsFontSizeToFit` bilan sig'adi.
+ * Qisqa so'zlar ("Kirish") to'liq himoyalanadi, uzunlari `flexShrink` + `fitScale` (tugmada — 2-qator) bilan sig'adi.
  */
 export const fitRoom = (text: string, fontSize: number, cap = 64) => Math.min(textRoom(text, fontSize), cap);
 
 /** "Xrom" matni (tugma, chip, tab, nishon) uchun tizim shrift kattalashtirish chegarasi; oddiy matn — 1.4. */
 export const CHROME_SCALE = 1.2;
-/** Bir qatorli xrom yorliqlari sig'masa shu nisbatgacha kichrayadi (pastida — ellipsis). */
-export const MIN_FONT_SCALE = 0.75;
+/**
+ * Sig'magan matn shu nisbatdan pastga kichraymaydi (tugmada — keyin 2-qatorga o'tadi, yorliqda — ellipsis).
+ * 0.75 edi: 360 dp telefonda va katta tizim shriftida tugma yozuvi o'qib bo'lmas darajada maydalashardi.
+ */
+export const MIN_FONT_SCALE = 0.85;
+
+/**
+ * Matnni berilgan kenglikka sig'diruvchi shrift nisbati — JS hisob (`FitTxt`, `Button` ishlatadi).
+ *
+ * Nega native `adjustsFontSizeToFit` emas: yangi arxitekturada (Fabric, RN 0.76) `minimumFontScale`
+ * umuman o'qilmaydi — iOS ham, Android ham shriftni 4 pt gacha kichraytiradi. Android esa kichraytirishni
+ * matnning o'zida (Spannable) bajaradi va keyingi har bir qayta joylashuvda (klaviatura ochilib oyna
+ * qisqarganda, holat yangilanganda) KICHRAYGAN o'lchamdan yana boshlaydi — shrift qaytib kattalashmaydi.
+ * Snabjeniye "Skladga kirim qilish" tugmasi klaviaturadan keyin maydalanib qolgani shundan.
+ *
+ * `width` — matn qutisining kengligi (matnga bog'liq bo'lmasligi kerak: ustun ichida yoki `flex: 1`),
+ * `fontSize` — tizim shrifti masshtabi qo'shilgan o'lcham. `lines > 1` — eng uzun so'z bir qatorga sig'sin
+ * va butun matn shu qatorlarga (so'z bo'linishi uchun 15% zaxira bilan) joylashsin.
+ */
+export function fitScale(text: string, fontSize: number, width: number, min = MIN_FONT_SCALE, lines = 1): number {
+  if (!(width > 0) || !text) return 1;
+  const need = textRoom(text, fontSize);
+  let k = width / need;
+  if (lines > 1) {
+    const longest = text.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), '');
+    k = Math.min(width / textRoom(longest, fontSize), (width * lines * 0.85) / need);
+  }
+  return Math.max(min, Math.min(1, k));
+}
 
 // ───────────────────────── Harakat ─────────────────────────
 

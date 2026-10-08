@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { Badge, Button, Card, EmptyState, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
+import { Badge, Button, Card, EmptyState, FitTxt, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
 import { ReceiptBody, Sheet, dialog, receipt, result, toast, type IconName } from '@/design/ui';
 import { PageHeader, Reveal, SkeletonList, StickyActionBar } from '@/design/blocks';
 import { useTheme } from '@/design/theme';
@@ -337,10 +337,10 @@ export default function ErpDetail() {
                 </View>
               ) : null}
               {amountVal ? (
-                <Txt v="heroValue" numberOfLines={1} adjustsFontSizeToFit style={{ color: c.textStrong }}>
+                <FitTxt v="heroValue" min={0.7} text={`${amountVal.num}${amountVal.unit ? ` ${amountVal.unit}` : ''}`} style={{ color: c.textStrong }}>
                   {amountVal.num}
                   {amountVal.unit ? <Txt v="heroUnit" color="muted">{` ${amountVal.unit}`}</Txt> : null}
-                </Txt>
+                </FitTxt>
               ) : (
                 <Txt v="titleLg" numberOfLines={2}>{data.title}</Txt>
               )}

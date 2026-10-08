@@ -5,7 +5,7 @@ import { Sheet } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
 import type { ErpAction } from '@/core/erp';
-import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
+import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
 
 /**
  * Ma'lumot so'raydigan amal oynasi — qabul qilgan kishi, to'lov summasi va h.k.
@@ -31,7 +31,7 @@ export function ActionSheet({ action, loading, error, onClose, onSubmit }: {
 
   const change = (name: string, v: string | ItemRow[]) => {
     setErrors((e) => clearError(e, name));
-    setValues((s) => ({ ...s, [name]: v }));
+    setValues((s) => withChange(fields, s, name, v));
   };
   const visible = visibleFields(fields, values);
   const missCount = visible.filter((f) => errors[f.name]).length;

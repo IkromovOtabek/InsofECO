@@ -25,7 +25,11 @@ export type QuickTarget =
   /** Bo'limning birinchi qatori: kartochka yoki marshrut ekrani. */
   | { kind: 'row'; section: RegExp; open: 'detail' | 'route' };
 
-export interface QuickSpec { label: string; icon: IconName; to: QuickTarget }
+export interface QuickSpec {
+  label: string; icon: IconName; to: QuickTarget;
+  /** `to` rolga ochiq bo'lmasa (masalan eski server formani bermasa) — shu manzil, o'z yorlig'i bilan. */
+  orElse?: { label: string; icon: IconName; to: QuickTarget };
+}
 
 /** Davr kalitlari — server `?period=` (direktorda `?revenue=`) qabul qiladi. */
 export type PeriodKey = 'day' | 'week' | 'month' | 'year';
@@ -248,11 +252,13 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     progress: null,
     attention: [/^Ta'minot to'lovlari/],
     calm: CALM,
+    // Kassir ilovadan to'lov qabul qiladi va kirim/chiqim yozadi (server `quick` da `new: payments/cashflow/transfer`).
+    // Eski server formani bermasa — avvalgi ro'yxatlar (schyotlar, kirim-chiqim, ta'minot to'lovi).
     quick: [
-      { label: "To'lov qabul", icon: 'plus', to: { kind: 'list', key: 'invoices' } },
+      { label: "To'lov qabul qilish", icon: 'plus', to: { kind: 'new', key: 'payments' }, orElse: { label: "To'lov qabul", icon: 'plus', to: { kind: 'list', key: 'invoices' } } },
+      { label: 'Kirim / chiqim', icon: 'arrow-up-down', to: { kind: 'new', key: 'cashflow' }, orElse: { label: 'Kirim-chiqim', icon: 'arrow-up-down', to: { kind: 'list', key: 'cashflow' } } },
       { label: "To'lovlar", icon: 'banknote', to: { kind: 'tab', tab: 'work' } },
-      { label: 'Kirim-chiqim', icon: 'arrow-up-down', to: { kind: 'list', key: 'cashflow' } },
-      { label: "Ta'minot to'lovi", icon: 'clipboard-list', to: { kind: 'list', key: 'supply' } },
+      { label: 'Kassa ⇄ bank', icon: 'arrow-left-right', to: { kind: 'new', key: 'transfer' }, orElse: { label: "Ta'minot to'lovi", icon: 'clipboard-list', to: { kind: 'list', key: 'supply' } } },
     ],
     missing: ["Naqd / bank qoldig'i alohida", 'Click / Payme tushumi', 'Kirim usuli taqsimoti', 'Kassa limiti', 'Haydovchi topshirmagan pul'],
   },

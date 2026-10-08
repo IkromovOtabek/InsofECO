@@ -12,7 +12,7 @@ import { radius, size, space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
 import { ApiException } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
-import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
+import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
 import { Loader } from '@/design/loader';
 
 /**
@@ -55,7 +55,7 @@ export default function ErpNew() {
   const setValue = (name: string, v: string | ItemRow[]) => {
     setServerError(null);
     setErrors((e) => clearError(e, name));
-    setValues((s) => ({ ...s, [name]: v }));
+    setValues((s) => (data ? withChange(data.fields, s, name, v) : { ...s, [name]: v }));
   };
 
   const visible = data ? visibleFields(data.fields, values) : [];
@@ -79,7 +79,8 @@ export default function ErpNew() {
     try {
       const r = await create.mutateAsync({ key: data.key, payload: toPayload(data.fields, values) });
       // Foydalanuvchi natijani o'qib ulgursin, kartochka shundan keyin ochiladi
-      result.success('Ochildi', r.message, () => router.replace(`/erp/${r.key}/${r.id}` as never));
+      // Kassa yozuvlari "ochilmaydi" — saqlanadi
+      result.success(['payments', 'cashflow', 'transfer'].includes(data.key) ? 'Saqlandi' : 'Ochildi', r.message, () => router.replace(`/erp/${r.key}/${r.id}` as never));
     } catch (e) {
       haptic.error();
       setServerError(e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring');

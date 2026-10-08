@@ -3,7 +3,7 @@
  * grafiklar, HeaderBack. Native <Modal> Fabric'da ko'rinmaydi — Modal/Sheet daraxt ichida chiziladi.
  */
 import React, { useEffect, useState } from 'react';
-import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { BackHandler, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import { StatusMark, SuccessCheck } from './success';
 import { DUR, EASE_STATE, ENTER_DIALOG, ENTER_SHEET, ENTER_TOAST, EXIT_DIALOG, EXIT_LAYER, EXIT_SHEET, EXIT_TOAST, MOVE_ITEM, SPRING_SLIDE, SPRING_TAB, TAB_SLIDE, haptic, usePop } from './motion';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { CHROME_SCALE, FONT, Palette, Tone, duration, elevation, fitRoom, radius, shadow, size, space, toneColors, type } from './tokens';
-import { Badge, Button, FIT_LINE, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
+import { Badge, Button, FIT_LINE, FitTxt, IconButton, StatusDot, Txt, fmtDate, fmtSum } from './primitives';
 
 export { Icon, resolveIcon } from './icons';
 export type { IconName } from './icons';
@@ -174,8 +174,8 @@ function TabCell({ label, glyph, focused, driver, badge, onPress, onLongPress, o
           </View>
         ) : null}
       </Animated.View>
-      {/* 5 tab 360 dp da ~62 dp katak: yorliq katakdan chiqmaydi — kichrayadi (1.2× shrift chegarasi) */}
-      <Txt v={driver ? 'tabLabelDriver' : 'tabLabel'} {...FIT_LINE} style={{ color: focused ? c.textStrong : c.textMuted, maxWidth: '100%', minWidth: fitRoom(label, (driver ? type.tabLabelDriver : type.tabLabel).fontSize, 44) }}>{label}</Txt>
+      {/* 5 tab 360 dp da ~62 dp katak: yorliq katak kengligiga JS da sig'diriladi (≥0.85, keyin ellipsis; 1.2× shrift chegarasi) */}
+      <FitTxt v={driver ? 'tabLabelDriver' : 'tabLabel'} align="center" maxFontSizeMultiplier={CHROME_SCALE} textBreakStrategy="simple" style={{ color: focused ? c.textStrong : c.textMuted }}>{label}</FitTxt>
     </Pressable>
   );
 }
@@ -336,24 +336,52 @@ function DialogHead({ tone, icon, title, message }: { tone?: Tone; icon?: IconNa
   );
 }
 
-/** Pastdan chiqadigan varaq (mobil). Sarlavha doim ko'rinadi, ichi aylanadi, pastda footer. */
+/** Klaviatura ochiqmi — iOS'da oldindan (`will`), Android'da ochilgandan keyin (`did`) xabar keladi. */
+export function useKeyboardShown(): boolean {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const a = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setShown(true));
+    const b = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setShown(false));
+    return () => { a.remove(); b.remove(); };
+  }, []);
+  return shown;
+}
+
+/**
+ * Pastdan chiqadigan varaq (mobil). Sarlavha doim ko'rinadi, ichi aylanadi, pastda footer.
+ *
+ * Klaviaturaga chidamli: iOS — KeyboardAvoidingView `padding`; Android — oyna o'zi qisqaradi
+ * (`windowSoftInputMode=adjustResize`), varaq `maxHeight` shu qisqargan oynadan hisoblanadi.
+ * Ichki ro'yxat siqiladi (`flexShrink`), footer (asosiy tugma) siqilmaydi — klaviatura ustida to'liq enli
+ * ko'rinib turadi. Klaviatura ochiqligida sarlavha bir qatorga tushadi va pastki zaxira kichrayadi
+ * (360×640 telefonda maydonga joy qolsin).
+ */
 export function Sheet({ open, onClose, title, children, footer, maxHeight = '88%' }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; maxHeight?: `${number}%` }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardShown();
   useBackClose(open, onClose);
   if (!open) return null;
   return (
     <Animated.View exiting={EXIT_LAYER} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Scrim onPress={onClose} />
       <KeyboardAvoidingView pointerEvents="box-none" behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end' }]}>
-        <Animated.View entering={ENTER_SHEET} exiting={EXIT_SHEET} accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', paddingBottom: insets.bottom + space.lg, maxHeight }, shadow.pop]}>
+        <Animated.View entering={ENTER_SHEET} exiting={EXIT_SHEET} accessibilityViewIsModal style={[{ backgroundColor: c.bgSurface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', paddingBottom: kb ? space.md : insets.bottom + space.lg, maxHeight }, shadow.pop]}>
           <View style={{ alignSelf: 'center', width: space.x10, height: space.xs + 1, borderRadius: radius.pill, backgroundColor: c.bgMuted, marginTop: space.md }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xxl, paddingRight: space.lg, paddingTop: space.md, paddingBottom: space.sm }}>
-            <Txt v="titleLg" style={{ flex: 1 }} numberOfLines={2}>{title}</Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: space.xxl, paddingRight: space.lg, paddingTop: kb ? space.xs : space.md, paddingBottom: space.sm }}>
+            <Txt v={kb ? 'titleMd' : 'titleLg'} style={{ flex: 1 }} numberOfLines={kb ? 1 : 2}>{title}</Txt>
             <IconButton icon="x" label={i18n.t('ui.close')} onPress={onClose} variant="secondary" size={size.touch - space.xs} />
           </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: space.xxl, paddingVertical: space.sm }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
-          {footer ? <View style={{ paddingHorizontal: space.xxl, paddingTop: space.md }}>{footer}</View> : null}
+          <ScrollView
+            style={{ flexGrow: 0, flexShrink: 1 }}
+            contentContainerStyle={{ paddingHorizontal: space.xxl, paddingVertical: space.sm }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+          >
+            {children}
+          </ScrollView>
+          {footer ? <View style={{ flexShrink: 0, paddingHorizontal: space.xxl, paddingTop: kb ? space.sm : space.md }}>{footer}</View> : null}
         </Animated.View>
       </KeyboardAvoidingView>
     </Animated.View>
@@ -614,7 +642,7 @@ export function ReceiptBody({ data, compact }: { data: ReceiptData; compact?: bo
     <View>
       <View style={{ alignItems: 'center' }}>
         {ok ? <SuccessCheck size={compact ? 84 : 112} /> : <StatusMark tone={tone} size={compact ? 72 : 96} icon={tone === 'danger' ? 'circle-arrow-up' : undefined} />}
-        <Txt v="metricHero" align="center" numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: space.sm, color: tone === 'danger' ? ink : c.textStrong }}>{data.headline}</Txt>
+        <FitTxt v="metricHero" align="center" min={0.7} style={{ marginTop: space.sm, color: tone === 'danger' ? ink : c.textStrong }}>{data.headline}</FitTxt>
         {data.caption ? <Txt v="body" color="muted" align="center" style={{ marginTop: space.xs }}>{data.caption}</Txt> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, paddingVertical: space.sm, paddingLeft: space.sm, paddingRight: space.md, borderRadius: radius.pill, backgroundColor: c.bgMuted }}>
           <View style={{ width: size.iconTileSm - space.sm, height: size.iconTileSm - space.sm, borderRadius: radius.pill, backgroundColor: solid, alignItems: 'center', justifyContent: 'center' }}>

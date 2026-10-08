@@ -11,6 +11,7 @@
  *   emoji      — emoji belgilar (faqat Lucide)
  *   ionicons   — @expo/vector-icons importi yoki "-outline" ikonka nomi
  *   inline-btn — onPress qo'yilgan <View> (haqiqiy <Pressable>/<Button> kerak)
+ *   autofit    — native adjustsFontSizeToFit / minimumFontScale (o'rniga FitTxt / Button — JS, ≥ MIN_FONT_SCALE)
  *
  * Ishlatish: node scripts/design-lint.mjs [--fix-hint] ; chiqish kodi 1 — xato bor.
  */
@@ -34,6 +35,8 @@ const RULES = [
   { id: 'emoji', re: /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B06}\u{2194}-\u{21AA}]/gu, msg: 'emoji — Lucide ikonka ishlating' },
   { id: 'ionicons', re: /@expo\/vector-icons|Ionicons|['"][a-z-]+-outline['"]/g, msg: 'Ionicons — faqat Lucide (<Icon name="…">)' },
   { id: 'inline-btn', re: /<View[^>]*\bonPress=/g, msg: '<View onPress> — haqiqiy <Pressable> yoki <Button>' },
+  // Fabric'da minimumFontScale o'qilmaydi (4 pt gacha), Android kichraygan shriftni qaytarmaydi — klaviaturadan keyin tugma maydalanardi
+  { id: 'autofit', re: /\badjustsFontSizeToFit\b|\bminimumFontScale\b/g, msg: "native sig'dirish — <FitTxt> yoki <Button> (JS, MIN_FONT_SCALE)" },
 ];
 const GRID_RE = /\b(padding|margin|gap|rowGap|columnGap)[A-Za-z]*\s*:\s*(-?\d+(?:\.\d+)?)\b(?!\s*[*+\-/%])/g;
 
@@ -55,7 +58,7 @@ for (const base of SCAN) {
     const src = readFileSync(file, 'utf8');
     const lines = src.split('\n');
     const lineOf = (idx) => src.slice(0, idx).split('\n').length;
-    const isComment = (ln) => /^\s*(\/\/|\*|\/\*)/.test(lines[ln - 1] ?? '');
+    const isComment = (ln) => /^\s*(\/\/|\*|\/\*|\{\/\*)/.test(lines[ln - 1] ?? '');
     for (const r of RULES) {
       if (r.skipDesign && inDesign) continue;
       for (const m of src.matchAll(r.re)) {

@@ -9,7 +9,7 @@ import { confirmAtSite } from '@/features/address/site-check';
 import { SITE_RADIUS_M } from '@/core/location';
 import { config } from '@/core/config';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
-import { Badge, Button, Card, EmptyState, Gap, Input, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum, fmtTime, fmtUnit } from '@/design/primitives';
+import { Badge, Button, Card, EmptyState, FitTxt, Gap, Input, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum, fmtTime, fmtUnit } from '@/design/primitives';
 import { dialog, Avatar, Icon, StatusLine, toast } from '@/design/ui';
 import { BigAction, BigSecondary, RouteBlock, StepDots } from '@/design/driver';
 import { radius, size, space } from '@/design/tokens';
@@ -177,7 +177,7 @@ function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, s
           ) : null}
           <Gap h={space.md} />
           <Card style={{ flexDirection: 'row', gap: space.lg }}>
-            <View style={{ flex: 1.3 }}><Txt v="overline">Haq</Txt><Txt v="metric" color="brand" numberOfLines={1} adjustsFontSizeToFit>{fmtSum(s.driverFee)}</Txt></View>
+            <View style={{ flex: 1.3 }}><Txt v="overline">Haq</Txt><FitTxt v="metric" color="brand" min={0.7}>{fmtSum(s.driverFee)}</FitTxt></View>
             <View style={{ flex: 1 }}><Txt v="overline">Masofa</Txt><Txt v="metric" numberOfLines={1}>{s.distanceKm ? fmtUnit(s.distanceKm, 'km') : '—'}</Txt></View>
             {s.vehicle ? <View style={{ flex: 1 }}><Txt v="overline">Mashina</Txt><Txt v="titleMd" mono numberOfLines={1}>{s.vehicle.plateNumber}</Txt></View> : null}
           </Card>

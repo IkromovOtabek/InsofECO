@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { ListGroup, OfflineBanner, PageHeader, Reveal, SectionHead } from '@/design/blocks';
-import { Badge, EmptyState, ListItem, Screen, Txt, fmtUnit, statusLabel } from '@/design/primitives';
+import { Badge, EmptyState, FitTxt, ListItem, Screen, Txt, fmtUnit, statusLabel } from '@/design/primitives';
 import { Animated, PressScale, haptic, useHeaderRaise, usePressScale } from '@/design/motion';
 import { Icon, IconName, dialog, fmtShort, toast } from '@/design/ui';
 import { BigAction } from '@/design/driver';
@@ -30,7 +30,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
   const { c } = useTheme();
   return (
     <View accessible accessibilityLabel={`${value} ${label}`} style={[{ flex: 1, alignItems: 'center', paddingVertical: space.md, paddingHorizontal: space.sm, backgroundColor: c.bgSurface, borderRadius: radius.card, borderCurve: 'continuous' }, elevation(c).sh1]}>
-      <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit>{value}</Txt>
+      <FitTxt v="kpiValue" align="center" min={0.75}>{value}</FitTxt>
       <Txt v="tSm" numberOfLines={1}>{label}</Txt>
     </View>
   );

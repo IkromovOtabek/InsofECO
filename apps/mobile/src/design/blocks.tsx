@@ -15,9 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
 import { Icon, IconName } from './icons';
 import { Appear, DUR, EASE_ENTER, PressScale, SPRING_GROW, SPRING_SLIDE, Shimmer, Stagger, haptic, useCountUp, useCountUpText, usePop, usePressScale } from './motion';
-import { Button, Delta, FIT_LINE, IconButton, IconTile, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
+import { Button, Delta, FIT_LINE, FitTxt, IconButton, IconTile, ListGroup, ListItem, SectionHead, Txt, TxtColor, fmtNum } from './primitives';
 import { SegmentTrack, fmtShort, toast } from './ui';
-import { CHROME_SCALE, DEMO_SCALE, FONT, ModuleTone, Palette, Tone, TypeVariant, elevation, radius, size, space, textRoom, toneColors, type } from './tokens';
+import { CHROME_SCALE, DEMO_SCALE, FONT, ModuleTone, Palette, Tone, TypeVariant, elevation, fitScale, radius, size, space, textRoom, toneColors, type } from './tokens';
 
 export { SectionHead, ListGroup, Delta };
 
@@ -63,7 +63,11 @@ function Surface({ children, style, pad = space.card, gap = space.sm }: { childr
 
 // ───────────────────────── CountUp ─────────────────────────
 
-/** Sanab chiqadigan raqam: `<CountUp value={1240} format={fmtNum} v="metric" />`. */
+/**
+ * Sanab chiqadigan raqam: `<CountUp value={1240} format={fmtNum} v="metric" />`.
+ * Sig'masa JS da kichrayadi (`FitTxt`, yakuniy qiymat bo'yicha — sanash paytida o'lcham sakramaydi);
+ * qatorda ishlatilsa `flex: 1` bering (kenglik matnga bog'liq bo'lmasin).
+ */
 export function CountUp({ value, format = (n: number) => fmtNum(n), v = 'metric', color, delay, duration, style }: {
   /** Yakuniy qiymat. */ value: number;
   /** Formatlash (standart — `fmtNum`, minglar bo'shliq bilan). */ format?: (n: number) => string;
@@ -71,7 +75,8 @@ export function CountUp({ value, format = (n: number) => fmtNum(n), v = 'metric'
   style?: React.ComponentProps<typeof Txt>['style'];
 }) {
   const text = useCountUp(value, { format, delay, duration });
-  return <Txt v={v} color={color} numberOfLines={1} adjustsFontSizeToFit style={style} accessibilityLabel={format(value)}>{text}</Txt>;
+  const final = format(value);
+  return <FitTxt v={v} color={color} min={0.7} text={final} style={style} accessibilityLabel={final}>{text}</FitTxt>;
 }
 
 // ───────────────────────── PageHeader ─────────────────────────
@@ -153,7 +158,7 @@ export function PageHeader({ overline, title, avatar, onAvatar, actions, bell, r
       {av ? (onAvatar ? <PressScale onPress={onAvatar} accessibilityRole="button" accessibilityLabel={avatar?.name ?? 'Profil'} hitSlop={space.xs}>{av}</PressScale> : av) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         {overline ? <Txt v="appbarOverline" numberOfLines={1} maxFontSizeMultiplier={CHROME_SCALE}>{overline}</Txt> : null}
-        <Txt v="appbarTitle" {...FIT_LINE} minimumFontScale={0.85} accessibilityRole="header">{title}</Txt>
+        <FitTxt v="appbarTitle" maxFontSizeMultiplier={CHROME_SCALE} accessibilityRole="header">{title}</FitTxt>
       </View>
       {right}
       {all.map((a) => <HeaderIcon key={a.label} {...a} />)}
@@ -235,14 +240,23 @@ function HeroGrid({ color }: { color: string }) {
   );
 }
 
-function HeroValue({ value, unit, fmt, color }: { value: number | string; unit?: string; fmt: (n: number) => string; color: string }) {
+/**
+ * Katta raqam + birlik. `width` — qator kengligi (ota o'lchaydi): sig'masa shrift JS da 0.7 gacha kichrayadi
+ * (native adjustsFontSizeToFit Fabric'da chegarasiz va Android'da qaytib kattalashmaydi — `fitScale` izohi).
+ */
+function HeroValue({ value, unit, fmt, color, width }: { value: number | string; unit?: string; fmt: (n: number) => string; color: string; width: number }) {
   const counted = useCountUp(typeof value === 'number' ? value : 0, { format: fmt });
   const countedText = useCountUpText(typeof value === 'string' ? value : '');
   const shown = typeof value === 'number' ? counted : countedText;
+  const { fontScale } = useWindowDimensions();
+  const eff = Math.min(Math.max(fontScale, 1), 1.4);
+  const final = `${typeof value === 'number' ? fmt(value) : value}${unit ? ` ${unit}` : ''}`;
+  const k = fitScale(final, type.heroValue.fontSize * eff, width, 0.7);
+  const sz = (t: TypeVariant) => (k < 1 ? { fontSize: type[t].fontSize * k, lineHeight: Math.round(type[t].lineHeight * k) } : null);
   return (
-    <Txt v="heroValue" numberOfLines={1} adjustsFontSizeToFit style={{ color, flexShrink: 1 }}>
+    <Txt v="heroValue" numberOfLines={1} style={[{ color, flexShrink: 1 }, sz('heroValue')]}>
       {shown}
-      {unit ? <Txt v="heroUnit" style={{ color }}>{` ${unit}`}</Txt> : null}
+      {unit ? <Txt v="heroUnit" style={[{ color }, sz('heroUnit')]}>{` ${unit}`}</Txt> : null}
     </Txt>
   );
 }
@@ -274,6 +288,9 @@ export function HeroCard({ label, value, unit, format, delta, spark, periods, pe
   const showGrid = grid ?? paletteName === 'chizma';
   const solid = delta ? (delta.tone === 'danger' ? c.dangerSolid : delta.tone === 'warning' ? c.warningSolid : delta.tone === 'success' ? c.successSolid : delta.tone === 'info' ? c.infoSolid : c.bgInverseChip) : c.successSolid;
   const a11y = `${label}: ${typeof value === 'number' ? fmt(value) : value}${unit ? ` ${unit}` : ''}${delta ? `, ${delta.dir === 'down' ? '−' : '+'}${delta.text}` : ''}`;
+  // Raqam qatori kengligi (karta ustunida — matnga bog'liq emas): katta raqam shunga sig'diriladi
+  const [valueW, setValueW] = useState(0);
+  const onValueRow = (e: LayoutChangeEvent) => { const w = Math.round(e.nativeEvent.layout.width); setValueW((o) => (o === w ? o : w)); };
   return (
     <View style={[{ borderRadius: radius.hero, borderCurve: 'continuous', backgroundColor: c.bgInverse }, elevation(c).hero, style]}>
       <View style={{ borderRadius: radius.hero, borderCurve: 'continuous', overflow: 'hidden', padding: space.lg + 2, gap: space.tight }}>
@@ -287,8 +304,8 @@ export function HeroCard({ label, value, unit, format, delta, spark, periods, pe
             <SegmentTrack variant="inverse" scroll={false} items={periods.map((p, i) => ({ key: String(i), label: p }))} value={String(period)} onChange={(k) => onPeriod?.(Number(k))} />
           ) : null}
         </View>
-        <View accessible accessibilityLabel={a11y} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.tight, flexWrap: 'wrap' }}>
-          <HeroValue value={value} unit={unit} fmt={fmt} color={c.textOnInverse} />
+        <View accessible accessibilityLabel={a11y} onLayout={onValueRow} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.tight, flexWrap: 'wrap' }}>
+          <HeroValue value={value} unit={unit} fmt={fmt} color={c.textOnInverse} width={valueW} />
           {delta ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm, paddingVertical: 3, marginBottom: space.xs, borderRadius: radius.sm - 4, backgroundColor: solid }}>
               <Icon name={delta.dir === 'down' ? 'arrow-down' : 'arrow-up'} size={size.iconSm - 2} color={c.textOnSolid} strokeWidth={2.25} />
@@ -338,7 +355,8 @@ function KpiCell({ item }: { item: KpiItem }) {
         <View style={{ flex: 1, minWidth: 0 }}>
           {/* 360 dp da 2 ustunli setkada yorliqqa ~80 dp qoladi — "Yetkazuvchiga qarz" ikki qatorga o'tadi, kesilmaydi */}
           <Txt v="tSm" numberOfLines={2} maxFontSizeMultiplier={CHROME_SCALE}>{item.label}</Txt>
-          <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={CHROME_SCALE} style={{ color: valueColor }}>{shown}</Txt>
+          {/* Uzun summa JS da kichrayadi (0.75 dan pastga emas — ~14 dp); native adjustsFontSizeToFit 4 pt gacha tushardi */}
+          <FitTxt v="kpiValue" min={0.75} maxFontSizeMultiplier={CHROME_SCALE} text={typeof item.value === 'number' ? fmtNum(item.value) : item.value} style={{ color: valueColor }}>{shown}</FitTxt>
           {item.delta ? <Txt v="kpiDelta" {...FIT_LINE} style={{ color: deltaColor }}>{item.delta.text}</Txt> : null}
         </View>
       </Pressable>
@@ -378,8 +396,8 @@ function ActionCell({ a, primary }: { a: ActionItem; primary: boolean }) {
       >
         <IconTile icon={a.icon} module={a.module} size={size.actionTile} bg={primary ? c.brandTile : undefined} ink={primary ? c.textOnBrand : undefined} />
         {/* 360 dp da plitka ~74 dp: yorliq 2 qatorgacha markazda; bitta uzun so'z ("Yetkazuvchiga") sig'masa
-            shrift ozgina kichrayadi, undan keyin — ellipsis. Tizim shrifti 1.2× bilan cheklangan. */}
-        <Txt v="actionLabel" align="center" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.72} maxFontSizeMultiplier={CHROME_SCALE} textBreakStrategy="simple" style={{ alignSelf: 'stretch', color: primary ? c.textOnBrand : c.textBody }}>{a.label}</Txt>
+            shrift ozgina (≤10%) kichrayadi, undan keyin — ellipsis. Tizim shrifti 1.2× bilan cheklangan. */}
+        <FitTxt v="actionLabel" align="center" lines={2} min={0.9} maxFontSizeMultiplier={CHROME_SCALE} textBreakStrategy="simple" style={{ color: primary ? c.textOnBrand : c.textBody }}>{a.label}</FitTxt>
         {a.badge ? (
           <View style={{ position: 'absolute', top: space.xs + 2, right: space.sm, minWidth: space.xl, height: space.xl, paddingHorizontal: space.xs, borderRadius: radius.pill, backgroundColor: c.dangerSolid, alignItems: 'center', justifyContent: 'center' }}>
             <Txt v="badge" maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: c.textOnSolid }}>{a.badge > 99 ? '99+' : a.badge}</Txt>

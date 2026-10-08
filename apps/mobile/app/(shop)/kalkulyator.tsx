@@ -251,7 +251,7 @@ export default function Calculator() {
                     <View style={{ gap: 2 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.md }}>
                         <Txt v="tSm" style={[muted, { flexShrink: 0 }]} numberOfLines={1}>Taxminiy narx</Txt>
-                        <CountUp value={res.sum} format={(n) => `${fmtNum(n)} so'm`} v="titleMd" style={{ color: c.textOnInverse, flexShrink: 1, textAlign: 'right' }} />
+                        <CountUp value={res.sum} format={(n) => `${fmtNum(n)} so'm`} v="titleMd" style={{ color: c.textOnInverse, flex: 1, alignSelf: 'auto', textAlign: 'right' }} />
                       </View>
                       <Txt v="caption" style={muted} numberOfLines={1}>
                         {`${fmtPlain(res.amount)} m³ × ${fmtNum(product.price)} so'm · ${product.strengthClass ?? product.code ?? product.name}`}

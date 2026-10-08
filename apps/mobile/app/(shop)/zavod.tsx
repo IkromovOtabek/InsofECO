@@ -3,7 +3,7 @@ import { Image, Linking, RefreshControl, ScrollView, View, useWindowDimensions }
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Rect } from 'react-native-svg';
-import { Badge, Card, EmptyState, ListItem, Skeleton, Txt } from '@/design/primitives';
+import { Badge, Card, EmptyState, FitTxt, ListItem, Skeleton, Txt } from '@/design/primitives';
 import { ListGroup, Reveal, SectionHead, StickyActionBar } from '@/design/blocks';
 import { PressScale } from '@/design/motion';
 import { Icon } from '@/design/icons';
@@ -127,7 +127,7 @@ export default function SellerProfile() {
                   {stats.map((x) => {
                     const body = (
                       <Card style={{ flex: 1, alignItems: 'center', paddingVertical: space.md, paddingHorizontal: space.sm }}>
-                        <Txt v="kpiValue" numberOfLines={1} adjustsFontSizeToFit>{x.value}</Txt>
+                        <FitTxt v="kpiValue" align="center" min={0.75}>{x.value}</FitTxt>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                           <Txt v="tSm" numberOfLines={1} align="center" color={x.onPress ? 'brand' : undefined}>{x.label}</Txt>
                           {x.onPress ? <Icon name="chevron-right" size={size.iconSm} tone="brand" /> : null}

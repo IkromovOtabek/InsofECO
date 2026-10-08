@@ -23,7 +23,7 @@ import Animated from 'react-native-reanimated';
 import { ENTER_ITEM, Shimmer, haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
 import { Icon, IconName, IconTone } from './icons';
-import { CHROME_SCALE, FONT, FontWeight, MIN_FONT_SCALE, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, fitRoom, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
+import { CHROME_SCALE, FONT, FontWeight, MIN_FONT_SCALE, ModuleTone, Palette, Tone, TypeVariant, duration, elevation, fitRoom, fitScale, moduleColors, radius, size, space, textRoom, toneColors, type } from './tokens';
 
 // ───────────────────────── Matn ─────────────────────────
 
@@ -60,10 +60,47 @@ export function Txt({ v = 'body', color, mono, align, style, ...p }: TextProps &
 }
 
 /**
- * Bir qatorli xrom yorlig'i (tugma, chip, tab, nishon): bitta qator, sig'masa `MIN_FONT_SCALE`gacha kichrayadi,
- * shrift kattalashtirish `CHROME_SCALE` bilan cheklangan. Qator ichida `flexShrink: 1` bilan birga ishlatiladi.
+ * Bir qatorli xrom yorlig'i (chip, tab, nishon): bitta qator, sig'masa — ellipsis; shrift kattalashtirish
+ * `CHROME_SCALE` bilan cheklangan. Qator ichida `flexShrink: 1` bilan birga ishlatiladi.
+ *
+ * Native `adjustsFontSizeToFit` YO'Q: Fabric'da `minimumFontScale` o'qilmaydi (4 pt gacha kichrayadi), Android esa
+ * kichraygan shriftni qayta kattalashtirmaydi (klaviatura ochilgandan keyin tugma yozuvi maydalanib qolardi).
+ * Kenglikka sig'dirish kerak bo'lsa — `FitTxt` (JS hisob, `MIN_FONT_SCALE` dan pastga tushmaydi).
  */
-export const FIT_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: MIN_FONT_SCALE, maxFontSizeMultiplier: CHROME_SCALE, textBreakStrategy: 'simple' } as const;
+export const FIT_LINE = { numberOfLines: 1, ellipsizeMode: 'tail', maxFontSizeMultiplier: CHROME_SCALE, textBreakStrategy: 'simple' } as const;
+
+/** Tizim shrift masshtabi `max` bilan cheklangan holda (Txt `maxFontSizeMultiplier` bilan bir xil qoida). */
+const effScale = (fontScale: number, max: number) => (fontScale > 1 ? Math.min(fontScale, max) : fontScale || 1);
+
+/**
+ * Kenglikka sig'diriladigan matn — native `adjustsFontSizeToFit` o'rniga (sababi `fitScale` izohida).
+ * O'z kengligini `onLayout` bilan o'lchaydi va shriftni JS da `min`gacha kichraytiradi; kenglik o'zgarsa —
+ * qayta hisoblanadi (kattalashadi ham). Shuning uchun kenglik matnga bog'liq bo'lmasin: ustun ichida
+ * (`alignSelf: 'stretch'` — sukut) yoki qatorda `flex: 1` bilan ishlating.
+ * `text` — o'lchanadigan satr (bolalar oddiy satr bo'lmasa, masalan ichida birlik `Txt`).
+ */
+export function FitTxt({ v = 'body', min = MIN_FONT_SCALE, lines = 1, text, style, onLayout, maxFontSizeMultiplier = 1.4, children, ...p }: React.ComponentProps<typeof Txt> & { min?: number; lines?: number; text?: string }) {
+  const { fontScale } = useWindowDimensions();
+  const [w, setW] = useState(0);
+  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
+  const fs = flat.fontSize ?? type[v].fontSize;
+  const lh = flat.lineHeight ?? type[v].lineHeight ?? Math.round(fs * 1.4);
+  const label = text ?? (typeof children === 'string' || typeof children === 'number' ? String(children) : '');
+  const k = fitScale(label, fs * effScale(fontScale, maxFontSizeMultiplier ?? 1.4), w, min, lines);
+  return (
+    <Txt
+      v={v}
+      {...p}
+      numberOfLines={lines}
+      ellipsizeMode="tail"
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
+      onLayout={(e) => { const nw = Math.round(e.nativeEvent.layout.width); setW((o) => (o === nw ? o : nw)); onLayout?.(e); }}
+      style={[{ alignSelf: 'stretch' }, style, k < 1 ? { fontSize: fs * k, lineHeight: Math.round(lh * k) } : null]}
+    >
+      {children}
+    </Txt>
+  );
+}
 
 /**
  * Konteyner kengligini o'lchaydi va yorliq (taxminiy, shrift masshtabi bilan) + `chrome` (ikonka, padding) sig'masligini aytadi.
@@ -76,6 +113,20 @@ export function useTightFit(text: string, fontSize: number, chrome: number) {
   const onLayout = React.useCallback((e: LayoutChangeEvent) => { const nw = Math.round(e.nativeEvent.layout.width); setW((o) => (o === nw ? o : nw)); }, []);
   return { width: w, textW, tight: w > 0 && textW + chrome > w, onLayout };
 }
+
+/**
+ * Tugma yorlig'i: 2 qatorgacha, markazda, tizim shrifti `CHROME_SCALE` bilan cheklangan — native kichraytirishsiz.
+ * Shrift `labelScale` bilan JS da beriladi; tugma balandligi `minHeight` (2-qatorda o'sadi).
+ */
+export const BUTTON_LABEL = { numberOfLines: 2, ellipsizeMode: 'tail', maxFontSizeMultiplier: CHROME_SCALE, textBreakStrategy: 'simple' } as const;
+
+/** `useTightFit` natijasidan yorliq shrifti nisbati: `room` ga sig'masa `MIN_FONT_SCALE` gacha, undan keyin — 2-qator. */
+export const labelScale = (fit: { width: number; textW: number }, room: number) =>
+  fit.width > 0 && fit.textW > room ? Math.max(MIN_FONT_SCALE, room / fit.textW) : 1;
+
+/** Variant o'lchamini `k` ga ko'paytirilgan uslub (k = 1 — o'zgarishsiz). */
+export const scaledType = (v: TypeVariant, k: number): TextStyle | null =>
+  k < 1 ? { fontSize: type[v].fontSize * k, lineHeight: Math.round(type[v].lineHeight * k) } : null;
 
 // ───────────────────────── Joylashuv ─────────────────────────
 
@@ -184,6 +235,10 @@ export function Button({
   const fit = useTightFit(title, type[txt].fontSize, iconsW + 2 * padX);
   const tight = full && fit.tight;
   const cramped = tight && fit.textW + 2 * padX > fit.width;
+  // Yorliq shrifti JS da hisoblanadi (native adjustsFontSizeToFit Android'da klaviaturadan keyin maydalanib qolardi):
+  // sig'masa `MIN_FONT_SCALE` (0.85) gacha kichrayadi, undan keyin 2-qatorga o'tadi — tugma balandligi o'sadi.
+  const room = fit.width - 2 * (cramped ? space.md : padX) - (tight ? 0 : iconsW);
+  const k = full ? labelScale(fit, room) : 1;
   const lift: ViewStyle | null = off ? null
     : variant === 'primary' ? glow(c.brand)
     : variant === 'danger' ? glow(c.dangerSolid)
@@ -203,7 +258,8 @@ export function Button({
         onLayout={(e) => { fit.onLayout(e); p.onLayout?.(e); }}
         android_ripple={{ color: variant === 'primary' ? c.brandHover : c.bgMuted }}
         style={({ pressed }) => [
-          { height, minHeight: size.touch, minWidth: 0, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: cramped ? space.md : padX, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
+          // Balandlik — eng kami (`minHeight`): yorliq 2-qatorga o'tsa tugma o'sadi, matn qirqilmaydi
+          { minHeight: Math.max(height, size.touch), minWidth: 0, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: bg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingHorizontal: cramped ? space.md : padX, paddingVertical: space.xs, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
           off && { opacity: 0.5 },
           Platform.OS === 'ios' && pressed && { opacity: 0.88 },
           style,
@@ -213,8 +269,10 @@ export function Button({
           <>
             {icon && !tight ? <Icon name={icon} size={iconSize} color={fg} strokeWidth={2} /> : null}
             {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — cheklangan zaxira kenglik;
-                uzun yorliq tugmadan chiqmaydi: qisqaradi (flexShrink) va kichrayadi (adjustsFontSizeToFit) */}
-            <Text style={[type[txt], { color: fg, flexShrink: 1, minWidth: fitRoom(title, type[txt].fontSize) }]} {...FIT_LINE}>{title}</Text>
+                uzun yorliq tugmadan chiqmaydi: qisqaradi (flexShrink), ozgina kichrayadi (k ≥ 0.85) va 2 qatorga o'tadi */}
+            <Text {...BUTTON_LABEL} style={[type[txt], { color: fg, flexShrink: 1, textAlign: 'center', minWidth: fitRoom(title, type[txt].fontSize) }, scaledType(txt, k)]}>
+              {title}
+            </Text>
             {iconRight && !tight ? <Icon name={iconRight} size={iconSize} color={fg} strokeWidth={2} /> : null}
           </>
         )}
@@ -279,6 +337,8 @@ export function Input({ label, error, hint, mono, left, right, required, style, 
         <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: size.input, borderRadius: radius.sm, borderCurve: 'continuous', borderWidth: size.hairline, borderColor: error ? c.danger : focus ? c.brand : c.borderSubtle, backgroundColor: c.bgSurface, paddingHorizontal: space.md + space.xs, gap: space.sm }}>
           {left ? <Icon name={left} tone="muted" /> : null}
           <TextInput
+            // Katta tizim shriftida ham maydon ichida qoladi (Txt bilan bir xil 1.4× chegara)
+            maxFontSizeMultiplier={1.4}
             {...p}
             accessibilityLabel={p.accessibilityLabel ?? label ?? p.placeholder}
             placeholderTextColor={c.textFaint}
@@ -479,7 +539,7 @@ export function ListItem({ title, subtitle, subtitleLines = 2, right, value, bad
   const lg = sz === 'lg';
   const rightCol = value || badge ? (
     <View style={{ alignItems: 'flex-end', gap: space.xs, maxWidth: '45%', flexShrink: 0 }}>
-      {value ? <Txt v="listValue" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{value}</Txt> : null}
+      {value ? <Txt v="listValue" align="right" numberOfLines={2}>{value}</Txt> : null}
       {badge ? <Badge label={badge.text} tone={badge.tone} /> : null}
     </View>
   ) : null;
@@ -552,7 +612,7 @@ export function KPICard({ label, value, caption, icon = 'activity', module: m = 
         )}
         <View style={{ flex: inline ? 1 : undefined, minWidth: 0 }}>
           <Txt v={inline ? 'caption' : 'label'} numberOfLines={1}>{label}</Txt>
-          <Txt v={hero ? 'metricHero' : inline ? 'titleMd' : 'metric'} color={valueColor} numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: inline ? 0 : space.xs }}>{value}</Txt>
+          <FitTxt v={hero ? 'metricHero' : inline ? 'titleMd' : 'metric'} color={valueColor} min={0.7} style={{ marginTop: inline ? 0 : space.xs }}>{value}</FitTxt>
           {inline && delta ? <View style={{ marginTop: space.xs }}><Delta text={delta.text} tone={delta.tone} /></View> : null}
           {caption ? <Txt v="caption" numberOfLines={1} style={{ marginTop: space.xs }}>{caption}</Txt> : null}
         </View>
@@ -629,6 +689,8 @@ export function SearchField({ value, onChangeText, placeholder = i18n.t('ui.sear
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.tight, height: size.search, paddingLeft: space.xl, paddingRight: value ? space.sm : space.xl, borderRadius: radius.pill, borderCurve: 'continuous', backgroundColor: c.bgSurface }, elevation(c).sh1, style]}>
       <Icon name="search" size={size.iconMd} color={c.textFaint} strokeWidth={1.75} />
       <TextInput
+        // Balandligi qat'iy (size.search) — tizim shrifti 1.2× bilan cheklanadi, matn qirqilmaydi
+        maxFontSizeMultiplier={CHROME_SCALE}
         {...p}
         value={value}
         onChangeText={onChangeText}

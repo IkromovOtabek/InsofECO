@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar, StickyPrimary } from '@/design/blocks';
-import { Badge, Card, EmptyState, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Card, EmptyState, FitTxt, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { dialog, Avatar, IconName, Stars, daysLeft, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -93,10 +93,10 @@ export default function WorkOrderScreen() {
                 <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{`Ish №${o.number} · ${o.title}`}</Txt>
                 <Badge label={statusLabel(o.status)} tone={statusTone(o.status)} />
               </View>
-              <Txt v="metric" numberOfLines={1} adjustsFontSizeToFit>
+              <FitTxt v="metric" min={0.7} text={`${fmtNum(Math.round(Number(o.price)))} so'm`}>
                 {fmtNum(Math.round(Number(o.price)))}
                 <Txt v="tSm">{" so'm"}</Txt>
-              </Txt>
+              </FitTxt>
               <Txt v="tSm" numberOfLines={2}>{`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateFull(o.createdAt)}`}</Txt>
             </Card>
 

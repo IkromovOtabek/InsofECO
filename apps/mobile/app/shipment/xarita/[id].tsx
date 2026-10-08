@@ -4,7 +4,7 @@ import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
-import { Button, Card, EmptyState, IconButton, Txt } from '@/design/primitives';
+import { Button, Card, EmptyState, FitTxt, IconButton, Txt } from '@/design/primitives';
 import { dialog } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { Loader } from '@/design/loader';
@@ -172,7 +172,7 @@ function Metric({ label, value, unit, tone }: { label: string; value: string; un
   return (
     <View style={{ flex: 1 }}>
       <Txt v="caption" numberOfLines={1}>{label}</Txt>
-      <Txt v="metric" color={tone === 'brand' ? 'brand' : 'strong'} numberOfLines={1} adjustsFontSizeToFit>{value}</Txt>
+      <FitTxt v="metric" color={tone === 'brand' ? 'brand' : 'strong'} min={0.7}>{value}</FitTxt>
       <Txt v="caption" numberOfLines={1}>{unit}</Txt>
     </View>
   );

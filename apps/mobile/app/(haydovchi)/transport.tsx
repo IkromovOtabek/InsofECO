@@ -2,7 +2,7 @@ import React from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { ProgressCard, Reveal, SkeletonList } from '@/design/blocks';
 import { BigStat } from '@/design/driver';
-import { Badge, Card, EmptyState, IconTile, KVList, Screen, Txt, fmtDateFull, fmtM3, fmtUnit } from '@/design/primitives';
+import { Badge, Card, EmptyState, FitTxt, IconTile, KVList, Screen, Txt, fmtDateFull, fmtM3, fmtUnit } from '@/design/primitives';
 import { daysLeft } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
@@ -34,7 +34,7 @@ export default function MyTransport() {
               <IconTile icon="truck" module="logistics" size={size.driverTouch} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Txt v="overline" numberOfLines={1}>{v.brand ?? v.type}</Txt>
-                <Txt v="titleLg" mono numberOfLines={1} adjustsFontSizeToFit>{v.plateNumber}</Txt>
+                <FitTxt v="titleLg" mono min={0.75}>{v.plateNumber}</FitTxt>
               </View>
               {low ? <Badge label="Yoqilg'i kam" tone="danger" /> : null}
             </Card>,

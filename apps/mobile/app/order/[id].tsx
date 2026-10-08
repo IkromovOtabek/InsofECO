@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { DeliveryStatus } from '@insof/shared';
 import { ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar, StickyPrimary } from '@/design/blocks';
-import { Badge, Button, Callout, Card, EmptyState, Input, KVList, ListItem, Screen, StatusChip, Timeline, Txt, fmtDate, fmtM3, fmtNum, fmtTime, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Button, Callout, Card, EmptyState, FitTxt, Input, KVList, ListItem, Screen, StatusChip, Timeline, Txt, fmtDate, fmtM3, fmtNum, fmtTime, statusLabel, statusTone } from '@/design/primitives';
 import { Sheet, dialog, toast } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { useOrder, useOrderAction } from '@/features/orders/api';
@@ -87,10 +87,10 @@ export default function OrderScreen() {
               <Txt v="overline" numberOfLines={1} style={{ flex: 1 }}>{o.items.map((i) => `${i.gradeSnapshot} · ${fmtM3(i.volumeM3)}`).join(' + ')}</Txt>
               <Badge label={statusLabel(o.status)} tone={statusTone(o.status)} />
             </View>
-            <Txt v="metric" numberOfLines={1} adjustsFontSizeToFit>
+            <FitTxt v="metric" min={0.7} text={`${fmtNum(Math.round(Number(o.totalAmount)))} so'm`}>
               {fmtNum(Math.round(Number(o.totalAmount)))}
               <Txt v="tSm">{" so'm"}</Txt>
-            </Txt>
+            </FitTxt>
             <Txt v="tSm" numberOfLines={2}>{`№${o.number} · ${isPlant ? o.client.name : o.plant.name}`}</Txt>
           </Card>
 
