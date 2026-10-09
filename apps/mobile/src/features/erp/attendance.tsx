@@ -21,8 +21,8 @@ import { scanFace } from '@/features/erp/face-scan';
  *   1) joylashuv ruxsati va yangi GPS nuqta (keshdagi emas); soxta joylashuv, past aniqlik va ish joyidan
  *      uzoqlik shu yerda — kamera ochilmasdan oldin — aytiladi (yakuniy qaror baribir serverda);
  *   2) ilova ichidagi yuz skaneri (`face-scan.tsx`): old kamera, kadr o'zi olinadi (tugma, galereya yo'q);
- *   3) skaner ochiq turganda `POST /api/mobile/attendance/self` — server kadrni profil surati bilan
- *      solishtiradi, geofence/takror/soatni tekshiradi; natija ("Tanildi" / "Tanilmadi") skaner ichida.
+ *   3) skaner ochiq turganda `POST /api/mobile/attendance/self` — server kadrni ERP'dagi Face ID namunasi bilan
+ *      (yo'q bo'lsa profil surati bilan) solishtiradi, geofence/takror/soatni tekshiradi; natija ("Tanildi" / "Tanilmadi") skaner ichida.
  * Bekor qilinsa yoki tanilmasa — hech narsa yozilmaydi, "Qayta urinish" chiqadi.
  */
 

@@ -345,7 +345,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     : 'Tanilmadi';
   const sub = phase === 'align' ? (self ? "Telefonni yuz ro'parasida tuting, yorug' joyda" : 'Kamerani xodimning yuziga qarating')
     : phase === 'scan' ? "Qimirlamang"
-    : phase === 'verify' ? 'Profil surati bilan solishtirilmoqda'
+    : phase === 'verify' ? 'Face ID bilan solishtirilmoqda'
     : msg ?? (phase === 'fail' ? 'Qayta urinib ko\'ring' : '');
 
   return (

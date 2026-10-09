@@ -192,7 +192,7 @@ export interface ErpSelfAttendance {
 }
 export interface ErpSelfMarkBody {
   kind: 'in' | 'out'; lat: number; lng: number; accuracy: number | null;
-  /** Yuz skaneri kadri — `data:image/jpeg;base64,...` (server profil surati bilan solishtiradi). */
+  /** Yuz skaneri kadri — `data:image/jpeg;base64,...` (server ERP'dagi Face ID namunasi bilan, yo'q bo'lsa profil surati bilan solishtiradi). */
   photo: string; deviceId: string; at: string; mocked: boolean;
 }
 export interface ErpSelfMarkResult { ok: true; already: boolean; message: string; attendance: ErpSelfAttendance }
