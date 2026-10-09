@@ -64,6 +64,8 @@ console.log('── Bufer va bo\'laklar');
   b = appendPoints(b, 'A', range(3));
   b = appendPoints(b, 'A', [P(2), P(3)]);
   ok("takror nuqta qo'shilmaydi", b.points.length === 4, b.points.length);
+  const sameAt = appendPoints(b, 'A', [{ ...P(3), lat: 41.5 }, P(4)]);
+  ok("vaqti bir xil (joyi boshqa) nuqta qo'shilmaydi", sameAt.points.length === 5 && sameAt.points[3]!.lat === P(3).lat, sameAt.points.length);
   const c = appendPoints(b, 'B', [P(10)]);
   ok("boshqa reys — eski bufer almashtiriladi (B iziga A tushmaydi)", c.tripId === 'B' && c.points.length === 1, c);
   ok('MAX chegarasi — eng eskisi tashlanadi', appendPoints({ tripId: 'A', points: range(10) }, 'A', range(5, 10), 8).points[0]!.at === P(7).at);

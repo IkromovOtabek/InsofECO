@@ -51,12 +51,14 @@ const keyOf = (p: TrackPoint) => `${p.at}|${p.lat}|${p.lng}`;
 /**
  * Buferga qo'shish. Boshqa reys buferi bo'lsa — almashtiriladi (eski nuqtalar chaqiruvchi
  * avval yuborib bo'lgan bo'ladi). Takror nuqta qo'shilmaydi, eng eskisi `MAX_BUF` dan oshsa tashlanadi.
+ * Vaqti (`at`) bufer ichidagi nuqta bilan bir xil nuqta ham qo'shilmaydi: server izni `(tripId, at)`
+ * bo'yicha saqlaydi va ikkinchisini baribir tashlaydi (`dropped`) — iOS bir fix'ni ikki marta berishi mumkin.
  */
 export function appendPoints(buf: TrackBuffer, tripId: string, pts: TrackPoint[], max = MAX_BUF): TrackBuffer {
   const base = buf.tripId === tripId ? buf.points : [];
-  const seen = new Set(base.map(keyOf));
+  const seen = new Set(base.map((p) => p.at));
   const next = [...base];
-  for (const p of pts) { const k = keyOf(p); if (!seen.has(k)) { seen.add(k); next.push(p); } }
+  for (const p of pts) { if (!seen.has(p.at)) { seen.add(p.at); next.push(p); } }
   return { tripId, points: next.slice(-max) };
 }
 

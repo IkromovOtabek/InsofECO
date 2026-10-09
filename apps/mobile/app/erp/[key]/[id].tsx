@@ -126,7 +126,7 @@ export default function ErpDetail() {
   const inFlight = useRef(false);
   const isDriver = useSession((s) => s.kind === 'erp' && s.erp?.role === 'DRIVER');
   // Reysning yurilgan yo'li (eski serverda yo'q — bo'lim ko'rinmaydi); xarita surilganda sahifa aylanmasin
-  const track = useErpTripTrack(key === 'trips' ? id : null, { live: true });
+  const track = useErpTripTrack(key === 'trips' ? id : null);
   const mapLock = useMapScrollLock();
 
   // Demo sarlavhasi (orqaga · raqam · ko'proq) ekranning o'zida — navigator sarlavhasi yashiriladi

@@ -17,6 +17,11 @@ import { FeedGroup, FeedItem, NotificationFeed } from '@/screens/NotificationsLi
 const VISUAL: Record<string, { icon: IconName; module?: ModuleTone; tone?: Tone; group?: FeedGroup }> = {
   TRIP_ASSIGNED: { icon: 'truck', module: 'logistics', group: 'trips' },
   TRIP_DELIVERED: { icon: 'flag', module: 'logistics', group: 'trips' },
+  // GPS kuzatuvi (ERP `lib/mobile/track.ts` → obyektdan 300 m ichida; `lib/gps-watch.ts` → `TRIP_${kind}`)
+  TRIP_ARRIVED: { icon: 'map-pin', tone: 'success', group: 'trips' },
+  TRIP_SILENT: { icon: 'wifi-off', tone: 'danger', group: 'trips' },
+  TRIP_STOP: { icon: 'hourglass', tone: 'warning', group: 'trips' },
+  TRIP_OFF_ROUTE: { icon: 'route', tone: 'danger', group: 'trips' },
   ORDER_CONFIRMED: { icon: 'file-text' },
   ORDER_DELIVERED: { icon: 'check-check', tone: 'success' },
   ORDER_BLOCKED: { icon: 'lock', tone: 'danger' },

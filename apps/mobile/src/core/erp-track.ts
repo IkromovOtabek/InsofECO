@@ -201,12 +201,13 @@ export function useErpHeartbeat() {
  * 15 soniyada bir oladi va 30 soniyada bir yuboradi. Yubormasdan tursak, obyektga endigina
  * yetib kelgan haydovchiga "hali uzoqdasiz" deb javob berilardi.
  */
-export async function pushErpFix(p: { lat: number; lng: number; speedKmh?: number; at?: number; accuracyM?: number | null }) {
+export async function pushErpFix(p: { lat: number; lng: number; speedKmh?: number | null; heading?: number | null; at?: number; accuracyM?: number | null }) {
   const tripId = kv.getString(ACTIVE);
   if (!tripId) return;
+  // Noma'lum tezlik/yo'nalish (null, iOS -1) `toTrackPoint` da maydonsiz qoladi; aniqlik serverga `accuracy` nomi bilan ketadi
   const pt = toTrackPoint({
     timestamp: p.at ?? Date.now(),
-    coords: { latitude: p.lat, longitude: p.lng, speed: p.speedKmh != null ? p.speedKmh / 3.6 : null, accuracy: p.accuracyM ?? null },
+    coords: { latitude: p.lat, longitude: p.lng, speed: p.speedKmh != null ? p.speedKmh / 3.6 : null, heading: p.heading ?? null, accuracy: p.accuracyM ?? null },
   });
   if (pt) writeBuf(appendPoints(readBuf(), tripId, [pt]));
   await flushErpGps();
@@ -229,7 +230,7 @@ export async function refreshErpPosition(tripId: string): Promise<boolean> {
     if (!l) return false;
     // Kuzatuv to'xtagan bo'lsa ham nuqta ketishi kerak — buferni shu reysga bog'laymiz
     if (!kv.getString(ACTIVE)) kv.set(ACTIVE, tripId);
-    await pushErpFix({ lat: l.coords.latitude, lng: l.coords.longitude, at: l.timestamp, accuracyM: l.coords.accuracy });
+    await pushErpFix({ lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: l.coords.speed != null && l.coords.speed >= 0 ? l.coords.speed * 3.6 : null, heading: l.coords.heading, at: l.timestamp, accuracyM: l.coords.accuracy });
     return true;
   } catch {
     return false;

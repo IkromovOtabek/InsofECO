@@ -108,8 +108,9 @@ type Filter = 'all' | 'road' | 'loaded' | 'planned' | 'issue';
 const toneOf = (t: ErpFleetItem): Tone =>
   t.openIssues ? 'danger' : t.status === 'ON_ROAD' ? 'brand' : t.status === 'LOADED' ? 'warning' : t.status === 'PLANNED' ? 'info' : (t.tone ?? 'brand');
 
+/** "Muammo" filtri: ochiq muammo YOKI avtomatik GPS ogohlantirishi (jim, uzoq turibdi, yo'ldan chiqdi). */
 const groupOf = (t: ErpFleetItem): Exclude<Filter, 'all'> =>
-  t.openIssues ? 'issue' : t.status === 'LOADED' ? 'loaded' : t.status === 'PLANNED' ? 'planned' : 'road';
+  t.openIssues || alertsOf(t).length ? 'issue' : t.status === 'LOADED' ? 'loaded' : t.status === 'PLANNED' ? 'planned' : 'road';
 
 const LEGEND: { tone: Tone; label: string }[] = [
   { tone: 'brand', label: "Yo'lda" }, { tone: 'warning', label: 'Yuklangan' }, { tone: 'info', label: 'Kutilmoqda' }, { tone: 'danger', label: 'Muammo' },

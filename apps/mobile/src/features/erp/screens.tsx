@@ -538,6 +538,24 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
 
 // ───────────────────────── Yo'ldagi mashinalar ─────────────────────────
 
+/** Eski server `live[].stale` bermaydi — shunda oxirgi nuqta (`at`) shundan eski bo'lsa belgi kulrang. */
+const LIVE_STALE_MS = 10 * 60_000;
+/** Shundan sekin — turibdi: yo'nalish o'qi va tezlik yozuvi yo'q (`fleet.tsx` bilan bir xil). */
+const LIVE_HEADING_MIN_KMH = 3;
+/** Eskirganmi: server `stale` (fleet bilan bir xil `gpsSilentMin` chegarasi), bo'lmasa mijoz 10 daqiqa chegarasi. */
+const liveStale = (t: ErpLiveTruck, now: number) => (typeof t.stale === 'boolean' ? t.stale : !!t.at && now - Date.parse(t.at) > LIVE_STALE_MS);
+/** " · 34 km/soat" yoki " · GPS 12 daq oldin" (eski server `at` bermasa — bo'sh). */
+function liveGpsNote(t: ErpLiveTruck, now: number): string {
+  if (!t.at) return '';
+  if (liveStale(t, now)) {
+    const seen = t.lastSeenAt && Number.isFinite(Date.parse(t.lastSeenAt)) ? t.lastSeenAt : t.at;
+    const m = Math.max(0, Math.round((now - Date.parse(seen)) / 60_000));
+    return ` · GPS ${m < 60 ? `${m} daq` : `${Math.floor(m / 60)} soat`} oldin`;
+  }
+  if (t.speedKmh == null) return '';
+  return t.speedKmh < LIVE_HEADING_MIN_KMH ? ' · turibdi' : ` · ${Math.round(t.speedKmh)} km/soat`;
+}
+
 /**
  * Bosh ekrandagi jonli xarita: haydovchi qayerda va reys boshidan beri necha km yurdi.
  * Ma'lumot ERP'dan keladi (`/api/mobile/home` → `live`), ruxsat ham o'sha yerda hal bo'ladi —
@@ -546,6 +564,7 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
 function LiveTrucks({ trucks, onMap, onTouchLock }: { trucks: ErpLiveTruck[]; onMap?: () => void; onTouchLock?: (locked: boolean) => void }) {
   const { c } = useTheme();
   const router = useRouter();
+  const now = Date.now();
 
   // Barcha mashinani qamrab oladigan ko'rinish; bittada ham chetda qolmasin deb chekka + zaxira
   const lats = trucks.map((t) => t.lat), lngs = trucks.map((t) => t.lng);
@@ -566,14 +585,20 @@ function LiveTrucks({ trucks, onMap, onTouchLock }: { trucks: ErpLiveTruck[]; on
         {/* Surish va ikki barmoq bilan yaqinlashtirish ishlaydi; barmoq xaritada turganda sahifa
             aylanmaydi (`useMapScrollLock`). Mashina bosilsa — reys kartochkasi */}
         <MapView style={{ flex: 1 }} initialRegion={region} rotateEnabled={false} pitchEnabled={false} zoomControls onTouchLock={onTouchLock}>
-          {trucks.map((t) => (
-            <DriverMarker
-              key={t.ref}
-              coordinate={{ latitude: t.lat, longitude: t.lng }}
-              status="moving"
-              onPress={t.tripId ? () => router.push(`/erp/trips/${t.tripId}` as never) : undefined}
-            />
-          ))}
+          {trucks.map((t) => {
+            const stale = liveStale(t, now);
+            const moving = !stale && t.speedKmh != null && t.speedKmh >= LIVE_HEADING_MIN_KMH;
+            return (
+              <DriverMarker
+                key={t.ref}
+                coordinate={{ latitude: t.lat, longitude: t.lng }}
+                status={stale ? 'offline' : 'moving'}
+                heading={moving && t.heading != null ? t.heading : null}
+                caption={moving ? `${Math.round(t.speedKmh!)} km/soat` : null}
+                onPress={t.tripId ? () => router.push(`/erp/trips/${t.tripId}` as never) : undefined}
+              />
+            );
+          })}
         </MapView>
       </View>
       )}
@@ -586,7 +611,7 @@ function LiveTrucks({ trucks, onMap, onTouchLock }: { trucks: ErpLiveTruck[]; on
               icon="truck"
               module="logistics"
               title={`${t.plate} · ${t.driver}`}
-              subtitle={`${t.customer} · ${t.status}${t.etaMin != null ? ` · ~${t.etaMin} daq` : ''}`}
+              subtitle={`${t.customer} · ${t.status}${t.etaMin != null ? ` · ~${t.etaMin} daq` : ''}${liveGpsNote(t, now)}`}
               right={<Txt v="bodyStrong" numberOfLines={1} style={{ flexShrink: 0, minWidth: textRoom(km, typeScale.bodyStrong.fontSize) }}>{km}</Txt>}
               last={i === trucks.length - 1}
               onPress={t.tripId ? () => router.push(`/erp/trips/${t.tripId}` as never) : undefined}

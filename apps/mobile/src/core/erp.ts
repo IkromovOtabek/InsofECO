@@ -121,6 +121,46 @@ export interface ErpTripRoute {
   /** "Yetkazdim" so'raydigan maydonlar — kartochkadagi bilan bitta ro'yxat (serverdan). */
   deliverForm: ErpFormField[];
 }
+/**
+ * Reysning bosib o'tilgan yo'li — `GET /api/mobile/trip-track?id=` (ERP `src/lib/mobile/trip-track.ts`).
+ * Ruxsat: o'z reysi haydovchisi va direktor/logistika/mexanik. Chiziq soddalashtirilgan (`line` yoki `polyline`).
+ */
+export interface ErpTripTrack {
+  tripId: string;
+  ref: string;
+  /** Xom holat: PLANNED | LOADED | ON_ROAD | DELIVERED | CANCELLED. */
+  status: string;
+  /** true — reys yakunlangan (yetkazilgan/bekor), raqamlar endi o'zgarmaydi. */
+  final: boolean;
+  /**
+   * Yangi ERP: reys boshi (yo'lga chiqdi ?? yuklandi ?? birinchi nuqta) va oxiri (yetkazildi; yo'lda — null),
+   * ECO shipment track bilan bir xil. Eski server bermaydi — `trackSpan` `last.at − totalSec` ga qaytadi.
+   */
+  startedAt?: string | null;
+  endedAt?: string | null;
+  /** `startedAt` dan `endedAt` gacha (yo'lda — hozirgacha), daqiqa. */
+  durationMinutes?: number | null;
+  distanceKm: number;
+  meters: number;
+  /** Birinchi nuqtadan oxirgisigacha, soniya. */
+  totalSec: number;
+  /** Harakatda, soniya (turish va aloqa uzilishlari chiqarilgan). */
+  movingSec: number;
+  avgSpeedKmh: number | null;
+  maxSpeedKmh: number | null;
+  /** Serverdagi xom nuqtalar soni. */
+  points: number;
+  line: ErpLatLng[];
+  polyline: string;
+  /** Oxirgi nuqta (Trip ustunlaridan) — logistika xaritasida mashina shu yerda. */
+  last: { lat: number; lng: number; at: string; speedKmh: number | null; heading: number | null } | null;
+  /** Telefondan oxirgi aloqa (nuqta yoki "tirikman"). */
+  lastSeenAt: string | null;
+  /** Saqlangan rejadagi yo'l (faqat haqiqiy yo'l xizmati qurgani). */
+  planned: { line: ErpLatLng[]; polyline: string; km: number | null; min: number | null } | null;
+  arrivedAt: string | null;
+  deliveredAt: string | null;
+}
 /** `receipt` — pul hujjati (kirim-chiqim, to'lov, schyot, xarid): sarlavha va maydonlar o'rniga chek kartasi chiziladi. */
 export interface ErpDetailData { key: string; id: string; title: string; subtitle?: string; status?: string; fields: ErpField[]; sections: ErpSection[]; actions: ErpAction[]; receipt?: Receipt }
 /** Ilovadagi bildirishnoma. `link` — bosilganda ochiladigan kartochka. */
@@ -148,6 +188,13 @@ export interface ErpLiveTruck {
   status: string;
   km: number;
   etaMin: number | null;
+  /** Yangi ERP: oxirgi nuqtaning haqiqiy vaqti (ISO), tezligi (km/soat) va yo'nalishi (gradus). */
+  at?: string;
+  speedKmh?: number | null;
+  heading?: number | null;
+  /** Yangi ERP: GPS eskirgan (oxirgi aloqa `gpsSilentMin` dan eski — fleet bilan bir xil) va oxirgi aloqa vaqti. */
+  stale?: boolean;
+  lastSeenAt?: string | null;
 }
 /**
  * Logistika xaritasidagi reys — barcha faol reyslar, GPS'i yo'qlari ham (`gps: null`).
