@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * ERP GPS izi tekshiruvi — `src/core/erp-track-logic.ts` (bufer, filtr, stop) va `src/core/polyline.ts`.
+ * ERP GPS izi tekshiruvi — `src/core/erp-track-logic.ts` (bufer, filtr, stop), `src/core/polyline.ts` va
+ * reyslar yakuni (`src/features/erp/trip-summary-logic.ts`, `trip-track/summary`).
  *
  *   node scripts/erp-track-check.mts   (yarn workspace @insof/mobile test)
  */
@@ -9,6 +10,7 @@ import {
   type TrackBuffer, type TrackPoint,
 } from '../src/core/erp-track-logic.ts';
 import { decodePolyline } from '../src/core/polyline.ts';
+import { SUMMARY_MAX_IDS, allFinal, chunkIds, parseSummaryItems, summaryHasTrack } from '../src/features/erp/trip-summary-logic.ts';
 
 let fail = 0;
 const ok = (name: string, cond: boolean, info?: unknown) => {
@@ -171,6 +173,21 @@ console.log('── Yuborish sikli (runFlush)');
     await runFlush(d);
     ok('403/404 stop — xuddi shunday tozalanadi', st.buf.points.length === 0 && st.active === null);
   }
+}
+
+console.log('── Reyslar yakuni (trip-track/summary)');
+{
+  const ids = Array.from({ length: 230 }, (_, i) => `t${i}`);
+  const parts = chunkIds([...ids, 't0', '', 't5']);
+  ok(`230 ta id → 3 bo'lak (≤ ${SUMMARY_MAX_IDS}), takror/bo'sh tashlandi`, parts.length === 3 && parts[0]!.length === 100 && parts[2]!.length === 30 && parts.flat().length === 230, parts.map((p) => p.length));
+  ok("bo'sh ro'yxat — so'rov yo'q", chunkIds([]).length === 0);
+  const good = { distanceKm: 12.4, totalSec: 4500, movingSec: 3900, avgSpeedKmh: 11.4, maxSpeedKmh: 72, final: true, status: 'DELIVERED' };
+  const open = { ...good, distanceKm: 0, totalSec: 0, movingSec: 0, avgSpeedKmh: null, maxSpeedKmh: null, final: false, status: 'ON_ROAD' };
+  const items = parseSummaryItems({ items: { a: good, b: open, c: { distanceKm: '1' }, d: null } });
+  ok('yaroqli elementlar olinadi, buzuqlari tashlanadi', !!items && Object.keys(items).join() === 'a,b', items);
+  ok('eski/boshqa javob shakli → null', parseSummaryItems({ tripId: 'x', meters: 1 }) === null && parseSummaryItems(null) === null && parseSummaryItems({ items: [] }) === null);
+  ok("iz bor/yo'q: 12.4 km — bor, 0 — yo'q, undefined — yo'q", summaryHasTrack(items?.a) && !summaryHasTrack(items?.b) && !summaryHasTrack(undefined));
+  ok("allFinal: ochiq reys bo'lsa false, javobda yo'q id hisobga olinmaydi", !allFinal(items, ['a', 'b']) && allFinal(items, ['a', 'zz']) && !allFinal(null, ['a']));
 }
 
 console.log(fail ? `\n${fail} ta tekshiruv o'tmadi` : '\nHammasi joyida');
