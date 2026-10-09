@@ -249,7 +249,9 @@ export default function ErpDetail() {
           allowFlip: true,
           verify: async (photo) => {
             try {
-              const res = await run.mutateAsync({ action: a.id, id: id!, payload: { photo } });
+              // Bir martalik challenge (eski ERP serverida yo'q bo'lsa — nonce'siz)
+              const nonce = await erpAuth.faceNonce();
+              const res = await run.mutateAsync({ action: a.id, id: id!, payload: { photo, ...(nonce ? { nonce } : {}) } });
               message = res?.message ?? null;
               return { ok: true, message: message ?? undefined };
             } catch (e) {

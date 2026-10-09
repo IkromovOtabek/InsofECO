@@ -74,9 +74,12 @@ function useSelfMark() {
         facing: 'front',
         verify: async (photo) => {
           try {
+            // Bir martalik challenge — eski ERP serverida yo'q bo'lsa nonce'siz yuboriladi
+            const nonce = await erpAuth.faceNonce();
             done = await erpAuth.markSelf({
               kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, photo,
               deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
+              ...(nonce ? { nonce } : {}),
             });
             return { ok: true, message: done.message };
           } catch (e) {
