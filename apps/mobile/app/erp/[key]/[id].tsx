@@ -22,6 +22,7 @@ import { useHeaderRaise } from '@/design/motion';
 import { TripTrackSection, hasTrack, useErpTripTrack } from '@/features/erp/trip-track';
 import { useMapScrollLock } from '@/core/map';
 import { scanFace } from '@/features/erp/face-scan';
+import { facePayload } from '@/core/face-liveness';
 import i18n from '@/core/i18n';
 
 /**
@@ -252,11 +253,11 @@ export default function ErpDetail() {
           title: data?.title ?? 'Yuz skaneri',
           facing: 'back', // rahbar xodimning yuzini skanerlaydi — orqa kamera; o'zi uchun almashtirsa bo'ladi
           allowFlip: true,
-          verify: async (photo) => {
+          // Bir martalik challenge va jonlilik topshirig'i (eski ERP'da yo'q — nonce'siz, bitta kadr)
+          challenge: erpAuth.faceChallenge,
+          verify: async (shot) => {
             try {
-              // Bir martalik challenge (eski ERP serverida yo'q bo'lsa — nonce'siz)
-              const nonce = await erpAuth.faceNonce();
-              const res = await run.mutateAsync({ action: a.id, id: id!, payload: { photo, ...(nonce ? { nonce } : {}) } });
+              const res = await run.mutateAsync({ action: a.id, id: id!, payload: facePayload(shot) });
               message = res?.message ?? null;
               return { ok: true, message: message ?? undefined };
             } catch (e) {

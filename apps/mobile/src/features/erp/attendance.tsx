@@ -13,6 +13,7 @@ import { ApiException, deviceId } from '@/core/api';
 import { currentFix, ensureForegroundLocation, metersBetween } from '@/core/location';
 import { erpAuth, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance, type ErpSelfMarkResult } from '@/core/erp';
 import { scanFace } from '@/features/erp/face-scan';
+import { facePayload } from '@/core/face-liveness';
 
 /**
  * Xodimning o'z davomati — bosh sahifadagi "Keldim / Ketdim" kartasi va "Mening davomatim" ekrani.
@@ -72,14 +73,13 @@ function useSelfMark() {
       const scan = await scanFace({
         title: kind === 'in' ? 'Keldim — yuz skaneri' : 'Ketdim — yuz skaneri',
         facing: 'front',
-        verify: async (photo) => {
+        // Bir martalik challenge va jonlilik topshirig'i (skaner kadrdan oldin oladi) — eski ERP'da yo'q: nonce'siz, bitta kadr
+        challenge: erpAuth.faceChallenge,
+        verify: async (shot) => {
           try {
-            // Bir martalik challenge — eski ERP serverida yo'q bo'lsa nonce'siz yuboriladi
-            const nonce = await erpAuth.faceNonce();
             done = await erpAuth.markSelf({
-              kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, photo,
+              kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, ...facePayload(shot),
               deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
-              ...(nonce ? { nonce } : {}),
             });
             return { ok: true, message: done.message };
           } catch (e) {
