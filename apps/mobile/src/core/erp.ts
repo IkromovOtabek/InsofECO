@@ -1,6 +1,7 @@
 import { config } from './config';
 import { KEYS, secure } from './storage';
 import { ApiException, deviceId, fetchWithTimeout, parseJsonSafe, refreshRejected } from './api';
+import { type FaceChallenge, parseChallenge } from './face-liveness';
 import type { ApiError } from '@insof/shared';
 import { useSession } from './session';
 import { appHeaders, checkUpdateRequired } from './app-update';
@@ -198,8 +199,11 @@ export interface ErpSelfAttendance {
 export interface ErpSelfMarkBody {
   kind: 'in' | 'out'; lat: number; lng: number; accuracy: number | null;
   /** Yuz skaneri kadri — `data:image/jpeg;base64,...` (server ERP'dagi Face ID namunasi bilan, yo'q bo'lsa profil surati bilan solishtiradi). */
-  photo: string; deviceId: string; at: string; mocked: boolean;
-  /** Bir martalik challenge (`erpAuth.faceNonce`) — eski ERP serverida yo'q, u holda yuborilmaydi. */
+  photo?: string;
+  /** Jonlilik ketma-ketligi (challenge topshirig'i bo'lsa): 3 kadr — [0] topshiriqdan oldin, [1]–[2] topshiriq paytida. */
+  frames?: string[];
+  deviceId: string; at: string; mocked: boolean;
+  /** Bir martalik challenge (`erpAuth.faceChallenge`) — eski ERP serverida yo'q, u holda yuborilmaydi. */
   nonce?: string;
 }
 export interface ErpSelfMarkResult { ok: true; already: boolean; message: string; attendance: ErpSelfAttendance }
@@ -322,17 +326,17 @@ export const erpAuth = {
   /** "Keldim" / "Ketdim" — GPS va ilova ichidagi yuz skaneridan keyin. Geofence va takror tekshiruvi serverda. */
   markSelf: (body: ErpSelfMarkBody) => erpApi<ErpSelfMarkResult>('/attendance/self', { method: 'POST', body }),
   /**
-   * Yuz skaneri uchun bir martalik challenge (ERP `GET /api/mobile/attendance/challenge`: 2 daqiqa, bir marta ishlatiladi).
-   * Kadr bilan birga `nonce` qilib yuboriladi ("Keldim/Ketdim" va rahbarning `att.face`) — tutib olingan so'rovni qayta
-   * yuborib bo'lmaydi. Eski ERP serverida endpoint yo'q (404) yoki boshqa xato — `undefined`: so'rov nonce'siz ketadi
-   * (server nonce'ni majburiy qilmagan bo'lsa qabul qiladi).
+   * Yuz skaneri uchun bir martalik challenge (ERP `GET /api/mobile/attendance/challenge`: 2 daqiqa, bir marta ishlatiladi)
+   * va jonlilik topshirig'i (`task`, yangi ERP). Nonce kadr bilan birga yuboriladi ("Keldim/Ketdim" va rahbarning
+   * `att.face`) — tutib olingan so'rovni qayta yuborib bo'lmaydi; topshiriq bo'lsa skaner 3 kadr oladi (`frames`).
+   * Eski ERP serverida endpoint yo'q (404) yoki boshqa xato — `{}`: so'rov nonce'siz, bitta kadr bilan ketadi
+   * (server nonce/jonlilikni majburiy qilmagan bo'lsa qabul qiladi).
    */
-  faceNonce: async (): Promise<string | undefined> => {
+  faceChallenge: async (): Promise<FaceChallenge> => {
     try {
-      const r = await erpApi<{ nonce?: unknown }>('/attendance/challenge');
-      return typeof r?.nonce === 'string' && r.nonce ? r.nonce : undefined;
+      return parseChallenge(await erpApi<unknown>('/attendance/challenge'));
     } catch {
-      return undefined;
+      return {};
     }
   },
 };

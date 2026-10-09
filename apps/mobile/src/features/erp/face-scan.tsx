@@ -10,6 +10,7 @@ import { StatusMark } from '@/design/success';
 import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
 import { DUR, EASE_LOOP, haptic, useReducedMotion } from '@/design/motion';
+import { MAX_FRAME_B64, STEP1_MS, STEP2_MS, TASK_SETTLE_MS, type FaceChallenge, type FaceTask, taskLine } from '@/core/face-liveness';
 
 /**
  * Ilova ichidagi yuz skaneri — davomat uchun ("Keldim / Ketdim" va rahbarning "Keldi — yuz skaneri").
@@ -23,12 +24,20 @@ import { DUR, EASE_LOOP, haptic, useReducedMotion } from '@/design/motion';
  * `verify` berilsa skaner server javobini kutib turadi va natijani o'zida ko'rsatadi: "Tanildi" (0,9 s dan
  * keyin yopiladi) yoki "Tanilmadi" + "Qayta urinish" / "Yopish".
  *
+ * Jonlilik (yangi ERP): `challenge` berilsa skaner avval ERP'dan bir martalik nonce va topshiriq oladi
+ * (`core/face-liveness.ts`), topshiriqni katta matn va ikonka bilan ko'rsatadi va 3 kadr oladi: [0] — to'g'ri qarab,
+ * [1] — "Boshingizni chapga buring" (yoki "Ko'zingizni yuming") dan ~0,7 s keyin, [2] — "Kameraga qarang" dan keyin.
+ * Kadrlar `verify` ga `frames` qilib beriladi. Topshiriq kelmasa (eski ERP) — eskicha bitta kadr. Har "Qayta urinish"
+ * yangi challenge oladi (nonce bir martalik). Yangi native modul yo'q — o'sha expo-camera `takePictureAsync`.
+ *
  * Native modul (expo-camera) eski build'da yo'q bo'lishi mumkin (OTA yangi JS'ni eski ilovaga olib keladi) —
  * kech yuklanadi va yo'q bo'lsa "Ilovaning yangi versiyasi kerak" deyiladi.
  */
 
 export type FaceScanResult = { ok: true; photo: string } | { ok: false; message: string };
 export type FaceVerifyResult = { ok: true; message?: string } | { ok: false; message: string };
+/** Olingan kadr(lar): `photo` — asosiy (birinchi) kadr; `frames` — jonlilik ketma-ketligi (topshiriq bo'lsa); `nonce` — challenge. */
+export interface FaceShot { photo: string; frames?: string[]; nonce?: string }
 export interface FaceScanOptions {
   /** Yuqoridagi sarlavha. */
   title?: string;
@@ -37,7 +46,9 @@ export interface FaceScanOptions {
   /** Old/orqa kamerani almashtirish tugmasi. */
   allowFlip?: boolean;
   /** Kadrni tekshirish (server). Berilmasa kadr olinishi bilan skaner yopiladi. */
-  verify?: (photo: string) => Promise<FaceVerifyResult>;
+  verify?: (shot: FaceShot) => Promise<FaceVerifyResult>;
+  /** Har urinish oldidan challenge (nonce + topshiriq) — `erpAuth.faceChallenge`. Berilmasa — topshiriqsiz bitta kadr. */
+  challenge?: () => Promise<FaceChallenge>;
 }
 
 type CameraModule = typeof import('expo-camera');
@@ -178,6 +189,8 @@ const OK_HOLD_MS = 900;
 const VERIFY_TIMEOUT_MS = 20_000;
 /** Kadr o'lchami: yuzni solishtirishga ~640 px yetadi; 12 MP kadr base64'da chegaradan oshadi. */
 const MIN_SIDE_PX = 640;
+const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
+class ShotError extends Error {}
 
 /**
  * `getAvailablePictureSizesAsync` ro'yxatidan ("1920x1080", iOS'da yana "Photo"/"Medium" kabi presetlar)
@@ -211,6 +224,10 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const [phase, setPhase] = useState<Phase>('align');
   const [msg, setMsg] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Jonlilik: joriy urinishning topshirig'i, challenge yuklanmoqdami va kadrlar orasidagi ko'rsatma
+  const [task, setTask] = useState<FaceTask | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [step, setStep] = useState<string | null>(null);
   // Kamera ochilmasa (onMountError) "Qayta urinish" CameraView'ni qaytadan yaratadi (key orqali)
   const [mount, setMount] = useState(0);
   const mountFailed = useRef(false);
@@ -230,28 +247,55 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
   const fail = (m: string) => { setMsg(m); setPhase('fail'); haptic.error(); };
 
-  const capture = async () => {
+  /**
+   * Bitta kadr (data-URL). Hajm chegarasi: topshiriqli ketma-ketlikda har kadr `MAX_FRAME_B64` (3 tasi birga yuboriladi),
+   * bitta kadrda `MAX_B64`; oshsa past sifat bilan bir marta qayta olinadi.
+   */
+  const shoot = async (multi: boolean): Promise<string> => {
+    const limit = multi ? MAX_FRAME_B64 : MAX_B64;
+    const shot = (quality: number) => ref.current!.takePictureAsync({ quality, base64: true, skipProcessing: false, shutterSound: false, imageType: 'jpg', exif: false });
+    let pic = await shot(multi ? 0.4 : 0.5);
+    if (pic?.base64 && pic.base64.length > limit) { dropFile(pic.uri); pic = await shot(multi ? 0.25 : 0.3); }
+    dropFile(pic?.uri);
+    if (!pic?.base64) throw new ShotError("Kadr olinmadi — qayta urining.");
+    if (pic.base64.length > limit) throw new ShotError("Kadr hajmi juda katta — qayta urinib ko'ring.");
+    return `data:image/jpeg;base64,${pic.base64}`;
+  };
+
+  const capture = async (ch: FaceChallenge | null) => {
     if (busy.current || !ref.current) return;
     busy.current = true;
     setPhase('scan');
+    setStep(null);
     try {
-      const shot = (quality: number) => ref.current!.takePictureAsync({ quality, base64: true, skipProcessing: false, shutterSound: false, imageType: 'jpg', exif: false });
-      let pic = await shot(0.5);
-      if (pic?.base64 && pic.base64.length > MAX_B64) { dropFile(pic.uri); pic = await shot(0.3); }
-      dropFile(pic?.uri);
+      const t = ch?.task ?? null;
+      const photo = await shoot(!!t);
+      let frames: string[] | undefined;
+      if (t) {
+        // Topshiriq: [1] — ko'rsatmadan ~0,7 s keyin (bosh burilgan / ko'z yumuq), [2] — "Kameraga qarang" dan keyin
+        setStep(t.steps[0]);
+        haptic.light();
+        await sleep(STEP1_MS);
+        if (!alive.current || !ref.current) return;
+        const f1 = await shoot(true);
+        setStep(t.steps[1]);
+        await sleep(STEP2_MS);
+        if (!alive.current || !ref.current) return;
+        const f2 = await shoot(true);
+        setStep(null);
+        frames = [photo, f1, f2];
+      }
       if (!alive.current) return;
-      if (!pic?.base64) { fail("Kadr olinmadi — qayta urining."); return; }
-      if (pic.base64.length > MAX_B64) { fail("Kadr hajmi juda katta — qayta urinib ko'ring."); return; }
-      const photo = `data:image/jpeg;base64,${pic.base64}`;
+      const shotData: FaceShot = { photo, frames, nonce: ch?.nonce };
       if (!req.opts.verify) { haptic.success(); finish(req.id, { ok: true, photo }); return; }
       setPhase('verify');
       let v: FaceVerifyResult;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const timeout = new Promise<FaceVerifyResult>((res) => {
-        timer = setTimeout(() => res({ ok: false, message: "Server javob bermadi — qayta urinib ko'ring" }), VERIFY_TIMEOUT_MS);
+        timer = setTimeout(() => res({ ok: false, message: "Server javob bermadi — qayta urinib ko'ring" }), frames ? VERIFY_TIMEOUT_MS + 10_000 : VERIFY_TIMEOUT_MS);
       });
       try {
-        v = await Promise.race([req.opts.verify(photo), timeout]);
+        v = await Promise.race([req.opts.verify(shotData), timeout]);
       } catch {
         v = { ok: false, message: "Tekshirib bo'lmadi — internetni tekshirib qayta urining." };
       } finally {
@@ -263,20 +307,38 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       setPhase('ok');
       haptic.success();
       setTimeout(() => finish(req.id, { ok: true, photo }), OK_HOLD_MS);
-    } catch {
-      if (alive.current) fail("Kamera kadr bermadi — qayta urining.");
+    } catch (e) {
+      if (alive.current) fail(e instanceof ShotError ? e.message : "Kamera kadr bermadi — qayta urining.");
     } finally {
       busy.current = false;
+      if (alive.current) setStep(null);
     }
   };
 
-  // Kamera tayyor → "Yuzingizni ramkaga joylang" → "Skanerlanmoqda…" → kadr (o'zi, tugmasiz)
+  // Kamera tayyor → (challenge: nonce + topshiriq) → "Yuzingizni ramkaga joylang" / topshiriq → kadr(lar) (o'zi, tugmasiz)
   useEffect(() => {
     if (!ready) return;
+    let off = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     setPhase('align');
-    const t1 = setTimeout(() => { if (!busy.current) setPhase('scan'); }, SETTLE_MS / 2);
-    const t2 = setTimeout(() => void capture(), SETTLE_MS);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    setTask(null);
+    setStep(null);
+    void (async () => {
+      let ch: FaceChallenge | null = null;
+      if (req.opts.challenge) {
+        setPreparing(true);
+        try { ch = await req.opts.challenge(); } catch { ch = {}; }
+        if (off) return;
+        setPreparing(false);
+      }
+      const t = ch?.task ?? null;
+      setTask(t);
+      const settle = t ? TASK_SETTLE_MS : SETTLE_MS;
+      // Topshiriqsiz: yarmida "Skanerlanmoqda…"; topshiriqda esa matn kadrgacha ko'rinib turadi
+      if (!t) timers.push(setTimeout(() => { if (!busy.current) setPhase('scan'); }, settle / 2));
+      timers.push(setTimeout(() => void capture(ch), settle));
+    })();
+    return () => { off = true; timers.forEach(clearTimeout); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, attempt, facing]);
 
@@ -338,12 +400,20 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     strokeOpacity: working ? 0.7 * (1 - pulse.value) : 0,
   }));
 
-  const head = phase === 'align' ? (self ? 'Yuzingizni ramkaga joylang' : 'Yuzni ramkaga joylang')
+  // Topshiriq paytida sarlavha — katta ko'rsatma ("Boshingizni chapga buring"), ikonka bilan
+  const showTask = !!task && (phase === 'align' || phase === 'scan');
+  const taskIcon = task && (phase === 'align' || step === task.steps[0]) ? task.icon : null;
+  const head = phase === 'align' && preparing ? 'Tayyorlanmoqda…'
+    : phase === 'align' && task ? taskLine(task, self)
+    : phase === 'scan' && task ? (step ?? 'Kameraga qarang')
+    : phase === 'align' ? (self ? 'Yuzingizni ramkaga joylang' : 'Yuzni ramkaga joylang')
     : phase === 'scan' ? 'Skanerlanmoqda…'
     : phase === 'verify' ? 'Tekshirilmoqda…'
     : phase === 'ok' ? 'Tanildi'
     : 'Tanilmadi';
-  const sub = phase === 'align' ? (self ? "Telefonni yuz ro'parasida tuting, yorug' joyda" : 'Kamerani xodimning yuziga qarating')
+  const sub = phase === 'align' && task ? `${task.hint}. Kadr o'zi olinadi`
+    : phase === 'scan' && task ? (step ? null : 'Qimirlamang')
+    : phase === 'align' ? (self ? "Telefonni yuz ro'parasida tuting, yorug' joyda" : 'Kamerani xodimning yuziga qarating')
     : phase === 'scan' ? "Qimirlamang"
     : phase === 'verify' ? 'Face ID bilan solishtirilmoqda'
     : msg ?? (phase === 'fail' ? 'Qayta urinib ko\'ring' : '');
@@ -385,9 +455,14 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
       {/* Holat matni va (xatoda) tugmalar */}
       <View style={{ position: 'absolute', left: space.pageX, right: space.pageX, top: cy + ry + space.xxl, bottom: insets.bottom + space.xl, gap: space.sm }}>
+        {taskIcon ? (
+          <View style={{ alignSelf: 'center', width: size.touch, height: size.touch, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.brand }}>
+            <Icon name={taskIcon} size={size.iconXl} color={c.textOnSolid} />
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm }}>
-          {phase === 'verify' ? <ActivityIndicator color={c.textOnSolid} /> : null}
-          <Txt v="titleMd" color="onSolid" align="center">{head}</Txt>
+          {phase === 'verify' || (phase === 'align' && preparing) ? <ActivityIndicator color={c.textOnSolid} /> : null}
+          <Txt v={showTask ? 'titleLg' : 'titleMd'} color="onSolid" align="center" accessibilityLiveRegion="polite">{head}</Txt>
         </View>
         {sub ? <Txt v="bodySm" color="onSolid" align="center" numberOfLines={4}>{sub}</Txt> : null}
         <View style={{ flex: 1 }} />
