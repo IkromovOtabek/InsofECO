@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,17 +7,57 @@ import { Badge, Button, Callout, EmptyState, IconButton, KVList, ListGroup, List
 import { ChipGroup, PageHeader, SectionHead, SkeletonList } from '@/design/blocks';
 import { Sheet, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { radius, size, space, textRoom, toneColors, type, type Tone } from '@/design/tokens';
+import { mapDriver, radius, size, space, type Tone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
-import { MapUnavailable, MapView, Marker, type MapHandle } from '@/core/map';
+import { ClusterMarker, DriverMarker, MapUnavailable, MapView, Marker, Polyline, useMapScrollLock, zoomOf, type DriverStatus, type MapHandle, type LatLng } from '@/core/map';
+import { Icon } from '@/design/icons';
 import { RouteLine } from '@/core/route';
 import { config } from '@/core/config';
 import { openInNavigator } from '@/core/navigate';
 import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
+import { boundsOf, clusterPoints, worstStatus, type Cluster } from './cluster';
 
-/** Xarita plitkasi o'lchami — davlat raqami sig'adigan qat'iy kenglik (shrift masshtabisiz). */
-const PLATE_H = 24;
-const plateW = (plate: string) => Math.ceil(textRoom(plate, type.overline.fontSize, 0.9)) + space.sm * 2 + 6;
+/** Shundan eski GPS nuqtasi "eskirgan": belgi kulrang, kartochkada ogohlantirish. */
+const STALE_MS = 5 * 60_000;
+const isStale = (t: ErpFleetItem) => !t.gps || Date.now() - Date.parse(t.gps.at) > STALE_MS;
+
+/** Mashina ortidagi iz — oxirgi shuncha vaqt (server ko'proq bersa ham). */
+const TRAIL_MS = 15 * 60_000;
+/** Shundan sekin — turibdi: yo'nalish ko'rsatilmaydi (turgan mashinaning GPS "yo'nalishi" tasodifiy). */
+const HEADING_MIN_KMH = 3;
+
+/**
+ * Xaritadagi xira iz: server `trail` bersa (ixtiyoriy maydon), oxirgi 15 daqiqasi + hozirgi nuqta.
+ * Server bermasa — chizilmaydi (o'ylab topilgan iz yo'q).
+ */
+function trailOf(t: ErpFleetItem): LatLng[] {
+  if (!t.gps || !t.trail?.length) return [];
+  const from = Date.parse(t.gps.at) - TRAIL_MS;
+  const pts = t.trail.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && (!p.at || Date.parse(p.at) >= from));
+  const line = pts.map((p) => ({ latitude: p.lat, longitude: p.lng }));
+  const tail = pts[pts.length - 1];
+  if (!tail || tail.lat !== t.gps.lat || tail.lng !== t.gps.lng) line.push({ latitude: t.gps.lat, longitude: t.gps.lng });
+  return line.length >= 2 ? line : [];
+}
+
+/** Yo'nalish (server bersa): eskirgan GPS yoki turgan mashinada — yo'q. */
+const headingOf = (t: ErpFleetItem): number | null => {
+  const g = t.gps;
+  if (!g || g.heading == null || !Number.isFinite(g.heading) || isStale(t)) return null;
+  return g.speedKmh != null && g.speedKmh < HEADING_MIN_KMH ? null : g.heading;
+};
+
+const COMPASS = ['shimolga', 'shimoli-sharqqa', 'sharqqa', 'janubi-sharqqa', 'janubga', "janubi-g'arbga", "g'arbga", "shimoli-g'arbga"];
+const compass = (deg: number) => COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+
+/** "34 km/soat · shimolga" / "turibdi"; server tezlik bermasa — null. */
+function speedLabel(t: ErpFleetItem): string | null {
+  const g = t.gps;
+  if (!g || g.speedKmh == null || !Number.isFinite(g.speedKmh) || isStale(t)) return null;
+  if (g.speedKmh < HEADING_MIN_KMH) return 'turibdi';
+  const h = headingOf(t);
+  return `${Math.round(g.speedKmh)} km/soat${h != null ? ` · ${compass(h)}` : ''}`;
+}
 
 /**
  * Jonli reyslar xaritasi — direktor (bosh sahifa → "Reyslar xaritada", menyu) va logistika uchun.
@@ -27,6 +67,8 @@ const plateW = (plate: string) => Math.ceil(textRoom(plate, type.overline.fontSi
  * davlat raqami, haydovchi, zayavka, ETA, qo'ng'iroq, navigatorda ochish, reys kartochkasi.
  * Yo'ldagi mashinalardan obyektgacha — Yandex yo'li (ko'chalar bo'ylab, `core/route.tsx`),
  * xaritada tirbandlik qatlami; tanlangan mashinaning yo'li va obyekt pini ajralib turadi.
+ * Ekranda bir-birini yopadigan mashinalar bitta guruh nishoniga (son bilan) birlashadi — rangi
+ * guruhdagi eng yomon holat; bosilsa yaqinlashadi (`cluster.ts`). Tanlangan mashina guruhlanmaydi.
  * Xarita kaliti yo'q build'da (`config.mapsEnabled` false) — ro'yxat va administrator uchun izoh.
  */
 
@@ -43,11 +85,25 @@ const LEGEND: { tone: Tone; label: string }[] = [
   { tone: 'brand', label: "Yo'lda" }, { tone: 'warning', label: 'Yuklangan' }, { tone: 'info', label: 'Kutilmoqda' }, { tone: 'danger', label: 'Muammo' },
 ];
 
+/** Holat rangi → xaritadagi nishon (rasm). GPS 5 daqiqadan eski bo'lsa — kulrang. */
+const STATUS_OF: Record<Tone, DriverStatus> = { brand: 'moving', warning: 'loaded', info: 'waiting', danger: 'issue', success: 'moving', neutral: 'offline' };
+/** Yo'l chizig'i nishon rangida (GPS eskirgan bo'lsa ham holat rangi qoladi). */
+const lineColor = (t: ErpFleetItem) => mapDriver[STATUS_OF[toneOf(t)]];
+const driverStatus = (t: ErpFleetItem): DriverStatus => (isStale(t) ? 'offline' : STATUS_OF[toneOf(t)]);
+const MAP_LEGEND: { status: DriverStatus; label: string }[] = [
+  { status: 'moving', label: "Yo'lda" }, { status: 'loaded', label: 'Yuklangan' }, { status: 'waiting', label: 'Kutilmoqda' }, { status: 'issue', label: 'Muammo' }, { status: 'offline', label: 'GPS eskirgan' },
+];
+
 /** Tanlangan mashinaga yaqinlashish (~1 km). */
 const FOCUS_DELTA = 0.012;
 /** Shuncha mashinagacha hammasining yo'li chiziladi; ko'p bo'lsa — faqat tanlanganiniki (xarita chalkashmasin). */
 const MAX_ROUTES = 6;
+/** Guruh a'zolari shundan yaqin (bir hovlida) — "hammasini sig'dirish" o'rniga guruhlanmaydigan yaqinlikka tushamiz. */
+const CLUSTER_TIGHT_M = 150;
+/** ~zoom 17.5 — `CLUSTER_MAX_ZOOM` dan yaqin: bir joydagi mashinalar alohida chiqadi. */
+const CLUSTER_TIGHT_DELTA = 0.002;
 
+type Located = ErpFleetItem & { gps: NonNullable<ErpFleetItem['gps']> };
 type Routable = ErpFleetItem & { gps: NonNullable<ErpFleetItem['gps']>; dest: NonNullable<ErpFleetItem['dest']> };
 const routable = (t: ErpFleetItem | null): t is Routable => !!t?.gps && !!t.dest;
 
@@ -73,6 +129,11 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const mapRef = useRef<MapHandle | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [selected, setSelected] = useState<string | null>(null);
+  // Pastki kartochka tanlovdan alohida: yopilsa ham mashina belgilangan qoladi (yorliq, kuzatish)
+  const [sheet, setSheet] = useState(false);
+  /** Tanlangan mashina ortidan yurish — har yangilanishda kamera unga suriladi; xarita qo'lda surilsa o'chadi. */
+  const [follow, setFollow] = useState(false);
+  const lock = useMapScrollLock();
 
   const all = useMemo(() => data?.trucks ?? [], [data]);
   const counts = useMemo(() => {
@@ -80,8 +141,8 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
     for (const t of all) n[groupOf(t)]++;
     return n;
   }, [all]);
-  const trucks = filter === 'all' ? all : all.filter((t) => groupOf(t) === filter);
-  const located = trucks.filter((t): t is ErpFleetItem & { gps: NonNullable<ErpFleetItem['gps']> } => !!t.gps);
+  const trucks = useMemo(() => (filter === 'all' ? all : all.filter((t) => groupOf(t) === filter)), [all, filter]);
+  const located = useMemo(() => trucks.filter((t): t is Located => !!t.gps), [trucks]);
   const coords = located.map((t) => ({ latitude: t.gps.lat, longitude: t.gps.lng }));
   const sel = selected ? all.find((t) => t.tripId === selected) ?? null : null;
   const onRoad = trucks.filter(routable).filter((t) => t.status === 'ON_ROAD');
@@ -100,6 +161,32 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
     };
   }
 
+  /**
+   * Guruhlash zoom'i — faqat kamera TO'XTAGANDA yangilanadi (`onCameraIdle`), har kadrda emas: belgilar
+   * surish paytida qayta yaratilmaydi. Chorak zoom'ga yaxlitlanadi — kuzatish animatsiyasidagi mayda
+   * tebranish guruhlarni qayta hisoblatmaydi. Kamera hali xabar bermagan bo'lsa — boshlang'ich region zoom'i.
+   */
+  const [camZoom, setCamZoom] = useState<number | null>(null);
+  const zoom = camZoom ?? (initial.current ? Math.round(zoomOf(initial.current) * 4) / 4 : null);
+  const grouped = useMemo(
+    () => zoom == null
+      ? { singles: located.map((t) => ({ id: t.tripId, lat: t.gps.lat, lng: t.gps.lng, item: t })), clusters: [] as Cluster<Located>[] }
+      // Tanlangan mashina hech qachon guruhga kirmaydi — yorlig'i va kuzatuvi ko'rinib tursin
+      : clusterPoints(located.map((t) => ({ id: t.tripId, lat: t.gps.lat, lng: t.gps.lng, item: t })), zoom, { keep: (p) => p.id === selected }),
+    [located, zoom, selected],
+  );
+
+  /** Guruh bosildi — a'zolari ekranga sig'adigan qilib yaqinlashadi (bir hovlidagilar — juda yaqin, alohida ko'rinadi). */
+  const openCluster = (cl: Cluster<Located>) => {
+    setFollow(false);
+    const b = boundsOf(cl.members);
+    if (b.spanM < CLUSTER_TIGHT_M) {
+      mapRef.current?.animateToRegion({ latitude: b.center.lat, longitude: b.center.lng, latitudeDelta: CLUSTER_TIGHT_DELTA, longitudeDelta: CLUSTER_TIGHT_DELTA }, 500);
+    } else {
+      mapRef.current?.fitToCoordinates(cl.members.map((m) => ({ latitude: m.lat, longitude: m.lng })));
+    }
+  };
+
   const fitAll = () => {
     if (coords.length > 1) mapRef.current?.fitToCoordinates(coords);
     else if (coords[0]) mapRef.current?.animateToRegion({ ...coords[0], latitudeDelta: 0.04, longitudeDelta: 0.04 }, 400);
@@ -107,9 +194,19 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   };
 
   const focus = (t: ErpFleetItem) => {
+    if (t.tripId !== selected) setFollow(false);
     setSelected(t.tripId);
+    setSheet(true);
     if (t.gps && config.mapsEnabled) mapRef.current?.animateToRegion({ latitude: t.gps.lat, longitude: t.gps.lng, latitudeDelta: FOCUS_DELTA, longitudeDelta: FOCUS_DELTA }, 500);
   };
+
+  const clearSel = () => { setSelected(null); setSheet(false); setFollow(false); };
+
+  const followLat = follow ? sel?.gps?.lat : undefined;
+  const followLng = follow ? sel?.gps?.lng : undefined;
+  useEffect(() => {
+    if (followLat != null && followLng != null) mapRef.current?.animateCamera({ latitude: followLat, longitude: followLng }, 600);
+  }, [followLat, followLng]);
 
   const call = (phone: string) => { void Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`).catch(() => toast.error("Qo'ng'iroq qilib bo'lmadi")); };
   const navigate = async (t: ErpFleetItem) => {
@@ -138,12 +235,14 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
         onBack={onBack}
         raised={raise.raised}
         actions={[
-          ...(config.mapsEnabled && coords.length ? [{ icon: 'locate-fixed' as const, label: 'Hammasini ko\'rsatish', onPress: () => { setSelected(null); fitAll(); } }] : []),
+          ...(config.mapsEnabled && coords.length ? [{ icon: 'locate-fixed' as const, label: 'Hammasini ko\'rsatish', onPress: () => { clearSel(); fitAll(); } }] : []),
           { icon: 'refresh-cw' as const, label: 'Yangilash', onPress: () => void refetch() },
         ]}
         style={{ paddingTop: insets.top + space.sm }}
       />
       <ScrollView
+        // Xaritani surish/yaqinlashtirish paytida sahifa aylanmaydi
+        scrollEnabled={lock.scrollEnabled}
         onScroll={raise.onScroll}
         scrollEventThrottle={raise.scrollEventThrottle}
         contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxxl, gap: space.stack }}
@@ -153,7 +252,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
           <EmptyState icon="cloud-off" title="Reyslar yuklanmadi" hint={(error as Error).message || "Internetni tekshirib, qayta urinib ko'ring"} onRetry={() => void refetch()} />
         ) : (
           <>
-            {all.length > 1 ? <ChipGroup items={chips} value={filter} onChange={(k) => { setFilter(k); setSelected(null); }} /> : null}
+            {all.length > 1 ? <ChipGroup items={chips} value={filter} onChange={(k) => { setFilter(k); clearSel(); }} /> : null}
 
             {!config.mapsEnabled ? (
               <MapUnavailable compact hint="Bu versiyaga Yandex xarita kaliti ulanmagan — telefoningizda nuqson yo'q. Reyslar quyida ro'yxatda: har birini bosib, «Navigatorda» orqali joyini ko'ring. Xaritani yoqish uchun administratorga ayting." />
@@ -166,37 +265,61 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                   rotateEnabled={false}
                   pitchEnabled={false}
                   traffic
+                  zoomControls
+                  onTouchLock={lock.onTouchLock}
+                  onPanDrag={follow ? () => setFollow(false) : undefined}
+                  onCameraIdle={(cam) => { const z = Math.round(cam.zoom * 4) / 4; setCamZoom((p) => (p === z ? p : z)); }}
                 >
                   {routed.map((t) => (
-                    <RouteLine key={`r:${t.tripId}`} from={{ latitude: t.gps.lat, longitude: t.gps.lng }} to={{ latitude: t.dest.lat, longitude: t.dest.lng }} color={toneColors(c, toneOf(t)).solid} width={4} />
+                    <RouteLine key={`r:${t.tripId}`} from={{ latitude: t.gps.lat, longitude: t.gps.lng }} to={{ latitude: t.dest.lat, longitude: t.dest.lng }} color={lineColor(t)} width={4} />
                   ))}
-                  {selRoute ? <RouteLine key={`r:${selRoute.tripId}`} from={{ latitude: selRoute.gps.lat, longitude: selRoute.gps.lng }} to={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} color={toneColors(c, toneOf(selRoute)).solid} width={6} /> : null}
-                  {selRoute ? <Marker key={`d:${selRoute.tripId}`} coordinate={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} tone="success" /> : null}
+                  {selRoute ? <RouteLine key={`r:${selRoute.tripId}`} from={{ latitude: selRoute.gps.lat, longitude: selRoute.gps.lng }} to={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} color={lineColor(selRoute)} width={5} /> : null}
                   {located.map((t) => {
-                    const tone = toneOf(t);
+                    const line = trailOf(t);
+                    return line.length ? <Polyline key={`t:${t.tripId}`} coordinates={line} strokeColor={lineColor(t) + (selected === t.tripId ? 'aa' : '59')} strokeWidth={selected === t.tripId ? 4 : 3} /> : null;
+                  })}
+                  {selRoute ? <Marker key={`d:${selRoute.tripId}`} coordinate={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} tone="success" /> : null}
+                  {grouped.clusters.map((cl) => (
+                    <ClusterMarker
+                      key={`cl:${cl.id}`}
+                      coordinate={{ latitude: cl.lat, longitude: cl.lng }}
+                      count={cl.members.length}
+                      status={worstStatus(cl.members.map((m) => driverStatus(m.item)))}
+                      zIndex={cl.members.some((m) => m.item.openIssues) ? 11 : 9}
+                      onPress={() => openCluster(cl)}
+                    />
+                  ))}
+                  {grouped.singles.map(({ item: t }) => {
                     const active = selected === t.tripId;
-                    const col = toneColors(c, tone);
                     return (
-                      <Marker
-                        // MapKit belgini rasmga aylantiradi — rang/tanlov o'zgarsa qayta yaratiladi
-                        key={`${t.tripId}:${tone}:${active ? 1 : 0}`}
+                      <DriverMarker
+                        key={t.tripId}
                         coordinate={{ latitude: t.gps.lat, longitude: t.gps.lng }}
-                        anchor={{ x: 0.5, y: 0.5 }}
-                        zIndex={active ? 3 : tone === 'danger' ? 2 : 1}
+                        status={driverStatus(t)}
+                        heading={headingOf(t)}
+                        selected={active}
+                        label={t.plate}
+                        zIndex={active ? 14 : t.openIssues ? 11 : 10}
                         onPress={() => focus(t)}
-                      >
-                        {/* MapKit belgini rasmga aylantiradi: o'lcham ANIQ bo'lmasa plitka xarita kengligigacha
-                            cho'zilib, yozuvsiz uzun "palasa" bo'lib chiqardi — shuning uchun kenglik/balandlik qat'iy */}
-                        <View collapsable={false} style={{ width: plateW(t.plate), height: PLATE_H, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: col.solid, borderWidth: active ? size.ring + 1 : size.ring, borderColor: active ? c.textStrong : c.bgSurface }}>
-                          <Txt v="overline" allowFontScaling={false} style={{ color: tone === 'brand' ? c.textOnBrand : tone === 'neutral' ? c.bgSurface : c.textOnSolid }} numberOfLines={1}>{t.plate}</Txt>
-                        </View>
-                      </Marker>
+                      />
                     );
                   })}
                 </MapView>
                 <View style={{ position: 'absolute', right: space.sm, bottom: space.sm }}>
-                  <IconButton icon="locate-fixed" label="Hamma mashinani ko'rsatish" variant="secondary" onPress={() => { setSelected(null); fitAll(); }} />
+                  <IconButton icon="locate-fixed" label="Hamma mashinani ko'rsatish" variant="secondary" onPress={() => { clearSel(); fitAll(); }} />
                 </View>
+                {follow && sel ? (
+                  <Pressable
+                    onPress={() => setFollow(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${sel.plate} kuzatilmoqda. To'xtatish`}
+                    style={{ position: 'absolute', left: space.sm, top: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs, borderWidth: size.hairline, borderColor: c.borderDefault }}
+                  >
+                    <Icon name="navigation" size={size.iconSm} tone="brand" />
+                    <Txt v="label" color="brand" numberOfLines={1}>{sel.plate}</Txt>
+                    <Icon name="x" size={size.iconSm} tone="muted" />
+                  </Pressable>
+                ) : null}
               </View>
             ) : (
               <Callout tone="neutral" icon="map-pin">
@@ -206,9 +329,9 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
 
             {config.mapsEnabled && located.length ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg, rowGap: space.xs }}>
-                {LEGEND.map((l) => (
-                  <View key={l.tone} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-                    <View style={{ width: size.legend, height: size.legend, borderRadius: radius.legend, backgroundColor: toneColors(c, l.tone).solid }} />
+                {MAP_LEGEND.map((l) => (
+                  <View key={l.status} style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                    <View style={{ width: size.legend, height: size.legend, borderRadius: radius.pill, backgroundColor: mapDriver[l.status] }} />
                     <Txt v="legend">{l.label}</Txt>
                   </View>
                 ))}
@@ -225,10 +348,12 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                 {trucks.map((t) => {
                   const tone = toneOf(t);
                   const gps = t.gps;
+                  const stale = !!gps && isStale(t);
+                  const speed = speedLabel(t);
                   const line2 = [
                     t.phase,
                     t.delay,
-                    gps ? `GPS ${agoLabel(gps.at)}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}` : "GPS yo'q",
+                    gps ? `${stale ? 'GPS eskirgan · ' : 'GPS '}${agoLabel(gps.at)}${speed ? ` · ${speed}` : ''}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}` : "GPS yo'q",
                   ].filter(Boolean).join(' · ');
                   return (
                     <ListItem
@@ -251,7 +376,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
         )}
       </ScrollView>
 
-      <Sheet open={!!sel} onClose={() => setSelected(null)} title={sel ? `${sel.plate} · ${sel.ref}` : ''}>
+      <Sheet open={!!sel && sheet} onClose={() => setSheet(false)} title={sel ? `${sel.plate} · ${sel.ref}` : ''}>
         {sel ? (
           <View style={{ gap: space.md }}>
             <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
@@ -267,7 +392,8 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                 ...(sel.qty ? [{ label: 'Yuk', value: sel.qty }] : []),
                 ...(sel.plannedAt ? [{ label: 'Reja', value: sel.plannedAt }] : []),
                 { label: 'ETA', value: sel.gps?.etaMin != null ? `~${sel.gps.etaMin} daq` : "noma'lum", tone: sel.delayTone && sel.delayTone !== 'success' ? sel.delayTone : undefined },
-                { label: 'GPS', value: sel.gps ? `${agoLabel(sel.gps.at)}${sel.gps.km != null ? ` · ${fmtUnit(sel.gps.km, 'km')} yurdi` : ''}` : "Signal yo'q", tone: sel.gps ? undefined : 'warning' },
+                ...(speedLabel(sel) ? [{ label: 'Tezlik', value: speedLabel(sel)! }] : []),
+                { label: 'GPS', value: sel.gps ? `${agoLabel(sel.gps.at)}${isStale(sel) ? ' · eskirgan' : ''}${sel.gps.km != null ? ` · ${fmtUnit(sel.gps.km, 'km')} yurdi` : ''}` : "Signal yo'q", tone: isStale(sel) ? 'warning' : undefined },
               ]}
             />
             <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -278,9 +404,22 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                 <Button title="Navigatorda" icon="navigation" variant="secondary" disabled={!sel.dest && !sel.gps} onPress={() => void navigate(sel)} />
               </View>
             </View>
+            {sel.gps && config.mapsEnabled ? (
+              <Button
+                title={follow ? "Kuzatishni to'xtatish" : 'Xaritada kuzatib borish'}
+                icon="navigation"
+                variant={follow ? 'secondary' : 'primary'}
+                onPress={() => {
+                  if (follow) { setFollow(false); return; }
+                  // Kamera mashinaga effekt orqali suriladi (yaqinlik `focus` da allaqachon qo'yilgan)
+                  setFollow(true);
+                  setSheet(false);
+                }}
+              />
+            ) : null}
             {!sel.driverPhone ? <Txt v="caption" color="muted" align="center">Haydovchi telefoni xodim kartasida yozilmagan</Txt> : null}
-            {!sel.tripId.startsWith('ref:') ? <Button title="Reys kartochkasi" icon="truck" onPress={() => { setSelected(null); router.push(`/erp/trips/${sel.tripId}` as never); }} /> : null}
-            {sel.orderId ? <Button title="Zayavkani ochish" icon="file-text" variant="ghost" onPress={() => { setSelected(null); router.push(`/erp/orders/${sel.orderId}` as never); }} /> : null}
+            {!sel.tripId.startsWith('ref:') ? <Button title="Reys kartochkasi" icon="truck" onPress={() => { clearSel(); router.push(`/erp/trips/${sel.tripId}` as never); }} /> : null}
+            {sel.orderId ? <Button title="Zayavkani ochish" icon="file-text" variant="ghost" onPress={() => { clearSel(); router.push(`/erp/orders/${sel.orderId}` as never); }} /> : null}
           </View>
         ) : null}
       </Sheet>

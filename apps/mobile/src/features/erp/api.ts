@@ -121,6 +121,11 @@ export type ErpFleetItem = ErpFleetTruck & {
   dest?: { lat: number; lng: number } | null;
   /** Nima olib ketyapti — "Beton M300 (B22.5)". */
   product?: string | null;
+  /**
+   * Ixtiyoriy (server bersa): mashinaning oxirgi ~15 daqiqalik izi, vaqt bo'yicha tartiblangan.
+   * Hozirgi ERP `/api/mobile/fleet` bermaydi — kelsa xaritada xira chiziq bo'lib chiziladi.
+   */
+  trail?: { lat: number; lng: number; at?: string }[] | null;
 };
 export interface ErpFleetData { at: string; trucks: ErpFleetItem[]; gpsError: string | null }
 

@@ -15,7 +15,7 @@ import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { Appear, PressScale, stagger, useHeaderRaise, useReducedMotion } from '@/design/motion';
 import { useSession } from '@/core/session';
 import { LogoutButton } from '@/features/auth/logout';
-import { MapView, Marker } from '@/core/map';
+import { DriverMarker, MapView, useMapScrollLock } from '@/core/map';
 import { config } from '@/core/config';
 import { erpAuth, type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
 import { erpRoleConfig, type ErpTabSpec } from './roles';
@@ -241,6 +241,7 @@ export function ErpHome() {
   const [calOpen, setCalOpen] = useState(false);
   const [allAlerts, setAllAlerts] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const mapLock = useMapScrollLock();
   const pending = useErpList(cfg.countList?.key ?? '');
   const unread = useErpNotifications().data?.unread ?? 0;
   useEffect(() => { setBadge(unread); }, [unread]);
@@ -432,13 +433,15 @@ export function ErpHome() {
     }
 
     // Logistika xaritasi "Xarita" tabida; boshqa rollar: GPS'i bor mashinalar — kichik xarita (demo bloklaridan keyin)
-    if (!data.fleet && data.live?.length) tail = <LiveTrucks trucks={data.live} onMap={FLEET_ROLES.includes(data.role) ? () => go('/erp/fleet') : undefined} />;
+    if (!data.fleet && data.live?.length) tail = <LiveTrucks trucks={data.live} onTouchLock={mapLock.onTouchLock} onMap={FLEET_ROLES.includes(data.role) ? () => go('/erp/fleet') : undefined} />;
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       {header}
       <ScrollView
+        // Ichidagi kichik xaritani surganda sahifa aylanmasin (LiveTrucks)
+        scrollEnabled={mapLock.scrollEnabled}
         onScroll={raise.onScroll}
         scrollEventThrottle={raise.scrollEventThrottle}
         contentContainerStyle={{ paddingBottom: space.xxxl }}
@@ -540,7 +543,7 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
  * Ma'lumot ERP'dan keladi (`/api/mobile/home` → `live`), ruxsat ham o'sha yerda hal bo'ladi —
  * sotuvchiga faqat o'zi ochgan zayavkalarning mashinalari ko'rinadi.
  */
-function LiveTrucks({ trucks, onMap }: { trucks: ErpLiveTruck[]; onMap?: () => void }) {
+function LiveTrucks({ trucks, onMap, onTouchLock }: { trucks: ErpLiveTruck[]; onMap?: () => void; onTouchLock?: (locked: boolean) => void }) {
   const { c } = useTheme();
   const router = useRouter();
 
@@ -560,10 +563,16 @@ function LiveTrucks({ trucks, onMap }: { trucks: ErpLiveTruck[]; onMap?: () => v
           yo'qolmaydi, faqat ko'rinish soddalashadi (`core/config.ts`). */}
       {config.mapsEnabled && (
       <View style={{ height: 190, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault, marginBottom: space.sm }}>
-        {/* Scroll bilan urishmasin deb xarita ichida siljimaydi — tafsilot pastdagi qatordan ochiladi */}
-        <MapView style={{ flex: 1 }} initialRegion={region} interactive={false}>
+        {/* Surish va ikki barmoq bilan yaqinlashtirish ishlaydi; barmoq xaritada turganda sahifa
+            aylanmaydi (`useMapScrollLock`). Mashina bosilsa — reys kartochkasi */}
+        <MapView style={{ flex: 1 }} initialRegion={region} rotateEnabled={false} pitchEnabled={false} zoomControls onTouchLock={onTouchLock}>
           {trucks.map((t) => (
-            <Marker key={t.ref} coordinate={{ latitude: t.lat, longitude: t.lng }} tone="info" />
+            <DriverMarker
+              key={t.ref}
+              coordinate={{ latitude: t.lat, longitude: t.lng }}
+              status="moving"
+              onPress={t.tripId ? () => router.push(`/erp/trips/${t.tripId}` as never) : undefined}
+            />
           ))}
         </MapView>
       </View>

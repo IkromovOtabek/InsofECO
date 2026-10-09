@@ -12,7 +12,7 @@ import { radius, shadow, size, space } from '@/design/tokens';
 import { config } from '@/core/config';
 import { ApiException } from '@/core/api';
 import { openInNavigator } from '@/core/navigate';
-import { Circle, MapUnavailable, MapView, Marker, MeMarker, Polyline, type MapHandle } from '@/core/map';
+import { Circle, MapUnavailable, MapView, Marker, DriverMarker, Polyline, type MapHandle } from '@/core/map';
 import { useLiveRoute } from '@/core/route';
 import { SITE_RADIUS_M, type Fix as SiteFix } from '@/core/location';
 import { confirmAtSite } from '@/features/address/site-check';
@@ -365,7 +365,7 @@ export default function TripRoute() {
             onPanDrag={() => setFollow(false)}
           >
             {/* Yo'l — brend; obyekt va yetib borish doirasi — yashil; mashina — ko'k */}
-            <Polyline coordinates={drawLine.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={dashed ? 4 : 6} lineDashPattern={dashed ? [8, 6] : undefined} />
+            <Polyline coordinates={drawLine.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={c.brand} strokeWidth={dashed ? 4 : 5} lineDashPattern={dashed ? [8, 6] : undefined} />
             {/* "Yetkazdim" shu doira ichida ochiladi — haydovchi qancha qolganini ko'rib turadi */}
             <Circle
               center={{ latitude: dest.lat, longitude: dest.lng }}
@@ -376,7 +376,7 @@ export default function TripRoute() {
             <Marker coordinate={{ latitude: dest.lat, longitude: dest.lng }} tone="success" />
             {/* Yurayotganda — yo'nalishga qaragan o'q, turganda — oddiy nuqta */}
             {fix ? (
-              <MeMarker
+              <DriverMarker
                 coordinate={{ latitude: fix.lat, longitude: fix.lng }}
                 heading={fix.heading != null && fix.speedKmh >= HEADING_MIN_KMH ? fix.heading : null}
               />

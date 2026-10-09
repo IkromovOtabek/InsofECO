@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MapUnavailable, MapView, Marker } from '@/core/map';
+import { DriverMarker, MapUnavailable, MapView, Marker, Polyline, useMapScrollLock } from '@/core/map';
 import { RouteLine } from '@/core/route';
 import { openInNavigator } from '@/core/navigate';
 import { ApiException } from '@/core/api';
@@ -12,11 +12,12 @@ import { SHIPMENT_DRIVER_NEXT } from '@insof/shared';
 import { Badge, Button, Card, EmptyState, FitTxt, Gap, Input, ListItem, Panel, Screen, StatusChip, Txt, fmtDateFull, fmtSum, fmtTime, fmtUnit } from '@/design/primitives';
 import { dialog, Avatar, Icon, StatusLine, toast } from '@/design/ui';
 import { BigAction, BigSecondary, RouteBlock, StepDots } from '@/design/driver';
-import { radius, size, space } from '@/design/tokens';
+import { mapDriver, radius, size, space } from '@/design/tokens';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '@/design/theme';
-import { Appear, PressScale } from '@/design/motion';
+import { Appear } from '@/design/motion';
 import { useAction, useShipment } from '@/features/eco/api';
+import { SHIPMENT_HAS_TRACK, SHIPMENT_TRACKED, useShipmentGps, useShipmentTrail } from '@/features/eco/shipment-track';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
 import { PhotoAttachments, usePhotoAttachments, withUploadedPhotos } from '@/features/files/photos';
@@ -25,6 +26,14 @@ const FLOW = ['NEW', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'DELIVERED', 'CONFIRMED'
 const LABEL: Record<string, string> = { NEW: 'Yangi', ACCEPTED: 'Qabul qilindi', LOADING: 'Yuklanmoqda', EN_ROUTE: "Yo'lda", DELIVERED: 'Yetkazildi', CONFIRMED: 'Qabul qilindi (tasdiq)' };
 const NEXT_LABEL: Record<string, string> = { NEW: 'Qabul qilish', ACCEPTED: 'Yuklashni boshladim', LOADING: "Yo'lga chiqdim", EN_ROUTE: 'Yetkazdim' };
 const STEPS = ['Ombor', 'Yuklash', "Yo'l", 'Obyekt'];
+
+/** "Mashina: 2 daq oldin · 34 km/soat" — xarita ostida (dispetcher, quruvchi). */
+function liveLine(p: { at: string; speedKmh: number | null }) {
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(p.at)) / 60_000));
+  const ago = m < 1 ? 'hozir' : m < 60 ? `${m} daq oldin` : `${Math.floor(m / 60)} soat oldin`;
+  const speed = p.speedKmh != null && m < 10 ? ` · ${p.speedKmh < 3 ? 'turibdi' : `${Math.round(p.speedKmh)} km/soat`}` : '';
+  return `Mashina joylashuvi: ${ago}${speed}${m >= 10 ? ' · GPS eskirgan' : ''}`;
+}
 
 /** Yuk: Warehouse → GPS → Construction site. Haydovchi bitta katta tugma; Quruvchi/Tadbirkor tasdiqlaydi. */
 export default function ShipmentScreen() {
@@ -37,11 +46,17 @@ export default function ShipmentScreen() {
   const [checking, setChecking] = useState(false);
   /** GPS tekshiruvi + so'rov davomida ikkinchi bosish bo'lmasin (ikki oyna / ikki so'rov). */
   const busy = useRef(false);
+  const mapLock = useMapScrollLock();
   const tr = useAction<TrVars>((v) => ({ path: `/shipments/${id}/transition`, body: v }), ['shipments', 'dash', 'material-requests', 'materials', 'finance']);
   /** Yetkazish fotosi (ixtiyoriy): orqa kamera, presign orqali yuklanadi, kaliti "Yetkazdim" bilan ketadi. */
   const photo = usePhotoAttachments('waybill', 1);
   const err = (e: Error) => toast.error(e.message, 'Xato');
   const s = q.data;
+  // Haydovchining fon GPS'i: yuklash/yo'lda — yoqiq (bosib o'tilgan yo'l yoziladi), yetkazilgach — to'xtaydi
+  useShipmentGps(s);
+  // Dispetcher / quruvchi: yo'ldagi mashina va ortidagi oxirgi 15 daqiqalik iz (haydovchi o'zi xaritada ko'radi)
+  const watching = !!s && (role as string) !== 'HAYDOVCHI' && SHIPMENT_TRACKED.includes(s.status);
+  const trail = useShipmentTrail(id, watching).data;
   if (!s) {
     return (
       <Screen>
@@ -93,18 +108,30 @@ export default function ShipmentScreen() {
   if ((role as string) === 'HAYDOVCHI') return <DriverView refreshing={refreshing} onRefresh={onRefresh} s={s} step={step} next={next} tr={tr} err={err} receiver={receiver} setReceiver={setReceiver} navigate={navigate} openMap={openMap} deliver={() => void deliver()} delivering={checking || photo.busy || tr.isPending} from={from} to={to} photo={photo} />;
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
+      <ScrollView scrollEnabled={mapLock.scrollEnabled} contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
         <Appear>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm }}><Txt v="overline">Yuk №{s.number}</Txt><StatusChip status={s.status} /></View>
           <Txt v="titleMd" style={{ marginTop: 2 }}>{s.cargo}</Txt>
           <Gap h={space.md} />
           {from && to && config.mapsEnabled ? (
             <View style={{ height: 200, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
-              <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }}>
+              <MapView style={{ flex: 1 }} initialRegion={{ latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 }} zoomControls onTouchLock={mapLock.onTouchLock}>
                 <Marker coordinate={from} tone="info" /><Marker coordinate={to} tone="brand" />
                 <RouteLine from={from} to={to} width={4} />
+                {watching && trail ? <Polyline coordinates={trail.points.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={mapDriver.moving + '66'} strokeWidth={4} /> : null}
+                {watching && trail?.last ? (
+                  <DriverMarker
+                    coordinate={{ latitude: trail.last.lat, longitude: trail.last.lng }}
+                    heading={trail.last.heading != null && (trail.last.speedKmh ?? 0) >= 3 ? trail.last.heading : null}
+                    status={Date.now() - Date.parse(trail.last.at) > 10 * 60_000 ? 'offline' : s.status === 'LOADING' ? 'loaded' : 'moving'}
+                  />
+                ) : null}
               </MapView>
             </View>
+          ) : null}
+          {watching && trail?.last ? <Txt v="caption" color="muted" style={{ marginTop: space.xs }}>{liveLine(trail.last)}</Txt> : null}
+          {to && SHIPMENT_HAS_TRACK.includes(s.status) ? (
+            <Button variant="secondary" icon="route" title="Bosib o'tilgan yo'l" onPress={openMap} style={{ marginTop: space.sm }} />
           ) : null}
           <Gap h={space.md} />
           {s.status === 'CANCELLED' ? null : <Card style={{ paddingVertical: space.lg }}><StepDots steps={STEPS} current={step} /></Card>}
@@ -147,11 +174,12 @@ type TrVars = { to: string; receiverName?: string; photoKey?: string; location?:
 function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, setReceiver, navigate, openMap, deliver, delivering, from, to, photo }: { photo: ReturnType<typeof usePhotoAttachments>; refreshing: boolean; onRefresh: () => void; s: NonNullable<ReturnType<typeof useShipment>['data']>; step: number; next?: string; tr: ReturnType<typeof useAction<TrVars>>; err: (e: Error) => void; receiver: string; setReceiver: (v: string) => void; navigate: () => void; openMap: () => void; deliver: () => void; delivering: boolean; from: { latitude: number; longitude: number } | null; to: { latitude: number; longitude: number } | null }) {
   const { c } = useTheme();
   useKeepAwake();
+  const mapLock = useMapScrollLock();
   const call = () => { if (s.contact?.phone) void Linking.openURL(`tel:${s.contact.phone}`); else toast.warning('Buyurtmachi raqami ko\'rsatilmagan — dispetcher bilan bog\'laning', 'Aloqa'); };
   const done = s.status === 'CONFIRMED' || s.status === 'CANCELLED';
   return (
     <Screen padded={false}>
-      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
+      <ScrollView scrollEnabled={mapLock.scrollEnabled} contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.textMuted} />}>
         <Appear>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}><Txt v="overline">Yuk №{s.number}</Txt><StatusChip status={s.status} /></View>
           <Txt v="titleMd" style={{ marginTop: space.xs }}>{s.cargo}</Txt>
@@ -160,18 +188,16 @@ function DriverView({ refreshing, onRefresh, s, step, next, tr, err, receiver, s
           <Gap h={space.md} />
           <Card style={{ padding: space.xl }}><RouteBlock from={s.warehouse.name} to={s.project.name} /><Txt v="body" color="muted" style={{ marginTop: space.sm }}>{s.project.address}</Txt></Card>
           {to && config.mapsEnabled ? (
-            // Bosilsa — to'liq ekranli xarita: mashina, obyekt, masofa, ETA va kuzatish rejimi
-            <PressScale onPress={openMap} accessibilityRole="button" accessibilityLabel="Xaritani to'liq ekranda ochish" scale={0.99}
-              style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', marginTop: space.md, borderWidth: size.hairline, borderColor: c.borderDefault }}>
-              <View pointerEvents="none" style={{ flex: 1 }}>
-                <MapView style={{ flex: 1 }} initialRegion={from ? { latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 } : { ...to, latitudeDelta: 0.05, longitudeDelta: 0.05 }} interactive={false}>
-                  {from ? <Marker coordinate={from} tone="info" /> : null}<Marker coordinate={to} tone="brand" /><RouteLine from={from} to={to} />
-                </MapView>
-              </View>
-              <View pointerEvents="none" style={{ position: 'absolute', right: space.sm, bottom: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs }}>
-                <Icon name="map" size={size.iconSm} tone="brand" /><Txt v="label" color="brand">Xaritada ochish</Txt>
-              </View>
-            </PressScale>
+            // Surish / yaqinlashtirish ishlaydi; bir marta bosish yoki tugma — to'liq ekranli xarita
+            // (mashina, obyekt, masofa, ETA va kuzatish rejimi)
+            <View style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', marginTop: space.md, borderWidth: size.hairline, borderColor: c.borderDefault }}>
+              <MapView style={{ flex: 1 }} onPress={openMap} onTouchLock={mapLock.onTouchLock} rotateEnabled={false} pitchEnabled={false} initialRegion={from ? { latitude: (from.latitude + to.latitude) / 2, longitude: (from.longitude + to.longitude) / 2, latitudeDelta: Math.abs(from.latitude - to.latitude) * 1.8 + 0.05, longitudeDelta: Math.abs(from.longitude - to.longitude) * 1.8 + 0.05 } : { ...to, latitudeDelta: 0.05, longitudeDelta: 0.05 }}>
+                {from ? <Marker coordinate={from} tone="info" /> : null}<Marker coordinate={to} tone="brand" /><RouteLine from={from} to={to} />
+              </MapView>
+              <Pressable onPress={openMap} accessibilityRole="button" accessibilityLabel="Xaritani to'liq ekranda ochish" hitSlop={space.sm} style={{ position: 'absolute', right: space.sm, bottom: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.xs, backgroundColor: c.bgSurface, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs }}>
+                <Icon name={SHIPMENT_HAS_TRACK.includes(s.status) ? 'route' : 'map'} size={size.iconSm} tone="brand" /><Txt v="label" color="brand">{s.status === 'DELIVERED' || s.status === 'CONFIRMED' ? "Bosib o'tilgan yo'l" : 'Xaritada ochish'}</Txt>
+              </Pressable>
+            </View>
           ) : to && s.status !== 'CONFIRMED' && s.status !== 'CANCELLED' ? (
             <MapUnavailable compact style={{ marginTop: space.md }} />
           ) : null}

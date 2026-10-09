@@ -4,6 +4,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { OrderStatusChangedEvent } from '../orders/orders.events';
 import { DeliveryStatusChangedEvent } from '../deliveries/deliveries.events';
 import { NotificationsService } from './notifications.service';
+import type { ShipmentAlertEvent } from '../shipments/shipment-watch.service';
 
 /** Domen hodisalari → kimga qanday xabar. Matnlar hozircha uz (lotin); i18n keyingi bosqich. */
 @Injectable()
@@ -82,6 +83,26 @@ export class NotificationsListener {
       await this.n.notifyOrgRole(e.orgId, 'TADBIRKOR', { type: 'SHIPMENT_DELIVERED', title: '🚚 Haydovchi yukni yetkazib berdi', body: `№${e.number} ${e.cargo}`, data });
     }
     if (e.to === 'CONFIRMED' && e.driverUserId) await this.n.notifyUsers([e.driverUserId], { type: 'SHIPMENT_CONFIRMED', title: '✅ Yuk qabul qilindi', body: `№${e.number} — daromad hisobingizga yozildi`, data });
+  }
+  /** GPS izi obyekt doirasiga kirdi (shipments.service → checkArrival) — bir marta. */
+  @OnEvent('shipment.near_site', { async: true })
+  async onShipmentNearSite(e: { shipmentId: string; number: number; cargo: string; orgId: string; project: string; requesterUserId: string | null }) {
+    const data = { screen: 'shipment', id: e.shipmentId };
+    if (e.requesterUserId) await this.n.notifyUsers([e.requesterUserId], { type: 'SHIPMENT_NEAR_SITE', title: '📍 Yuk obyektga yetib keldi', body: `${e.cargo} — qabul qilishga tayyorlaning`, data });
+    await this.n.notifyOrgRole(e.orgId, 'TADBIRKOR', { type: 'SHIPMENT_NEAR_SITE', title: `📍 №${e.number} obyektga yetib keldi`, body: `${e.cargo} · ${e.project}`, data });
+  }
+  /** Yo'ldagi yuk: uzoq turibdi / GPS kelmayapti (shipment-watch.service) — har holat uchun bir marta. */
+  @OnEvent('shipment.alert', { async: true })
+  onShipmentAlert(e: ShipmentAlertEvent) {
+    const who = [e.plate, e.driver].filter(Boolean).join(' · ');
+    const data = { screen: 'shipment', id: e.shipmentId };
+    if (e.kind === 'OFF_ROUTE') {
+      const km = e.meters != null ? (e.meters >= 1000 ? `${(e.meters / 1000).toFixed(1)} km` : `${e.meters} m`) : null;
+      return this.n.notifyOrgRole(e.orgId, 'TADBIRKOR', { type: 'SHIPMENT_OFF_ROUTE', title: `↪️ №${e.number}: marshrutdan chiqdi${km ? ` (${km})` : ''}`, body: `${e.cargo}${who ? ` · ${who}` : ''} — rejadagi yo'ldan ${e.minutes} daqiqadan beri uzoqda, haydovchiga qo'ng'iroq qiling`, data });
+    }
+    return e.kind === 'STOPPED'
+      ? this.n.notifyOrgRole(e.orgId, 'TADBIRKOR', { type: 'SHIPMENT_STOPPED', title: `⏸ №${e.number}: ${e.minutes} daqiqadan beri turibdi`, body: `${e.cargo}${who ? ` · ${who}` : ''} — haydovchiga qo'ng'iroq qiling`, data })
+      : this.n.notifyOrgRole(e.orgId, 'TADBIRKOR', { type: 'SHIPMENT_GPS_SILENT', title: `📡 №${e.number}: ${e.minutes} daqiqadan beri GPS yo'q`, body: `${e.cargo}${who ? ` · ${who}` : ''} — telefon o'chgan, internet yo'q yoki ilova yopilgan bo'lishi mumkin`, data });
   }
   @OnEvent('work_order.assigned', { async: true })
   onWoAssigned(e: { workOrderId: string; workerUserId: string; number: number; title: string }) {

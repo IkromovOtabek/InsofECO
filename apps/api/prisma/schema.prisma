@@ -863,6 +863,21 @@ model Shipment {
   receiverName      String?
   deliveredLat      Float?
   deliveredLng      Float?
+  /// GPS izi birinchi marta obyekt doirasiga (300 m) kirgan vaqt — "yetib keldi" xabari bir marta ketadi
+  nearSiteAt        DateTime?
+  /// "Uzoq turibdi" ogohlantirishi yuborilgan (joriy holat uchun); mashina yurgach tozalanadi
+  stopAlertAt       DateTime?
+  /// "GPS kelmayapti" ogohlantirishi yuborilgan; GPS qayta kelgach tozalanadi
+  silentAlertAt     DateTime?
+  /// Telefondan oxirgi "tiriklik" belgisi (nuqtasiz ping ham): iOS turgan telefonda nuqta bermaydi
+  gpsLastSeenAt     DateTime?
+  /// Haydovchi telefoni platformasi ("ios" | "android") — iOS'da turgan mashina jimligi uzoqroq kutiladi
+  gpsPlatform       String?
+  /// Rejadagi yo'l (haydovchi ilovasidagi Yandex yo'li, ≤500 nuqta): [{lat,lng}]
+  plannedRoute      Json?
+  plannedRouteAt    DateTime?
+  /// "Marshrutdan chiqdi" ogohlantirishi yuborilgan; yo'lga qaytgach (300 m) yoki yangi yo'l qabul qilingach tozalanadi
+  offRouteAlertAt   DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -873,10 +888,28 @@ model Shipment {
   vehicle   Vehicle?         @relation(fields: [vehicleId], references: [id])
   payouts   Payout[]
   reviews   Review[]
+  gps       ShipmentGpsPoint[]
 
   @@index([driverUserId, status])
   @@index([organizationId, status])
   @@index([projectId])
+}
+
+/// Yuk reysining GPS izi (haydovchi telefonidan, LOADING → DELIVERED). Xaritada bosib o'tilgan
+/// yo'l, masofa va vaqt shundan hisoblanadi. `GpsPoint` (beton reysi) bilan bir xil tuzilma.
+model ShipmentGpsPoint {
+  id         BigInt   @id @default(autoincrement())
+  shipmentId String
+  lat        Float
+  lng        Float
+  speedKmh   Float?
+  heading    Float?
+  at         DateTime
+  receivedAt DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId, at])
 }
 
 // ───────────── Moliya ─────────────

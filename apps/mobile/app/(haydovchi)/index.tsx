@@ -11,6 +11,7 @@ import { BigAction } from '@/design/driver';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space } from '@/design/tokens';
 import { Shipment, q, useAction, useHaydovchiDashboard, useShipmentHistory } from '@/features/eco/api';
+import { useShipmentGps } from '@/features/eco/shipment-track';
 import { avatarUri } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { outbox } from '@/core/outbox';
@@ -98,6 +99,8 @@ export default function DriverToday() {
   // To'liq yuk (mijoz telefoni, obyekt koordinatalari) — dashboard qisqa variantni beradi.
   const full = q<Shipment>(['shipments', 'one', active?.id ?? ''], `/shipments/${active?.id ?? ''}`, { enabled: !!active?.id, refetchInterval: 15_000 });
   const det = full.data && full.data.id === active?.id ? full.data : null;
+  // "Yuklashni boshladim" / "Yo'lga chiqdim" shu ekrandan ham bosiladi — fon GPS shu yerda ham yoqiladi
+  useShipmentGps(det);
   const tr = useAction<{ id: string; to: string }>((v) => ({ path: `/shipments/${v.id}/transition`, body: { to: v.to } }), ['shipments', 'dash']);
   const next = active ? SHIPMENT_DRIVER_NEXT[active.status as keyof typeof SHIPMENT_DRIVER_NEXT] : undefined;
   const primary = () => { if (!active || !next) return; if (active.status === 'EN_ROUTE') router.push(`/shipment/${active.id}`); else tr.mutate({ id: active.id, to: next }, { onError: (e) => toast.error(e.message, 'Xato') }); };

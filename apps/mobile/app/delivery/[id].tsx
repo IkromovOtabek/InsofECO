@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useKeepAwake } from 'expo-keep-awake';
-import { MapUnavailable, MapView, Marker } from '@/core/map';
+import { DriverMarker, MapUnavailable, MapView, Marker, useMapScrollLock } from '@/core/map';
 import { RouteLine } from '@/core/route';
 import { openInNavigator } from '@/core/navigate';
 import { ApiException, api, uuid } from '@/core/api';
@@ -40,6 +40,7 @@ export default function DeliveryScreen() {
   const d = q.data;
   const isDriver = role === 'HAYDOVCHI' || d?.driver?.user.id === userId;
   const live = useLivePosition(d && ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'].includes(d.status) ? d.id : null);
+  const lock = useMapScrollLock();
   useKeepAwake();
 
   if (!d) {
@@ -57,6 +58,7 @@ export default function DeliveryScreen() {
   return (
     <Screen padded={false}>
       <ScrollView
+        scrollEnabled={lock.scrollEnabled}
         contentContainerStyle={{ padding: space.lg, paddingBottom: space.x10 }}
         keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.textMuted} />}
@@ -74,11 +76,18 @@ export default function DeliveryScreen() {
           {/* Xarita kalitisiz build'da xarita yo'q — `core/config.ts`; joyida aniq izoh (MapUnavailable) */}
           {config.mapsEnabled ? (
           <View style={{ height: 220, borderRadius: radius.card, overflow: 'hidden', borderWidth: size.hairline, borderColor: c.borderDefault }}>
-            <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver}>
+            <MapView style={{ flex: 1 }} initialRegion={{ ...dest, latitudeDelta: 0.05, longitudeDelta: 0.05 }} showsUserLocation={isDriver} zoomControls onTouchLock={lock.onTouchLock}>
               {/* Mashinadan obyektgacha — ko'chalar bo'ylab (Yandex), o'tilgan qismi chizilmaydi */}
               {truck && d.status === 'EN_ROUTE' ? <RouteLine from={truck} to={dest} width={4} /> : null}
               <Marker coordinate={dest} tone="brand" />
-              {truck ? <Marker coordinate={truck} tone="info" /> : null}
+              {/* Mashina — dumaloq nishon; yurayotganda yo'nalishga buriladi, GPS 5 daqiqadan eski — kulrang */}
+              {truck && live ? (
+                <DriverMarker
+                  coordinate={truck}
+                  heading={live.heading != null && (live.speedKmh ?? 0) >= 5 ? live.heading : null}
+                  status={Date.now() - Date.parse(live.at) > 5 * 60_000 ? 'offline' : 'moving'}
+                />
+              ) : null}
             </MapView>
           </View>
           ) : (

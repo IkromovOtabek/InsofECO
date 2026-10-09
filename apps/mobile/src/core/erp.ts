@@ -167,7 +167,12 @@ export interface ErpFleetTruck {
   delay: string | null;
   delayTone: 'brand' | 'success' | 'warning' | 'danger' | 'info' | null;
   openIssues: number;
-  gps: { lat: number; lng: number; at: string; etaMin: number | null; km: number | null } | null;
+  gps: {
+    lat: number; lng: number; at: string; etaMin: number | null; km: number | null;
+    /** Ixtiyoriy (server bersa): tezlik, km/soat va yo'nalish, gradus (shimoldan soat yo'nalishida). */
+    speedKmh?: number | null;
+    heading?: number | null;
+  } | null;
 }
 export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: string; list: { key: string; title: string }; create: { key: string; label: string } | null; quick: ErpQuick[]; cards: ErpCard[]; sections: ErpSection[]; live?: ErpLiveTruck[]; fleet?: ErpFleetTruck[];
   /** Xodimning o'z davomati (bosh sahifa "Keldim / Ketdim" kartasi). Login xodimga bog'lanmagan — null. */

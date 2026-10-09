@@ -8,6 +8,21 @@ import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { AuthContext } from '../../common/auth/decorators';
 import { assertAtSite, knownPoint } from '../deliveries/geofence';
+import { summarizeTrack } from './shipment-track';
+import { acceptPlannedRoute, firstInsideSite, parseRoute } from './shipment-alerts';
+
+/** Haydovchi telefoni GPS nuqtalarini shu holatlarda yozadi (yuklashdan yetkazishgacha). */
+const TRACKED: ShipmentStatus[] = ['LOADING', 'EN_ROUTE'];
+/** "Yetkazdim"dan keyin buferda qolgan nuqtalar shuncha vaqt ichida yetib kelsa ham qabul qilinadi. */
+const LATE_FLUSH_MS = 2 * 60 * 60_000;
+
+export interface ShipmentGpsInput {
+  points: { lat: number; lng: number; speedKmh?: number; heading?: number; at: Date }[];
+  /** Nuqtasiz "tiriklik" belgisi: ilova tirik, kuzatuv va GPS xizmati yoqiq (lekin yangi nuqta yo'q). */
+  ping?: Date;
+  platform?: 'ios' | 'android';
+}
+export interface PlannedRouteInput { line: { lat: number; lng: number }[]; meters?: number; seconds?: number }
 
 const include = {
   project: { select: { id: true, name: true, address: true, lat: true, lng: true } },
@@ -123,6 +138,123 @@ export class ShipmentsService {
     const updated = await this.get(a, id);
     this.events.emit('shipment.status_changed', { shipmentId: id, number: s.number, cargo: s.cargo, from, to: input.to, orgId: s.organizationId, driverUserId: updated.driverUserId, requesterUserId: s.request?.requestedByUserId ?? null, byUserId: a.userId });
     return updated;
+  }
+
+  /**
+   * Haydovchi telefonidan GPS paket. Faqat o'sha yukning haydovchisi va faqat yuklash/yo'l
+   * holatida. "Yetkazdim"dan keyin buferda qolgan nuqtalar ham olinadi — lekin faqat
+   * yetkazish vaqtigacha bo'lganlari (keyin uyga qaytgan yo'l reys iziga tushmasin).
+   */
+  async ingestGps(a: AuthContext, id: string, input: ShipmentGpsInput) {
+    const s = await this.prisma.shipment.findFirst({
+      where: { id, organizationId: a.orgId!, driverUserId: a.userId },
+      select: { id: true, number: true, cargo: true, organizationId: true, status: true, loadedAt: true, deliveredAt: true, nearSiteAt: true, project: { select: { name: true, lat: true, lng: true } }, request: { select: { requestedByUserId: true } } },
+    });
+    if (!s) throw DomainError.notFound('Yuk');
+    const status = s.status as ShipmentStatus;
+    const late = (status === 'DELIVERED' || status === 'CONFIRMED') && s.deliveredAt && Date.now() - s.deliveredAt.getTime() < LATE_FLUSH_MS;
+    if (!TRACKED.includes(status) && !late) return { accepted: 0 };
+    const after = s.loadedAt ? s.loadedAt.getTime() - 60_000 : 0;
+    const before = late && s.deliveredAt ? s.deliveredAt.getTime() + 60_000 : Date.now() + 5 * 60_000;
+    const points = input.points.filter((p) => p.at.getTime() >= after && p.at.getTime() <= before);
+    if (points.length) {
+      await this.prisma.shipmentGpsPoint.createMany({
+        data: points.map((p) => ({ shipmentId: s.id, lat: p.lat, lng: p.lng, speedKmh: p.speedKmh, heading: p.heading, at: p.at })),
+      });
+    }
+    // Tiriklik belgisi va platforma — "GPS jim" kuzatuvchisi uchun (faqat yo'ldagi reys; kelajakdagi vaqt — hozir)
+    if (TRACKED.includes(status) && (input.ping || input.platform)) {
+      const seen = input.ping ? new Date(Math.min(input.ping.getTime(), Date.now())) : undefined;
+      await this.prisma.shipment.update({ where: { id: s.id }, data: { ...(seen ? { gpsLastSeenAt: seen } : {}), ...(input.platform ? { gpsPlatform: input.platform } : {}) } });
+    }
+    if (status === 'EN_ROUTE' && !s.nearSiteAt) await this.checkArrival(s, points);
+    return { accepted: points.length };
+  }
+
+  /**
+   * Obyektga yetib kelish (geofence): yo'ldagi reysning GPS izi birinchi marta obyektdan
+   * `SITE_RADIUS_M` (300 m) ichiga kirsa — quruvchiga (so'rov bergan) va dispetcherga xabar.
+   * Bir marta: `nearSiteAt` atomar qo'yiladi (ikki parallel paket ikki xabar bermaydi).
+   */
+  private async checkArrival(
+    s: { id: string; number: number; cargo: string; organizationId: string; project: { name: string; lat: number | null; lng: number | null }; request: { requestedByUserId: string } | null },
+    points: ShipmentGpsInput['points'],
+  ) {
+    const hit = firstInsideSite(points, knownPoint(s.project.lat, s.project.lng));
+    if (!hit) return;
+    const won = await this.prisma.shipment.updateMany({ where: { id: s.id, nearSiteAt: null }, data: { nearSiteAt: hit.at } });
+    if (won.count !== 1) return;
+    this.events.emit('shipment.near_site', { shipmentId: s.id, number: s.number, cargo: s.cargo, orgId: s.organizationId, project: s.project.name, requesterUserId: s.request?.requestedByUserId ?? null, at: hit.at });
+  }
+
+  /**
+   * Rejadagi yo'l — haydovchi ilovasi Yandex yo'lini qurganda (birinchi marta yoki qayta qurganda)
+   * yuboradi; "marshrutdan chiqdi" kuzatuvi shu bilan solishtiradi. Yo'ldan chiqib ketish paytidagi
+   * qayta qurilgan yo'l darhol qabul qilinmaydi (`acceptPlannedRoute`) — aks holda chetlashish
+   * hech qachon aniqlanmasdi. Rad etilsa `{ accepted: false }` — ilova keyinroq qayta yuboradi.
+   */
+  async setPlannedRoute(a: AuthContext, id: string, input: PlannedRouteInput) {
+    const s = await this.prisma.shipment.findFirst({
+      where: { id, organizationId: a.orgId!, driverUserId: a.userId },
+      select: { id: true, status: true, plannedRoute: true, offRouteAlertAt: true },
+    });
+    if (!s) throw DomainError.notFound('Yuk');
+    if (!TRACKED.includes(s.status as ShipmentStatus)) return { accepted: false, reason: 'status' };
+    const next = parseRoute(input.line);
+    if (next.length < 2) return { accepted: false, reason: 'empty' };
+    // Mashina joyi — serverdagi oxirgi nuqta (10 daqiqadan yangi); bo'lmasa yo'lning boshi (telefon joyi)
+    const last = await this.prisma.shipmentGpsPoint.findFirst({ where: { shipmentId: id, at: { gte: new Date(Date.now() - 10 * 60_000) } }, orderBy: { at: 'desc' }, select: { lat: true, lng: true } });
+    const d = acceptPlannedRoute({ stored: parseRoute(s.plannedRoute), next, pos: last ?? next[0]!, offRouteAlertAt: s.offRouteAlertAt });
+    if (!d.accept) return { accepted: false, reason: 'off-route' };
+    await this.prisma.shipment.update({
+      where: { id },
+      data: { plannedRoute: next.map((p) => ({ lat: p.lat, lng: p.lng })), plannedRouteAt: new Date(), ...(d.clearAlert ? { offRouteAlertAt: null } : {}) },
+    });
+    return { accepted: true };
+  }
+
+  /**
+   * Reysning haqiqiy izi: qaysi yo'llardan yurilgan (soddalashtirilgan chiziq), necha km va
+   * qancha vaqt. Ruxsat — yuk kartochkasi bilan bir xil (`get`).
+   * Vaqt: yo'lga chiqqandan ("Yo'lga chiqdim") yetkazgungacha; reys hali yo'lda bo'lsa — hozirgacha.
+   *
+   * `since` — faqat shu vaqtdan keyingi nuqtalar (jonli xaritadagi qisqa "dum": oxirgi ~15 daqiqa).
+   * Bunda km/vaqt ham shu oraliq bo'yicha. `last` — eng oxirgi xom nuqta (tezlik va yo'nalish bilan):
+   * mashina belgisi shu yerda turadi.
+   */
+  async track(a: AuthContext, id: string, since?: Date) {
+    const s = await this.get(a, id);
+    const rows = await this.prisma.shipmentGpsPoint.findMany({
+      where: { shipmentId: id, ...(since ? { at: { gte: since } } : {}) },
+      orderBy: { at: 'asc' },
+      select: { lat: true, lng: true, at: true, speedKmh: true, heading: true },
+    });
+    const lastRow = rows[rows.length - 1];
+    const t = summarizeTrack(rows);
+    const live = TRACKED.includes(s.status as ShipmentStatus);
+    const startedAt = s.departedAt ?? s.loadedAt ?? (t.firstAt ? new Date(t.firstAt) : null);
+    const endedAt = s.deliveredAt ?? (live ? new Date() : t.lastAt ? new Date(t.lastAt) : null);
+    const durationMinutes = startedAt && endedAt ? Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60_000)) : null;
+    return {
+      shipmentId: s.id,
+      status: s.status,
+      live,
+      points: t.points,
+      meters: t.meters,
+      distanceKm: t.distanceKm,
+      startedAt: startedAt?.toISOString() ?? null,
+      endedAt: s.deliveredAt?.toISOString() ?? (live ? null : t.lastAt),
+      durationMinutes,
+      movingMinutes: t.movingMinutes,
+      avgSpeedKmh: t.movingMinutes > 0 ? Math.round((t.meters / 1000) / (t.movingMinutes / 60)) : null,
+      maxSpeedKmh: t.maxSpeedKmh,
+      loadedAt: s.loadedAt?.toISOString() ?? null,
+      departedAt: s.departedAt?.toISOString() ?? null,
+      deliveredAt: s.deliveredAt?.toISOString() ?? null,
+      rawPoints: t.rawPoints,
+      last: lastRow ? { lat: lastRow.lat, lng: lastRow.lng, at: lastRow.at.toISOString(), speedKmh: lastRow.speedKmh, heading: lastRow.heading } : null,
+      nearSiteAt: s.nearSiteAt?.toISOString() ?? null,
+    };
   }
 
   /** Haydovchi tarixi va daromadi. */

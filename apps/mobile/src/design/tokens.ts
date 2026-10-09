@@ -20,6 +20,18 @@ export const brand = {
   ring: '#0b4fd680',
 } as const;
 
+/**
+ * Xaritadagi haydovchi nishoni (`core/map.tsx` → DriverMarker) ranglari. Nishon — tayyor rasm
+ * (`assets/map/drv-*.png`), shuning uchun mavzuga ergashmaydi; afsona (legend) shu qiymatlardan oladi.
+ */
+export const mapDriver = {
+  moving: '#155dfc',
+  loaded: '#d97706',
+  waiting: '#097bb1',
+  issue: '#dc2626',
+  offline: '#64748b',
+} as const;
+
 /** Tashqi xizmatlarning o'z brend ranglari — faqat ularning belgisi uchun (Telegram ko'k; telefon raqam bilan kirish — yashil). */
 export const social = {
   telegram: '#26a5e4',

@@ -1,4 +1,5 @@
 import { brand } from '@/design/tokens';
+import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { DEFAULT_RULES } from '@insof/shared';
@@ -13,8 +14,81 @@ import { discloseBackgroundLocation } from './bg-disclosure';
 export const GPS_TASK = 'insof.gps';
 const BUF = 'gps.buffer';
 const ACTIVE = 'gps.activeDeliveryId';
+/**
+ * Faol reys turi: beton reysi (`Delivery`, standart) yoki yuk (`Shipment`). Ikkalasi bitta
+ * fon vazifasi va bitta bufer bilan ishlaydi — faqat yuboriladigan manzil farq qiladi.
+ */
+const KIND = 'gps.activeKind';
+export type TrackKind = 'delivery' | 'shipment';
 /** ~10 soatlik iz (har 15–30 s da nuqta) — undan eskisi tashlanadi. */
 const MAX_BUF = 2000;
+/** Bufer shu vaqtdan ko'p yuborilmay tursa — 20 nuqtani kutmay yuboriladi (server jonli xarita va "GPS jim" ogohlantirishi uchun). */
+const FLUSH_EVERY_MS = 90_000;
+const LAST_FLUSH = 'gps.lastFlushAt';
+
+// ───────────────── Batareya tejash: yurish / turish rejimi ─────────────────
+
+/**
+ * Fon GPS ikki rejimda:
+ *  - `moving` — odatdagi: har 15 s (Android), iOS'da har 50 m;
+ *  - `still` — mashina turibdi (tezlik < 3 km/soat ketma-ket 4 nuqtada, ~1 daqiqa): Android'da
+ *    daqiqada bir nuqta, iOS'da past aniqlik (~100 m, GPS kam ishlaydi) va masofa chegarasi YO'Q.
+ * Yurish boshlansa (tezlik ≥ 8 km/soat yoki turgan joydan 100 m) — darhol `moving`.
+ *
+ * Ishonchlilik: Android'da ikkala rejimda ham masofa chegarasi 0 — turgan telefon ham daqiqada bir
+ * nuqta yuboradi (server buni "tirik, lekin turibdi" deb biladi; aks holda "GPS jim" deyilardi).
+ * iOS vaqt oralig'ini qo'llamaydi: ilgari `still` da 100 m masofa chegarasi bor edi — turgan telefon
+ * umuman nuqta bermas va server soxta "GPS jim" ko'tarardi. Endi chegara 0: iOS joy o'zgarganda
+ * (turganda ham GPS/Wi-Fi titrashi) nuqta beradi, JS esa `deferredUpdatesInterval` bilan daqiqada
+ * bir uyg'otiladi. Bu KAFOLAT emas — iOS turgan telefonda yangilanishni baribir siyraklashtirishi
+ * mumkin; shuning uchun server iOS'da turgan mashina jimligini 30 daqiqa kutadi va ilova ochiq
+ * bo'lsa nuqtasiz `ping` yuboriladi (`gpsHeartbeat`).
+ * Rejim almashganda vazifa yangi sozlama bilan qayta beriladi (foreground service to'xtamaydi).
+ */
+export type GpsMode = 'moving' | 'still';
+const MODE = 'gps.mode';
+const STILL_KMH = 3;
+const MOVE_KMH = 8;
+const STILL_FIXES = 4;
+const WAKE_M = 100;
+
+export function trackingOptions(mode: GpsMode): Location.LocationTaskOptions {
+  const ios = Platform.OS === 'ios';
+  const still = mode === 'still';
+  return {
+    accuracy: still && ios ? Location.Accuracy.Balanced : Location.Accuracy.High,
+    timeInterval: (still ? 60 : DEFAULT_RULES.gpsIntervalSeconds) * 1000,
+    distanceInterval: ios ? (still ? 0 : DEFAULT_RULES.gpsDistanceMeters) : 0,
+    // iOS: ilova fonda bo'lsa JS vazifa shu oraliqda bir uyg'otiladi (nuqtalar native tomonda yig'iladi).
+    // Android'da nuqtalar baribir shu oraliqda keladi — kechiktirish chegaradagi nuqtani keyingisiga surib yuborardi
+    deferredUpdatesInterval: ios ? (still ? 60 : DEFAULT_RULES.gpsIntervalSeconds) * 1000 : 0,
+    pausesUpdatesAutomatically: false,
+    activityType: Location.ActivityType.AutomotiveNavigation,
+    showsBackgroundLocationIndicator: true,
+    // Android: majburiy foreground service bildirishnomasi (Samsung One UI fon jarayonlarni o'ldiradi).
+    // Har qayta berishda ham bo'lishi shart — bo'lmasa expo xizmatni to'xtatadi
+    foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: brand[500] },
+  };
+}
+
+interface ModeState { mode: GpsMode; slow: number; anchor: { lat: number; lng: number } | null; last: { lat: number; lng: number; at: number } | null }
+const readMode = (): ModeState => {
+  try { const v = JSON.parse(kv.getString(MODE) ?? '') as ModeState; if (v && (v.mode === 'moving' || v.mode === 'still')) return v; } catch { /* yangi */ }
+  return { mode: 'moving', slow: 0, anchor: null, last: null };
+};
+
+/** Bitta nuqta bo'yicha keyingi rejim (sof funksiya). Tezlik noma'lum bo'lsa — oldingi nuqtadan hisoblanadi. */
+export function nextGpsMode(st: ModeState, fix: { lat: number; lng: number; at: number; speedKmh: number | null }): ModeState {
+  const dt = st.last ? (fix.at - st.last.at) / 3_600_000 : 0;
+  const kmh = fix.speedKmh ?? (st.last && dt > 0 ? metersBetween(st.last, fix) / 1000 / dt : null);
+  const last = { lat: fix.lat, lng: fix.lng, at: fix.at };
+  if (st.mode === 'moving') {
+    const slow = kmh != null && kmh < STILL_KMH ? st.slow + 1 : 0;
+    return slow >= STILL_FIXES ? { mode: 'still', slow: 0, anchor: { lat: fix.lat, lng: fix.lng }, last } : { ...st, slow, last };
+  }
+  const woke = (kmh != null && kmh >= MOVE_KMH) || (!!st.anchor && metersBetween(st.anchor, fix) >= WAKE_M);
+  return woke ? { mode: 'moving', slow: 0, anchor: null, last } : { ...st, last };
+}
 
 interface Pt { lat: number; lng: number; speedKmh?: number; heading?: number; at: string }
 /** Buferdagi buzilgan JSON fon vazifasini har safar yiqitmasin. */
@@ -29,47 +103,87 @@ TaskManager.defineTask(GPS_TASK, async ({ data, error }) => {
   if (!deliveryId) return;
   const { locations } = data as { locations: Location.LocationObject[] };
   const buf = readBuf();
+  const before = readMode();
+  let mode = before;
   for (const l of locations) {
-    buf.push({ lat: l.coords.latitude, lng: l.coords.longitude, speedKmh: l.coords.speed != null ? Math.max(0, l.coords.speed * 3.6) : undefined, heading: l.coords.heading ?? undefined, at: new Date(l.timestamp).toISOString() });
+    // iOS noma'lum tezlikni -1 beradi — noma'lum, nol emas
+    const speedKmh = l.coords.speed != null && l.coords.speed >= 0 ? l.coords.speed * 3.6 : undefined;
+    // Yo'nalish noma'lum bo'lsa iOS -1 beradi — server 0..360 ni kutadi, aks holda butun paket rad etiladi
+    buf.push({ lat: l.coords.latitude, lng: l.coords.longitude, speedKmh, heading: l.coords.heading != null && l.coords.heading >= 0 ? l.coords.heading : undefined, at: new Date(l.timestamp).toISOString() });
+    mode = nextGpsMode(mode, { lat: l.coords.latitude, lng: l.coords.longitude, at: l.timestamp, speedKmh: speedKmh ?? null });
   }
   // Server uzoq vaqt qabul qilmasa bufer cheksiz o'smasin (har nuqtada butun JSON qayta yoziladi)
   kv.set(BUF, JSON.stringify(buf.slice(-MAX_BUF)));
-  if (buf.length >= 20) await flushGps();
+  kv.set(MODE, JSON.stringify(mode));
+  if (mode.mode !== before.mode) {
+    // Xato bo'lsa eski sozlama bilan davom etadi — kuzatuv to'xtamaydi
+    try { await Location.startLocationUpdatesAsync(GPS_TASK, trackingOptions(mode.mode)); } catch { /* keyingi nuqtada qayta */ }
+  }
+  const lastFlush = Number(kv.getString(LAST_FLUSH) ?? 0);
+  if (buf.length >= 20 || Date.now() - lastFlush >= FLUSH_EVERY_MS) await flushGps();
 });
 
-export async function flushGps() {
+/** Server "GPS jim" chegarasini platformaga moslaydi (iOS turgan telefonda nuqta bermaydi). */
+const PLATFORM = Platform.OS === 'ios' ? 'ios' : 'android';
+
+/**
+ * Buferni yuborish. `ping: true` va bufer bo'sh bo'lsa (faqat yuk reysi) — nuqtasiz "tiriklik"
+ * belgisi: ilova tirik, fon kuzatuvi yoqiq va GPS xizmati yoqiq. Joy O'YLAB TOPILMAYDI (oxirgi
+ * nuqta qayta yuborilmaydi) — server faqat "telefon tirik" deb biladi.
+ */
+export async function flushGps(opts: { ping?: boolean } = {}) {
   const deliveryId = kv.getString(ACTIVE);
   const buf = readBuf();
-  if (!deliveryId || buf.length === 0) return;
+  if (!deliveryId) return;
+  const shipment = kv.getString(KIND) === 'shipment';
+  if (buf.length === 0) {
+    if (!opts.ping || !shipment) return;
+    try {
+      if (!(await Location.hasServicesEnabledAsync()) || !(await Location.hasStartedLocationUpdatesAsync(GPS_TASK))) return;
+      kv.set(LAST_FLUSH, String(Date.now()));
+      await api(`/shipments/${deliveryId}/gps`, { method: 'POST', body: { points: [], ping: new Date().toISOString(), platform: PLATFORM } });
+    } catch { /* keyingi safar */ }
+    return;
+  }
+  kv.set(LAST_FLUSH, String(Date.now()));
   try {
-    await api('/tracking/gps', { method: 'POST', body: { deliveryId, points: buf.slice(0, 200) } });
+    if (shipment) await api(`/shipments/${deliveryId}/gps`, { method: 'POST', body: { points: buf.slice(0, 200), platform: PLATFORM } });
+    else await api('/tracking/gps', { method: 'POST', body: { deliveryId, points: buf.slice(0, 200) } });
     kv.set(BUF, JSON.stringify(buf.slice(200)));
   } catch {
     /* keyingi safar */
   }
 }
 
-export async function startTracking(deliveryId: string) {
+/**
+ * Yurak urishi: oxirgi yuborishdan `FLUSH_EVERY_MS` o'tgan bo'lsa — bufer (bo'lsa) yoki nuqtasiz ping.
+ * Fon vazifasi faqat joylashuv kelganda uyg'onadi — iOS turgan telefonda u jim qolishi mumkin;
+ * shuning uchun buni ilova ochiq paytdagi taymer chaqiradi (`useShipmentGps`).
+ */
+export async function gpsHeartbeat() {
+  const last = Number(kv.getString(LAST_FLUSH) ?? 0);
+  if (Date.now() - last < FLUSH_EVERY_MS - 5_000) return;
+  await flushGps({ ping: true });
+}
+
+export async function startTracking(deliveryId: string, kind: TrackKind = 'delivery') {
   // Tushuntirish oynasi tizim so'rovlaridan oldin — Google Play talabi (bg-disclosure.ts)
   const allowBg = await discloseBackgroundLocation(`eco:${deliveryId}`, 'dispetcher va quruvchiga');
   const fg = await Location.requestForegroundPermissionsAsync();
   if (fg.status !== 'granted') return false;
   const bg = allowBg ? await Location.requestBackgroundPermissionsAsync() : await Location.getBackgroundPermissionsAsync();
+  // Boshqa reysning yuborilmagan nuqtalari yangi reys iziga tushmasin
+  const prev = kv.getString(ACTIVE);
+  if (prev && prev !== deliveryId) { await flushGps(); kv.delete(BUF); }
   kv.set(ACTIVE, deliveryId);
+  kv.set(KIND, kind);
+  kv.delete(MODE);
   // Fon kuzatuvi ishga tushmasa (iOS'da "Doimo" ruxsati yo'q, Android'da GPS o'chiq) ilova
   // yiqilmasin — reys baribir olib boriladi, faqat jonli iz bo'lmaydi.
   try {
     const already = await Location.hasStartedLocationUpdatesAsync(GPS_TASK);
     if (!already) {
-      await Location.startLocationUpdatesAsync(GPS_TASK, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: DEFAULT_RULES.gpsIntervalSeconds * 1000,
-        distanceInterval: DEFAULT_RULES.gpsDistanceMeters,
-        pausesUpdatesAutomatically: false,
-        showsBackgroundLocationIndicator: true,
-        // Android: majburiy foreground service bildirishnomasi (Samsung One UI fon jarayonlarni o'ldiradi)
-        foregroundService: { notificationTitle: 'Insof ECO — reys davom etmoqda', notificationBody: 'Joylashuv dispetcher va quruvchiga uzatilmoqda', notificationColor: brand[500] },
-      });
+      await Location.startLocationUpdatesAsync(GPS_TASK, trackingOptions('moving'));
     }
   } catch {
     return false;
@@ -77,9 +191,15 @@ export async function startTracking(deliveryId: string) {
   return bg.status === 'granted';
 }
 
-export async function stopTracking() {
+/** `onlyId` berilsa — faqat shu reys kuzatilayotgan bo'lsa to'xtatadi (boshqa reysga tegmaydi). */
+export async function stopTracking(onlyId?: string) {
+  if (onlyId && kv.getString(ACTIVE) !== onlyId) return;
   await flushGps();
   kv.delete(ACTIVE);
+  kv.delete(KIND);
+  kv.delete(MODE);
+  // Yuborilmay qolganlari endi hech qaysi reysga tegishli emas — keyingi reys iziga tushmasin
+  kv.delete(BUF);
   try {
     if (await Location.hasStartedLocationUpdatesAsync(GPS_TASK)) await Location.stopLocationUpdatesAsync(GPS_TASK);
   } catch { /* vazifa ro'yxatda yo'q — to'xtatadigan narsa ham yo'q */ }
