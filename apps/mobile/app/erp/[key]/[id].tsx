@@ -19,6 +19,8 @@ import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
+import { TripTrackSection, hasTrack, useErpTripTrack } from '@/features/erp/trip-track';
+import { useMapScrollLock } from '@/core/map';
 import { scanFace } from '@/features/erp/face-scan';
 import i18n from '@/core/i18n';
 
@@ -123,6 +125,9 @@ export default function ErpDetail() {
   const [checking, setChecking] = useState(false);
   const inFlight = useRef(false);
   const isDriver = useSession((s) => s.kind === 'erp' && s.erp?.role === 'DRIVER');
+  // Reysning yurilgan yo'li (eski serverda yo'q — bo'lim ko'rinmaydi); xarita surilganda sahifa aylanmasin
+  const track = useErpTripTrack(key === 'trips' ? id : null, { live: true });
+  const mapLock = useMapScrollLock();
 
   // Demo sarlavhasi (orqaga · raqam · ko'proq) ekranning o'zida — navigator sarlavhasi yashiriladi
   React.useEffect(() => { nav.setOptions({ headerShown: false }); }, [nav]);
@@ -204,7 +209,7 @@ export default function ErpDetail() {
       if (here === null) return false;
       siteFixRef.current = here ? { lat: here.lat, lng: here.lng } : null;
       // Tasdiqlangan nuqta serverga — uning qoidasi oxirgi saqlangan nuqtaga qaraydi
-      if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at }).catch(() => undefined);
+      if (here) await pushErpFix({ lat: here.lat, lng: here.lng, at: here.at, accuracyM: here.accuracyM }).catch(() => undefined);
       return true;
     } finally {
       setChecking(false);
@@ -316,6 +321,7 @@ export default function ErpDetail() {
         style={{ paddingTop: insets.top + space.sm }}
       />
       <ScrollView
+        scrollEnabled={mapLock.scrollEnabled}
         onScroll={raise.onScroll}
         scrollEventThrottle={raise.scrollEventThrottle}
         contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxl }}
@@ -349,6 +355,8 @@ export default function ErpDetail() {
           ) : null}
 
           {kv.length ? <KVList key="kv" rows={kv.map((f) => ({ label: f.label, value: f.value, tone: f.tone }))} /> : null}
+
+          {hasTrack(track.data) ? <TripTrackSection key="track" t={track.data} onTouchLock={mapLock.onTouchLock} /> : null}
 
           {process ? <SectionHead key="tl-h" title="Jarayon" /> : null}
           {process ? <Card key="tl"><Timeline steps={timelineSteps(process)} /></Card> : null}

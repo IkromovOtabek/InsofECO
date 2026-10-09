@@ -78,7 +78,7 @@ useSession.subscribe((next, prev) => {
   if (next.status !== 'authed') {
     // Chiqildi — fon GPS'i boshqa birovning telefonida yurib qolmasin (batareya + shaxsiy hayot)
     void stopTracking().catch(() => {});
-    void stopErpTracking().catch(() => {});
+    void stopErpTracking({ discard: true }).catch(() => {});
     return;
   }
   // Yangi hisob/tashkilot faol — uning navbatdagi amallari yuborilsin

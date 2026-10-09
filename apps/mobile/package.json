@@ -10,7 +10,7 @@
     "build": "echo 'use: eas build'",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "lint": "node scripts/design-lint.mjs && tsc --noEmit -p tsconfig.check.json",
-    "test": "node --no-warnings scripts/fit-check.mts && node --no-warnings scripts/cluster-check.mts",
+    "test": "node --no-warnings scripts/fit-check.mts && node --no-warnings scripts/cluster-check.mts && node --no-warnings scripts/erp-track-check.mts",
     "lint:design": "node scripts/design-lint.mjs",
     "eas-build-post-install": "yarn workspace @insof/shared build"
   },

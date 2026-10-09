@@ -17,9 +17,21 @@ import { openInNavigator } from '@/core/navigate';
 import { FLEET_POLL_MS, useErpFleet, type ErpFleetItem } from './api';
 import { boundsOf, clusterPoints, worstStatus, type Cluster } from './cluster';
 
-/** Shundan eski GPS nuqtasi "eskirgan": belgi kulrang, kartochkada ogohlantirish. */
+/** Eski server `stale`/`staleMin` bermasa — shundan eski GPS nuqtasi "eskirgan": belgi kulrang, kartochkada ogohlantirish. */
 const STALE_MS = 5 * 60_000;
-const isStale = (t: ErpFleetItem) => !t.gps || Date.now() - Date.parse(t.gps.at) > STALE_MS;
+/** `stale` — `withStale` qo'yadi (server bergan yoki o'zimiz hisoblagan); GPS yo'q — eskirgan. */
+const isStale = (t: ErpFleetItem) => !t.gps || !!t.stale;
+/**
+ * Server `stale` bersa (yangi ERP: telefondan oxirgi aloqa, "tirikman" ham) — shuni olamiz; bermasa
+ * oxirgi nuqta vaqtidan `staleMin` (bo'lmasa 5 daq) bo'yicha hisoblaymiz.
+ */
+export const withStale = (t: ErpFleetItem, staleMin: number | undefined, now = Date.now()): ErpFleetItem => ({
+  ...t,
+  stale: typeof t.stale === 'boolean' ? t.stale : !t.gps || now - Date.parse(t.gps.at) > (staleMin != null ? staleMin * 60_000 : STALE_MS),
+});
+/** Tezlik/yo'nalish: yangi server yuqori darajada, eskisi `gps` ichida (yoki umuman yo'q). */
+const speedOf = (t: ErpFleetItem) => (t.speedKmh != null ? t.speedKmh : t.gps?.speedKmh ?? null);
+const rawHeading = (t: ErpFleetItem) => (t.heading != null ? t.heading : t.gps?.heading ?? null);
 
 /** Mashina ortidagi iz — oxirgi shuncha vaqt (server ko'proq bersa ham). */
 const TRAIL_MS = 15 * 60_000;
@@ -42,9 +54,9 @@ function trailOf(t: ErpFleetItem): LatLng[] {
 
 /** Yo'nalish (server bersa): eskirgan GPS yoki turgan mashinada — yo'q. */
 const headingOf = (t: ErpFleetItem): number | null => {
-  const g = t.gps;
-  if (!g || g.heading == null || !Number.isFinite(g.heading) || isStale(t)) return null;
-  return g.speedKmh != null && g.speedKmh < HEADING_MIN_KMH ? null : g.heading;
+  const h = rawHeading(t), v = speedOf(t);
+  if (!t.gps || h == null || !Number.isFinite(h) || isStale(t)) return null;
+  return v != null && v < HEADING_MIN_KMH ? null : h;
 };
 
 const COMPASS = ['shimolga', 'shimoli-sharqqa', 'sharqqa', 'janubi-sharqqa', 'janubga', "janubi-g'arbga", "g'arbga", "shimoli-g'arbga"];
@@ -52,12 +64,30 @@ const compass = (deg: number) => COMPASS[Math.round((((deg % 360) + 360) % 360) 
 
 /** "34 km/soat · shimolga" / "turibdi"; server tezlik bermasa — null. */
 function speedLabel(t: ErpFleetItem): string | null {
-  const g = t.gps;
-  if (!g || g.speedKmh == null || !Number.isFinite(g.speedKmh) || isStale(t)) return null;
-  if (g.speedKmh < HEADING_MIN_KMH) return 'turibdi';
+  const v = speedOf(t);
+  if (!t.gps || v == null || !Number.isFinite(v) || isStale(t)) return null;
+  if (v < HEADING_MIN_KMH) return 'turibdi';
   const h = headingOf(t);
-  return `${Math.round(g.speedKmh)} km/soat${h != null ? ` · ${compass(h)}` : ''}`;
+  return `${Math.round(v)} km/soat${h != null ? ` · ${compass(h)}` : ''}`;
 }
+
+/** Xaritadagi belgi ostidagi qisqa tezlik — faqat yurayotgan (eskirmagan) mashinada. */
+function markerCaption(t: ErpFleetItem): string | null {
+  const v = speedOf(t);
+  if (!t.gps || v == null || !Number.isFinite(v) || isStale(t) || v < HEADING_MIN_KMH) return null;
+  return `${Math.round(v)} km/soat`;
+}
+
+/** "GPS 12 daq oldin" + telefon nuqtasiz "tirikman" yuborib turgan bo'lsa — "aloqa 1 daq oldin". */
+function gpsAgo(t: ErpFleetItem): string {
+  if (!t.gps) return "GPS yo'q";
+  const gpsAt = Date.parse(t.gps.at);
+  const seen = t.lastSeenAt ? Date.parse(t.lastSeenAt) : NaN;
+  const alive = Number.isFinite(seen) && seen - gpsAt > 2 * 60_000 ? ` · aloqa ${agoLabel(t.lastSeenAt!)}` : '';
+  return `GPS ${agoLabel(t.gps.at)}${alive}`;
+}
+
+const alertsOf = (t: ErpFleetItem) => (Array.isArray(t.alerts) ? t.alerts : []);
 
 /**
  * Jonli reyslar xaritasi — direktor (bosh sahifa → "Reyslar xaritada", menyu) va logistika uchun.
@@ -89,6 +119,8 @@ const LEGEND: { tone: Tone; label: string }[] = [
 const STATUS_OF: Record<Tone, DriverStatus> = { brand: 'moving', warning: 'loaded', info: 'waiting', danger: 'issue', success: 'moving', neutral: 'offline' };
 /** Yo'l chizig'i nishon rangida (GPS eskirgan bo'lsa ham holat rangi qoladi). */
 const lineColor = (t: ErpFleetItem) => mapDriver[STATUS_OF[toneOf(t)]];
+/** Iz chizig'i: eskirgan GPS — kulrang (mashina hozir u yerda bo'lmasligi mumkin). */
+const trailColor = (t: ErpFleetItem) => (isStale(t) ? mapDriver.offline : lineColor(t));
 const driverStatus = (t: ErpFleetItem): DriverStatus => (isStale(t) ? 'offline' : STATUS_OF[toneOf(t)]);
 const MAP_LEGEND: { status: DriverStatus; label: string }[] = [
   { status: 'moving', label: "Yo'lda" }, { status: 'loaded', label: 'Yuklangan' }, { status: 'waiting', label: 'Kutilmoqda' }, { status: 'issue', label: 'Muammo' }, { status: 'offline', label: 'GPS eskirgan' },
@@ -135,7 +167,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
   const [follow, setFollow] = useState(false);
   const lock = useMapScrollLock();
 
-  const all = useMemo(() => data?.trucks ?? [], [data]);
+  const all = useMemo(() => (data?.trucks ?? []).map((t) => withStale(t, data?.staleMin)), [data]);
   const counts = useMemo(() => {
     const n: Record<Filter, number> = { all: all.length, road: 0, loaded: 0, planned: 0, issue: 0 };
     for (const t of all) n[groupOf(t)]++;
@@ -276,7 +308,7 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                   {selRoute ? <RouteLine key={`r:${selRoute.tripId}`} from={{ latitude: selRoute.gps.lat, longitude: selRoute.gps.lng }} to={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} color={lineColor(selRoute)} width={5} /> : null}
                   {located.map((t) => {
                     const line = trailOf(t);
-                    return line.length ? <Polyline key={`t:${t.tripId}`} coordinates={line} strokeColor={lineColor(t) + (selected === t.tripId ? 'aa' : '59')} strokeWidth={selected === t.tripId ? 4 : 3} /> : null;
+                    return line.length ? <Polyline key={`t:${t.tripId}`} coordinates={line} strokeColor={trailColor(t) + (selected === t.tripId ? 'aa' : '59')} strokeWidth={selected === t.tripId ? 4 : 3} /> : null;
                   })}
                   {selRoute ? <Marker key={`d:${selRoute.tripId}`} coordinate={{ latitude: selRoute.dest.lat, longitude: selRoute.dest.lng }} tone="success" /> : null}
                   {grouped.clusters.map((cl) => (
@@ -299,6 +331,8 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                         heading={headingOf(t)}
                         selected={active}
                         label={t.plate}
+                        caption={markerCaption(t)}
+                        alert={alertsOf(t).length > 0}
                         zIndex={active ? 14 : t.openIssues ? 11 : 10}
                         onPress={() => focus(t)}
                       />
@@ -350,21 +384,24 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                   const gps = t.gps;
                   const stale = !!gps && isStale(t);
                   const speed = speedLabel(t);
+                  const al = alertsOf(t);
                   const line2 = [
                     t.phase,
                     t.delay,
-                    gps ? `${stale ? 'GPS eskirgan · ' : 'GPS '}${agoLabel(gps.at)}${speed ? ` · ${speed}` : ''}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}` : "GPS yo'q",
+                    gps ? `${gpsAgo(t)}${stale ? ' · eskirgan' : ''}${speed ? ` · ${speed}` : ''}${gps.etaMin != null ? ` · ~${gps.etaMin} daq` : ''}` : "GPS yo'q",
                   ].filter(Boolean).join(' · ');
                   return (
                     <ListItem
                       key={t.tripId}
                       icon="truck"
                       module="logistics"
-                      tone={t.openIssues ? 'danger' : undefined}
+                      tone={t.openIssues ? 'danger' : al.length ? 'warning' : undefined}
                       title={`${t.plate} · ${t.driver}`}
                       subtitle={`${t.customer}${t.address ? ` · ${t.address}` : ''}${t.product ? `\n${t.product}${t.qty ? ` · ${t.qty}` : ''}` : ''}\n${line2}`}
                       subtitleLines={3}
-                      badge={{ text: t.openIssues ? `${t.openIssues} muammo` : t.delay && t.delayTone ? t.delay : LEGEND.find((l) => l.tone === tone)?.label ?? t.phase, tone }}
+                      badge={t.openIssues || !al.length
+                        ? { text: t.openIssues ? `${t.openIssues} muammo` : t.delay && t.delayTone ? t.delay : LEGEND.find((l) => l.tone === tone)?.label ?? t.phase, tone }
+                        : { text: al.length > 1 ? `${al[0]!.title} +${al.length - 1}` : al[0]!.title, tone: 'warning' }}
                       style={selected === t.tripId ? { backgroundColor: c.bgMuted } : undefined}
                       onPress={() => focus(t)}
                     />
@@ -393,9 +430,14 @@ export function FleetScreen({ onBack, title = 'Reyslar xaritada' }: { onBack?: (
                 ...(sel.plannedAt ? [{ label: 'Reja', value: sel.plannedAt }] : []),
                 { label: 'ETA', value: sel.gps?.etaMin != null ? `~${sel.gps.etaMin} daq` : "noma'lum", tone: sel.delayTone && sel.delayTone !== 'success' ? sel.delayTone : undefined },
                 ...(speedLabel(sel) ? [{ label: 'Tezlik', value: speedLabel(sel)! }] : []),
-                { label: 'GPS', value: sel.gps ? `${agoLabel(sel.gps.at)}${isStale(sel) ? ' · eskirgan' : ''}${sel.gps.km != null ? ` · ${fmtUnit(sel.gps.km, 'km')} yurdi` : ''}` : "Signal yo'q", tone: isStale(sel) ? 'warning' : undefined },
+                { label: 'GPS', value: sel.gps ? `${gpsAgo(sel)}${isStale(sel) ? ' · eskirgan' : ''}${sel.gps.km != null ? ` · ${fmtUnit(sel.gps.km, 'km')} yurdi` : ''}` : "Signal yo'q", tone: isStale(sel) ? 'warning' : undefined },
               ]}
             />
+            {alertsOf(sel).map((a) => (
+              <Callout key={`${a.kind}:${a.openedAt}`} tone={a.kind === 'OFF_ROUTE' || a.kind === 'SILENT' ? 'danger' : 'warning'} icon="triangle-alert">
+                {`${a.title}${a.info ? ` — ${a.info}` : ''} · ${agoLabel(a.since ?? a.openedAt)}`}
+              </Callout>
+            ))}
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               <View style={{ flex: 1 }}>
                 <Button title="Qo'ng'iroq" icon="phone" variant="secondary" disabled={!sel.driverPhone} onPress={() => sel.driverPhone && call(sel.driverPhone)} />

@@ -1,5 +1,5 @@
 import '@/core/i18n';
-import '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
+import { useErpHeartbeat } from '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
 import '@/core/location'; // ECO reysining fon GPS vazifasi (TaskManager.defineTask) — xuddi shunday
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -211,6 +211,8 @@ export default function RootLayout() {
    * chizishni talab qiladi — shart ichiga olinsa ilova oq ekranda qotib qoladi.
    */
   const [fontsReady] = useFonts(APP_FONTS);
+  // ERP reysi faol bo'lsa — ilova ochiq turganda 60 s da bir "tirikman" (iOS turgan telefonda fon vazifasi jim qolishi mumkin)
+  useErpHeartbeat();
   // SecureStore (Android Keystore) xatosi sovuq startni "loading" da abadiy qotirmasin — mehmon sifatida ochiladi
   useEffect(() => { hydrate().catch(() => useSession.setState({ status: 'anon', kind: null })); }, [hydrate]);
   return (

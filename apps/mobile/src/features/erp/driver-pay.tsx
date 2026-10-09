@@ -8,7 +8,8 @@ import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { DataTable, PeriodSwitch, type Col } from './data-table';
-import { curMonth, errorText, hoursNum, hoursText, lateText, useDriverMonth, useDriversMonth, type DriverDay, type DriverMonthRow } from './pay-api';
+import { curMonth, errorText, hoursNum, hoursText, lateText, useDriverMonth, useDriversMonth, type DriverDay, type DriverMonthRow, type DriverTrip } from './pay-api';
+import { hasTrack, tripTrackShort, useErpTripTrack } from './trip-track';
 
 /**
  * Haydovchilar: reyslar va davomat — haydovchi ish haqining asosi (asosan yetkazilgan reyslar).
@@ -87,6 +88,25 @@ export function DriversPayScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+/**
+ * Reys qatori. GPS izi bo'lsa (`/trip-track`) — haqiqiy yurilgan yo'l va vaqt ("12.4 km · 1 soat 5 daq"),
+ * bo'lmasa (eski server, iz yo'q) — avvalgidek taxminiy km. Bosilsa reys kartochkasi (xarita va to'liq raqamlar).
+ */
+function TripRow({ t }: { t: DriverTrip }) {
+  const router = useRouter();
+  const { data } = useErpTripTrack(t.id);
+  const gps = hasTrack(data) ? ` · GPS: ${tripTrackShort(data)}` : t.km ? ` · ${t.km} km` : '';
+  return (
+    <ListItem
+      icon="truck" module="logistics"
+      title={`${t.time} · ${t.customer}`}
+      subtitle={`№${t.no}${t.product ? ` · ${t.product}` : ''} · ${t.plate}${gps}`}
+      value={t.qtyText}
+      onPress={() => router.push(`/erp/trips/${t.id}` as never)}
+    />
+  );
+}
+
 /** Kun qatori: "06 · Dush · 3 reys", ostida davomat va reys vaqtlari, o'ngda hajm. */
 function DayBlock({ d }: { d: DriverDay }) {
   const att = d.checkIn
@@ -104,14 +124,7 @@ function DayBlock({ d }: { d: DriverDay }) {
             value={d.qtyText ?? undefined}
           />
         ) : null}
-        {d.trips.map((t) => (
-          <ListItem
-            key={t.id} icon="truck" module="logistics"
-            title={`${t.time} · ${t.customer}`}
-            subtitle={`№${t.no}${t.product ? ` · ${t.product}` : ''} · ${t.plate}${t.km ? ` · ${t.km} km` : ''}`}
-            value={t.qtyText}
-          />
-        ))}
+        {d.trips.map((t) => <TripRow key={t.id} t={t} />)}
       </ListGroup>
     </View>
   );

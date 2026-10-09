@@ -122,12 +122,22 @@ export type ErpFleetItem = ErpFleetTruck & {
   /** Nima olib ketyapti — "Beton M300 (B22.5)". */
   product?: string | null;
   /**
-   * Ixtiyoriy (server bersa): mashinaning oxirgi ~15 daqiqalik izi, vaqt bo'yicha tartiblangan.
-   * Hozirgi ERP `/api/mobile/fleet` bermaydi — kelsa xaritada xira chiziq bo'lib chiziladi.
+   * Mashinaning oxirgi ~15 daqiqalik izi (soddalashtirilgan), vaqt bo'yicha tartiblangan — xaritada xira chiziq.
+   * Eski ERP bermaydi.
    */
   trail?: { lat: number; lng: number; at?: string }[] | null;
+  /** Oxirgi tezlik (km/soat) va yo'nalish (gradus) — yangi server yuqori darajada beradi (eskisi `gps` ichida bo'lishi mumkin). */
+  speedKmh?: number | null;
+  heading?: number | null;
+  /** Server hisobi: telefondan oxirgi aloqa (`lastSeenAt`) logistika sozlamasidagi `staleMin` dan eski. */
+  stale?: boolean;
+  /** Telefondan oxirgi aloqa — nuqta yoki "tirikman". */
+  lastSeenAt?: string | null;
+  /** Ochiq GPS ogohlantirishlari — matn ERP'dan (o'zbekcha), ilova faqat chizadi. */
+  alerts?: ErpFleetAlert[];
 };
-export interface ErpFleetData { at: string; trucks: ErpFleetItem[]; gpsError: string | null }
+export interface ErpFleetAlert { kind: 'SILENT' | 'STOP' | 'OFF_ROUTE' | string; title: string; info: string | null; since: string | null; openedAt: string }
+export interface ErpFleetData { at: string; trucks: ErpFleetItem[]; gpsError: string | null; /** "GPS eskirgan" chegarasi, daqiqa (yangi server). */ staleMin?: number }
 
 /** Jonli xarita uchun yangilanish oralig'i — 12 s (talab: 10–15 s). */
 export const FLEET_POLL_MS = 12_000;

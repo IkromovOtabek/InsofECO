@@ -303,7 +303,7 @@ function useGlide(ref: React.RefObject<MarkerRef | null>, coordinate: LatLng, re
   return shown;
 }
 
-export function DriverMarker({ coordinate, heading = null, status = 'moving', selected, label, onPress, zIndex }: {
+export function DriverMarker({ coordinate, heading = null, status = 'moving', selected, label, caption, alert, onPress, zIndex }: {
   coordinate: LatLng;
   /** Gradus, shimoldan soat yo'nalishida; null — turibdi (aylanmaydi). */
   heading?: number | null;
@@ -311,6 +311,10 @@ export function DriverMarker({ coordinate, heading = null, status = 'moving', se
   selected?: boolean;
   /** Tanlanganda nishon ostidagi yorliq: "01 A 123 BC". */
   label?: string;
+  /** Doim ko'rinadigan qisqa yorliq (tezlik: "42 km/soat"); tanlanganda `label` bilan birga. */
+  caption?: string | null;
+  /** Ochiq ogohlantirish (GPS jim, uzoq turibdi, yo'ldan chiqdi) — nishon ustida "!" belgisi. */
+  alert?: boolean;
   onPress?: () => void;
   zIndex?: number;
 }) {
@@ -333,6 +337,7 @@ export function DriverMarker({ coordinate, heading = null, status = 'moving', se
     try { ref.current?.animatedRotateTo(next, nativeMs(300)); } catch { /* belgi hali xaritaga qo'shilmagan */ }
   }, [heading, variant]);
   const z = zIndex ?? (selected ? 12 : 10);
+  const text = selected && label ? (caption ? `${label} · ${caption}` : label) : caption ?? null;
   return (
     <>
       <YMarker
@@ -348,7 +353,8 @@ export function DriverMarker({ coordinate, heading = null, status = 'moving', se
         onPress={onPress}
         zIndex={z}
       />
-      {selected && label ? <DriverLabel key={`l:${label}`} coordinate={coordinate} label={label} zIndex={z - 1} /> : null}
+      {text ? <DriverLabel key={`l:${text}`} coordinate={coordinate} label={text} zIndex={z - 1} /> : null}
+      {alert ? <AlertDot coordinate={coordinate} zIndex={z + 1} /> : null}
     </>
   );
 }
@@ -371,6 +377,26 @@ function DriverLabel({ coordinate, label, zIndex }: { coordinate: LatLng; label:
       <View collapsable={false} style={{ width: w, height: half * 2, justifyContent: 'flex-end' }}>
         <View style={{ height: h, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: c.bgSurface, borderWidth: size.hairline, borderColor: c.borderDefault }}>
           <Txt v="overline" allowFontScaling={false} numberOfLines={1} style={{ color: c.textStrong }}>{label}</Txt>
+        </View>
+      </View>
+    </YMarker>
+  );
+}
+
+/**
+ * Ogohlantirish belgisi — nishonning o'ng-yuqori burchagida qizil doira, ichida "!". Rasm markazi nuqtada
+ * (nishon o'lchamidagi shaffof maydon), shuning uchun nishon bilan birga turadi; sirpanish ham shunday.
+ */
+function AlertDot({ coordinate, zIndex }: { coordinate: LatLng; zIndex: number }) {
+  const { c } = useTheme();
+  const ref = useRef<MarkerRef | null>(null);
+  const shown = useGlide(ref, coordinate, 'alert');
+  const d = size.iconSm + space.xs;
+  return (
+    <YMarker ref={ref} point={toPoint(shown)} anchor={{ x: 0.5, y: 0.5 }} zIndex={zIndex}>
+      <View collapsable={false} style={{ width: DRIVER_PT, height: DRIVER_PT }}>
+        <View style={{ position: 'absolute', top: 0, right: 0, width: d, height: d, borderRadius: radius.pill, backgroundColor: mapDriver.issue, borderWidth: size.ring, borderColor: c.bgSurface, alignItems: 'center', justifyContent: 'center' }}>
+          <Txt v="overline" allowFontScaling={false} numberOfLines={1} style={{ color: c.textOnSolid }}>!</Txt>
         </View>
       </View>
     </YMarker>
