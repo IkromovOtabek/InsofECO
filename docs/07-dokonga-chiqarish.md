@@ -73,6 +73,63 @@ build → restart. Migratsiyalar orqaga qaytmaydi — faqat kengaytiruvchi migra
 - iOS push: birinchi `eas build -p ios` da "Push Notifications key" — *Yes* (APNs .p8 kalit EAS'da saqlanadi;
   `aps-environment` entitlement `expo-notifications` plugini qo'shadi).
 - Play `submit` uchun `apps/mobile/google-play-service-account.json` (git'da yo'q) kerak.
+- ⚠️ `preview` profilidagi EAS APK `preview` kanalida — `eas update --channel production` unga yetmaydi
+  (`--channel preview` alohida kerak). ERP orqali tarqatiladigan APK hozir lokal gradle bilan yig'iladi (pastda).
+
+## Lokal APK (gradle) va OTA
+
+ERP'dagi "Mobil ilova" tugmasi beradigan APK EAS'da emas, lokal gradle bilan yig'iladi
+(`apps/mobile/android`, papka git'da yo'q). EAS build OTA kanalini o'zi qo'yadi, lokal build esa yo'q:
+`AndroidManifest.xml` da faqat `EXPO_UPDATE_URL` bo'lsa telefon `expo-channel-name` sarlavhasisiz so'raydi va
+`eas update --channel production` ni **olmaydi**. Shuning uchun `EXPO_UPDATES_CHANNEL=production` bilan prebuild —
+`app.config.ts` `updates.requestHeaders` ni qo'shadi, prebuild uni manifestga yozadi
+(EAS build ichida `EAS_BUILD=true` — e'tiborsiz, profil kanallari o'zgarmaydi).
+
+OTA ishlashi uchun uch narsa mos bo'lsin: kanal (`production`), `runtimeVersion` (= `version`, hozir **1.0.4** —
+`android/app/src/main/res/values/strings.xml` → `expo_runtime_version`) va `eas update` dagi `--channel`.
+Shu sababli JS-only relizda `version`/`versionName` **1.0.4 qoladi**, faqat `versionCode` oshadi.
+
+```bash
+cd ~/Desktop/InsofECO/apps/mobile
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+# apps/mobile/.env da Wi-Fi sinov IP'lari — production manzillar shell'da beriladi
+export EXPO_PUBLIC_API_URL=https://api.insof-erp.uz EXPO_PUBLIC_ERP_URL=https://insof-erp.uz
+export EXPO_UPDATES_CHANNEL=production
+
+# 1) Zaxira: prebuild versionCode'ni 1 ga tushiradi va imzo sozlamasini qayta yozishi mumkin
+cp android/app/build.gradle /tmp/eco-build.gradle.bak
+cp android/app/debug.keystore /tmp/eco-debug.keystore.bak
+
+# 2) Manifestni yangilash (kanal sarlavhasi)
+npx expo prebuild -p android --no-install
+grep -n UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY android/app/src/main/AndroidManifest.xml   # qator bo'lishi SHART
+grep -n expo_runtime_version android/app/src/main/res/values/strings.xml                    # 1.0.4
+
+# 3) android/app/build.gradle → defaultConfig: versionCode 8 (oldingisi 7), versionName "1.0.4" (o'zgarmaydi)
+#    keystore yo'qolgan bo'lsa: cp /tmp/eco-debug.keystore.bak android/app/debug.keystore
+
+# 4) Yig'ish (faqat arm64 — ~40 MB)
+(cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)
+
+# 5) EAS kaliti bilan qayta imzolash (gradle debug kalit bilan imzolaydi). Parollarni so'raydi — chatga yozmang.
+APKSIGNER=~/Library/Android/sdk/build-tools/35.0.0/apksigner
+$APKSIGNER sign --ks ~/Documents/insof-keys/@otabekikromov__insof-eco.jks \
+  --out /tmp/insof-eco.apk android/app/build/outputs/apk/release/app-release.apk
+$APKSIGNER verify --print-certs /tmp/insof-eco.apk | grep SHA-256   # 87811460…dcc3 bo'lsin
+
+# 6) Serverga: eskisini insof-eco-<ver>.apk deb saqlab, yangisini qo'yish
+scp /tmp/insof-eco.apk insof:/var/www/insof-erp/uploads/app/insof-eco.apk
+```
+
+Prebuild'siz (faqat shu qator kerak bo'lsa) — `AndroidManifest.xml` da `EXPO_UPDATE_URL` qatoridan keyin:
+
+```xml
+<meta-data android:name="expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY" android:value="{&quot;expo-channel-name&quot;:&quot;production&quot;}"/>
+```
+
+Kanalsiz eski APK (1.0.4, versionCode 7 va undan oldingilar) OTA'ni olmaydi — bir marta yangi APK o'rnatilishi kerak.
+Keyingi JS o'zgarishlari: `eas update --channel production --environment production --message "..."`.
+Native o'zgarish bo'lsa — `version` ni oshirib (1.0.5) yangi APK; u faqat 1.0.5 OTA'larini oladi.
 
 ## Reliz oldi tekshiruv ro'yxati (1.0.1)
 

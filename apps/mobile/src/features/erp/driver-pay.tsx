@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { DataTable, PeriodSwitch, type Col } from './data-table';
 import { curMonth, errorText, hoursNum, hoursText, lateText, useDriverMonth, useDriversMonth, type DriverDay, type DriverMonthRow, type DriverTrip } from './pay-api';
-import { hasTrack, tripTrackShort, useErpTripTrack } from './trip-track';
+import { summaryHasTrack, tripSummaryShort, useErpTripSummaries, type ErpTripSummary } from './trip-track';
 
 /**
  * Haydovchilar: reyslar va davomat — haydovchi ish haqining asosi (asosan yetkazilgan reyslar).
@@ -88,14 +88,17 @@ export function DriversPayScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** Ekrandagi barcha reyslar yakuni (`trip-track/summary`, bitta so'rov): tripId → yakun; `null` — yo'q/eski server. */
+type Summaries = Record<string, ErpTripSummary> | null | undefined;
+
 /**
- * Reys qatori. GPS izi bo'lsa (`/trip-track`) — haqiqiy yurilgan yo'l va vaqt ("12.4 km · 1 soat 5 daq"),
- * bo'lmasa (eski server, iz yo'q) — avvalgidek taxminiy km. Bosilsa reys kartochkasi (xarita va to'liq raqamlar).
+ * Reys qatori. GPS izi bo'lsa (ekran bo'yicha bitta `trip-track/summary` so'rovidan) — haqiqiy yurilgan yo'l va
+ * vaqt ("12.4 km · 1 soat 5 daq"), bo'lmasa (eski server, iz yo'q) — avvalgidek taxminiy km.
+ * Bosilsa reys kartochkasi (xarita va to'liq raqamlar — alohida `trip-track`).
  */
-function TripRow({ t }: { t: DriverTrip }) {
+function TripRow({ t, sum }: { t: DriverTrip; sum?: ErpTripSummary }) {
   const router = useRouter();
-  const { data } = useErpTripTrack(t.id);
-  const gps = hasTrack(data) ? ` · GPS: ${tripTrackShort(data)}` : t.km ? ` · ${t.km} km` : '';
+  const gps = summaryHasTrack(sum) ? ` · GPS: ${tripSummaryShort(sum)}` : t.km ? ` · ${t.km} km` : '';
   return (
     <ListItem
       icon="truck" module="logistics"
@@ -108,7 +111,7 @@ function TripRow({ t }: { t: DriverTrip }) {
 }
 
 /** Kun qatori: "06 · Dush · 3 reys", ostida davomat va reys vaqtlari, o'ngda hajm. */
-function DayBlock({ d }: { d: DriverDay }) {
+function DayBlock({ d, sums }: { d: DriverDay; sums: Summaries }) {
   const att = d.checkIn
     ? `Keldi ${d.checkIn}${d.checkOut ? ` – ketdi ${d.checkOut}` : ''}${d.minutes != null ? ` · ${hoursText(d.minutes)}` : ''}${d.lateMin ? ` · ${lateText(d.lateMin)} kechikdi` : ''}`
     : d.status && d.status !== 'PRESENT' ? 'Davomat: ishda emas' : null;
@@ -124,7 +127,7 @@ function DayBlock({ d }: { d: DriverDay }) {
             value={d.qtyText ?? undefined}
           />
         ) : null}
-        {d.trips.map((t) => <TripRow key={t.id} t={t} />)}
+        {d.trips.map((t) => <TripRow key={t.id} t={t} sum={sums?.[t.id]} />)}
       </ListGroup>
     </View>
   );
@@ -139,6 +142,8 @@ export function DriverMonthScreen({ id, month: initial, onBack }: { id: string; 
   const d = q.data;
   const t = d?.totals;
   const own = id === 'me';
+  const tripIds = useMemo(() => (d?.days ?? []).flatMap((x) => x.trips.map((t) => t.id)), [d]);
+  const sums = useErpTripSummaries(tripIds).data;
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <PageHeader title={own ? 'Mening reyslarim' : d?.driver.fullName ?? 'Haydovchi'} overline={own ? 'Oy bo\'yicha' : d?.driver.plate ?? 'Reyslar va davomat'} onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
@@ -177,7 +182,7 @@ export function DriverMonthScreen({ id, month: initial, onBack }: { id: string; 
                 {`Davomat bo'yicha ${hoursText(t.minutes)}${t.lateDays ? ` · ${t.lateDays} marta kechikkan (jami ${lateText(t.lateMinutes)})` : ''}`}
               </Callout>
             ) : null}
-            {d && d.days.length ? d.days.map((x) => <DayBlock key={x.date} d={x} />) : d ? (
+            {d && d.days.length ? d.days.map((x) => <DayBlock key={x.date} d={x} sums={sums} />) : d ? (
               <EmptyState key="e" compact icon="truck" title="Bu oyda reys yo'q" />
             ) : null}
           </Reveal>

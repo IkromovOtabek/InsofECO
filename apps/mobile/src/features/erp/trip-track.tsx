@@ -12,6 +12,9 @@ import { distanceLabel, durationLabel } from '@/core/geo';
 import { decodePolyline } from '@/core/polyline';
 import { DriverMarker, MapView, Marker, Polyline, type LatLng, type MapHandle } from '@/core/map';
 import { usePollInterval } from '@/shared/hooks';
+import { allFinal, chunkIds, parseSummaryItems, type ErpTripSummary } from './trip-summary-logic';
+
+export { summaryHasTrack, type ErpTripSummary } from './trip-summary-logic';
 
 /**
  * Reysning bosib o'tilgan yo'li (`GET /api/mobile/trip-track?id=`) — reys kartochkasi va "Mening reyslarim".
@@ -81,6 +84,49 @@ export const hasTrack = (t: ErpTripTrack | null | undefined): t is ErpTripTrack 
 
 /** Ro'yxat uchun qisqa: "12.4 km · 1 soat 20 daq". */
 export const tripTrackShort = (t: ErpTripTrack) => `${distanceLabel(t.meters)} · ${durationLabel(t.totalSec / 60)}`;
+
+/** Eski serverda `trip-track/summary` yo'q — bir marta bilib olinsa, qayta so'ralmaydi. */
+let summaryMissing = false;
+
+async function fetchTripSummaries(ids: string[]): Promise<Record<string, ErpTripSummary> | null> {
+  const out: Record<string, ErpTripSummary> = {};
+  try {
+    // Odatda bitta so'rov (oyda ~60 reys); 100 dan ortig'i bo'laklarga — parallel
+    const parts = await Promise.all(chunkIds(ids).map((c) => erpApi<unknown>('/trip-track/summary', { query: { ids: c.join(',') } })));
+    for (const r of parts) {
+      const items = parseSummaryItems(r);
+      if (!items) return null;
+      Object.assign(out, items);
+    }
+    return out;
+  } catch (e) {
+    // Marshrut yo'q (eski server: Next 404 sahifasi yoki JSON emas) — bo'lim jimgina yashiriladi, qatorda taxminiy km
+    if ((e instanceof ApiException && e.status === 404) || e instanceof SyntaxError) { summaryMissing = true; return null; }
+    // Ruxsat yo'q (xodim kartasi bog'lanmagan va h.k.) — xato emas, shunchaki ko'rsatilmaydi
+    if (e instanceof ApiException && e.status === 403) return null;
+    throw e;
+  }
+}
+
+/**
+ * Ro'yxat ekrani ("Mening reyslarim", haydovchi oyi): ko'rinadigan barcha reyslar yakuni BITTA so'rovda
+ * (avval har qator alohida `trip-track` so'rardi — oyda 60 reys → 60 so'rov). Chiziq yo'q; kartochka
+ * to'liq izni avvalgidek `useErpTripTrack` bilan oladi. `null` — eski server yoki ruxsat yo'q.
+ */
+export function useErpTripSummaries(ids: readonly string[]) {
+  const key = useMemo(() => chunkIds(ids).flat().sort(), [ids]);
+  return useQuery({
+    queryKey: ['erp', 'trip-track-summary', key.join(',')],
+    queryFn: () => fetchTripSummaries(key),
+    enabled: key.length > 0 && !summaryMissing,
+    retry: 1,
+    // Hammasi yakunlangan (o'tgan oy) — o'zgarmaydi; ochiq reys bo'lsa — 20 s dan keyin yangilanadi
+    staleTime: (q) => (allFinal(q.state.data, key) ? Infinity : 20_000),
+  });
+}
+
+/** Ro'yxat uchun qisqa (yakundan): "12.4 km · 1 soat 20 daq". */
+export const tripSummaryShort = (s: ErpTripSummary) => `${distanceLabel(Math.round(s.distanceKm * 1000))} · ${durationLabel(s.totalSec / 60)}`;
 
 const toMap = (pts: ErpLatLng[]): LatLng[] => pts.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)).map((p) => ({ latitude: p.lat, longitude: p.lng }));
 /** Chiziq: `line` bo'lsa o'shani, bo'lmasa `polyline` ni dekodlaymiz. */

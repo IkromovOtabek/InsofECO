@@ -16,6 +16,14 @@ const CAMERA = "Davomat uchun yuzingizni skanerlash, profil rasmi, nakladnoy va 
 
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9';
 
+// OTA kanali LOKAL yig'iladigan APK uchun (ERP orqali tarqatiladigan, `./gradlew assembleRelease`).
+// EAS build kanalni o'zi qo'yadi (eas.json → `channel`), lokal build esa yo'q — sarlavhasiz so'rov
+// `eas update --channel production` ni olmaydi. `EXPO_UPDATES_CHANNEL=production npx expo prebuild -p android`
+// bilan AndroidManifest'ga `expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY` =
+// {"expo-channel-name":"production"} yoziladi. EAS build ichida (EAS_BUILD=true) e'tiborsiz — profil kanali buzilmaydi.
+// Batafsil: docs/07-dokonga-chiqarish.md → "Lokal APK (gradle) va OTA".
+const LOCAL_CHANNEL = !process.env.EAS_BUILD ? process.env.EXPO_UPDATES_CHANNEL?.trim() || undefined : undefined;
+
 const config: ExpoConfig = {
   name: 'Insof ECO',
   slug: 'insof-eco',
@@ -127,6 +135,8 @@ const config: ExpoConfig = {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     // Ilova ochilganda yangilanishni 10 s kutadi, bo'lmasa eskisi bilan ishlayveradi
     fallbackToCacheTimeout: 10000,
+    // Faqat lokal APK yig'ishda (yuqoridagi LOCAL_CHANNEL izohi)
+    ...(LOCAL_CHANNEL ? { requestHeaders: { 'expo-channel-name': LOCAL_CHANNEL } } : {}),
   },
   runtimeVersion: { policy: 'appVersion' },
 };
