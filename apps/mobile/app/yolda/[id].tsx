@@ -19,7 +19,7 @@ import { confirmAtSite } from '@/features/address/site-check';
 import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters, type LatLng } from '@/core/geo';
 import { useErpAction, useErpTripRoute } from '@/features/erp/api';
-import { TRIP_LIVE_STATUSES, drivenLineOf, trackSpan, useErpTripTrack } from '@/features/erp/trip-track';
+import { TRIP_LIVE_STATUSES, drivenLineOf, trackSpan, tripMinutes, useErpTripTrack } from '@/features/erp/trip-track';
 import { useSession } from '@/core/session';
 import { ActionSheet } from '@/features/erp/action-sheet';
 import type { ErpAction } from '@/core/erp';
@@ -676,7 +676,7 @@ function FinishedTrip({ data, track, driven, start, canMap, mapRef, onFit }: {
         {track.isLoading ? <Loader style={{ marginVertical: space.lg }} /> : t ? (
           <Card style={{ flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.md, marginTop: space.md }}>
             <Metric label="Bosib o'tildi" value={distanceLabel(t.meters)} unit="GPS izi bo'yicha" tone="accent" />
-            <Metric label="Yo'lda" value={t.totalSec > 0 ? durationLabel(t.totalSec / 60) : '—'} unit={t.movingSec > 0 ? `harakatda ${durationLabel(t.movingSec / 60)}` : '—'} />
+            <Metric label="Yo'lda" value={tripMinutes(t) > 0 ? durationLabel(tripMinutes(t)) : '—'} unit={t.movingSec > 0 ? `harakatda ${durationLabel(t.movingSec / 60)}` : '—'} />
             <Metric label="Vaqt" value={span ? `${fmtTime(span.from)} → ${fmtTime(span.to)}` : '—'} unit={span ? spanDay(span) : ''} />
             <Metric label="O'rtacha tezlik" value={kmh(t.avgSpeedKmh)} unit={t.maxSpeedKmh != null ? `km/soat · eng yuqori ${Math.round(t.maxSpeedKmh)}` : 'km/soat'} />
           </Card>
