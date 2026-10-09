@@ -10,7 +10,7 @@ import { result } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
-import { ApiException } from '@/core/api';
+import { ApiException, uuid } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
 import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
 import { Loader } from '@/design/loader';
@@ -36,6 +36,11 @@ export default function ErpNew() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const scroll = useRef<ScrollView>(null);
+  /**
+   * Bir martalik kalit (o'tkazma): javob kelmay tarmoq uzilsa va foydalanuvchi qayta bossa — server
+   * o'sha hujjatni qaytaradi, ikkinchi OT ochilmaydi. Ekran ochilganda bir marta yaratiladi.
+   */
+  const clientToken = useRef(uuid()).current;
   /** Har maydonning forma ichidagi Y joyi — birinchi xatoga surish uchun. */
   const pos = useRef<Record<string, number>>({});
 
@@ -77,7 +82,7 @@ export default function ErpNew() {
       return;
     }
     try {
-      const r = await create.mutateAsync({ key: data.key, payload: toPayload(data.fields, values) });
+      const r = await create.mutateAsync({ key: data.key, payload: data.key === 'transfer' ? { ...toPayload(data.fields, values), clientToken } : toPayload(data.fields, values) });
       // Foydalanuvchi natijani o'qib ulgursin, kartochka shundan keyin ochiladi
       // Kassa yozuvlari "ochilmaydi" — saqlanadi
       result.success(['payments', 'cashflow', 'transfer'].includes(data.key) ? 'Saqlandi' : 'Ochildi', r.message, () => router.replace(`/erp/${r.key}/${r.id}` as never));
