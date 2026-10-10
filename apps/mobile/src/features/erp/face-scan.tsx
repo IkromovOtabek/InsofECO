@@ -49,6 +49,8 @@ export interface FaceScanOptions {
   verify?: (shot: FaceShot) => Promise<FaceVerifyResult>;
   /** Har urinish oldidan challenge (nonce + topshiriq) — `erpAuth.faceChallenge`. Berilmasa — topshiriqsiz bitta kadr. */
   challenge?: () => Promise<FaceChallenge>;
+  /** "Tanildi" natijasi ekranda turadigan vaqt (ms). Kiosk ismni o'qish uchun uzoqroq ushlaydi. */
+  holdMs?: number;
 }
 
 type CameraModule = typeof import('expo-camera');
@@ -306,7 +308,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       setMsg(v.message ?? null);
       setPhase('ok');
       haptic.success();
-      setTimeout(() => finish(req.id, { ok: true, photo }), OK_HOLD_MS);
+      setTimeout(() => finish(req.id, { ok: true, photo }), req.opts.holdMs ?? OK_HOLD_MS);
     } catch (e) {
       if (alive.current) fail(e instanceof ShotError ? e.message : "Kamera kadr bermadi — qayta urining.");
     } finally {

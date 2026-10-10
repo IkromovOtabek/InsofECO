@@ -173,6 +173,7 @@ function Nav() {
         {/* Reyslar xaritasi — sarlavha ekranning o'zida; e'lon qilinmasa birinchi kadrda "erp/fleet" sarlavhasi miltillaydi */}
         <Stack.Screen name="erp/fleet" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomat" options={{ headerShown: false }} />
+        <Stack.Screen name="erp/face" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomat-xodim" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomatim" options={{ headerShown: false }} />
         <Stack.Screen name="erp/haydovchilar" options={{ headerShown: false }} />

@@ -304,7 +304,7 @@ export function ErpHome() {
     };
 
     // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (GPS + yuz skaneri) va rahbarga "Xodimlar davomati" ──
-    if (data.selfAttendance || data.attendanceManage) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
+    if (data.selfAttendance || data.attendanceManage || data.faceAttendance) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
 
     if (error) blocks.push(<OfflineBanner key="off" visible title="Yangilab bo'lmadi" onRetry={() => void refetch()} />);
 

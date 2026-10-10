@@ -114,8 +114,9 @@ export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module
   const router = useRouter();
   const s = data.selfAttendance;
   const manage = data.attendanceManage;
+  const face = data.faceAttendance;
   const m = useSelfMark();
-  if (!s && !manage) return null;
+  if (!s && !manage && !face) return null;
   const go = (href: string) => router.push(href as never);
   return (
     <View style={{ gap: space.md }}>
@@ -158,6 +159,8 @@ export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module
           </View>
         </Card>
       ) : null}
+      {/* ERP Bosh sahifa → «Davomat» kabi: Face ID skaneri (kiosk), jadval, yuzlarni ro'yxatga olish */}
+      {face ? <Button size="lg" icon="scan-line" title="Davomat" onPress={() => go('/erp/face')} /> : null}
       {manage ? (
         <ListGroup>
           <ListItem icon="users" module={module} title={manage.title} subtitle={manage.subtitle} onPress={() => go(`/erp/${manage.key}/${encodeURIComponent(manage.id)}`)} />

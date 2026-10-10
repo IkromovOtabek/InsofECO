@@ -226,7 +226,22 @@ export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: strin
   /** Xodimning o'z davomati (bosh sahifa "Keldim / Ketdim" kartasi). Login xodimga bog'lanmagan — null. */
   selfAttendance?: ErpSelfAttendance | null;
   /** Rahbar: boshqalarning davomati kartochkasi (`/erp/<key>/<id>`). */
-  attendanceManage?: { title: string; subtitle: string; key: string; id: string } | null }
+  attendanceManage?: { title: string; subtitle: string; key: string; id: string } | null;
+  /** «Davomat» tugmasi — Face ID skaneri (ERP Bosh sahifa → Davomat kabi). Eski ERP'da yo'q. */
+  faceAttendance?: { canEnroll: boolean } | null }
+
+/** Face ID davomat (ERP `GET /api/mobile/face`). */
+export interface ErpFaceEmployee { id: string; fullName: string; position: string }
+export interface ErpFaceLogRow { key: string; attendanceId: string; kind: 'in' | 'out'; time: string; employee: ErpFaceEmployee; photo: boolean }
+export interface ErpFaceRosterRow extends ErpFaceEmployee { samples: number; enrolledAt: string | null; templatePhotoId: string | null }
+export interface ErpFaceData { scope: 'all' | 'sex'; canEnroll: boolean; log: ErpFaceLogRow[]; roster: ErpFaceRosterRow[] | null; enrolled: number | null }
+export type ErpFaceMode = 'auto' | 'in' | 'out';
+/** Kiosk javobi — tanilmasa ham 200 (`ok: false` + matn). */
+export type ErpFaceScanResult =
+  | { ok: true; kind: 'in' | 'out' | 'already'; employee: ErpFaceEmployee; time: string | null; text: string; hint: string | null; similarity: number; attendanceId: string | null }
+  | { ok: false; code: string; error: string; employee?: ErpFaceEmployee };
+/** Kadr manzili: jurnal (`a` + `k`) yoki ro'yxatga olish (`t`). */
+export type ErpFacePhotoRef = { a: string; k: 'in' | 'out' } | { t: string };
 
 /** Xodimning bugungi davomati — server `lib/self-attendance.ts` (`SelfAttendance`) bilan bir xil. */
 export interface ErpSelfAttendance {
@@ -379,6 +394,19 @@ export const erpAuth = {
    * Eski ERP serverida endpoint yo'q (404) yoki boshqa xato — `{}`: so'rov nonce'siz, bitta kadr bilan ketadi
    * (server nonce/jonlilikni majburiy qilmagan bo'lsa qabul qiladi).
    */
+  /** Face ID davomat: ruxsat, bugungi jurnal, yuzlar ro'yxati. */
+  face: () => erpApi<ErpFaceData>('/face'),
+  /** Kiosk: kameraga qaragan xodimni tanib, keldi/ketdi yozadi. */
+  faceScan: (body: { mode: ErpFaceMode; photo?: string; frames?: string[]; nonce?: string }) =>
+    erpApi<ErpFaceScanResult>('/face/scan', { method: 'POST', body }),
+  /** Xodim yuzini ro'yxatga olish (rozilik bilan). */
+  faceEnroll: (body: { employeeId: string; consent: true; photo?: string; frames?: string[]; nonce?: string }) =>
+    erpApi<{ ok: true; count: number; note: string } | { ok: false; error: string }>('/face/enroll', { method: 'POST', body }),
+  faceDelete: (employeeId: string) =>
+    erpApi<{ ok: true; note: string } | { ok: false; error: string }>('/face/delete', { method: 'POST', body: { employeeId } }),
+  /** Kadr (data-URL). */
+  facePhoto: (ref: ErpFacePhotoRef) =>
+    erpApi<{ data: string }>('/face/photo', { query: 't' in ref ? { t: ref.t } : { a: ref.a, k: ref.k } }),
   faceChallenge: async (): Promise<FaceChallenge> => {
     try {
       return parseChallenge(await erpApi<unknown>('/attendance/challenge'));

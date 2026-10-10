@@ -38,7 +38,8 @@ const DAY_COLS: Col<StaffDayRow>[] = [
   { key: 'shift', title: 'Smena', width: 100, cell: (r) => ({ text: `${r.shift.start}–${r.shift.end}`, color: 'muted' }) },
 ];
 
-export function StaffAttendanceScreen({ onBack }: { onBack?: () => void }) {
+/** `top` — jadval ustidagi qo'shimcha blok (Davomat ekranidagi Skaner / Jadval / Yuzlar almashtirgichi). */
+export function StaffAttendanceScreen({ onBack, title = 'Davomat', overline = 'Ish haqi asosi', top }: { onBack?: () => void; title?: string; overline?: string; top?: React.ReactNode }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const raise = useHeaderRaise();
@@ -69,7 +70,7 @@ export function StaffAttendanceScreen({ onBack }: { onBack?: () => void }) {
   const t = d?.totals;
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <PageHeader title="Davomat" overline="Ish haqi asosi" onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
+      <PageHeader title={title} overline={overline} onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
       <ScrollView
         onScroll={raise.onScroll}
         scrollEventThrottle={raise.scrollEventThrottle}
@@ -77,6 +78,7 @@ export function StaffAttendanceScreen({ onBack }: { onBack?: () => void }) {
         contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxxl * 3, gap: space.stack }}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={c.brand} />}
       >
+        {top}
         <ChipGroup
           items={[{ key: 'today', label: 'Bugun' }, { key: 'yesterday', label: 'Kecha' }, ...(dayKey === 'other' ? [{ key: 'other' as const, label: iso.slice(8, 10) + '.' + iso.slice(5, 7) }] : [])]}
           value={dayKey}
