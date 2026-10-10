@@ -38,6 +38,13 @@ export const TASK_SETTLE_MS = 1800;
 export const STEP1_MS = 700;
 /** `steps[1]` ko'rsatilgandan [2] kadrgacha. */
 export const STEP2_MS = 350;
+/**
+ * Yuzni ro'yxatga olishda `steps[1]` ("Kameraga qarang") dan [2] kadrgacha. ERP namunani faqat to'g'ri qaragan kadrdan
+ * oladi va 1-bosqichda [2] ham to'g'ri bo'lishini talab qiladi (burun [0] ga nisbatan ≤ 0,08 siljigan) — 350 ms da
+ * bosh burilishdan hali qaytmagan bo'ladi va ro'yxatga olish qayta-qayta rad etiladi. Jonlilikka zarari yo'q: burilish
+ * [1] kadrda o'lchanadi. Kiosk/"Keldim"da [2] ixtiyoriy probe — u yerda tezlik uchun `STEP2_MS`.
+ */
+export const ENROLL_STEP2_MS = 1300;
 
 const ICON_OF: Record<FaceTaskCode, string> = { BLINK: 'eye-off', TURN_LEFT: 'arrow-left', TURN_RIGHT: 'arrow-right' };
 const str = (v: unknown, max = 200) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);

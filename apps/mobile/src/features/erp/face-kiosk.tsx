@@ -10,7 +10,7 @@ import { radius, size, space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { ApiException } from '@/core/api';
 import { erpAuth, type ErpFaceData, type ErpFaceEnrollDone, type ErpFaceMode, type ErpFacePhotoRef, type ErpFaceRosterRow, type ErpFaceScanResult } from '@/core/erp';
-import { facePayload } from '@/core/face-liveness';
+import { ENROLL_STEP2_MS, facePayload } from '@/core/face-liveness';
 import { usePollInterval } from '@/shared/hooks';
 import { scanFace } from './face-scan';
 import { StaffAttendanceScreen } from './staff-attendance';
@@ -39,10 +39,10 @@ const NET_ERROR = "Tarmoq xatosi. Internetni tekshirib, qayta urinib ko'ring";
 const errText = (e: unknown) => (e instanceof ApiException && e.message ? e.message : NET_ERROR);
 /** Ro'yxatga olish 1-bosqichi tugagach server izohi shuncha ko'rinadi, keyin 2-bosqich skaneri o'zi ochiladi. */
 const ENROLL_NOTE_MS = 1800;
-/** O'xshashlik foizi: server 0..1 yoki 0..100 berishi mumkin → " · 92%". Son bo'lmasa — bo'sh. */
+/** O'xshashlik foizi: ERP butun 0..100 beradi (kasr 0..1 — ulush deb olinadi) → " · 92%". Son bo'lmasa — bo'sh. */
 const simText = (s: number | null | undefined) => {
   if (typeof s !== 'number' || !Number.isFinite(s) || s <= 0) return '';
-  return ` · ${Math.round(s <= 1 ? s * 100 : s)}%`;
+  return ` · ${Math.round(s < 1 ? s * 100 : s)}%`;
 };
 const refKey = (r: ErpFacePhotoRef) => ('t' in r ? `t:${r.t}` : `a:${r.a}:${r.k}`);
 
@@ -262,6 +262,7 @@ function RosterTab({ d, onPhoto }: { d: ErpFaceData; onPhoto: (v: Viewer) => voi
         allowFlip: true,
         holdMs: ENROLL_NOTE_MS,
         okTitle: 'Namunalar olindi',
+        returnMs: ENROLL_STEP2_MS,
         challenge: erpAuth.faceChallenge,
         verify: async (shot) => {
           try {
@@ -288,6 +289,7 @@ function RosterTab({ d, onPhoto }: { d: ErpFaceData; onPhoto: (v: Viewer) => voi
         facing: 'front',
         allowFlip: true,
         okTitle: 'Saqlandi',
+        returnMs: ENROLL_STEP2_MS,
         challenge: erpAuth.faceChallenge,
         verify: async (shot) => {
           if (st.gone) return { ok: false, message: st.gone, retry: false };

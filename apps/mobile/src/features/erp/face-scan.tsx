@@ -54,6 +54,8 @@ export interface FaceScanOptions {
   holdMs?: number;
   /** Muvaffaqiyat sarlavhasi (standart "Tanildi"); masalan ro'yxatga olishning 1-bosqichida "Namunalar olindi". */
   okTitle?: string;
+  /** `steps[1]` ("Kameraga qarang") dan [2] kadrgacha kutish (ms), standart `STEP2_MS`; ro'yxatga olishda uzoqroq. */
+  returnMs?: number;
 }
 
 type CameraModule = typeof import('expo-camera');
@@ -289,7 +291,8 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         if (!alive.current || !ref.current) return;
         const f1 = await shoot(true);
         setStep(t.steps[1]);
-        await sleep(STEP2_MS);
+        haptic.light(); // "Kameraga qarang" — boshni qaytarish signali ([2] to'g'ri qaragan kadr bo'lsin)
+        await sleep(req.opts.returnMs ?? STEP2_MS);
         if (!alive.current || !ref.current) return;
         const f2 = await shoot(true);
         setStep(null);
