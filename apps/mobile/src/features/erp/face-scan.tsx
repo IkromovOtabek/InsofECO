@@ -1,22 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Linking, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { cancelAnimation, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { Button, Txt } from '@/design/primitives';
 import { Icon, type IconName } from '@/design/icons';
-import { StatusMark } from '@/design/success';
 import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
-import { DUR, EASE_LOOP, haptic, useReducedMotion } from '@/design/motion';
+import { DUR, haptic, useReducedMotion } from '@/design/motion';
 import { MAX_FRAME_B64, STEP1_MS, STEP2_MS, TASK_SETTLE_MS, type FaceChallenge, type FaceTask, taskLine } from '@/core/face-liveness';
+import { FaceRing, ringOuter, type RingMode } from './face-ring';
 
 /**
  * Ilova ichidagi yuz skaneri — davomat uchun ("Keldim / Ketdim" va rahbarning "Keldi — yuz skaneri").
  *
- * Suratga olish ekrani EMAS: tugma, galereya, olingan rasmning ko'rinishi yo'q. Kamera ochiladi, yuz oval
- * ramkaga joylanadi, ~1,2 s dan keyin kadr o'zi (ovozsiz) olinadi va to'g'ridan-to'g'ri tekshiruvga ketadi.
+ * Suratga olish ekrani EMAS: tugma, galereya, olingan rasmning ko'rinishi yo'q. Kamera ochiladi, yuz dumaloq
+ * ramkaga (Face ID uslubidagi chiziqchalar halqasi — `face-ring.tsx`) joylanadi, ~1,2 s dan keyin kadr o'zi (ovozsiz) olinadi va to'g'ridan-to'g'ri tekshiruvga ketadi.
  * Kadr faqat xotirada (base64) — vaqtinchalik fayl darhol o'chiriladi, galereyaga saqlanmaydi.
  *
  * Ishlatish (bir joyda `<FaceScanHost/>` ildiz maketida turadi):
@@ -221,8 +219,6 @@ function pickPictureSize(sizes: string[]): string | undefined {
   return sizes.includes('Medium') ? 'Medium' : undefined;
 }
 
-const AEllipse = Animated.createAnimatedComponent(Ellipse);
-
 function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const { CameraView } = cam;
   const { c } = useTheme();
@@ -240,6 +236,8 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const [task, setTask] = useState<FaceTask | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [step, setStep] = useState<string | null>(null);
+  // Halqa bosqichi (faqat ko'rinish): 0 — kadrgacha, 1 — [0] olinmoqda, 2 — steps[0], 3 — steps[1], 4 — kadrlar tayyor
+  const [stage, setStage] = useState(0);
   // Kamera ochilmasa (onMountError) "Qayta urinish" CameraView'ni qaytadan yaratadi (key orqali)
   const [mount, setMount] = useState(0);
   const mountFailed = useRef(false);
@@ -279,6 +277,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     busy.current = true;
     setPhase('scan');
     setStep(null);
+    setStage(1);
     try {
       const t = ch?.task ?? null;
       const photo = await shoot(!!t);
@@ -286,16 +285,19 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       if (t) {
         // Topshiriq: [1] — ko'rsatmadan ~0,7 s keyin (bosh burilgan / ko'z yumuq), [2] — "Kameraga qarang" dan keyin
         setStep(t.steps[0]);
+        setStage(2);
         haptic.light();
         await sleep(STEP1_MS);
         if (!alive.current || !ref.current) return;
         const f1 = await shoot(true);
         setStep(t.steps[1]);
+        setStage(3);
         haptic.light(); // "Kameraga qarang" — boshni qaytarish signali ([2] to'g'ri qaragan kadr bo'lsin)
         await sleep(req.opts.returnMs ?? STEP2_MS);
         if (!alive.current || !ref.current) return;
         const f2 = await shoot(true);
         setStep(null);
+        setStage(4);
         frames = [photo, f1, f2];
       }
       if (!alive.current) return;
@@ -336,6 +338,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     setPhase('align');
     setTask(null);
     setStep(null);
+    setStage(0);
     void (async () => {
       let ch: FaceChallenge | null = null;
       if (req.opts.challenge) {
@@ -383,36 +386,27 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     if (alive.current) setReady(true);
   };
 
-  // Oval ramka: ekran kengligining ~70%, yuz shaklida cho'zinchoq, yuqoriroqda
-  const rx = Math.min(W * 0.35, 150);
-  const ry = rx * 1.3;
+  // Dumaloq ramka: ekran kengligining ~68%, past ekranda matn va tugmalarga joy qolguncha kichrayadi
+  const avail = H - insets.top - insets.bottom - space.x12 - 280;
+  const r = Math.max(72, Math.min(W * 0.34, 140, avail / 2.4));
+  const rOut = ringOuter(r);
   const cx = W / 2;
-  const cy = Math.max(insets.top + space.x12 + ry + space.xl, H * 0.42);
-  const hole = `M0 0H${W}V${H}H0Z M${cx - rx} ${cy} a${rx} ${ry} 0 1 0 ${2 * rx} 0 a${rx} ${ry} 0 1 0 ${-2 * rx} 0 Z`;
-  const working = phase === 'scan' || phase === 'verify';
-  const ring = phase === 'ok' ? c.successSolid : phase === 'fail' ? c.dangerSolid : working ? c.brand : c.textOnSolid;
+  const cy = Math.max(insets.top + space.x12 + rOut + space.lg, H * 0.4);
 
-  // Yumshoq animatsiya: skanerlash chizig'i va pulslovchi halqa (faqat ishlayotganda; "kamroq harakat"da yo'q)
-  const line = useSharedValue(0);
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    if (working && !reduce) {
-      line.value = 0;
-      line.value = withRepeat(withTiming(1, { duration: 1400, easing: EASE_LOOP }), -1, true);
-      pulse.value = 0;
-      pulse.value = withRepeat(withTiming(1, { duration: DUR.pulse, easing: EASE_LOOP }), -1, false);
-    } else {
-      cancelAnimation(line);
-      cancelAnimation(pulse);
-      pulse.value = 0;
-    }
-  }, [working, reduce, line, pulse]);
-  const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (0.08 + 0.84 * line.value) * 2 * ry }] }));
-  const pulseProps = useAnimatedProps(() => ({
-    rx: rx * (1 + 0.07 * pulse.value),
-    ry: ry * (1 + 0.07 * pulse.value),
-    strokeOpacity: working ? 0.7 * (1 - pulse.value) : 0,
-  }));
+  // Halqa chiziqchalari haqiqiy kadr oqimiga bog'lanib yonadi: [0] → 1/3, [1] → 2/3, [2] → to'liq; topshiriqsiz —
+  // "Skanerlanmoqda…" dan kadrgacha. Vaqtlar o'sha STEP1_MS / returnMs — oqim o'zgarmaydi, faqat ko'rinish.
+  const ringMode: RingMode = phase;
+  const [target, ms] = phase === 'align' ? [0, DUR.state]
+    : phase !== 'scan' ? [1, DUR.state]
+    : !task ? (stage ? [1, 450] : [0.7, SETTLE_MS / 2])
+    : stage <= 1 ? [1 / 3, 450]
+    : stage === 2 ? [2 / 3, STEP1_MS]
+    : stage === 3 ? [0.92, req.opts.returnMs ?? STEP2_MS]
+    : [1, DUR.state];
+  // Bosh burish topshirig'i — halqaning o'sha tomoni ishora qilinadi. Old kamera ko'rinishi ko'zgudek: "chapga" ekranning
+  // chap tomonida; orqa kamerada xodimning chapi ekranning o'ng tomonida.
+  const turn = task && phase === 'scan' && stage === 2 && (task.code === 'TURN_LEFT' || task.code === 'TURN_RIGHT') ? task.code : null;
+  const side = turn ? ((turn === 'TURN_LEFT') === self ? 'left' : 'right') : null;
 
   // Topshiriq paytida sarlavha — katta ko'rsatma ("Boshingizni chapga buring"), ikonka bilan
   const showTask = !!task && (phase === 'align' || phase === 'scan');
@@ -452,21 +446,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         onCameraReady={() => void onReady()}
         onMountError={() => { mountFailed.current = true; setReady(false); fail("Kamera ochilmadi — qayta urinib ko'ring."); }}
       />
-      <Svg width={W} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Path d={hole} fill={c.scrim} fillRule="evenodd" />
-        <AEllipse cx={cx} cy={cy} stroke={ring} strokeWidth={2} fill="none" animatedProps={pulseProps} />
-        <Ellipse cx={cx} cy={cy} rx={rx} ry={ry} stroke={ring} strokeWidth={3} fill="none" strokeOpacity={phase === 'align' ? 0.8 : 1} />
-      </Svg>
-      {working && !reduce ? (
-        <View pointerEvents="none" style={{ position: 'absolute', left: cx - rx, top: cy - ry, width: 2 * rx, height: 2 * ry, borderRadius: rx, overflow: 'hidden' }}>
-          <Animated.View style={[{ position: 'absolute', left: space.lg, right: space.lg, top: 0, height: 2, borderRadius: radius.pill, backgroundColor: c.brand, opacity: 0.9 }, lineStyle]} />
-        </View>
-      ) : null}
-      {phase === 'ok' || phase === 'fail' ? (
-        <View pointerEvents="none" style={{ position: 'absolute', left: cx - rx, top: cy - ry, width: 2 * rx, height: 2 * ry, alignItems: 'center', justifyContent: 'center' }}>
-          <StatusMark tone={phase === 'ok' ? 'success' : 'danger'} size={88} icon={phase === 'ok' ? 'check' : 'x'} />
-        </View>
-      ) : null}
+      <FaceRing W={W} H={H} cx={cx} cy={cy} r={r} mode={ringMode} target={target} ms={ms} side={side} reduce={reduce} />
 
       {/* Yuqori panel: yopish, sarlavha, kamerani almashtirish */}
       <View style={{ position: 'absolute', top: insets.top + space.sm, left: space.lg, right: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
@@ -476,14 +456,14 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       </View>
 
       {/* Holat matni va (xatoda) tugmalar */}
-      <View style={{ position: 'absolute', left: space.pageX, right: space.pageX, top: cy + ry + space.xxl, bottom: insets.bottom + space.xl, gap: space.sm }}>
+      <View style={{ position: 'absolute', left: space.pageX, right: space.pageX, top: cy + rOut + space.xl, bottom: insets.bottom + space.xl, gap: space.sm }}>
         {taskIcon ? (
           <View style={{ alignSelf: 'center', width: size.touch, height: size.touch, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.brand }}>
             <Icon name={taskIcon} size={size.iconXl} color={c.textOnSolid} />
           </View>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm }}>
-          {phase === 'verify' || (phase === 'align' && preparing) ? <ActivityIndicator color={c.textOnSolid} /> : null}
+          {(phase === 'verify' && reduce) || (phase === 'align' && preparing) ? <ActivityIndicator color={c.textOnSolid} /> : null}
           <Txt v={showTask ? 'titleLg' : 'titleMd'} color="onSolid" align="center" accessibilityLiveRegion="polite">{head}</Txt>
         </View>
         {sub ? <Txt v="bodySm" color="onSolid" align="center" numberOfLines={4}>{sub}</Txt> : null}
