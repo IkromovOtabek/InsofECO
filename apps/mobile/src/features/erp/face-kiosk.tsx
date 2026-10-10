@@ -6,7 +6,7 @@ import { Badge, Button, Card, EmptyState, IconButton, IconTile, ListGroup, ListI
 import { Avatar, dialog, toast } from '@/design/ui';
 import { ChipGroup, KpiGrid, PageHeader, Reveal, SectionHead, SegmentedControl, SkeletonList, Toggle } from '@/design/blocks';
 import { useTheme } from '@/design/theme';
-import { radius, size, space } from '@/design/tokens';
+import { ERP_ROLE_MODULE, radius, size, space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { ApiException } from '@/core/api';
 import { erpAuth, type ErpFaceData, type ErpFaceEnrollDone, type ErpFaceMode, type ErpFacePhotoRef, type ErpFaceRosterRow, type ErpFaceScanResult } from '@/core/erp';
@@ -14,18 +14,22 @@ import { ENROLL_STEP2_MS, facePayload } from '@/core/face-liveness';
 import { usePollInterval } from '@/shared/hooks';
 import { scanFace } from './face-scan';
 import { StaffAttendanceScreen } from './staff-attendance';
+import { SelfAttendanceCard, attendanceAccessOf } from './attendance';
+import { useErpHome } from './api';
 import { errorText } from './pay-api';
 
 /**
- * Davomat — ERP'dagi Bosh sahifa → «Davomat» bilan bir xil (bosh sahifadagi tugmadan ochiladi):
- *   · Skaner — kiosk: telefon xodimlar o'tadigan joyga qo'yiladi, har kim kameraga qaraydi, server uni hamma xodimlar
- *     orasidan taniydi va keldi/ketdi yozadi (`POST /api/mobile/face/scan`). Pastda — bugungi jurnal kadrlari bilan;
- *   · Jadval — barcha xodimlarning kunlik davomati (`StaffAttendanceScreen`);
+ * Davomat — bosh sahifadagi «Davomat» tugmasidan ochiladi (hamma xodimga). Tablar ruxsatga qarab (`attendanceAccessOf`):
+ *   · Men — o'z "Keldim / Ketdim" kartasi (GPS + yuz skaneri) va "Mening davomatim"; login xodim kartasiga bog'lanmagan
+ *     bo'lsa — otdel kadrga murojaat qilish haqida izoh;
+ *   · Skaner — kiosk (skanerga ruxsati borlar: otdel kadr darajasi — hamma, sex boshliqlari — sex): telefon xodimlar o'tadigan
+ *     joyga qo'yiladi, server kameraga qaraganni taniydi va keldi/ketdi yozadi (`POST /api/mobile/face/scan`);
+ *   · Jadval — barcha xodimlarning kunlik davomati (`StaffAttendanceScreen`), hammaga FAQAT KO'RISH uchun;
  *   · Yuzlar — xodim yuzini ro'yxatga olish / o'chirish (faqat otdel kadr darajasi, `canEnroll`).
  * Har bir kadr bosilsa — to'liq ekranda ochiladi. Ruxsat va barcha tekshiruvlar serverda (`lib/mobile/face-kiosk.ts`).
  */
 
-type Tab = 'skaner' | 'jadval' | 'yuzlar';
+type Tab = 'men' | 'skaner' | 'jadval' | 'yuzlar';
 type Viewer = { ref: ErpFacePhotoRef; title: string; sub?: string };
 
 const MODES: { key: ErpFaceMode; label: string }[] = [
@@ -46,54 +50,60 @@ const simText = (s: number | null | undefined) => {
 };
 const refKey = (r: ErpFacePhotoRef) => ('t' in r ? `t:${r.t}` : `a:${r.a}:${r.k}`);
 
-const useFaceData = () =>
-  useQuery({ queryKey: ['erp', 'face'], queryFn: erpAuth.face, refetchInterval: usePollInterval(60_000) });
+const useFaceData = (enabled: boolean) =>
+  useQuery({ queryKey: ['erp', 'face'], queryFn: erpAuth.face, enabled, refetchInterval: usePollInterval(60_000) });
 
 export function FaceKioskScreen({ onBack }: { onBack: () => void }) {
-  const [tab, setTab] = useState<Tab>('skaner');
+  const home = useErpHome();
+  const access = attendanceAccessOf(home.data);
+  const canScan = access?.canScan ?? false;
+  const [picked, setTab] = useState<Tab | null>(null);
   const [viewer, setViewer] = useState<Viewer | null>(null);
-  const query = useFaceData();
-  const canEnroll = query.data?.canEnroll ?? false;
-  const tabs = (
-    <SegmentedControl<Tab>
-      items={[
-        { key: 'skaner', label: 'Skaner', icon: 'scan-line' },
-        { key: 'jadval', label: 'Jadval', icon: 'clipboard-list' },
-        ...(canEnroll ? [{ key: 'yuzlar' as const, label: 'Yuzlar', icon: 'user-plus' as const }] : []),
-      ]}
-      value={tab}
-      onChange={setTab}
-    />
-  );
+  const query = useFaceData(canScan);
+  const canEnroll = canScan && (query.data?.canEnroll ?? access?.canEnroll ?? false);
+  const items: { key: Tab; label: string; icon: 'user' | 'scan-line' | 'clipboard-list' | 'user-plus' }[] = [
+    { key: 'men', label: 'Men', icon: 'user' },
+    ...(canScan ? [{ key: 'skaner' as const, label: 'Skaner', icon: 'scan-line' as const }] : []),
+    ...(access?.canViewTable ? [{ key: 'jadval' as const, label: 'Jadval', icon: 'clipboard-list' as const }] : []),
+    ...(canEnroll ? [{ key: 'yuzlar' as const, label: 'Yuzlar', icon: 'user-plus' as const }] : []),
+  ];
+  // Kiosk egalari (skanerga ruxsat) — odatdagidek Skanerdan; qolganlar — o'z davomatidan
+  const tab: Tab = picked && items.some((i) => i.key === picked) ? picked : canScan ? 'skaner' : 'men';
+  const tabs = items.length > 1 ? <SegmentedControl<Tab> items={items} value={tab} onChange={setTab} /> : null;
   return (
     <>
       {tab === 'jadval'
-        ? <StaffAttendanceScreen onBack={onBack} title="Davomat" overline="Face ID · jadval" top={tabs} />
-        : <FaceBody tab={tab} tabs={tabs} query={query} onBack={onBack} onPhoto={setViewer} />}
+        ? <StaffAttendanceScreen onBack={onBack} title="Davomat" overline={canScan ? 'Face ID · jadval' : "Barcha xodimlar · faqat ko'rish"} top={tabs} />
+        : <FaceBody tab={tab} tabs={tabs} query={query} home={home} onBack={onBack} onPhoto={setViewer} />}
       <PhotoViewer viewer={viewer} onClose={() => setViewer(null)} />
     </>
   );
 }
 
-function FaceBody({ tab, tabs, query, onBack, onPhoto }: {
-  tab: Exclude<Tab, 'jadval'>; tabs: React.ReactNode; query: ReturnType<typeof useFaceData>; onBack: () => void; onPhoto: (v: Viewer) => void;
+function FaceBody({ tab, tabs, query, home, onBack, onPhoto }: {
+  tab: Exclude<Tab, 'jadval'>; tabs: React.ReactNode; query: ReturnType<typeof useFaceData>; home: ReturnType<typeof useErpHome>;
+  onBack: () => void; onPhoto: (v: Viewer) => void;
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const raise = useHeaderRaise();
   const d = query.data;
+  const me = tab === 'men';
+  const q = me ? home : query;
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <PageHeader title="Davomat" overline="Face ID · yuz bilan davomat" onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
+      <PageHeader title="Davomat" overline={me ? 'Mening davomatim · bugun' : 'Face ID · yuz bilan davomat'} onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
       <ScrollView
         onScroll={raise.onScroll}
         scrollEventThrottle={raise.scrollEventThrottle}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxxl * 3, gap: space.stack }}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={c.brand} />}
+        refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} tintColor={c.brand} />}
       >
         {tabs}
-        {query.error && !d ? (
+        {me ? (
+          <MeTab home={home} />
+        ) : query.error && !d ? (
           <EmptyState icon="cloud-off" title="Davomat ochilmadi" hint={errorText(query.error)} onRetry={() => void query.refetch()} />
         ) : (
           <Reveal loading={query.isLoading || !d} skeleton={<SkeletonList rows={5} />} replay={tab}>
@@ -102,6 +112,23 @@ function FaceBody({ tab, tabs, query, onBack, onPhoto }: {
         )}
       </ScrollView>
     </View>
+  );
+}
+
+// ───────────────────────── Men (o'z davomati) ─────────────────────────
+
+function MeTab({ home }: { home: ReturnType<typeof useErpHome> }) {
+  const h = home.data;
+  const s = h?.selfAttendance;
+  if (home.error && !h) return <EmptyState icon="cloud-off" title="Ma'lumot yuklanmadi" hint={errorText(home.error)} onRetry={() => void home.refetch()} />;
+  if (!h) return <SkeletonList rows={3} />;
+  if (s) return <SelfAttendanceCard s={s} module={ERP_ROLE_MODULE[h.role] ?? 'brand'} />;
+  return (
+    <EmptyState
+      icon="user-x"
+      title="Loginingiz xodim kartasiga bog'lanmagan"
+      hint="O'z davomatingizni belgilash uchun otdel kadrga murojaat qiling — loginingizni xodim kartangizga bog'lab qo'yadi. Umumiy jadval «Jadval» tabida."
+    />
   );
 }
 

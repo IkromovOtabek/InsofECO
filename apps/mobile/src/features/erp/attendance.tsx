@@ -11,7 +11,7 @@ import { space, type ModuleTone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { ApiException, deviceId } from '@/core/api';
 import { currentFix, ensureForegroundLocation, metersBetween } from '@/core/location';
-import { erpAuth, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance, type ErpSelfMarkResult } from '@/core/erp';
+import { erpAuth, type ErpAttendanceAccess, type ErpHomeData, type ErpMyAttendanceDay, type ErpSelfAttendance, type ErpSelfMarkResult } from '@/core/erp';
 import { scanFace } from '@/features/erp/face-scan';
 import { facePayload } from '@/core/face-liveness';
 
@@ -107,60 +107,77 @@ function useSelfMark() {
 const stateTone = (s: ErpSelfAttendance) => (s.state === 'in' ? 'success' : s.state === 'out' ? 'info' : s.state === 'other' ? 'warning' : 'neutral');
 
 /**
- * Bosh sahifa tepasidagi davomat kartasi (sarlavha ostida): holat, katta "Keldim"/"Ketdim" tugmasi,
- * "Mening davomatim" havolasi; rahbarda — "Xodimlar davomati" (boshqalarni belgilash) qatori.
+ * Davomat ekrani tablari (`face-kiosk.tsx`) va bosh sahifadagi «Davomat» tugmasi. Yangi ERP `attendance` beradi (hamma xodimga);
+ * eski ERP'da faqat `faceAttendance` (skanerga ruxsati borlar) — undan olinadi, tugma faqat ularda chiqadi.
+ */
+export function attendanceAccessOf(data: ErpHomeData | undefined): ErpAttendanceAccess | null {
+  if (!data) return null;
+  if (data.attendance) return data.attendance;
+  const face = data.faceAttendance;
+  return face ? { canScan: true, canEnroll: face.canEnroll, canViewTable: true, linked: !!data.selfAttendance } : null;
+}
+
+/** O'z davomati kartasi: holat, katta "Keldim"/"Ketdim" tugmasi (GPS + yuz skaneri), "Mening davomatim" havolasi. */
+export function SelfAttendanceCard({ s, module }: { s: ErpSelfAttendance; module: ModuleTone }) {
+  const router = useRouter();
+  const m = useSelfMark();
+  return (
+    <Card style={{ gap: space.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <IconTile icon={s.state === 'none' ? 'scan-line' : s.state === 'out' ? 'log-out' : 'log-in'} module={module} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Txt v="overline" color="muted" numberOfLines={1}>Davomat · bugun</Txt>
+          <Txt v="titleMd" numberOfLines={1}>{s.label}</Txt>
+          {s.hint ? <Txt v="caption" numberOfLines={2}>{s.hint}</Txt> : null}
+        </View>
+        {s.lateMin ? <Badge label={`+${s.lateMin} daq`} tone="warning" /> : s.state !== 'none' ? <Badge label={s.state === 'in' ? 'Ishda' : s.state === 'out' ? 'Ketdi' : 'Belgi'} tone={stateTone(s)} /> : null}
+      </View>
+      {s.next ? (
+        <Button
+          size="lg"
+          variant={s.next === 'in' ? 'primary' : 'success'}
+          icon={s.next === 'in' ? 'scan-line' : 'log-out'}
+          title={s.next === 'in' ? 'Keldim' : 'Ketdim'}
+          loading={m.busy}
+          onPress={() => void m.run(s)}
+        />
+      ) : null}
+      {/* Tugma yuklanishda yozuvini yashiradi — bosqich matni tugma ostida */}
+      {s.next && m.busy && STAGE_TEXT[m.stage] ? <Txt v="caption" align="center">{STAGE_TEXT[m.stage]}</Txt> : null}
+      {m.error ? (
+        <Callout tone="danger">
+          <View style={{ gap: space.sm }}>
+            <Txt v="bodySm" color="danger">{m.error}</Txt>
+            <Button size="md" variant="secondary" full={false} icon="refresh-cw" title="Qayta urinish" onPress={() => void m.run(s)} />
+          </View>
+        </Callout>
+      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
+        <Txt v="caption" numberOfLines={1} style={{ flex: 1 }}>
+          {m.accuracy != null ? `GPS aniqligi ±${m.accuracy} m` : s.workplace ? `Ish joyidan ${s.workplace.radiusM} m ichida` : 'Ish joyi sozlanmagan'}
+        </Txt>
+        <Button size="md" variant="ghost" full={false} iconRight="chevron-right" title="Mening davomatim" onPress={() => router.push('/erp/davomatim' as never)} />
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * Bosh sahifa tepasidagi davomat bloki (sarlavha ostida): o'z "Keldim/Ketdim" kartasi, hamma xodimga «Davomat» tugmasi
+ * (o'z davomati, umumiy jadval, ruxsat bo'lsa skaner) va rahbarda — "Xodimlar davomati" (boshqalarni belgilash) qatori.
  */
 export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module: ModuleTone }) {
   const router = useRouter();
   const s = data.selfAttendance;
   const manage = data.attendanceManage;
-  const face = data.faceAttendance;
-  const m = useSelfMark();
-  if (!s && !manage && !face) return null;
+  const access = attendanceAccessOf(data);
+  if (!s && !manage && !access) return null;
   const go = (href: string) => router.push(href as never);
   return (
     <View style={{ gap: space.md }}>
-      {s ? (
-        <Card style={{ gap: space.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <IconTile icon={s.state === 'none' ? 'scan-line' : s.state === 'out' ? 'log-out' : 'log-in'} module={module} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt v="overline" color="muted" numberOfLines={1}>Davomat · bugun</Txt>
-              <Txt v="titleMd" numberOfLines={1}>{s.label}</Txt>
-              {s.hint ? <Txt v="caption" numberOfLines={2}>{s.hint}</Txt> : null}
-            </View>
-            {s.lateMin ? <Badge label={`+${s.lateMin} daq`} tone="warning" /> : s.state !== 'none' ? <Badge label={s.state === 'in' ? 'Ishda' : s.state === 'out' ? 'Ketdi' : 'Belgi'} tone={stateTone(s)} /> : null}
-          </View>
-          {s.next ? (
-            <Button
-              size="lg"
-              variant={s.next === 'in' ? 'primary' : 'success'}
-              icon={s.next === 'in' ? 'scan-line' : 'log-out'}
-              title={s.next === 'in' ? 'Keldim' : 'Ketdim'}
-              loading={m.busy}
-              onPress={() => void m.run(s)}
-            />
-          ) : null}
-          {/* Tugma yuklanishda yozuvini yashiradi — bosqich matni tugma ostida */}
-          {s.next && m.busy && STAGE_TEXT[m.stage] ? <Txt v="caption" align="center">{STAGE_TEXT[m.stage]}</Txt> : null}
-          {m.error ? (
-            <Callout tone="danger">
-              <View style={{ gap: space.sm }}>
-                <Txt v="bodySm" color="danger">{m.error}</Txt>
-                <Button size="md" variant="secondary" full={false} icon="refresh-cw" title="Qayta urinish" onPress={() => void m.run(s)} />
-              </View>
-            </Callout>
-          ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
-            <Txt v="caption" numberOfLines={1} style={{ flex: 1 }}>
-              {m.accuracy != null ? `GPS aniqligi ±${m.accuracy} m` : s.workplace ? `Ish joyidan ${s.workplace.radiusM} m ichida` : 'Ish joyi sozlanmagan'}
-            </Txt>
-            <Button size="md" variant="ghost" full={false} iconRight="chevron-right" title="Mening davomatim" onPress={() => go('/erp/davomatim')} />
-          </View>
-        </Card>
-      ) : null}
-      {/* ERP Bosh sahifa → «Davomat» kabi: Face ID skaneri (kiosk), jadval, yuzlarni ro'yxatga olish */}
-      {face ? <Button size="lg" icon="scan-line" title="Davomat" onPress={() => go('/erp/face')} /> : null}
+      {s ? <SelfAttendanceCard s={s} module={module} /> : null}
+      {/* ERP Bosh sahifa → «Davomat» kabi: o'z davomati, umumiy jadval; ruxsat bo'lsa Face ID skaneri va yuzlar */}
+      {access ? <Button size="lg" icon={access.canScan ? 'scan-line' : 'clipboard-list'} title="Davomat" onPress={() => go('/erp/face')} /> : null}
       {manage ? (
         <ListGroup>
           <ListItem icon="users" module={module} title={manage.title} subtitle={manage.subtitle} onPress={() => go(`/erp/${manage.key}/${encodeURIComponent(manage.id)}`)} />

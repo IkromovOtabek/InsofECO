@@ -304,7 +304,7 @@ export function ErpHome() {
     };
 
     // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (GPS + yuz skaneri) va rahbarga "Xodimlar davomati" ──
-    if (data.selfAttendance || data.attendanceManage || data.faceAttendance) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
+    if (data.selfAttendance || data.attendanceManage || data.faceAttendance || data.attendance) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
 
     if (error) blocks.push(<OfflineBanner key="off" visible title="Yangilab bo'lmadi" onRetry={() => void refetch()} />);
 
@@ -827,9 +827,10 @@ function ErpRoadTab({ title }: { title: string }) {
  * Menyudagi "Davomat va reyslar" — ish haqi asosi. Otdel kadrda davomat — alohida tab, shuning uchun bu yerda yo'q.
  * Ruxsat serverda ham tekshiriladi (`lib/mobile/staff-attendance.ts`).
  */
-function payLinksFor(role: ErpRole): { href: string; title: string; subtitle: string; icon: IconName; module?: ModuleTone }[] {
+function payLinksFor(role: ErpRole, canViewTable: boolean | null): { href: string; title: string; subtitle: string; icon: IconName; module?: ModuleTone }[] {
   const out: { href: string; title: string; subtitle: string; icon: IconName; module?: ModuleTone }[] = [];
-  if (role === 'DIRECTOR' || role === 'PRODUCTION' || role === 'SUPERVISOR') {
+  // Jadval — hamma xodimga faqat ko'rish uchun (yangi ERP `attendance.canViewTable`); eski ERP'da — avvalgidek rahbarlarga
+  if (role !== 'HR' && (canViewTable ?? (role === 'DIRECTOR' || role === 'PRODUCTION' || role === 'SUPERVISOR'))) {
     out.push({ href: '/erp/davomat', title: 'Xodimlar davomati', subtitle: 'Keldi, ketdi, soat, kechikish — barcha xodimlar', icon: 'clock' });
   }
   if (role === 'DIRECTOR' || role === 'HR' || role === 'LOGISTICS') {
@@ -864,7 +865,7 @@ export function ErpMenu() {
   const [reportOpen, setReportOpen] = useState(false);
   const isDirector = erp?.role === 'DIRECTOR';
   const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
-  const payLinks = erp ? payLinksFor(erp.role) : [];
+  const payLinks = erp ? payLinksFor(erp.role, homeData?.attendance?.canViewTable ?? null) : [];
   const [delBusy, setDelBusy] = useState(false);
   const [delPending, setDelPending] = useState<boolean | null>(null);
   useEffect(() => { erpAuth.deletionStatus().then((r) => setDelPending(r.pending)).catch(() => setDelPending(false)); }, []);

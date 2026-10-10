@@ -228,7 +228,15 @@ export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: strin
   /** Rahbar: boshqalarning davomati kartochkasi (`/erp/<key>/<id>`). */
   attendanceManage?: { title: string; subtitle: string; key: string; id: string } | null;
   /** «Davomat» tugmasi — Face ID skaneri (ERP Bosh sahifa → Davomat kabi). Eski ERP'da yo'q. */
-  faceAttendance?: { canEnroll: boolean } | null }
+  faceAttendance?: { canEnroll: boolean } | null;
+  /**
+   * «Davomat» tugmasi — hamma xodimga: "Men" (o'z Keldim/Ketdim), Jadval (faqat ko'rish), ruxsat bo'lsa Skaner / Yuzlar.
+   * Eski ERP'da yo'q — u holda `faceAttendance` dan olinadi (`attendanceAccessOf`).
+   */
+  attendance?: ErpAttendanceAccess }
+
+/** Davomat ekrani tablari: skaner, yuzlarni ro'yxatga olish, umumiy jadval; `linked` — login xodim kartasiga bog'langan. */
+export interface ErpAttendanceAccess { canScan: boolean; canEnroll: boolean; canViewTable: boolean; linked: boolean }
 
 /** Face ID davomat (ERP `GET /api/mobile/face`). */
 export interface ErpFaceEmployee { id: string; fullName: string; position: string }

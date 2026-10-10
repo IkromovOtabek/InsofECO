@@ -16,8 +16,16 @@ import {
 /**
  * Davomat — barcha xodimlar (barcha bo'limlar) bir kunda: keldi, ketdi, soat, kechikish, holat, kim belgilagan.
  * Ish haqi shu jadvaldan hisoblanadi. Xodim bosilsa — uning oylik varag'i (kunlar va jami).
- * Otdel kadrning "Davomat" tabi; direktor, ishlab chiqarish va ish boshqaruvchi — Menyu orqali.
+ * Otdel kadrning "Davomat" tabi; boshqalar — bosh sahifadagi «Davomat» → Jadval va Menyu orqali. Faqat ko'rish (belgilash yo'q).
+ * Oddiy xodimga server "Manba" (kim belgilagan) va "Izoh" ni bermaydi — bo'sh ustun chizilmaydi (`withoutEmpty`).
  */
+
+/** Hamma qatorda bo'sh ustunlarni (manba, izoh) olib tashlaydi — server yashirgan ma'lumot uchun bo'sh ustun chiqmasin. */
+function withoutEmpty<T extends { source: string | null; note?: string | null }>(cols: Col<T>[], rows: readonly T[]): Col<T>[] {
+  const hasSrc = rows.some((r) => r.source);
+  const hasNote = rows.some((r) => r.note);
+  return cols.filter((c) => (c.key !== 'src' || hasSrc) && (c.key !== 'note' || hasNote));
+}
 
 type Filter = 'all' | 'in' | 'late' | 'absent' | 'none';
 
@@ -128,7 +136,7 @@ export function StaffAttendanceScreen({ onBack, title = 'Davomat', overline = 'I
                 rowKey={(r) => r.id}
                 leadTitle="Xodim"
                 lead={(r) => ({ title: r.fullName, sub: r.dept && r.dept !== r.position ? `${r.position} · ${r.dept}` : r.position, color: r.status === 'ABSENT' ? 'danger' : undefined })}
-                cols={DAY_COLS}
+                cols={withoutEmpty(DAY_COLS, d.rows)}
                 onRow={(r) => router.push(`/erp/davomat-xodim?id=${encodeURIComponent(r.id)}&month=${iso.slice(0, 7)}` as never)}
               />
             ) : d ? (
@@ -220,7 +228,7 @@ export function EmployeeAttendanceScreen({ id, month: initial, onBack }: { id: s
                 leadTitle="Sana"
                 leadWidth={92}
                 lead={(r) => ({ title: `${String(r.day).padStart(2, '0')} · ${r.weekday}`, sub: r.weekend ? 'dam olish' : null, color: r.status === 'ABSENT' ? 'danger' : r.weekend ? 'muted' : undefined })}
-                cols={MONTH_COLS}
+                cols={withoutEmpty(MONTH_COLS, d.days)}
               />
             ) : d ? <EmptyState key="e" compact icon="calendar-days" title="Bu oyda kun yo'q" /> : null}
           </Reveal>
