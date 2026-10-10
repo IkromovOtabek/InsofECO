@@ -35,7 +35,8 @@ import { MAX_FRAME_B64, STEP1_MS, STEP2_MS, TASK_SETTLE_MS, type FaceChallenge, 
  */
 
 export type FaceScanResult = { ok: true; photo: string } | { ok: false; message: string };
-export type FaceVerifyResult = { ok: true; message?: string } | { ok: false; message: string };
+/** `retry: false` — qayta urinish ma'nosiz (masalan, server kutilayotgan yozuvni o'chirdi): faqat "Yopish" ko'rsatiladi. */
+export type FaceVerifyResult = { ok: true; message?: string } | { ok: false; message: string; retry?: boolean };
 /** Olingan kadr(lar): `photo` — asosiy (birinchi) kadr; `frames` — jonlilik ketma-ketligi (topshiriq bo'lsa); `nonce` — challenge. */
 export interface FaceShot { photo: string; frames?: string[]; nonce?: string }
 export interface FaceScanOptions {
@@ -51,6 +52,8 @@ export interface FaceScanOptions {
   challenge?: () => Promise<FaceChallenge>;
   /** "Tanildi" natijasi ekranda turadigan vaqt (ms). Kiosk ismni o'qish uchun uzoqroq ushlaydi. */
   holdMs?: number;
+  /** Muvaffaqiyat sarlavhasi (standart "Tanildi"); masalan ro'yxatga olishning 1-bosqichida "Namunalar olindi". */
+  okTitle?: string;
 }
 
 type CameraModule = typeof import('expo-camera');
@@ -189,8 +192,12 @@ const SETTLE_MS = 1200;
 const OK_HOLD_MS = 900;
 /** Server tekshiruvi kutiladigan eng uzoq vaqt — keyin "Server javob bermadi" (kech javob e'tiborsiz). */
 const VERIFY_TIMEOUT_MS = 20_000;
-/** Kadr o'lchami: yuzni solishtirishga ~640 px yetadi; 12 MP kadr base64'da chegaradan oshadi. */
-const MIN_SIDE_PX = 640;
+/**
+ * Kadr o'lchami: katta tomoni kamida shuncha. 640 px'da (640x480) oval ichidagi yuz ~200 px qolardi — uzoqroq turgan
+ * yoki qiyaroq yuzni server yomonroq tanirdi. 960 px'da yuz ~2 baravar ko'p piksel, JPEG (sifat 0,4) esa baribir
+ * ~0,2–0,4 MB base64 — `MAX_FRAME_B64` dan ancha kam. 12 MP kadr chegaradan oshadi, shuning uchun eng kichigi tanlanadi.
+ */
+const MIN_SIDE_PX = 960;
 const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 class ShotError extends Error {}
 
@@ -225,6 +232,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<Phase>('align');
   const [msg, setMsg] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(true);
   const [attempt, setAttempt] = useState(0);
   // Jonlilik: joriy urinishning topshirig'i, challenge yuklanmoqdami va kadrlar orasidagi ko'rsatma
   const [task, setTask] = useState<FaceTask | null>(null);
@@ -247,7 +255,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   };
   useBack(close);
 
-  const fail = (m: string) => { setMsg(m); setPhase('fail'); haptic.error(); };
+  const fail = (m: string, again = true) => { setMsg(m); setCanRetry(again); setPhase('fail'); haptic.error(); };
 
   /**
    * Bitta kadr (data-URL). Hajm chegarasi: topshiriqli ketma-ketlikda har kadr `MAX_FRAME_B64` (3 tasi birga yuboriladi),
@@ -304,7 +312,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         clearTimeout(timer);
       }
       if (!alive.current) return;
-      if (!v.ok) { fail(v.message); return; }
+      if (!v.ok) { fail(v.message, v.retry !== false); return; }
       setMsg(v.message ?? null);
       setPhase('ok');
       haptic.success();
@@ -346,12 +354,13 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
   const retry = () => {
     setMsg(null);
+    setCanRetry(true);
     setPhase('align');
     if (mountFailed.current) { mountFailed.current = false; setReady(false); setMount((k) => k + 1); }
     setAttempt((a) => a + 1);
   };
   const flip = () => {
-    if (busy.current || phase === 'verify' || phase === 'ok') return;
+    if (busy.current || phase === 'verify' || phase === 'ok' || (phase === 'fail' && !canRetry)) return;
     setMsg(null);
     setReady(false); // yangi kamera tayyor bo'lgach kadr olinadi (oldingisining "ready"si emas)
     sized.current = false;
@@ -404,16 +413,20 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
   // Topshiriq paytida sarlavha — katta ko'rsatma ("Boshingizni chapga buring"), ikonka bilan
   const showTask = !!task && (phase === 'align' || phase === 'scan');
-  const taskIcon = task && (phase === 'align' || step === task.steps[0]) ? task.icon : null;
+  // Ikonka (o'q / yumuq ko'z) faqat topshiriq vaqtida — [0] kadrgacha ko'rinsa odam oldindan burilib qo'yadi
+  const taskIcon = task && phase === 'scan' && step === task.steps[0] ? task.icon : null;
+  // [0] kadr — TO'G'RI qarab (server tanish uchun aynan shu frontal kadrni oladi). Shuning uchun kadrgacha topshiriq
+  // emas, "to'g'ri qarang" ko'rsatiladi; topshiriq esa "Keyin: …" bo'lib pastda turadi va [0] dan keyin (steps[0]) aytiladi.
+  // Aks holda odam matnni o'qishi bilan boshini burib yuborardi va [0] ham qiya chiqardi — tanish yomonlashardi.
   const head = phase === 'align' && preparing ? 'Tayyorlanmoqda…'
-    : phase === 'align' && task ? taskLine(task, self)
+    : phase === 'align' && task ? (self ? "Kameraga to'g'ri qarang" : "Xodim kameraga to'g'ri qarasin")
     : phase === 'scan' && task ? (step ?? 'Kameraga qarang')
     : phase === 'align' ? (self ? 'Yuzingizni ramkaga joylang' : 'Yuzni ramkaga joylang')
     : phase === 'scan' ? 'Skanerlanmoqda…'
     : phase === 'verify' ? 'Tekshirilmoqda…'
-    : phase === 'ok' ? 'Tanildi'
+    : phase === 'ok' ? (req.opts.okTitle ?? 'Tanildi')
     : 'Tanilmadi';
-  const sub = phase === 'align' && task ? `${task.hint}. Kadr o'zi olinadi`
+  const sub = phase === 'align' && task ? `Keyin: ${taskLine(task, self)}. Kadr o'zi olinadi`
     : phase === 'scan' && task ? (step ? null : 'Qimirlamang')
     : phase === 'align' ? (self ? "Telefonni yuz ro'parasida tuting, yorug' joyda" : 'Kamerani xodimning yuziga qarating')
     : phase === 'scan' ? "Qimirlamang"
@@ -427,6 +440,10 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         ref={ref}
         style={StyleSheet.absoluteFill}
         facing={facing}
+        // Kadr ko'zgulanmaydi (expo-camera 16: `mirror` faqat old kameraga ta'sir qiladi, standart false). Natijada old va
+        // orqa kamera kadri bir xil — haqiqiy (ko'zgusiz) yuz, ro'yxatga olish va skaner kadrlari bir-biriga mos keladi.
+        // Ekrandagi old kamera ko'rinishi baribir ko'zgudek (tizim preview'i) — bu faqat ko'rinish, kadrga ta'sir qilmaydi.
+        mirror={false}
         pictureSize={pictureSize}
         animateShutter={false}
         onCameraReady={() => void onReady()}
@@ -452,7 +469,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
       <View style={{ position: 'absolute', top: insets.top + space.sm, left: space.lg, right: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
         <RoundBtn icon="x" label="Yopish" onPress={close} disabled={phase === 'ok'} />
         <Txt v="titleMd" color="onSolid" align="center" numberOfLines={1} style={{ flex: 1 }}>{req.opts.title ?? 'Yuz skaneri'}</Txt>
-        {req.opts.allowFlip ? <RoundBtn icon="refresh-cw" label="Kamerani almashtirish" onPress={flip} disabled={phase === 'verify' || phase === 'ok'} /> : <View style={{ width: size.touch }} />}
+        {req.opts.allowFlip ? <RoundBtn icon="refresh-cw" label="Kamerani almashtirish" onPress={flip} disabled={phase === 'verify' || phase === 'ok' || (phase === 'fail' && !canRetry)} /> : <View style={{ width: size.touch }} />}
       </View>
 
       {/* Holat matni va (xatoda) tugmalar */}
@@ -470,7 +487,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         <View style={{ flex: 1 }} />
         {phase === 'fail' ? (
           <View style={{ gap: space.sm }}>
-            <Button size="lg" icon="refresh-cw" title="Qayta urinish" onPress={retry} />
+            {canRetry ? <Button size="lg" icon="refresh-cw" title="Qayta urinish" onPress={retry} /> : null}
             <Button size="lg" variant="secondary" title="Yopish" onPress={close} />
           </View>
         ) : null}

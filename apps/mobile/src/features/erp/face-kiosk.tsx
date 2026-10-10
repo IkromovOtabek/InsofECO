@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, RefreshControl, ScrollView, StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import { useTheme } from '@/design/theme';
 import { radius, size, space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
 import { ApiException } from '@/core/api';
-import { erpAuth, type ErpFaceData, type ErpFaceMode, type ErpFacePhotoRef, type ErpFaceRosterRow, type ErpFaceScanResult } from '@/core/erp';
+import { erpAuth, type ErpFaceData, type ErpFaceEnrollDone, type ErpFaceMode, type ErpFacePhotoRef, type ErpFaceRosterRow, type ErpFaceScanResult } from '@/core/erp';
 import { facePayload } from '@/core/face-liveness';
 import { usePollInterval } from '@/shared/hooks';
 import { scanFace } from './face-scan';
@@ -37,6 +37,13 @@ const MODES: { key: ErpFaceMode; label: string }[] = [
 const KIOSK_HOLD_MS = 2200;
 const NET_ERROR = "Tarmoq xatosi. Internetni tekshirib, qayta urinib ko'ring";
 const errText = (e: unknown) => (e instanceof ApiException && e.message ? e.message : NET_ERROR);
+/** Ro'yxatga olish 1-bosqichi tugagach server izohi shuncha ko'rinadi, keyin 2-bosqich skaneri o'zi ochiladi. */
+const ENROLL_NOTE_MS = 1800;
+/** O'xshashlik foizi: server 0..1 yoki 0..100 berishi mumkin → " · 92%". Son bo'lmasa — bo'sh. */
+const simText = (s: number | null | undefined) => {
+  if (typeof s !== 'number' || !Number.isFinite(s) || s <= 0) return '';
+  return ` · ${Math.round(s <= 1 ? s * 100 : s)}%`;
+};
 const refKey = (r: ErpFacePhotoRef) => ('t' in r ? `t:${r.t}` : `a:${r.a}:${r.k}`);
 
 const useFaceData = () =>
@@ -106,42 +113,58 @@ function ScannerTab({ d, onPhoto }: { d: ErpFaceData; onPhoto: (v: Viewer) => vo
   const [continuous, setContinuous] = useState(true);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  // Tsikl ishlab turganda ham eng so'nggi qiymat o'qilsin: rejim/uzluksiz almashtirilsa keyingi aylanishda kuchga kiradi
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const continuousRef = useRef(continuous);
+  continuousRef.current = continuous;
+  // Bo'lim yopilsa (boshqa tab / ekrandan chiqish) tsikl skanerni qayta ochmasin
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const inCount = d.log.filter((r) => r.kind === 'in').length;
   const outCount = d.log.length - inCount;
 
+  /**
+   * Kiosk tsikli. Tanilmasa skaner o'zi "Tanilmadi" + "Qayta urinish" ko'rsatadi (tsikl kutib turadi, tugamaydi);
+   * tsikl faqat skaner yopilganda (`r.ok === false`) yoki uzluksiz rejim o'chirilganda to'xtaydi.
+   */
   const run = async () => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     try {
-      let again = true;
-      while (again) {
+      for (;;) {
+        const m = modeRef.current;
         let res: ErpFaceScanResult | null = null;
         const r = await scanFace({
-          title: mode === 'in' ? 'Keldi — yuz skaneri' : mode === 'out' ? 'Ketdi — yuz skaneri' : 'Davomat — yuz skaneri',
+          title: m === 'in' ? 'Keldi — yuz skaneri' : m === 'out' ? 'Ketdi — yuz skaneri' : 'Davomat — yuz skaneri',
           facing: 'front',
           allowFlip: true,
           holdMs: KIOSK_HOLD_MS,
           challenge: erpAuth.faceChallenge,
           verify: async (shot) => {
             try {
-              res = await erpAuth.faceScan({ mode, ...facePayload(shot) });
+              res = await erpAuth.faceScan({ mode: m, ...facePayload(shot) });
             } catch (e) {
+              res = null;
               return { ok: false, message: errText(e) };
             }
             if (!res.ok) return { ok: false, message: res.error };
-            return { ok: true, message: `${res.employee.fullName}\n${res.text}${res.hint ? ` · ${res.hint}` : ''}` };
+            return { ok: true, message: `${res.employee.fullName}\n${res.text}${res.hint ? ` · ${res.hint}` : ''}${simText(res.similarity)}` };
           },
         });
         void qc.invalidateQueries({ queryKey: ['erp', 'face'] });
         void qc.invalidateQueries({ queryKey: ['erp', 'att-day'] });
+        if (!r.ok || !mounted.current) break; // skaner yopildi — tsikl tugaydi
         const done = res as ErpFaceScanResult | null;
-        if (r.ok && done?.ok && !continuous) toast.success(`${done.employee.fullName} — ${done.text}`, 'Davomat');
-        again = continuous && r.ok;
+        if (!continuousRef.current) {
+          if (done?.ok) toast.success(`${done.employee.fullName} — ${done.text}${simText(done.similarity)}`, 'Davomat');
+          break;
+        }
       }
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -217,31 +240,86 @@ function RosterTab({ d, onPhoto }: { d: ErpFaceData; onPhoto: (v: Viewer) => voi
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['erp', 'face'] }); };
 
+  /**
+   * Ro'yxatga olish — ikki skaner, ikkalasi OLD kamerada (xodim ekrandagi topshiriqni o'zi ko'radi; kiosk ham old kamera,
+   * kadrlar bir xil sharoitda olinadi), kerak bo'lsa almashtirsa bo'ladi:
+   *   1/2 — namunalar: server kadrlarni tekshiradi, `pendingId` beradi (hali saqlanmagan);
+   *   2/2 — tasdiqlash: yangi challenge bilan yana skaner, server yuzni 1-bosqich namunalari bilan solishtiradi va
+   *         tanisagina saqlaydi. Tanilmasa (`retry: true`) skaner "Qayta urinish" bilan qoladi; `retry: false` —
+   *         kutilayotgan yozuv yo'q (5 daqiqa / 3 urinish), boshidan boshlash kerak.
+   * Eski ERP 1-bosqichdayoq saqlaydi (`stage`siz javob) — shunda 2-bosqich yo'q.
+   */
   const enroll = async (r: ErpFaceRosterRow) => {
     if (busyRef.current) return;
     busyRef.current = true;
-    let note: string | null = null;
+    // Natijalar `verify` ichida yoziladi (skaner "Qayta urinish"da uni bir necha marta chaqirishi mumkin)
+    const st: { pendingId: string | null; done: ErpFaceEnrollDone | null; gone: string | null } = { pendingId: null, done: null, gone: null };
+    const doneToast = (x: ErpFaceEnrollDone) => toast.success(`${x.note}${simText(x.similarity)}`, 'Davomat');
     try {
-      const res = await scanFace({
-        title: `${r.fullName} — yuzni ro'yxatga olish`,
-        facing: 'back', // otdel kadr telefonni xodimga qaratadi; o'zi uchun almashtirsa bo'ladi
+      const first = await scanFace({
+        title: `${r.fullName} — 1/2: namunalar`,
+        facing: 'front',
         allowFlip: true,
+        holdMs: ENROLL_NOTE_MS,
+        okTitle: 'Namunalar olindi',
         challenge: erpAuth.faceChallenge,
         verify: async (shot) => {
           try {
             const x = await erpAuth.faceEnroll({ employeeId: r.id, consent: true, ...facePayload(shot) });
             if (!x.ok) return { ok: false, message: x.error };
-            note = x.note;
+            if (x.stage === 'verify') {
+              st.pendingId = x.pendingId;
+              return { ok: true, message: `${x.note}\nEndi tasdiqlash — yana kameraga qarang.` };
+            }
+            st.done = x;
             return { ok: true, message: x.note };
           } catch (e) {
             return { ok: false, message: errText(e) };
           }
         },
       });
-      if (res.ok) toast.success(note ?? "Yuz ro'yxatga olindi", 'Davomat');
-      refresh();
+      if (!first.ok) return; // 1-bosqichda yopildi — hech narsa saqlanmagan, xabar skanerning o'zida edi
+      if (st.done) { doneToast(st.done); return; }
+      const pendingId = st.pendingId;
+      if (!pendingId) return;
+
+      const second = await scanFace({
+        title: `${r.fullName} — 2/2: tasdiqlash`,
+        facing: 'front',
+        allowFlip: true,
+        okTitle: 'Saqlandi',
+        challenge: erpAuth.faceChallenge,
+        verify: async (shot) => {
+          if (st.gone) return { ok: false, message: st.gone, retry: false };
+          try {
+            const x = await erpAuth.faceEnroll({ employeeId: r.id, pendingId, ...facePayload(shot) });
+            if (!x.ok) {
+              if (x.retry === false) st.gone = x.error;
+              return { ok: false, message: x.error, retry: x.retry !== false };
+            }
+            if (x.stage === 'verify') {
+              st.gone = "Server tasdiqlashni qabul qilmadi.";
+              return { ok: false, message: st.gone, retry: false };
+            }
+            st.done = x;
+            return { ok: true, message: `${x.note}${simText(x.similarity)}` };
+          } catch (e) {
+            return { ok: false, message: errText(e) }; // tarmoq xatosi — pending hali tirik, qayta urinsa bo'ladi
+          }
+        },
+      });
+      if (second.ok && st.done) { doneToast(st.done); return; }
+      if (st.gone) {
+        dialog("Yuz saqlanmadi", `${st.gone}\n\nYuzni ro'yxatga olishni boshidan boshlang.`, [
+          { text: 'Yopish', style: 'cancel' },
+          { text: 'Boshidan boshlash', onPress: () => askEnroll(r) },
+        ], { tone: 'warning', icon: 'triangle-alert' });
+        return;
+      }
+      toast.warning("Tasdiqlash tugamadi — yuz saqlanmadi. Qayta ro'yxatga oling.", r.fullName);
     } finally {
       busyRef.current = false;
+      refresh();
     }
   };
 

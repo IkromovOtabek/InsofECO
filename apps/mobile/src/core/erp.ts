@@ -240,6 +240,13 @@ export type ErpFaceMode = 'auto' | 'in' | 'out';
 export type ErpFaceScanResult =
   | { ok: true; kind: 'in' | 'out' | 'already'; employee: ErpFaceEmployee; time: string | null; text: string; hint: string | null; similarity: number; attendanceId: string | null }
   | { ok: false; code: string; error: string; employee?: ErpFaceEmployee };
+/** Ro'yxatga olish 1-bosqichi: namunalar olindi, endi tasdiqlash (`pendingId` 5 daqiqa, 3 urinish). Hali saqlanmagan. */
+export type ErpFaceEnrollPending = { ok: true; stage: 'verify'; pendingId: string; note: string };
+/** Saqlandi: 2-bosqich (`stage: 'done'`, `similarity` bilan) yoki eski ERP'ning bir bosqichli javobi (`stage`siz). */
+export type ErpFaceEnrollDone = { ok: true; stage?: 'done'; count: number; note: string; similarity?: number };
+/** Xato. 2-bosqichda `retry: false` — kutilayotgan yozuv yo'q bo'ldi, ro'yxatga olishni boshidan boshlash kerak. */
+export type ErpFaceEnrollFail = { ok: false; error: string; retry?: boolean };
+export type ErpFaceEnrollResult = ErpFaceEnrollPending | ErpFaceEnrollDone | ErpFaceEnrollFail;
 /** Kadr manzili: jurnal (`a` + `k`) yoki ro'yxatga olish (`t`). */
 export type ErpFacePhotoRef = { a: string; k: 'in' | 'out' } | { t: string };
 
@@ -399,9 +406,13 @@ export const erpAuth = {
   /** Kiosk: kameraga qaragan xodimni tanib, keldi/ketdi yozadi. */
   faceScan: (body: { mode: ErpFaceMode; photo?: string; frames?: string[]; nonce?: string }) =>
     erpApi<ErpFaceScanResult>('/face/scan', { method: 'POST', body }),
-  /** Xodim yuzini ro'yxatga olish (rozilik bilan). */
-  faceEnroll: (body: { employeeId: string; consent: true; photo?: string; frames?: string[]; nonce?: string }) =>
-    erpApi<{ ok: true; count: number; note: string } | { ok: false; error: string }>('/face/enroll', { method: 'POST', body }),
+  /**
+   * Xodim yuzini ro'yxatga olish — ikki bosqich: 1) `consent: true` + kadrlar → `stage: 'verify'` va `pendingId`
+   * (hali saqlanmagan); 2) `pendingId` + yangi kadrlar → server tanisa saqlaydi (`stage: 'done'`). Eski ERP 1-bosqichdayoq
+   * `stage`siz `{ ok, count, note }` qaytaradi — bu ham "saqlandi" deb olinadi.
+   */
+  faceEnroll: (body: { employeeId: string; consent?: true; pendingId?: string; photo?: string; frames?: string[]; nonce?: string }) =>
+    erpApi<ErpFaceEnrollResult>('/face/enroll', { method: 'POST', body }),
   faceDelete: (employeeId: string) =>
     erpApi<{ ok: true; note: string } | { ok: false; error: string }>('/face/delete', { method: 'POST', body: { employeeId } }),
   /** Kadr (data-URL). */
