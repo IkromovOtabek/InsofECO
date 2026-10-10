@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  Easing,
   cancelAnimation,
+  Easing,
   useAnimatedProps,
   useAnimatedStyle,
+  useDerivedValue,
+  useFrameCallback,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -13,53 +15,49 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useTheme } from '@/design/theme';
+import { alpha, palettes } from '@/design/tokens';
 import { DUR, EASE_MICRO, EASE_STATE } from '@/design/motion';
 
 /**
- * Yuz skanerining Face ID uslubidagi ko'rinishi: dumaloq "teshik" (atrofi qoraytirilgan), uning atrofida 72 ta qisqa
- * radial chiziqcha (tick). Kadrlar olinishi bilan chiziqchalar soat yo'nalishida yonadi, server tekshiruvida halqa
- * bo'ylab "kometa" aylanadi, muvaffaqiyatda yashil bo'lib biroz qisqaradi va katta belgi chiziladi, xatoda qizil
- * bo'lib chayqaladi.
+ * Yuz skanerining "iPhone Pro halqa" ko'rinishi: dumaloq "teshik" (atrofi qalin qoraytirilgan), uning atrofida 90 ta
+ * radial chiziqcha (tick). Skanerlash va tekshiruvda chiziqchalar uzunligi ovoz to'lqini kabi "nafas oladi"; kadrlar
+ * olinishi bilan soat yo'nalishida yonadi (yonganlari nur sochadi), server tekshiruvida halqa bo'ylab och ko'k yorqin
+ * "bosh" va undan ortda so'nib boruvchi dum aylanadi, muvaffaqiyatda yashil bo'lib 5% qisqaradi va nurli doira ichida
+ * belgi chiziladi, xatoda qizil bo'lib so'nib boruvchi chayqalish bilan silkinadi.
  *
- * Unumdorlik (arzon Android uchun): 72 ta alohida <Line> + har biriga animatedProps EMAS (har kadrda 72 ta native
- * yangilanish bo'lardi). Buning o'rniga:
- *  - xira halqa — bitta statik <Path> (barcha chiziqchalar bitta `d` da), hech qachon qayta chizilmaydi;
- *  - yonayotgan qism — bitta animatsion <Path>: `d` UI oqimida (worklet) oldindan hisoblangan koordinatalardan
- *    yig'iladi (≤72 ta "M…L…" bo'lagi) — kadrda bitta native prop, JS/React qayta render yo'q;
- *  - kometa — ikkita kichik animatsion <Path> (dum va bosh), indeks butun songa yaxlitlanadi — chiziqchalar har doim
- *    xira halqa chiziqchalari ustiga aniq tushadi;
- *  - qisqarish va chayqalish — View transform (scale/translateX), SVG qayta rasterlanmaydi;
- *  - belgi chizilishi — bitta `strokeDashoffset`.
- * `strokeDasharray` li aylana bilan "soxta chiziqcha" ham arzon, lekin yonish ulushini (progress) cheklash uchun mask
- * kerak bo'lardi — Android'da mask har kadr bitmapga chiziladi va animatsion mask yangilanishi ishonchsiz.
+ * Unumdorlik (arzon Android uchun): 90 ta alohida <Line> + animatedProps EMAS. Buning o'rniga:
+ *  - barcha chiziqchalar bitta worklet'da (useDerivedValue, UI oqimi) oldindan hisoblangan cos/sin jadvalidan bir
+ *    nechta `d` satriga yig'iladi: xira, yongan, tomon ishorasi va tekshiruvdagi 3 ta so'nish "chelagi" (shaffoflik
+ *    bo'yicha guruh) — har bir yo'l bitta native prop, JS/React qayta render yo'q;
+ *  - to'lqin fazasi useFrameCallback'da faqat skanerlash/tekshiruv paytida oshadi; boshqa paytda kadr hisoblanmaydi;
+ *  - nur (glow) — svg'da shadowBlur yo'q: yongan yo'lning o'sha `d` si 3× va 5× qalin, past shaffoflik bilan ortda
+ *    chiziladi (bitta yo'l ichidagi kesishmalar qo'shilib ketmaydi);
+ *  - qisqarish va chayqalish — View transform (scale/translateX), belgi chizilishi — `strokeDashoffset`.
+ * "Kamroq harakat"da to'lqin ham, aylanuvchi bosh ham yo'q: uzunliklar o'zgarmas, ranglar darhol almashadi.
  */
 
-const N = 72;
-/** Chap/o'ng tomon ishorasi uchun chiziqchalar soni (≈ 95°). */
-const SIDE_TICKS = 19;
+const N = 90;
+/** Chap/o'ng tomon ishorasi uchun chiziqchalar soni (≈ 96°). */
+const SIDE_TICKS = 24;
+/** Tekshiruvda aylanuvchi bosh ortidagi dum uzunligi (chiziqcha) — 4 ta chelakka bo'linadi. */
+const TAIL = 18;
 /** Chayqalish uchun skrim ekran chetidan shuncha kengroq chiziladi (chet ochilib qolmasin). */
 const PAD = 24;
+const TAU = 2 * Math.PI;
+/** Bo'sh (ko'rinmas) yo'l. */
+const EMPTY = 'M-20 -20';
 
 export type RingMode = 'align' | 'scan' | 'verify' | 'ok' | 'fail';
 
-/** Chiziqchalar halqasining tashqi radiusi — maket hisoblash uchun (teshik radiusidan). */
-export function ringOuter(r: number): number {
-  return r + tickGap(r) + tickLen(r);
-}
-const tickGap = (r: number) => Math.max(8, Math.round(r * 0.07));
-const tickLen = (r: number) => Math.max(10, Math.round(r * 0.1));
+/** Halqa radiusi: teshik uning 86% i (maket bo'yicha). */
+const ringR = (r: number) => r / 0.86;
+const tickIn = (r: number) => ringR(r) * 0.96;
+const tickLen = (r: number) => ringR(r) * 0.13;
+const strokeW = (r: number) => Math.max(2, Math.round(r * 0.026 * 2) / 2);
 
-/** `from` dan boshlab `count` ta chiziqcha (soat yo'nalishida, aylana bo'ylab) — bitta SVG yo'li. JS va UI oqimida ishlaydi. */
-function ticksPath(pts: number[], from: number, count: number): string {
-  'worklet';
-  if (count <= 0) return 'M-20 -20'; // bo'sh (ko'rinmas) yo'l
-  let d = '';
-  const start = ((from % N) + N) % N;
-  for (let k = 0; k < count && k < N; k++) {
-    const i = ((start + k) % N) * 4;
-    d += `M${pts[i]} ${pts[i + 1]}L${pts[i + 2]} ${pts[i + 3]}`;
-  }
-  return d;
+/** Chiziqchalar halqasining tashqi radiusi (to'lqindagi eng uzun chiziqcha bilan) — maket hisoblash uchun (teshik radiusidan). */
+export function ringOuter(r: number): number {
+  return tickIn(r) + tickLen(r) * 1.3 + strokeW(r) / 2;
 }
 
 const APath = Animated.createAnimatedComponent(Path);
@@ -79,32 +77,35 @@ export function FaceRing({ W, H, cx, cy, r, mode, target, ms, side, reduce }: {
   side: 'left' | 'right' | null;
   reduce: boolean;
 }) {
-  const { c } = useTheme();
-  const rIn = r + tickGap(r);
-  const rOut = ringOuter(r);
-  const S = Math.ceil(2 * rOut + 8);
+  const { c, paletteName } = useTheme();
+  // Skaner har doim kamera ustida, qorong'i fonda — och ko'k va sariq ishora palitraning qorong'i rejimidan olinadi
+  const k = (palettes[paletteName] ?? palettes.chizma).dark;
+  const rIn = tickIn(r);
+  const L = tickLen(r);
+  const sw = strokeW(r);
+  const S = Math.ceil(2 * (ringOuter(r) + 3 * sw) + 4);
   const o = S / 2;
-  const sw = Math.max(2, Math.round(r * 0.022));
 
-  // Chiziqcha uchlari: [x1, y1, x2, y2] × N; 0-chiziqcha tepada, soat yo'nalishida
-  const pts = useMemo(() => {
-    const a: number[] = [];
+  // cos/sin jadvali: 0-chiziqcha tepada, soat yo'nalishida
+  const [cosT, sinT] = useMemo(() => {
+    const cs: number[] = [];
+    const sn: number[] = [];
     for (let i = 0; i < N; i++) {
-      const t = -Math.PI / 2 + (2 * Math.PI * i) / N;
-      const cs = Math.cos(t);
-      const sn = Math.sin(t);
-      a.push(+(o + rIn * cs).toFixed(1), +(o + rIn * sn).toFixed(1), +(o + rOut * cs).toFixed(1), +(o + rOut * sn).toFixed(1));
+      const t = -Math.PI / 2 + (TAU * i) / N;
+      cs.push(Math.cos(t));
+      sn.push(Math.sin(t));
     }
-    return a;
-  }, [o, rIn, rOut]);
-  const all = useMemo(() => ticksPath(pts, 0, N), [pts]);
-  const sidePath = useMemo(
-    () => (side ? ticksPath(pts, (side === 'left' ? (3 * N) / 4 : N / 4) - (SIDE_TICKS - 1) / 2, SIDE_TICKS) : null),
-    [pts, side],
-  );
+    return [cs, sn];
+  }, []);
+  // Tomon ishorasi boshlanadigan chiziqcha (-1 — yo'q): chap — 270°, o'ng — 90° atrofida
+  const sideStart = side ? Math.round((side === 'left' ? (3 * N) / 4 : N / 4) - (SIDE_TICKS - 1) / 2) : -1;
 
   const prog = useSharedValue(0);
   const spin = useSharedValue(0);
+  const wave = useSharedValue(0);
+  const speed = useSharedValue(4);
+  const phA = useSharedValue(0);
+  const phB = useSharedValue(0);
   const shake = useSharedValue(0);
   const scale = useSharedValue(1);
   const disc = useSharedValue(0);
@@ -116,21 +117,36 @@ export function FaceRing({ W, H, cx, cy, r, mode, target, ms, side, reduce }: {
     prog.value = reduce || ms <= 0 ? target : withTiming(target, { duration: ms, easing: EASE_MICRO });
   }, [target, ms, reduce, prog]);
 
-  // Server tekshiruvi — halqa bo'ylab aylanuvchi kometa ("kamroq harakat"da yo'q)
+  // To'lqin: skanerlash va tekshiruvda chiziqchalar uzunligi "nafas oladi" (tekshiruvda tezroq). Faza har kadrda
+  // tezlik × vaqt bilan oshadi — tezlik o'zgarganda to'lqin sakramaydi.
+  const waving = (mode === 'scan' || mode === 'verify') && !reduce;
+  const clock = useFrameCallback((f) => {
+    const dt = Math.min(f.timeSincePreviousFrame ?? 16, 50) / 1000;
+    phA.value = (phA.value + speed.value * dt) % TAU;
+    phB.value = (phB.value + 2 * dt) % TAU;
+  }, false);
+  useEffect(() => {
+    clock.setActive(waving);
+    wave.value = reduce ? 0 : withTiming(waving ? 1 : 0, { duration: DUR.screen, easing: EASE_STATE });
+    speed.value = withTiming(mode === 'verify' ? 9 : 4, { duration: DUR.screen });
+    return () => clock.setActive(false);
+  }, [waving, mode, reduce, clock, wave, speed]);
+
+  // Server tekshiruvi — halqa bo'ylab aylanuvchi yorqin bosh ("kamroq harakat"da yo'q)
   const spinning = mode === 'verify' && !reduce;
   useEffect(() => {
     if (spinning) {
       spin.value = 0;
-      spin.value = withRepeat(withTiming(1, { duration: DUR.loop, easing: Easing.linear }), -1, false);
+      spin.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.linear }), -1, false);
     } else {
       cancelAnimation(spin);
     }
   }, [spinning, spin]);
 
-  // Natija: muvaffaqiyat — qisqarish + belgi chizilishi; xato — chayqalish + belgi
+  // Natija: muvaffaqiyat — 5% qisqarish + belgi chizilishi; xato — so'nib boruvchi chayqalish + belgi
   useEffect(() => {
     if (mode === 'ok') {
-      scale.value = reduce ? 0.93 : withTiming(0.93, { duration: DUR.screen, easing: EASE_STATE });
+      scale.value = reduce ? 0.95 : withTiming(0.95, { duration: DUR.screen, easing: EASE_STATE });
       disc.value = reduce ? 1 : withTiming(1, { duration: DUR.state, easing: EASE_STATE });
       draw.value = reduce ? 1 : withDelay(DUR.micro, withTiming(1, { duration: 420, easing: EASE_STATE }));
     } else if (mode === 'fail') {
@@ -140,8 +156,12 @@ export function FaceRing({ W, H, cx, cy, r, mode, target, ms, side, reduce }: {
       if (!reduce) {
         shake.value = withSequence(
           withTiming(-12, { duration: 45 }),
-          withRepeat(withTiming(12, { duration: 80 }), 4, true),
-          withTiming(0, { duration: 45 }),
+          withTiming(10, { duration: 80 }),
+          withTiming(-8, { duration: 75 }),
+          withTiming(6, { duration: 70 }),
+          withTiming(-4, { duration: 60 }),
+          withTiming(2, { duration: 50 }),
+          withTiming(0, { duration: 40 }),
         );
       }
     } else {
@@ -157,23 +177,66 @@ export function FaceRing({ W, H, cx, cy, r, mode, target, ms, side, reduce }: {
     sideOp.value = reduce ? (side ? 1 : 0) : withTiming(side ? 1 : 0, { duration: DUR.state });
   }, [side, reduce, sideOp]);
 
-  const litProps = useAnimatedProps(() => ({ d: ticksPath(pts, 0, Math.round(prog.value * N)) }));
-  const tailProps = useAnimatedProps(() => ({ d: ticksPath(pts, Math.floor(spin.value * N) - 14, 10) }));
-  const headProps = useAnimatedProps(() => ({ d: ticksPath(pts, Math.floor(spin.value * N) - 4, 5) }));
-  const sideProps = useAnimatedProps(() => ({ strokeOpacity: sideOp.value }));
+  // Barcha chiziqchalar bitta worklet'da: [xira, yongan, chelak1, chelak2, chelak3, tomon]
+  const paths = useDerivedValue(() => {
+    const amp = wave.value;
+    const pa = phA.value;
+    const pb = phB.value;
+    const litN = Math.round(prog.value * N);
+    const head = spinning ? spin.value * N : -1;
+    let dim = '';
+    let lit = '';
+    let b1 = '';
+    let b2 = '';
+    let b3 = '';
+    let sd = '';
+    for (let i = 0; i < N; i++) {
+      const len = amp > 0 ? L * (1 + amp * (0.6 * Math.abs(Math.sin(i * 0.45 + pa) * Math.sin(i * 0.13 - pb)) - 0.3)) : L;
+      const r2 = rIn + len;
+      const cs = cosT[i] ?? 0;
+      const sn = sinT[i] ?? 0;
+      const seg = `M${Math.round((o + rIn * cs) * 10) / 10} ${Math.round((o + rIn * sn) * 10) / 10}L${Math.round((o + r2 * cs) * 10) / 10} ${Math.round((o + r2 * sn) * 10) / 10}`;
+      if (head >= 0) {
+        // Boshdan ortda qolgan masofa (chiziqcha): yaqinlari yorqinroq
+        const d = (head - i + N) % N;
+        if (d < TAIL / 4) lit += seg;
+        else if (d < TAIL / 2) b1 += seg;
+        else if (d < (3 * TAIL) / 4) b2 += seg;
+        else if (d < TAIL) b3 += seg;
+        else dim += seg;
+      } else if (i < litN) {
+        lit += seg;
+      } else {
+        dim += seg;
+        if (sideStart >= 0 && (i - sideStart + N) % N < SIDE_TICKS) sd += seg;
+      }
+    }
+    return [dim || EMPTY, lit || EMPTY, b1 || EMPTY, b2 || EMPTY, b3 || EMPTY, sd || EMPTY];
+  }, [cosT, sinT, rIn, L, o, spinning, sideStart]);
+
+  const dimProps = useAnimatedProps(() => ({ d: paths.value[0] }));
+  const litProps = useAnimatedProps(() => ({ d: paths.value[1] }));
+  const glowProps = useAnimatedProps(() => ({ d: paths.value[1] }));
+  const haloProps = useAnimatedProps(() => ({ d: paths.value[1] }));
+  const b1Props = useAnimatedProps(() => ({ d: paths.value[2] }));
+  const b2Props = useAnimatedProps(() => ({ d: paths.value[3] }));
+  const b3Props = useAnimatedProps(() => ({ d: paths.value[4] }));
+  const sideProps = useAnimatedProps(() => ({ d: paths.value[5], strokeOpacity: sideOp.value }));
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const discStyle = useAnimatedStyle(() => ({ opacity: disc.value, transform: [{ scale: 0.6 + 0.4 * disc.value }] }));
 
-  // Belgi (galochka yoki xoch) — teshik markazidagi doira ichida
+  // Belgi (galochka yoki xoch) — teshik markazidagi nurli doira ichida
   const rd = Math.round(r * 0.42);
-  const D = 2 * rd;
+  const rg = Math.round(rd * 1.3);
+  const off = rg - rd;
+  const D = 2 * rg;
   const markW = Math.max(4, Math.round(rd * 0.13));
   const P = (x: number, y: number) => [rd + x * rd, rd + y * rd] as const;
   const [a1, a2] = P(-0.42, 0.02);
-  const [b1, b2] = P(-0.12, 0.32);
+  const [b1x, b1y] = P(-0.12, 0.32);
   const [e1, e2] = P(0.44, -0.3);
-  const checkLen = Math.ceil(Math.hypot(b1 - a1, b2 - a2) + Math.hypot(e1 - b1, e2 - b2)) + 2;
+  const checkLen = Math.ceil(Math.hypot(b1x - a1, b1y - a2) + Math.hypot(e1 - b1x, e2 - b1y)) + 2;
   const xLen = Math.ceil(0.6 * Math.SQRT2 * rd) + 2;
   const checkProps = useAnimatedProps(() => ({ strokeDashoffset: checkLen * (1 - draw.value) }));
   const x1Props = useAnimatedProps(() => ({ strokeDashoffset: xLen * (1 - Math.min(1, draw.value * 2)) }));
@@ -181,51 +244,61 @@ export function FaceRing({ W, H, cx, cy, r, mode, target, ms, side, reduce }: {
   const lo = P(-0.3, -0.3);
   const hi = P(0.3, 0.3);
 
-  const lit = mode === 'ok' ? c.successSolid : mode === 'fail' ? c.dangerSolid : mode === 'verify' ? c.brand : c.textOnSolid;
+  const lit = mode === 'ok' ? c.successSolid : mode === 'fail' ? c.dangerSolid : mode === 'verify' ? k.info : c.textOnSolid;
+  // Tekshiruvda butun halqa och ko'k, bosh ortidagilari so'nib boradi; boshqa paytda yonmaganlari xira oq
+  const dimColor = spinning ? k.info : c.textOnSolid;
+  const dimOp = spinning ? 0.25 : 0.18;
   const done = mode === 'ok' || mode === 'fail';
+  const glyph = mode === 'ok' ? c.successSolid : c.dangerSolid;
   const hole = `M0 0H${W + 2 * PAD}V${H}H0Z M${cx + PAD - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0 Z`;
+  const tick = { strokeLinecap: 'round' as const, fill: 'none' };
 
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, shakeStyle]}>
       <Svg width={W + 2 * PAD} height={H} style={{ position: 'absolute', top: 0, left: -PAD }}>
-        <Path d={hole} fill={c.scrim} fillRule="evenodd" />
+        <Path d={hole} fill={alpha(c.scrim, 0.8)} fillRule="evenodd" />
       </Svg>
       <Animated.View style={[{ position: 'absolute', left: cx - o, top: cy - o, width: S, height: S }, scaleStyle]}>
         <Svg width={S} height={S}>
-          <Path d={all} stroke={c.textOnSolid} strokeOpacity={0.28} strokeWidth={sw} strokeLinecap="round" fill="none" />
-          <APath animatedProps={litProps} stroke={lit} strokeWidth={sw} strokeLinecap="round" fill="none" />
+          <APath animatedProps={dimProps} stroke={dimColor} strokeOpacity={dimOp} strokeWidth={sw} {...tick} />
           {spinning ? (
             <>
-              <APath animatedProps={tailProps} stroke={c.textOnSolid} strokeOpacity={0.55} strokeWidth={sw} strokeLinecap="round" fill="none" />
-              <APath animatedProps={headProps} stroke={c.textOnSolid} strokeWidth={sw} strokeLinecap="round" fill="none" />
+              <APath animatedProps={b3Props} stroke={k.info} strokeOpacity={0.42} strokeWidth={sw} {...tick} />
+              <APath animatedProps={b2Props} stroke={k.info} strokeOpacity={0.6} strokeWidth={sw} {...tick} />
+              <APath animatedProps={b1Props} stroke={k.info} strokeOpacity={0.8} strokeWidth={sw} {...tick} />
             </>
           ) : null}
-          {sidePath ? (
-            <APath d={sidePath} animatedProps={sideProps} stroke={c.accent} strokeWidth={sw + 1} strokeLinecap="round" fill="none" />
-          ) : null}
+          <APath animatedProps={haloProps} stroke={lit} strokeOpacity={0.1} strokeWidth={sw * 5} {...tick} />
+          <APath animatedProps={glowProps} stroke={lit} strokeOpacity={0.25} strokeWidth={sw * 3} {...tick} />
+          <APath animatedProps={litProps} stroke={lit} strokeWidth={sw} {...tick} />
+          {sideStart >= 0 ? <APath animatedProps={sideProps} stroke={k.warning} strokeWidth={sw} {...tick} /> : null}
         </Svg>
       </Animated.View>
       {done ? (
-        <Animated.View style={[{ position: 'absolute', left: cx - rd, top: cy - rd, width: D, height: D }, discStyle]}>
+        <Animated.View style={[{ position: 'absolute', left: cx - rg, top: cy - rg, width: D, height: D }, discStyle]}>
           <Svg width={D} height={D}>
-            <Circle cx={rd} cy={rd} r={rd} fill={mode === 'ok' ? c.successSolid : c.dangerSolid} fillOpacity={0.9} />
-            {mode === 'ok' ? (
-              <APath
-                d={`M${a1} ${a2}L${b1} ${b2}L${e1} ${e2}`}
-                animatedProps={checkProps}
-                stroke={c.textOnSolid}
-                strokeWidth={markW}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray={[checkLen, checkLen]}
-                fill="none"
-              />
-            ) : (
-              <G>
-                <APath d={`M${lo[0]} ${lo[1]}L${hi[0]} ${hi[1]}`} animatedProps={x1Props} stroke={c.textOnSolid} strokeWidth={markW} strokeLinecap="round" strokeDasharray={[xLen, xLen]} fill="none" />
-                <APath d={`M${hi[0]} ${lo[1]}L${lo[0]} ${hi[1]}`} animatedProps={x2Props} stroke={c.textOnSolid} strokeWidth={markW} strokeLinecap="round" strokeDasharray={[xLen, xLen]} fill="none" />
-              </G>
-            )}
+            <Circle cx={rg} cy={rg} r={rg} fill={glyph} fillOpacity={0.12} />
+            <Circle cx={rg} cy={rg} r={Math.round(rd * 1.14)} fill={glyph} fillOpacity={0.22} />
+            <Circle cx={rg} cy={rg} r={rd} fill={glyph} fillOpacity={0.92} />
+            <G transform={`translate(${off} ${off})`}>
+              {mode === 'ok' ? (
+                <APath
+                  d={`M${a1} ${a2}L${b1x} ${b1y}L${e1} ${e2}`}
+                  animatedProps={checkProps}
+                  stroke={c.textOnSolid}
+                  strokeWidth={markW}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={[checkLen, checkLen]}
+                  fill="none"
+                />
+              ) : (
+                <>
+                  <APath d={`M${lo[0]} ${lo[1]}L${hi[0]} ${hi[1]}`} animatedProps={x1Props} stroke={c.textOnSolid} strokeWidth={markW} strokeLinecap="round" strokeDasharray={[xLen, xLen]} fill="none" />
+                  <APath d={`M${hi[0]} ${lo[1]}L${lo[0]} ${hi[1]}`} animatedProps={x2Props} stroke={c.textOnSolid} strokeWidth={markW} strokeLinecap="round" strokeDasharray={[xLen, xLen]} fill="none" />
+                </>
+              )}
+            </G>
           </Svg>
         </Animated.View>
       ) : null}
