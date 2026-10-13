@@ -12,7 +12,8 @@ import { radius, size, space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
 import { ApiException, uuid } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
-import { FieldInput, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
+import { FieldInput, QuickCreateContext, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
+import { useQuickCreate } from '@/features/erp/quick-create';
 import { Loader } from '@/design/loader';
 
 /**
@@ -32,6 +33,8 @@ export default function ErpNew() {
   const headerH = React.useContext(HeaderHeightContext) ?? 0;
   const { data, isLoading, error } = useErpForm(key!);
   const create = useErpCreate();
+  // Tanlov ichidagi "+" (masalan yangi xomashyo) varag'i — ekran ildizida, forma kartochkalari ichida emas
+  const quickCreate = useQuickCreate();
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -105,35 +108,40 @@ export default function ErpNew() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerH}>
-      {header}
-      <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
-        {errorCount ? (
-          <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
-            <Pressable
-              onPress={() => toFirstError()}
-              accessibilityRole="button" accessibilityLiveRegion="polite"
-              accessibilityLabel={`${errorCount} ta maydon to'ldirilmagan. Birinchisiga o'tish`}
-              style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.sm, alignSelf: 'flex-start', minHeight: size.touch - space.xs, paddingLeft: space.md, paddingRight: space.sm, borderRadius: radius.pill, backgroundColor: c.dangerBg }, pressed && { opacity: 0.8 }]}
-            >
-              <Icon name="circle-alert" tone="danger" size={size.iconSm} />
-              <Txt v="label" color="danger">{errorCount} ta maydon to&apos;ldirilmagan</Txt>
-              <Icon name="chevron-down" tone="danger" size={size.iconSm} />
-            </Pressable>
-          </Appear>
-        ) : null}
-        {serverError ? (
-          <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
-            <Callout tone="danger">{serverError}</Callout>
-          </Appear>
-        ) : null}
-        {visible.map((f) => (
-          <View key={f.name} onLayout={(e) => { pos.current[f.name] = e.nativeEvent.layout.y; }}>
-            <FieldInput field={f} values={values} onChange={setValue} errors={errors} />
-          </View>
-        ))}
-      </ScrollView>
-      <StickyActionBar primary={{ title: data.submitLabel, icon: 'check', loading: create.isPending, onPress: () => void submit() }} />
-    </KeyboardAvoidingView>
+    <QuickCreateContext.Provider value={quickCreate.quick}>
+      <View style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bgApp }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerH}>
+          {header}
+          <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
+            {errorCount ? (
+              <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
+                <Pressable
+                  onPress={() => toFirstError()}
+                  accessibilityRole="button" accessibilityLiveRegion="polite"
+                  accessibilityLabel={`${errorCount} ta maydon to'ldirilmagan. Birinchisiga o'tish`}
+                  style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.sm, alignSelf: 'flex-start', minHeight: size.touch - space.xs, paddingLeft: space.md, paddingRight: space.sm, borderRadius: radius.pill, backgroundColor: c.dangerBg }, pressed && { opacity: 0.8 }]}
+                >
+                  <Icon name="circle-alert" tone="danger" size={size.iconSm} />
+                  <Txt v="label" color="danger">{errorCount} ta maydon to&apos;ldirilmagan</Txt>
+                  <Icon name="chevron-down" tone="danger" size={size.iconSm} />
+                </Pressable>
+              </Appear>
+            ) : null}
+            {serverError ? (
+              <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
+                <Callout tone="danger">{serverError}</Callout>
+              </Appear>
+            ) : null}
+            {visible.map((f) => (
+              <View key={f.name} onLayout={(e) => { pos.current[f.name] = e.nativeEvent.layout.y; }}>
+                <FieldInput field={f} values={values} onChange={setValue} errors={errors} />
+              </View>
+            ))}
+          </ScrollView>
+          <StickyActionBar primary={{ title: data.submitLabel, icon: 'check', loading: create.isPending, onPress: () => void submit() }} />
+        </KeyboardAvoidingView>
+        {quickCreate.sheet}
+      </View>
+    </QuickCreateContext.Provider>
   );
 }

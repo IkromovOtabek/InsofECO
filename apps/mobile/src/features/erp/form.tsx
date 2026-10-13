@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import type * as ImagePickerNS from 'expo-image-picker';
@@ -7,7 +7,7 @@ import { Toggle } from '@/design/blocks';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space, toneColors, type Tone } from '@/design/tokens';
-import type { ErpDayCell, ErpFormField, ErpFormOption } from '@/core/erp';
+import type { ErpDayCell, ErpFormField, ErpFormOption, ErpQuickCreate } from '@/core/erp';
 
 /**
  * Serverdan kelgan forma tavsifini chizadigan qism.
@@ -272,11 +272,32 @@ function autofill(field: ErpFormField, option: ErpFormOption | undefined, values
 type FormOption = SelectOption & Pick<ErpFormOption, 'extra'>;
 
 /**
+ * Tanlov ichidan yangi yozuv qo'shish (`field.create` — masalan ta'minot so'rovida yangi xomashyo).
+ * Varaqni ekran beradi (`useQuickCreate`, `./quick-create.tsx`): `Sheet` ota-ona ichida absolute chiziladi,
+ * kartochka ichida qolib ketmasin. Kontekst yo'q joyda (amal oynasi) "+" ko'rinmaydi.
+ * Natija — tanlovga qo'shiladigan variant, bekor qilinsa `null`.
+ */
+export type QuickCreateFn = (spec: ErpQuickCreate) => Promise<ErpFormOption | null>;
+export const QuickCreateContext = React.createContext<QuickCreateFn | null>(null);
+
+/**
  * Umumiy `Select` ustidagi yupqa qatlam: variant tanlanganda `extra`si bilan qaytaradi —
  * `Select` faqat {value,label} biladi, marka → narx to'ldirish uchun asl variant kerak.
  */
 function SelectField({ field, options, value, onChange, compact, error }: { field: ErpFormField; /** `dependsOn` bilan saralangan variantlar. */ options?: ErpFormOption[]; value: string; onChange: (v: string, o?: ErpFormOption) => void; compact?: boolean; error?: string }) {
-  const all: FormOption[] = options ?? field.options ?? [];
+  const quick = useContext(QuickCreateContext);
+  // "+" bilan qo'shilgani forma serverdan qayta kelguncha ham ro'yxatda tursin (keyin serverdagisi bilan birlashadi)
+  const [added, setAdded] = useState<FormOption[]>([]);
+  const base: FormOption[] = options ?? field.options ?? [];
+  const all = added.length ? [...added.filter((a) => !base.some((o) => o.value === a.value)), ...base] : base;
+  const spec = field.create;
+  const onAdd = spec && quick ? () => {
+    void quick(spec).then((o) => {
+      if (!o) return;
+      setAdded((a) => [o, ...a.filter((x) => x.value !== o.value)]);
+      onChange(o.value, o);
+    });
+  } : undefined;
   return (
     <Select
       label={field.label}
@@ -286,6 +307,8 @@ function SelectField({ field, options, value, onChange, compact, error }: { fiel
       value={value || null}
       options={all}
       onChange={(v) => onChange(v, all.find((o) => o.value === v))}
+      onAdd={onAdd}
+      addLabel={spec?.label}
     />
   );
 }

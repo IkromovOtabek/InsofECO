@@ -363,13 +363,14 @@ export interface SelectOption<V extends string = string> { value: V; label: stri
 /**
  * Select — ochiladigan ro'yxat (native oynasiz, Fabric'da ishonchli).
  * 3 tadan kam variant — hammasi ko'rinadi; ko'p bo'lsa yig'iladi, 8 tadan ko'p bo'lsa qidiruv.
+ * `onAdd` — qidiruv katagining o'ng tomonida "+" (ro'yxatda yo'q yozuvni qo'shish); unda ro'yxat doim yig'iladi va qidiruv bor.
  */
-export function Select<V extends string = string>({ label, value, options, onChange, placeholder = i18n.t('ui.select'), error, hint, required, compact, containerStyle }: { label?: string; value?: V | null; options: SelectOption<V>[]; onChange: (v: V, o: SelectOption<V>) => void; placeholder?: string; error?: string; hint?: string; required?: boolean; compact?: boolean; containerStyle?: StyleProp<ViewStyle> }) {
+export function Select<V extends string = string>({ label, value, options, onChange, placeholder = i18n.t('ui.select'), error, hint, required, compact, containerStyle, onAdd, addLabel }: { label?: string; value?: V | null; options: SelectOption<V>[]; onChange: (v: V, o: SelectOption<V>) => void; placeholder?: string; error?: string; hint?: string; required?: boolean; compact?: boolean; containerStyle?: StyleProp<ViewStyle>; onAdd?: () => void; addLabel?: string }) {
   const { c } = useTheme();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const collapsible = options.length > 3 || compact;
-  const searchable = options.length > 8;
+  const collapsible = options.length > 3 || compact || !!onAdd;
+  const searchable = options.length > 8 || !!onAdd;
   const selected = options.find((o) => o.value === value);
   const list = q.trim() ? options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase())) : options;
 
@@ -394,7 +395,7 @@ export function Select<V extends string = string>({ label, value, options, onCha
   return (
     <View style={[{ marginBottom: space.lg }, containerStyle]}>
       {label ? <Label required={required}>{label}</Label> : null}
-      {options.length === 0 ? <Txt v="bodySm" color="muted">{i18n.t('ui.noOptions')}</Txt> : collapsible ? (
+      {options.length === 0 && !onAdd ? <Txt v="bodySm" color="muted">{i18n.t('ui.noOptions')}</Txt> : collapsible ? (
         <View>
           <Pressable
             accessibilityRole="button" accessibilityLabel={label ?? placeholder} accessibilityState={{ expanded: open }}
@@ -406,7 +407,12 @@ export function Select<V extends string = string>({ label, value, options, onCha
           </Pressable>
           {open ? (
             <Animated.View entering={ENTER_ITEM} style={{ marginTop: space.sm, gap: space.sm }}>
-              {searchable ? <Input value={q} onChangeText={setQ} placeholder={i18n.t('ui.search')} left="search" autoCorrect={false} containerStyle={{ marginBottom: 0 }} /> : null}
+              {searchable ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                  <Input value={q} onChangeText={setQ} placeholder={i18n.t('ui.search')} left="search" autoCorrect={false} containerStyle={{ flex: 1, marginBottom: 0 }} />
+                  {onAdd ? <IconButton icon="plus" label={addLabel ?? "Yangi qo'shish"} variant="secondary" tone="brand" size={size.input} onPress={() => { haptic.selection(); setQ(''); setOpen(false); onAdd(); }} /> : null}
+                </View>
+              ) : null}
               <ScrollView style={{ maxHeight: 264 }} nestedScrollEnabled keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space.sm }}>
                 {list.map((o) => <Opt key={o.value} o={o} />)}
                 {list.length === 0 ? <Txt v="bodySm" color="muted" style={{ padding: space.md }}>{i18n.t('ui.notFound')}</Txt> : null}

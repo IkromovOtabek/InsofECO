@@ -165,11 +165,13 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     breakdown: /^Harakat turlari/,
     progress: { section: /^Qoldiq \/ minimum/, item: /sement/i },
     attention: [/^Kam qolgan xomashyo/],
+    // Birinchisi (asosiy) — xomashyo zayavkasi: sklad snabjeniye kabi ta'minot so'rovini o'zi jo'natadi.
+    // Snabjeniye oynasi sklad kabinetida yo'q — so'rovlar holati «Ta'minot zayavkalari» ro'yxatida.
     quick: [
+      { label: 'Xomashyo zayavkasi', icon: 'shopping-cart', to: { kind: 'new', key: 'supply' } },
       { label: 'Kirimlar', icon: 'download', to: { kind: 'list', key: 'receipts' } },
-      { label: "Xarid so'rovi", icon: 'shopping-cart', to: { kind: 'new', key: 'supply' } },
       { label: 'Xomashyo', icon: 'layers', to: { kind: 'tab', tab: 'work' } },
-      { label: 'Snabjeniye', icon: 'clipboard-list', to: { kind: 'list', key: 'snabjeniye' } },
+      { label: "Ta'minot zayavkalari", icon: 'clipboard-list', to: { kind: 'list', key: 'supply' } },
     ],
     missing: ['Zaxira kunlari (material kesimida)', 'Tayyor mahsulot (gazoblok) qoldig\'i', "Silos to'lishi", 'Inventarizatsiya farqi'],
   },

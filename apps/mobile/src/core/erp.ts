@@ -66,12 +66,18 @@ export interface ErpFormField {
   cameraOnly?: boolean;
   /** `items` turi uchun ustunlar. */
   columns?: ErpFormField[];
+  /** `select`: qidiruv yonidagi "+" — yangi yozuvni (masalan xomashyo) shu yerda qo'shish varag'i (`features/erp/quick-create.tsx`). */
+  create?: ErpQuickCreate;
   /** `date` maydoni uchun — 10 kunlik kunlik yuklama (veb "ish tartibi" bilan bir xil hisob). */
   cells?: ErpDayCell[];
 }
 /** Bitta kun — sana tanlovida kunlik quvvat rangi va hajmi. */
 export interface ErpDayCell { key: string; label: string; weekday: string; m3: number; pct: number; count: number; isToday: boolean }
 export interface ErpCreateForm { key: string; title: string; submitLabel: string; fields: ErpFormField[] }
+/** Tanlov ichidan yaratish: `fields` varaqda chiziladi, `/create` ga `key` bilan ketadi. */
+export interface ErpQuickCreate { key: string; label: string; fields: ErpFormField[] }
+/** `/create` javobi. `option` — yangi server: tanlovga qo'shiladigan tayyor variant. */
+export interface ErpCreateResult { key: string; id: string; message: string; option?: ErpFormOption }
 /** Amal bajarilgandan keyin ilova nima qilishi — qaror serverda (`lib/mobile/detail.ts`). */
 export interface ErpActionEffect {
   /** Fon GPS kuzatuvi: reys yo'lga chiqqanda 'start', yopilganda 'stop'. */
@@ -389,7 +395,7 @@ export const erpAuth = {
   /** Yangi hujjat formasi — maydonlar va dolzarb tanlov ro'yxatlari serverdan. */
   form: (key: string) => erpApi<ErpCreateForm>('/form', { query: { key } }),
   create: (key: string, payload: Record<string, unknown>) =>
-    erpApi<{ key: string; id: string; message: string }>('/create', { method: 'POST', body: { key, payload } }),
+    erpApi<ErpCreateResult>('/create', { method: 'POST', body: { key, payload } }),
   /** Hisobni o'chirish so'rovi (do'kon talabi): xodim hisobini direktor bergan — so'rov unga tushadi, u tasdiqlaydi. */
   deletionStatus: () => erpApi<{ pending: boolean; requestedAt: string | null }>('/account'),
   requestDeletion: (note?: string) => erpApi<{ status: 'requested'; requestId: string }>('/account', { method: 'POST', body: { note } }),
