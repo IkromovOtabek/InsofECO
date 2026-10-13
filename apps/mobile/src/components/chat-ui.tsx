@@ -6,6 +6,7 @@ import { Icon } from '@/design/icons';
 import { Appear, EASE_LOOP, haptic, usePressScale } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { DEMO_SCALE, elevation, radius, size, space, type } from '@/design/tokens';
+import { t } from '@/core/lang';
 
 /**
  * Chat bo'laklari — demo `.daychip .bub .typing .composer .cin .send` (docs/redesign/shots/29).
@@ -111,7 +112,7 @@ export function Composer({ value, onChangeText, onSend, canSend, placeholder = '
             {...inputProps}
             value={value}
             onChangeText={onChangeText}
-            placeholder={placeholder}
+            placeholder={t(placeholder)}
             placeholderTextColor={c.textFaint}
             multiline
             style={[type.search, { color: c.textStrong, maxHeight: size.touch * 3, paddingTop: space.sm + 2, paddingBottom: space.sm + 2 }]}

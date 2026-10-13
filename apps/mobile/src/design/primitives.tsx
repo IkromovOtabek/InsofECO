@@ -19,6 +19,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import i18n from '@/core/i18n';
+import { t as tr, tChildren, useLang } from '@/core/lang';
 import Animated from 'react-native-reanimated';
 import { ENTER_ITEM, Shimmer, haptic, usePressScale } from './motion';
 import { useTheme } from './theme';
@@ -49,14 +50,17 @@ const WEIGHT_FAMILY: Record<string, string> = { '400': FONT[400], normal: FONT[4
  * Uslubda `fontWeight` kelsa shrift oilasiga o'giriladi (Android sun'iy qalinlashtirib
  * matnni qirqmasin), `lineHeight`siz `fontSize` kelsa balandlik avtomatik.
  */
-export function Txt({ v = 'body', color, mono, align, style, ...p }: TextProps & { v?: TypeVariant; color?: TxtColor; mono?: boolean; align?: TextStyle['textAlign'] }) {
+export function Txt({ v = 'body', color, mono, align, style, children, ...p }: TextProps & { v?: TypeVariant; color?: TxtColor; mono?: boolean; align?: TextStyle['textAlign'] }) {
   const { c } = useTheme();
+  // Ruscha tanlangan bo'lsa — matn lug'at bo'yicha o'giriladi (serverdan kelgani ham); `mono` — raqam/kod, tegilmaydi
+  const lang = useLang((x) => x.lang);
+  const text = lang === 'ru' && !mono ? tChildren(children) : children;
   const col = c[COLOR_KEY[color ?? DEFAULT_COLOR[v]]];
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const { fontWeight, ...rest } = flat;
   const family = mono ? FONT.mono : fontWeight ? WEIGHT_FAMILY[String(fontWeight)] : undefined;
   const auto = rest.fontSize && !rest.lineHeight ? { lineHeight: Math.round(rest.fontSize * 1.4) } : null;
-  return <Text {...p} style={[type[v], { color: col }, align ? { textAlign: align } : null, rest, family ? { fontFamily: family } : null, auto]} maxFontSizeMultiplier={p.maxFontSizeMultiplier ?? 1.4} />;
+  return <Text {...p} style={[type[v], { color: col }, align ? { textAlign: align } : null, rest, family ? { fontFamily: family } : null, auto]} maxFontSizeMultiplier={p.maxFontSizeMultiplier ?? 1.4}>{text}</Text>;
 }
 
 /**
@@ -221,6 +225,9 @@ export function Button({
   title, variant = 'primary', size: sizeKey = 'md', icon, iconRight, loading, disabled, style, onPress, full = true, textColor, ...p
 }: PressableProps & { title: string; variant?: BtnVariant; size?: BtnSize; icon?: IconName; iconRight?: IconName; loading?: boolean; full?: boolean; style?: StyleProp<ViewStyle>; /** Matn/ikonka rangi (masalan ikkilamchi "Rad etish" — `c.danger`). */ textColor?: string }) {
   const { c } = useTheme();
+  // Ruscha — tugma matni lug'at bo'yicha (sig'ish o'lchovi ham o'girilgan matn bilan)
+  useLang((x) => x.lang);
+  const label = tr(title);
   const bg = { primary: c.brand, secondary: c.bgSurface, ghost: 'transparent', danger: c.dangerSolid, success: c.successSolid }[variant];
   const fg = textColor ?? { primary: c.textOnBrand, secondary: c.textStrong, ghost: c.textBody, danger: c.textOnSolid, success: c.textOnSolid }[variant];
   const height = { md: size.button, lg: size.buttonLg, xl: size.driverTouch, sticky: size.stickyButton, stickyXl: size.stickyButtonXl }[sizeKey];
@@ -232,7 +239,7 @@ export function Button({
   // oxirida matn `MIN_FONT_SCALE`gacha kichrayadi. Faqat to'liq enli tugmada — o'z kengligidagi (`full={false}`) tugma tor bo'lmaydi.
   const padX = sizeKey === 'md' ? space.lg + space.xs : space.xl;
   const iconsW = (icon ? iconSize + space.sm : 0) + (iconRight ? iconSize + space.sm : 0);
-  const fit = useTightFit(title, type[txt].fontSize, iconsW + 2 * padX);
+  const fit = useTightFit(label, type[txt].fontSize, iconsW + 2 * padX);
   const tight = full && fit.tight;
   const cramped = tight && fit.textW + 2 * padX > fit.width;
   // Yorliq shrifti JS da hisoblanadi (native adjustsFontSizeToFit Android'da klaviaturadan keyin maydalanib qolardi):
@@ -249,7 +256,7 @@ export function Button({
       <Pressable
         {...p}
         accessibilityRole="button"
-        accessibilityLabel={title}
+        accessibilityLabel={label}
         accessibilityState={{ disabled: off, busy: !!loading }}
         disabled={off}
         onPressIn={(e) => { ps.onPressIn(); p.onPressIn?.(e); }}
@@ -270,8 +277,8 @@ export function Button({
             {icon && !tight ? <Icon name={icon} size={iconSize} color={fg} strokeWidth={2} /> : null}
             {/* Android matn kengligini kam o'lchab oxirgi harflarni qirqadi ("Kiri…") — cheklangan zaxira kenglik;
                 uzun yorliq tugmadan chiqmaydi: qisqaradi (flexShrink), ozgina kichrayadi (k ≥ 0.85) va 2 qatorga o'tadi */}
-            <Text {...BUTTON_LABEL} style={[type[txt], { color: fg, flexShrink: 1, textAlign: 'center', minWidth: fitRoom(title, type[txt].fontSize) }, scaledType(txt, k)]}>
-              {title}
+            <Text {...BUTTON_LABEL} style={[type[txt], { color: fg, flexShrink: 1, textAlign: 'center', minWidth: fitRoom(label, type[txt].fontSize) }, scaledType(txt, k)]}>
+              {label}
             </Text>
             {iconRight && !tight ? <Icon name={iconRight} size={iconSize} color={fg} strokeWidth={2} /> : null}
           </>
@@ -340,7 +347,8 @@ export function Input({ label, error, hint, mono, left, right, required, style, 
             // Katta tizim shriftida ham maydon ichida qoladi (Txt bilan bir xil 1.4× chegara)
             maxFontSizeMultiplier={1.4}
             {...p}
-            accessibilityLabel={p.accessibilityLabel ?? label ?? p.placeholder}
+            placeholder={p.placeholder ? tr(p.placeholder) : p.placeholder}
+            accessibilityLabel={tr(p.accessibilityLabel ?? label ?? p.placeholder ?? '') || undefined}
             placeholderTextColor={c.textFaint}
             onFocus={(e) => { setFocus(true); onFocus?.(e); }}
             onBlur={(e) => { setFocus(false); onBlur?.(e); }}
@@ -700,7 +708,7 @@ export function SearchField({ value, onChangeText, placeholder = i18n.t('ui.sear
         {...p}
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={tr(placeholder)}
         placeholderTextColor={c.textFaint}
         accessibilityLabel={p.accessibilityLabel ?? placeholder}
         returnKeyType={p.returnKeyType ?? 'search'}

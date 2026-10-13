@@ -10,6 +10,7 @@ import { useTheme } from '@/design/theme';
 import { SchemePref, usePrefs } from '@/design/prefs';
 import { PALETTE_NAMES, PaletteName, elevation, palettes, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
+import { useLang, type Lang } from '@/core/lang';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import { avatarUri } from '@/features/auth/api';
@@ -30,6 +31,12 @@ const SCHEMES: { key: SchemePref; label: string }[] = [
   { key: 'system', label: 'Tizim' },
   { key: 'light', label: "Yorug'" },
   { key: 'dark', label: 'Tungi' },
+];
+
+/** Til nomlari o'z tilida — tanlovda ham, ruscha rejimda ham shunday ko'rinadi. */
+const LANGS: { key: Lang; label: string }[] = [
+  { key: 'uz', label: "O'zbekcha" },
+  { key: 'ru', label: 'Русский' },
 ];
 
 const PALETTE_HINT: Record<PaletteName, string> = {
@@ -97,6 +104,8 @@ export default function SettingsScreen() {
   const palette = usePrefs((s) => s.palette);
   const setScheme = usePrefs((s) => s.setScheme);
   const setPalette = usePrefs((s) => s.setPalette);
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.setLang);
   const { status, kind, user, active, erp } = useSession();
   // Mehmon (do'kon profilidan) — faqat ko'rinish, bildirishnoma, til va yordam; hisob/PIN/parol yo'q
   const authed = status === 'authed';
@@ -136,8 +145,13 @@ export default function SettingsScreen() {
         <Appear delay={stagger(1)} style={{ gap: space.tight }}>
           <Over>Ilova</Over>
           <SetGroup>
-            {/* Hozircha ilovaning yagona tili — tanlov yo'q, shuning uchun bosilmaydi */}
-            <SetRow icon="languages" module="logistics" title="Til" value="O'zbekcha" />
+            {/* Ruscha — ekran matni lug'at bo'yicha o'giriladi (`core/lang.ts`), serverdan kelgani ham; darhol qo'llanadi */}
+            <View style={{ paddingBottom: space.md }}>
+              <SetRow icon="languages" module="logistics" title="Til" />
+              <View style={{ paddingHorizontal: space.card }}>
+                <SegmentTrack<Lang> items={LANGS} value={lang} onChange={(l) => { if (l !== lang) { haptic.selection(); setLang(l); } }} compact />
+              </View>
+            </View>
             {/* Tanlagich sarlavha ostida, to'liq kenglikda — yonida tursa "Mavzu" yozuvini siqib qo'yardi */}
             <View style={{ paddingBottom: space.md }}>
               <SetRow icon="moon" module="production" title="Mavzu" />
