@@ -732,7 +732,7 @@ export function ErpList({ listKey, title, onBack, fallback }: { listKey: string;
 
 /**
  * Rolga ochiq barcha bo'limlar — yangi hujjat formalari va ro'yxatlar (`/api/mobile/home` → `quick`),
- * kompyuterdagi ERP menyusidagi har bir bo'lim. `embedded` — boshqa tab ichida (ro'yxat rolga yopiq bo'lsa).
+ * kompyuterdagi ERP menyusidagi har bir bo'lim — har qatorda 4 tadan plitka (`ActionGrid`). `embedded` — boshqa tab ichida (ro'yxat rolga yopiq bo'lsa).
  */
 export function ErpSections({ title, embedded }: { title: string; embedded?: boolean }) {
   const { c } = useTheme();
@@ -757,15 +757,11 @@ export function ErpSections({ title, embedded }: { title: string; embedded?: boo
           {embedded ? <Callout key="emb" tone="neutral" icon="info">Bu bo&apos;lim sizning rolingizga ochilmagan — mavjud bo&apos;limlar:</Callout> : null}
           {forms.length ? <SectionHead key="f-h" title="Yangi hujjat" /> : null}
           {forms.length ? (
-            <ListGroup key="f">
-              {forms.map((q) => <ListItem key={`new-${q.key}`} icon="plus" module={module} title={q.label} onPress={() => router.push(`/erp/new/${q.key}` as never)} />)}
-            </ListGroup>
+            <ActionGrid key="f" primaryIndex={null} items={forms.map((q) => ({ label: q.label, icon: (ROW_ICON[q.key] ?? q.icon ?? 'plus') as IconName, module, onPress: () => router.push(`/erp/new/${q.key}` as never) }))} />
           ) : null}
           {lists.length ? <SectionHead key="l-h" title="Ro'yxatlar" /> : null}
           {lists.length ? (
-            <ListGroup key="l">
-              {lists.map((q) => <ListItem key={`list-${q.key}`} icon={ROW_ICON[q.key] ?? q.icon} module={listModule(q.key) === 'brand' ? module : listModule(q.key)} title={q.label} onPress={() => router.push(`/erp/list/${q.key}` as never)} />)}
-            </ListGroup>
+            <ActionGrid key="l" primaryIndex={null} items={lists.map((q) => ({ label: q.label, icon: (ROW_ICON[q.key] ?? q.icon) as IconName, module: listModule(q.key) === 'brand' ? module : listModule(q.key), onPress: () => router.push(`/erp/list/${q.key}` as never) }))} />
           ) : null}
           {!forms.length && !lists.length ? <EmptyState key="e" title="Bo'limlar yuklanmadi" hint="Internetni tekshirib, qayta urinib ko'ring" onRetry={() => void refetch()} /> : null}
         </Reveal>
