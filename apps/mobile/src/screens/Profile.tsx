@@ -9,7 +9,6 @@ import { elevation, radius, size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { avatarUri } from '@/features/auth/api';
 import { LogoutButton } from '@/features/auth/logout';
-import { DeleteAccountRow } from '@/features/auth/delete-account';
 import { SetGroup, SetRow } from '@/components/set-row';
 
 const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' } as const;
@@ -21,7 +20,7 @@ const Over = ({ children }: { children: string }) => (
 
 /**
  * ECO profili — Sozlamalar bilan bir xil til: profil kartasi, guruhlar (`SetGroup`), pastda "Chiqish".
- * Bir nechta a'zolik bo'lsa — rol almashtirish guruhi. "Hisobni o'chirish" — `DeleteAccountRow` (DELETE /me).
+ * Bir nechta a'zolik bo'lsa — rol almashtirish guruhi. PIN, parol, bildirishnomalar va "Hisobni o'chirish" — Sozlamalar ichida.
  */
 export function Profile({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
@@ -72,19 +71,12 @@ export function Profile({ children }: { children?: React.ReactNode }) {
         <Appear delay={stagger(2)} style={{ gap: space.tight }}>
           <Over>Ilova</Over>
           <SetGroup>
-            <SetRow icon="settings" module="logistics" title="Sozlamalar" subtitle="Mavzu, palitra, bildirishnomalar" onPress={() => router.push('/settings')} />
-            <SetRow icon="shield-check" module="warehouse" title="Xavfsizlik" subtitle="PIN kod va parol" onPress={() => router.push('/settings')} />
+            {/* Bildirishnomalar, PIN kod, parol va hisobni o'chirish — Sozlamalar ichida (hamma kabinet uchun bir joy) */}
+            <SetRow icon="settings" module="logistics" title="Sozlamalar" subtitle="Til, mavzu, bildirishnomalar, PIN, parol, hisob" onPress={() => router.push('/settings')} />
           </SetGroup>
         </Appear>
 
-        <Appear delay={stagger(3)} style={{ gap: space.tight }}>
-          <Over>Hisob</Over>
-          <SetGroup>
-            <DeleteAccountRow />
-          </SetGroup>
-        </Appear>
-
-        <Appear delay={stagger(4)} style={{ marginTop: space.lg }}>
+        <Appear delay={stagger(3)} style={{ marginTop: space.lg }}>
           <LogoutButton textColor={c.danger} />
         </Appear>
       </ScrollView>

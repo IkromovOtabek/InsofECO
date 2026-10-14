@@ -50,11 +50,11 @@ const WEIGHT_FAMILY: Record<string, string> = { '400': FONT[400], normal: FONT[4
  * Uslubda `fontWeight` kelsa shrift oilasiga o'giriladi (Android sun'iy qalinlashtirib
  * matnni qirqmasin), `lineHeight`siz `fontSize` kelsa balandlik avtomatik.
  */
-export function Txt({ v = 'body', color, mono, align, style, children, ...p }: TextProps & { v?: TypeVariant; color?: TxtColor; mono?: boolean; align?: TextStyle['textAlign'] }) {
+export function Txt({ v = 'body', color, mono, align, style, children, raw, ...p }: TextProps & { v?: TypeVariant; color?: TxtColor; mono?: boolean; align?: TextStyle['textAlign']; /** Tarjima qilinmasin (til nomi "O'zbekcha", ism, kod). */ raw?: boolean }) {
   const { c } = useTheme();
-  // Ruscha tanlangan bo'lsa — matn lug'at bo'yicha o'giriladi (serverdan kelgani ham); `mono` — raqam/kod, tegilmaydi
+  // Ruscha tanlangan bo'lsa — matn lug'at bo'yicha o'giriladi (serverdan kelgani ham); `mono` va `raw` — tegilmaydi
   const lang = useLang((x) => x.lang);
-  const text = lang === 'ru' && !mono ? tChildren(children) : children;
+  const text = lang === 'ru' && !mono && !raw ? tChildren(children) : children;
   const col = c[COLOR_KEY[color ?? DEFAULT_COLOR[v]]];
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const { fontWeight, ...rest } = flat;

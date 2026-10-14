@@ -57,7 +57,6 @@ export default function Menu() {
           <SectionHead title="Aloqa" />
           <ListGroup>
             <ListItem icon="messages-square" module="brand" title="Xabarlar" subtitle="Quruvchi, haydovchi, loyiha chatlari" right={badge(unreadMsgs)} onPress={() => router.push('/(tadbirkor)/messages')} />
-            <ListItem icon="bell" module="brand" title="Bildirishnomalar" right={badge(unreadNotif)} onPress={() => router.push('/(tadbirkor)/notifications')} />
           </ListGroup>
         </Appear>
 
@@ -66,7 +65,8 @@ export default function Menu() {
           <SectionHead title="Hisob" />
           <ListGroup>
             <ListItem icon="circle-user" module="brand" title="Profil" onPress={() => router.push('/(tadbirkor)/profile')} />
-            <ListItem icon="settings" module="brand" title="Sozlamalar" subtitle="Mavzu, palitra, bildirishnomalar" onPress={() => router.push('/settings')} />
+            {/* Bildirishnomalar, PIN kod, parol va hisobni o'chirish — Sozlamalar ichida; o'qilmaganlar belgisi shu yerda va bosh sahifa qo'ng'irog'ida */}
+            <ListItem icon="settings" module="brand" title="Sozlamalar" subtitle="Til, mavzu, bildirishnomalar, PIN, parol, hisob" right={badge(unreadNotif)} onPress={() => router.push('/settings')} />
           </ListGroup>
         </Appear>
       </ScrollView>

@@ -19,7 +19,8 @@ import { SetGroup, SetRow } from '@/components/set-row';
 
 /**
  * Sozlamalar — demo "Sozlamalar" (docs/redesign/shots/26): profil kartasi, Ilova (til, mavzu mini-segment),
- * Palitra, Xavfsizlik (PIN, parol), Bildirishnomalar (toggle), Yordam (+ "Hisobni o'chirish" — faqat ECO, API bor), versiya.
+ * Palitra, Xavfsizlik (PIN, parol), Bildirishnomalar (ro'yxat + toggle), Yordam, Hisob ("Hisobni o'chirish"), versiya.
+ * Hamma kabinet uchun yagona joy: Menyu/Profil ekranlarida bu qatorlar takrorlanmaydi — faqat "Sozlamalar" havolasi.
  * Mavzu va palitra `usePrefs` orqali butun ilovaga darhol qo'llanadi (MMKV'da saqlanadi). ECO va ERP uchun umumiy.
  * Face ID qatori yo'q: biometrik modul (expo-local-authentication) ilovada o'rnatilmagan.
  */
@@ -34,9 +35,9 @@ const SCHEMES: { key: SchemePref; label: string }[] = [
 ];
 
 /** Til nomlari o'z tilida — tanlovda ham, ruscha rejimda ham shunday ko'rinadi. */
-const LANGS: { key: Lang; label: string }[] = [
-  { key: 'uz', label: "O'zbekcha" },
-  { key: 'ru', label: 'Русский' },
+const LANGS: { key: Lang; label: string; raw: boolean }[] = [
+  { key: 'uz', label: "O'zbekcha", raw: true },
+  { key: 'ru', label: 'Русский', raw: true },
 ];
 
 const PALETTE_HINT: Record<PaletteName, string> = {
@@ -48,8 +49,12 @@ const PALETTE_HINT: Record<PaletteName, string> = {
 const NOTIF = [
   { key: 'notif.trips', icon: 'truck', module: 'logistics', title: 'Reys xabarlari' },
   { key: 'notif.payments', icon: 'wallet', module: 'brand', title: "To'lov xabarlari" },
-  { key: 'notif.chat', icon: 'message-circle', module: 'production', title: 'Chat' },
+  // Chat faqat ECO kabinetlarida bor (tadbirkor, quruvchi, haydovchi — "Xabarlar"); zavod xodimlarida chat yo'q
+  { key: 'notif.chat', icon: 'message-circle', module: 'production', title: 'Chat', chatOnly: true },
 ] as const;
+
+/** Kabinetning bildirishnomalar ro'yxati (ilgari Menyu/Profil'da edi). */
+const INBOX = { TADBIRKOR: '/(tadbirkor)/notifications', QURUVCHI: '/(quruvchi)/notifications', HAYDOVCHI: '/(haydovchi)/notifications' } as const;
 
 const ROLE = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' } as const;
 
@@ -122,6 +127,8 @@ export default function SettingsScreen() {
     ? [erp?.roleLabel, erp?.login].filter(Boolean).join(' · ')
     : [active ? ROLE[active.role] : null, user?.phone].filter(Boolean).join(' · ');
   const avatar = kind === 'erp' ? null : avatarUri(user?.avatarUrl);
+  const inbox = !authed ? null : kind === 'erp' ? '/erp/bildirishnomalar' : active ? INBOX[active.role] : null;
+  const hasChat = authed && kind === 'eco';
   const version = Constants.expoConfig?.version;
 
   const pickPalette = (p: PaletteName) => { if (p === palette) return; haptic.selection(); setPalette(p); };
@@ -189,7 +196,8 @@ export default function SettingsScreen() {
         <Appear delay={stagger(4)} style={{ gap: space.tight }}>
           <Over>Bildirishnomalar</Over>
           <SetGroup>
-            {NOTIF.map((n) => (
+            {inbox ? <SetRow icon="bell" module="brand" title="Bildirishnomalar" subtitle="Kelgan xabarlar ro'yxati" onPress={() => router.push(inbox as never)} /> : null}
+            {NOTIF.filter((n) => !('chatOnly' in n) || hasChat).map((n) => (
               <SetRow
                 key={n.key} icon={n.icon} module={n.module} title={n.title}
                 right={<Toggle value={!!notif[n.key]} onChange={(v) => toggleNotif(n.key, v)} />}
@@ -205,9 +213,18 @@ export default function SettingsScreen() {
           <SetGroup>
             <SetRow icon="circle-question-mark" module="brand" title="Yordam markazi" value="insof-erp.uz" onPress={() => void Linking.openURL(SUPPORT_URL)} />
             <SetRow icon="shield-check" module="brand" title="Maxfiylik siyosati" onPress={() => void Linking.openURL(`${SUPPORT_URL}/maxfiylik`)} />
-            {authed && kind === 'eco' ? <DeleteAccountRow /> : null}
           </SetGroup>
         </Appear>
+
+        {authed ? (
+          <Appear delay={stagger(6)} style={{ gap: space.tight }}>
+            {/* "Hisob" emas: ruschada "Счёт" (kassa hisobi) bo'lib chiqardi */}
+            <Over>Hisobim</Over>
+            <SetGroup>
+              <DeleteAccountRow />
+            </SetGroup>
+          </Appear>
+        ) : null}
 
         {version ? <Txt v="tSm" align="center" style={{ marginTop: space.xs }}>{`Versiya ${version}`}</Txt> : null}
       </ScrollView>

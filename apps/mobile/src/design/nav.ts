@@ -4,6 +4,7 @@ import type { Stack, Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { FONT, Palette, duration, elevation, radius, size, space, type } from './tokens';
 import { FloatingTabBar } from './ui';
+import { t, useLang } from '@/core/lang';
 
 type TabOpts = Exclude<NonNullable<React.ComponentProps<typeof Tabs>['screenOptions']>, (...a: never[]) => unknown>;
 type StackOpts = Exclude<NonNullable<React.ComponentProps<typeof Stack>['screenOptions']>, (...a: never[]) => unknown>;
@@ -66,6 +67,7 @@ export function tabsOptions(c: Palette, bottomInset: number, opts: { driver?: bo
     headerTintColor: c.textStrong,
     headerTitleAlign: 'center',
     headerTitleStyle: { fontFamily: FONT[600], fontSize: type.titleSm.fontSize },
+    headerTitle: HeaderTitle,
     sceneStyle: { backgroundColor: c.bgApp },
     // Tablar orasida yumshoq cross-fade (native driver, UI oqimida); harakat kamaytirilgan bo'lsa — bir zumda
     animation: opts.reduce ? 'none' : 'fade',
@@ -74,6 +76,16 @@ export function tabsOptions(c: Palette, bottomInset: number, opts: { driver?: bo
 }
 
 type StackAnim = NonNullable<StackOpts['animation']>;
+
+/**
+ * Native sarlavha matni — ruscha tanlansa lug'at bo'yicha (`Txt` dan o'tmaydi, shuning uchun alohida).
+ * Til almashsa qayta chiziladi (`useLang`). Uslub — `headerTitleStyle` bilan bir xil.
+ */
+function HeaderTitle({ children, tintColor }: { children: string; tintColor?: string }) {
+  useLang((x) => x.lang);
+  // `numberOfLines` yo'q: iOS native sarlavha maxsus komponentni birinchi o'lchovda tor joylab, «Настрой…» deb qirqardi
+  return React.createElement(Text, { style: { fontFamily: FONT[600], fontSize: type.titleSm.fontSize, color: tintColor } }, t(children));
+}
 
 /** Oddiy push: iOS — tizim slaydi (orqaga surish bilan), Android — fade_from_bottom. */
 const PUSH: StackAnim = Platform.OS === 'ios' ? 'default' : 'fade_from_bottom';
@@ -88,6 +100,7 @@ export function stackOptions(c: Palette, opts: { /** `useReducedMotion()` — o'
     headerLargeTitle: false,
     headerTitleAlign: 'center',
     headerTitleStyle: { fontFamily: FONT[600], fontSize: type.titleSm.fontSize },
+    headerTitle: HeaderTitle,
     contentStyle: { backgroundColor: c.bgApp },
     animation: opts.reduce ? 'none' : PUSH,
     animationDuration: duration.nav,

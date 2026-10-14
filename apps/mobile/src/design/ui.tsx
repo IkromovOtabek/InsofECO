@@ -64,7 +64,7 @@ export function Avatar({ name, uri, size: s = size.avatar, tone = 'neutral' }: {
 }
 
 export type SegmentVariant = 'surface' | 'brand' | 'inverse';
-export interface SegmentItem<T extends string> { key: T; label: string; count?: number; icon?: IconName }
+export interface SegmentItem<T extends string> { key: T; label: string; count?: number; icon?: IconName; /** Yorliq tarjima qilinmasin (til nomlari). */ raw?: boolean }
 
 /**
  * Segment yo'lagi — bitta trek ichida suzuvchi (prujinali) tanlov indikatori (demo `.chips` + `.chip-ind`).
@@ -125,7 +125,7 @@ export function SegmentTrack<T extends string>({ items, value, onChange, variant
             style={{ flexGrow: 1, flexShrink: scroll ? 0 : 1, flexBasis: 'auto', minWidth: scroll ? undefined : 0, height: itemH, paddingHorizontal: mini ? space.tight : scroll ? space.lg : space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs + 2 }}
           >
             {s.icon ? <Icon name={s.icon} size={size.iconSm} color={on ? pal.on : pal.off} /> : null}
-            <Txt v={tv} {...FIT_LINE} style={{ color: on ? pal.on : pal.off, flexShrink: 1, minWidth: fitRoom(s.label, type[tv].fontSize, scroll ? undefined : 40) }}>{s.label}</Txt>
+            <Txt v={tv} {...FIT_LINE} raw={s.raw} style={{ color: on ? pal.on : pal.off, flexShrink: 1, minWidth: fitRoom(s.label, type[tv].fontSize, scroll ? undefined : 40) }}>{s.label}</Txt>
             {s.count != null ? <Txt v={tv} maxFontSizeMultiplier={CHROME_SCALE} numberOfLines={1} style={{ color: on ? pal.on : pal.off, opacity: 0.7, flexShrink: 0 }}>{s.count}</Txt> : null}
           </Pressable>
         );

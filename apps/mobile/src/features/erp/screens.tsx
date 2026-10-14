@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Callout, Card, EmptyState, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
-import { Avatar, Confirm, fmtShort, tabIcon, toast } from '@/design/ui';
+import { Avatar, fmtShort, tabIcon } from '@/design/ui';
 import {
   ActionGrid, AttentionList, BarChartCard, BreakdownCard, ChipGroup, HBarList, HeroCard, KpiGrid, ListGroup, OfflineBanner, PageHeader,
   ProgressCard, Reveal, SectionHead, SkeletonDashboard, SkeletonList, type ActionItem, type AttentionItem, type KpiItem,
@@ -17,7 +17,7 @@ import { useSession } from '@/core/session';
 import { LogoutButton } from '@/features/auth/logout';
 import { DriverMarker, MapView, useMapScrollLock } from '@/core/map';
 import { config } from '@/core/config';
-import { erpAuth, type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
+import { type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
 import { erpRoleConfig, type ErpTabSpec } from './roles';
 import { roleDashboard, type QuickSpec, type RoleDashboard } from './dashboards';
 import { useErpHome, useErpList, useErpNotifications } from './api';
@@ -30,7 +30,6 @@ import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
 import { KirimScreen } from './kirim';
-import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
 import { setBadge } from '@/core/push';
@@ -850,38 +849,18 @@ export function ErpMenu() {
   const { erp } = useSession();
   const cfg = erp ? erpRoleConfig(erp.role) : null;
   const module = roleModule(erp?.role ?? 'DIRECTOR');
-  const [hasPin, setHasPin] = React.useState(false);
   // "Bo'limlar" ro'yxati standart yig'iq — ochiq/yopiqligi eslab qolinadi
   const [sectionsOpen, setSectionsOpenRaw] = useState(() => kv.getBoolean('erp.menu.sectionsOpen') ?? false);
   const toggleSections = () => setSectionsOpenRaw((v) => { kv.set('erp.menu.sectionsOpen', !v); return !v; });
-  React.useEffect(() => { void pinStore.has().then(setHasPin); }, []);
   // Bo'limlar ro'yxati — `/api/mobile/home` dagi `quick`: kompyuterdagi ERP menyusida ko'ringan har bir bo'lim shu yerda ham turadi.
   const homeData = useErpHome().data;
   const quick = homeData?.quick ?? [];
   const lists = quick.filter((q) => q.kind === 'list');
   const forms = quick.filter((q) => q.kind === 'new');
-  // Hisobni o'chirish (do'kon talabi): xodim hisobini direktor bergan — darhol o'chirilmaydi,
-  // so'rov direktorga tushadi (Sozlamalar → Hisob so'rovlari), tasdiqlansa login yopiladi.
-  const [delAsk, setDelAsk] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const isDirector = erp?.role === 'DIRECTOR';
   const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
   const payLinks = erp ? payLinksFor(erp.role, homeData?.attendance?.canViewTable ?? null) : [];
-  const [delBusy, setDelBusy] = useState(false);
-  const [delPending, setDelPending] = useState<boolean | null>(null);
-  useEffect(() => { erpAuth.deletionStatus().then((r) => setDelPending(r.pending)).catch(() => setDelPending(false)); }, []);
-  const requestDeletion = async () => {
-    setDelBusy(true);
-    try {
-      await erpAuth.requestDeletion();
-      setDelAsk(false); setDelPending(true);
-      toast.info("Direktor tasdiqlagach hisobingiz yopiladi.", "So'rov yuborildi");
-    } catch (e) { toast.error((e as Error).message, 'Xato'); } finally { setDelBusy(false); }
-  };
-  const cancelDeletion = async () => {
-    try { await erpAuth.cancelDeletion(); setDelPending(false); toast.success("So'rov qaytarib olindi"); }
-    catch (e) { toast.error((e as Error).message, 'Xato'); }
-  };
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <TabHeader title="Menyu" raised={raise.raised} />
@@ -951,54 +930,15 @@ export function ErpMenu() {
             {homeData?.selfAttendance ? (
               <ListItem icon="calendar-days" module={module} title="Mening davomatim" subtitle={homeData.selfAttendance.label} onPress={() => router.push('/erp/davomatim' as never)} />
             ) : null}
-            <ListItem icon="settings" module={module} title="Sozlamalar" subtitle="Mavzu, palitra, til va yordam" onPress={() => router.push('/settings' as never)} />
-            <ListItem icon="bell" module={module} title="Bildirishnomalar" onPress={() => router.push('/erp/bildirishnomalar' as never)} />
+            {/* Bildirishnomalar, PIN kod, parol va hisobni o'chirish — Sozlamalar ichida (hamma kabinet uchun bir joy) */}
+            <ListItem icon="settings" module={module} title="Sozlamalar" subtitle="Til, mavzu, bildirishnomalar, PIN, parol, hisob" onPress={() => router.push('/settings' as never)} />
           </ListGroup>
         </Appear>
 
         <Appear delay={stagger(4)} style={{ marginTop: space.xl }}>
-          <SectionHead title="Xavfsizlik" />
-          <ListGroup>
-            <ListItem
-              icon="grid-3x3" module={module}
-              title="PIN kod"
-              subtitle={hasPin ? "Yoqilgan — o'chirish uchun bosing" : 'Ilovani ochishda tez kirish'}
-              onPress={() => router.push(hasPin ? '/(auth)/pin?mode=off' : '/(auth)/pin')}
-            />
-            <ListItem
-              icon="lock" module={module}
-              title="Parolni o'zgartirish"
-              subtitle="Boshqa qurilmalardagi seanslar yopiladi"
-              onPress={() => router.push('/(auth)/change-password')}
-            />
-          </ListGroup>
-        </Appear>
-
-        <Appear delay={stagger(5)} style={{ marginTop: space.xl }}>
-          <SectionHead title="Hisob" />
-          <ListGroup>
-            {delPending ? (
-              <ListItem icon="hourglass" tone="warning" title="Hisobni o'chirish so'ralgan" subtitle="Direktor tasdig'i kutilmoqda. Fikringiz o'zgarsa — bosing" onPress={() => void cancelDeletion()} />
-            ) : (
-              <ListItem icon="user-x" tone="danger" title="Hisobni o'chirish" subtitle="So'rov direktorga boradi; tasdiqlansa login yopiladi" onPress={() => setDelAsk(true)} />
-            )}
-          </ListGroup>
-        </Appear>
-
-        <Appear delay={stagger(6)} style={{ marginTop: space.xl }}>
           <LogoutButton size="md" textColor={c.danger} />
         </Appear>
       </ScrollView>
-      <Confirm
-        open={delAsk}
-        onClose={() => setDelAsk(false)}
-        onConfirm={() => void requestDeletion()}
-        danger
-        loading={delBusy}
-        title="Hisobni o'chirish"
-        confirmLabel="So'rov yuborish"
-        message="Hisobingizni direktor bergan, shuning uchun so'rov unga boradi. Tasdiqlangach login yopiladi, ilova va kompyuterdagi seanslar tugaydi. Xodim kartangiz (HR) saqlanib qoladi."
-      />
       {isDirector ? <DailyReportSheet open={reportOpen} onClose={() => setReportOpen(false)} /> : null}
     </View>
   );
