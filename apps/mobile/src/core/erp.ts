@@ -169,7 +169,9 @@ export interface ErpTripTrack {
   deliveredAt: string | null;
 }
 /** `receipt` — pul hujjati (kirim-chiqim, to'lov, schyot, xarid): sarlavha va maydonlar o'rniga chek kartasi chiziladi. */
-export interface ErpDetailData { key: string; id: string; title: string; subtitle?: string; status?: string; fields: ErpField[]; sections: ErpSection[]; actions: ErpAction[]; receipt?: Receipt }
+export interface ErpDetailData { key: string; id: string; title: string; subtitle?: string; status?: string; fields: ErpField[]; sections: ErpSection[]; actions: ErpAction[]; receipt?: Receipt;
+  /** Hujjat surati (masalan mexanik so'rovidagi muammo surati) — Bearer bilan `erpPhotoData(url)` orqali yuklanadi. */
+  photo?: { url: string; title: string } }
 /** Ilovadagi bildirishnoma. `link` — bosilganda ochiladigan kartochka. */
 export interface ErpNotification {
   id: string;
@@ -277,7 +279,13 @@ export interface ErpSelfAttendance {
   lateMin: number | null;
   next: 'in' | 'out' | null;
   shift: { start: string; end: string };
-  workplace: { lat: number; lng: number; radiusM: number } | null;
+  /** `anywhere` — ba'zi serverlar shu yerda beradi (ildizdagi bilan bir ma'no). */
+  workplace: { lat: number; lng: number; radiusM: number; anywhere?: boolean } | null;
+  /**
+   * Otdel kadr / direktor ruxsati: ish hududidan tashqarida ham belgilash mumkin — u holda yuz kadri bilan birga
+   * turgan joy surati (`placePhoto`, orqa kamera) yuboriladi. Eski ERP bermaydi — `false` deb olinadi.
+   */
+  anywhere?: boolean;
 }
 export interface ErpSelfMarkBody {
   kind: 'in' | 'out'; lat: number; lng: number; accuracy: number | null;
@@ -288,6 +296,11 @@ export interface ErpSelfMarkBody {
   deviceId: string; at: string; mocked: boolean;
   /** Bir martalik challenge (`erpAuth.faceChallenge`) — eski ERP serverida yo'q, u holda yuborilmaydi. */
   nonce?: string;
+  /**
+   * Hududdan tashqarida belgilash (`ErpSelfAttendance.anywhere`): turgan joy surati, orqa kamera — `data:image/jpeg;base64,...`.
+   * Server kerak deb bilsa-yu, yuborilmasa — `PLACE_PHOTO_REQUIRED` xatosi.
+   */
+  placePhoto?: string;
 }
 export interface ErpSelfMarkResult { ok: true; already: boolean; message: string; attendance: ErpSelfAttendance }
 export interface ErpMyAttendanceDay {
@@ -365,6 +378,43 @@ export async function erpApi<T>(path: string, opts: ErpOpts = {}): Promise<T> {
     throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Xato' } as ApiError));
   }
   return json as T;
+}
+
+/**
+ * ERP bergan nisbiy rasm manzili (`/api/mobile/...`, `/attendance/...` yoki to'liq ERP URL) — Bearer bilan yuklab,
+ * `data:` URL qaytaradi. Javob JSON (`{ data }` — `/face/photo` kabi) yoki rasm baytlari bo'lishi mumkin.
+ * Token faqat ERP serverining o'ziga yuboriladi: boshqa domendagi manzil rad etiladi.
+ */
+export async function erpPhotoData(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url;
+  const abs = /^https?:\/\//i.test(url) ? url : `${config.erpUrl}${url.startsWith('/api/') ? '' : '/api/mobile'}${url.startsWith('/') ? '' : '/'}${url}`;
+  if (!abs.startsWith(`${config.erpUrl}/`)) throw new ApiException(400, { code: 'INTERNAL', message: "Rasm manzili noto'g'ri" } as ApiError);
+  const doFetch = async (token: string | null) => fetchWithTimeout(abs, {
+    headers: { accept: 'application/json, image/*', ...appHeaders(), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+  }, 60_000);
+  let res = await doFetch(await secure.get(KEYS.erpAccess));
+  if (res.status === 401) {
+    const token = await refreshAccess();
+    if (token) res = await doFetch(token);
+  }
+  const type = res.headers.get('content-type') ?? '';
+  if (!res.ok || type.includes('json')) {
+    const json = parseJsonSafe(await res.text()) as ({ data?: string } & Partial<ApiError>) | null;
+    if (!res.ok) {
+      checkUpdateRequired(res.status, json);
+      throw new ApiException(res.status, (json as ApiError | null) ?? ({ code: 'INTERNAL', message: 'Rasm yuklanmadi' } as ApiError));
+    }
+    if (typeof json?.data === 'string' && json.data) return json.data;
+    throw new ApiException(500, { code: 'INTERNAL', message: 'Rasm topilmadi' } as ApiError);
+  }
+  // Rasm baytlari → data-URL (RN `FileReader` blob'ni o'qiydi)
+  const blob = await res.blob();
+  return new Promise<string>((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => (typeof fr.result === 'string' ? resolve(fr.result) : reject(new Error('Rasm yuklanmadi')));
+    fr.onerror = () => reject(new Error('Rasm yuklanmadi'));
+    fr.readAsDataURL(blob);
+  });
 }
 
 export const erpAuth = {

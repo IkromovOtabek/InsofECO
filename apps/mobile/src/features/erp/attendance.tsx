@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
+import { requireOptionalNativeModule } from 'expo';
+import type * as ImagePickerNS from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Callout, Card, EmptyState, IconTile, ListGroup, ListItem, Txt } from '@/design/primitives';
 import { ChipGroup, KpiGrid, PageHeader, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
-import { toast } from '@/design/ui';
+import { dialog, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space, type ModuleTone } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
@@ -25,16 +27,63 @@ import { facePayload } from '@/core/face-liveness';
  *   3) skaner ochiq turganda `POST /api/mobile/attendance/self` — server kadrni ERP'dagi Face ID namunasi bilan
  *      (yo'q bo'lsa profil surati bilan) solishtiradi, geofence/takror/soatni tekshiradi; natija ("Tanildi" / "Tanilmadi") skaner ichida.
  * Bekor qilinsa yoki tanilmasa — hech narsa yozilmaydi, "Qayta urinish" chiqadi.
+ *
+ * Hududdan tashqarida (`anywhere` — otdel kadr/direktor ruxsati): rad etilmaydi — ogohlantirish, keyin orqa kamera bilan
+ * turgan joy surati, keyin odatdagi yuz skaneri. Joy surati yuz skaneridan OLDIN olinadi: `markSelf` skaner ichida
+ * (yuz kadri bilan) bitta so'rov bo'lib ketadi, nonce esa skaner ochilganda olinadi — eskirmaydi.
+ * Server baribir "joy surati kerak" desa (`PLACE_PHOTO_REQUIRED`, GPS farqi) — surat olinib, skaner qayta ochiladi.
  */
 
-type Stage = 'idle' | 'gps' | 'scan';
-const STAGE_TEXT: Record<Stage, string> = { idle: '', gps: 'Joylashuv aniqlanmoqda…', scan: 'Yuz skaneri…' };
+type Stage = 'idle' | 'gps' | 'place' | 'scan';
+const STAGE_TEXT: Record<Stage, string> = { idle: '', gps: 'Joylashuv aniqlanmoqda…', place: 'Ish hududidan tashqaridasiz — atrofingiz (joy) rasmini oling', scan: 'Yuz skaneri…' };
 /** Serverdagi `MAX_ACCURACY_M` bilan bir xil — bundan yomon nuqta bilan kamerani ochib o'tirmaymiz. */
 const MAX_ACCURACY_M = 150;
 const NET_ERROR = "Tarmoq xatosi. Internetni tekshirib, qayta urinib ko'ring";
 /** Serverning o'zbekcha xabari — faqat `ApiException` da; boshqasi ("Network request failed" va h.k.) — umumiy matn. */
 const errText = (e: unknown) => (e instanceof ApiException && e.message ? e.message : NET_ERROR);
 const meters = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
+const PLACE_REQUIRED = 'PLACE_PHOTO_REQUIRED';
+const PLACE_HINT = 'Ish hududidan tashqaridasiz — atrofingiz (joy) rasmini oling';
+
+/** Xodimga hududdan tashqarida belgilash ruxsat etilganmi (server ildizda yoki `workplace` ichida beradi; yo'q — false). */
+export const canMarkAnywhere = (s: ErpSelfAttendance) => !!(s.anywhere ?? s.workplace?.anywhere);
+
+/**
+ * expo-image-picker native moduli eski build'da bo'lmasligi mumkin (OTA yangi JS'ni eski ilovaga olib keladi) —
+ * to'g'ridan-to'g'ri import ilovani yiqitadi; `form.tsx` dagi kabi faqat modul bor bo'lsa yuklanadi.
+ */
+const ImagePicker: typeof ImagePickerNS | null = requireOptionalNativeModule('ExponentImagePicker')
+  ? (require('expo-image-picker') as typeof ImagePickerNS)
+  : null;
+
+/** Turgan joy surati — faqat orqa kamera (galereya yo'q), sifat 0.5. `null` — xodim kamerani yopdi. */
+async function takePlacePhoto(): Promise<{ ok: true; photo: string } | { ok: false; message: string } | null> {
+  if (!ImagePicker) return { ok: false, message: "Bu ilova versiyasida kamera yo'q — ilovani yangilang." };
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return { ok: false, message: 'Kamera ruxsati berilmagan — telefon Sozlamalaridan ilovaga ruxsat bering.' };
+  const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.5, base64: true, cameraType: ImagePicker.CameraType.back });
+  const a = r.canceled ? null : r.assets[0];
+  if (!a) return null;
+  if (!a.base64) return { ok: false, message: "Surat olinmadi — qayta urining." };
+  return { ok: true, photo: `data:${a.mimeType ?? 'image/jpeg'};base64,${a.base64}` };
+}
+
+/** Ogohlantirish oynasi → `true` (davom etish) yoki `false`. */
+function confirmOutside(far: number | null): Promise<boolean> {
+  return new Promise((resolve) => {
+    dialog(
+      'Hududdan tashqarida',
+      far != null
+        ? `Siz ish hududidan ${meters(far)} uzoqdasiz. Davom etish uchun yuzingiz va turgan joyingiz rasmi olinadi.`
+        : 'Ish hududi aniqlanmadi. Davom etish uchun yuzingiz va turgan joyingiz rasmi olinadi.',
+      [
+        { text: 'Bekor qilish', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Davom etish', onPress: () => resolve(true) },
+      ],
+      { tone: 'warning', icon: 'map-pin', onDismiss: () => resolve(false) },
+    );
+  });
+}
 
 /** "Keldim" / "Ketdim" oqimi. Muvaffaqiyatda bosh sahifa keshi darhol yangilanadi. */
 function useSelfMark() {
@@ -50,7 +99,8 @@ function useSelfMark() {
     busyRef.current = true;
     setError(null);
     try {
-      if (!s.workplace) { setError("Ish joyi koordinatasi sozlanmagan — administratorga murojaat qiling."); return; }
+      const anywhere = canMarkAnywhere(s);
+      if (!s.workplace && !anywhere) { setError("Ish joyi koordinatasi sozlanmagan — administratorga murojaat qiling."); return; }
       // 1) Joylashuv ruxsati va yangi GPS nuqta — kamera ochilishidan oldin (uzoqda bo'lsa skaner ochilmaydi)
       const access = await ensureForegroundLocation();
       if (access === 'services-off') { setError("Telefonda joylashuv (GPS) o'chiq — yoqib qayta urining."); return; }
@@ -64,29 +114,56 @@ function useSelfMark() {
       setAccuracy(fix.accuracyM != null ? Math.round(fix.accuracyM) : null);
       if (fix.mocked) { setError("Soxta joylashuv (mock GPS) yoqilgan — o'chirib qayta urining."); return; }
       if (fix.accuracyM != null && fix.accuracyM > MAX_ACCURACY_M) { setError(`GPS aniqligi past (±${Math.round(fix.accuracyM)} m). Ochiq joyga chiqib qayta urining.`); return; }
-      const far = metersBetween(fix, s.workplace);
-      if (far > s.workplace.radiusM) { setError(`Siz ish joyidan ${meters(far)} uzoqdasiz (ruxsat: ${s.workplace.radiusM} m). Ish joyiga kelib qayta urining.`); return; }
+      const far = s.workplace ? metersBetween(fix, s.workplace) : null;
+      const outside = far == null || (!!s.workplace && far > s.workplace.radiusM);
+      if (outside && !anywhere && s.workplace && far != null) { setError(`Siz ish joyidan ${meters(far)} uzoqdasiz (ruxsat: ${s.workplace.radiusM} m). Ish joyiga kelib qayta urining.`); return; }
+      // 1a) Hududdan tashqarida (ruxsat bor): ogohlantirish → turgan joy surati (orqa kamera) — yuz skaneridan oldin
+      let placePhoto: string | undefined;
+      const askPlace = async (dist: number | null): Promise<boolean> => {
+        if (!(await confirmOutside(dist))) return false;
+        setStage('place');
+        const p = await takePlacePhoto();
+        if (!p) { setError("Joy surati olinmadi — hududdan tashqarida davomat uchun turgan joyingiz surati kerak."); return false; }
+        if (!p.ok) { setError(p.message); return false; }
+        placePhoto = p.photo;
+        return true;
+      };
+      if (outside && !(await askPlace(far))) return;
       // 2) Yuz skaneri; 3) skaner ochiq turganda server tekshiradi (yuz, geofence, takror, soat)
-      setStage('scan');
       const kind = s.next;
       let done: ErpSelfMarkResult | null = null;
-      const scan = await scanFace({
-        title: kind === 'in' ? 'Keldim — yuz skaneri' : 'Ketdim — yuz skaneri',
-        facing: 'front',
-        // Bir martalik challenge va jonlilik topshirig'i (skaner kadrdan oldin oladi) — eski ERP'da yo'q: nonce'siz, bitta kadr
-        challenge: erpAuth.faceChallenge,
-        verify: async (shot) => {
-          try {
-            done = await erpAuth.markSelf({
-              kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, ...facePayload(shot),
-              deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
-            });
-            return { ok: true, message: done.message };
-          } catch (e) {
-            return { ok: false, message: errText(e) };
-          }
-        },
-      });
+      let needPlace = false;
+      const scanOnce = () => {
+        setStage('scan');
+        return scanFace({
+          title: kind === 'in' ? 'Keldim — yuz skaneri' : 'Ketdim — yuz skaneri',
+          facing: 'front',
+          // Bir martalik challenge va jonlilik topshirig'i (skaner kadrdan oldin oladi) — eski ERP'da yo'q: nonce'siz, bitta kadr
+          challenge: erpAuth.faceChallenge,
+          verify: async (shot) => {
+            try {
+              done = await erpAuth.markSelf({
+                kind, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracyM, ...facePayload(shot),
+                deviceId: deviceId(), at: new Date().toISOString(), mocked: fix.mocked,
+                ...(placePhoto ? { placePhoto } : {}),
+              });
+              return { ok: true, message: done.message };
+            } catch (e) {
+              // Server hisobida hududdan tashqarida (GPS farqi), joy surati yo'q — skaner yopiladi, surat olinib qayta ochiladi
+              if (e instanceof ApiException && String(e.code) === PLACE_REQUIRED && !placePhoto && anywhere) {
+                needPlace = true;
+                return { ok: false, message: e.message || PLACE_HINT, retry: false };
+              }
+              return { ok: false, message: errText(e) };
+            }
+          },
+        });
+      };
+      let scan = await scanOnce();
+      if (!scan.ok && needPlace) {
+        if (!(await askPlace(far))) return;
+        scan = await scanOnce();
+      }
       const r = done as ErpSelfMarkResult | null;
       if (!scan.ok || !r) { setError(scan.ok ? "Davomat yozilmadi — qayta urining." : scan.message); return; }
       // Bosh sahifa kartasi darhol yangi holatda (server javobidan), keyin to'liq yangilanadi
@@ -152,9 +229,10 @@ export function SelfAttendanceCard({ s, module }: { s: ErpSelfAttendance; module
           </View>
         </Callout>
       ) : null}
+      {canMarkAnywhere(s) ? <Badge icon="map-pin" label="Hududdan tashqarida ham belgilash mumkin" tone="info" style={{ alignSelf: 'flex-start' }} /> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm }}>
         <Txt v="caption" numberOfLines={1} style={{ flex: 1 }}>
-          {m.accuracy != null ? `GPS aniqligi ±${m.accuracy} m` : s.workplace ? `Ish joyidan ${s.workplace.radiusM} m ichida` : 'Ish joyi sozlanmagan'}
+          {m.accuracy != null ? `GPS aniqligi ±${m.accuracy} m` : s.workplace ? `Ish joyidan ${s.workplace.radiusM} m ichida` : canMarkAnywhere(s) ? 'Ish hududi belgilanmagan' : 'Ish joyi sozlanmagan'}
         </Txt>
         <Button size="md" variant="ghost" full={false} iconRight="chevron-right" title="Mening davomatim" onPress={() => router.push('/erp/davomatim' as never)} />
       </View>

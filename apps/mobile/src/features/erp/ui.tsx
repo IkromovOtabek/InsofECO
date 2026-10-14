@@ -34,6 +34,8 @@ export const ROW_ICON: Record<string, IconName> = {
   stock: 'layers', snabjeniye: 'shopping-cart', supply: 'clipboard-list', receipts: 'download', suppliers: 'store',
   cashflow: 'arrow-up-down', payments: 'banknote', employees: 'user',
   approvals: 'circle-check', activity: 'activity',
+  // Mexanik pul so'rovlari (Kirim tabi; ish boshqaruvchi tasdiqlaydi, kassa beradi)
+  kirim: 'hand-coins', 'kirim-transport': 'truck', 'kirim-zavod': 'factory', 'kirim-boshqa': 'shapes',
 };
 
 // ───────────────────────── Raqam matnlari ─────────────────────────

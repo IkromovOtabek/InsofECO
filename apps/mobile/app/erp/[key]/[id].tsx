@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, FitTxt, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
 import { ReceiptBody, Sheet, dialog, receipt, result, toast, type IconName } from '@/design/ui';
@@ -12,7 +13,7 @@ import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, pushErpFix, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
-import { erpAuth } from '@/core/erp';
+import { erpAuth, erpPhotoData } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { confirmAtSite } from '@/features/address/site-check';
 import { openNavigation } from '@/core/navigate';
@@ -359,6 +360,9 @@ export default function ErpDetail() {
 
           {kv.length ? <KVList key="kv" rows={kv.map((f) => ({ label: f.label, value: f.value, tone: f.tone }))} /> : null}
 
+          {data?.photo ? <SectionHead key="ph-h" title={data.photo.title} /> : null}
+          {data?.photo ? <DetailPhoto key="ph" url={data.photo.url} /> : null}
+
           {hasTrack(track.data) ? <TripTrackSection key="track" t={track.data} onTouchLock={mapLock.onTouchLock} /> : null}
 
           {process ? <SectionHead key="tl-h" title="Jarayon" /> : null}
@@ -433,5 +437,22 @@ export default function ErpDetail() {
         />
       ) : null}
     </View>
+  );
+}
+
+/** Hujjat surati (server `photo.url`) — Bearer bilan yuklanadi, keshda 10 daqiqa. */
+function DetailPhoto({ url }: { url: string }) {
+  const { c } = useTheme();
+  const p = useQuery({ queryKey: ['erp', 'detail-photo', url], queryFn: () => erpPhotoData(url), staleTime: 10 * 60_000, retry: 1 });
+  return (
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      {p.data
+        ? <Image source={{ uri: p.data }} style={{ width: '100%', aspectRatio: 4 / 3, backgroundColor: c.bgMuted }} resizeMode="cover" accessibilityIgnoresInvertColors />
+        : (
+          <View style={{ aspectRatio: 4 / 3, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bgMuted }}>
+            {p.isLoading ? <ActivityIndicator color={c.textMuted} /> : <Txt v="tSm" color="muted">Surat yuklanmadi</Txt>}
+          </View>
+        )}
+    </Card>
   );
 }

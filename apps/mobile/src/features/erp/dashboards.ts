@@ -23,11 +23,13 @@ export type QuickTarget =
   /** Bosh sahifadagi karta ochadigan joy (`card.open`) — karta bo'lmasa amal ko'rinmaydi. */
   | { kind: 'card'; key: string | RegExp }
   /** Bo'limning birinchi qatori: kartochka yoki marshrut ekrani. */
-  | { kind: 'row'; section: RegExp; open: 'detail' | 'route' };
+  | { kind: 'row'; section: RegExp; open: 'detail' | 'route' }
+  /** Ilovaning o'z ekrani (masalan jonli xarita `/erp/fleet`) — ruxsatni ekran/server o'zi tekshiradi. */
+  | { kind: 'href'; href: string };
 
 export interface QuickSpec {
   label: string; icon: IconName; to: QuickTarget;
-  /** `to` rolga ochiq bo'lmasa (masalan eski server formani bermasa) — shu manzil, o'z yorlig'i bilan. */
+  /** `to` (forma yoki ro'yxat) rolga ochiq bo'lmasa (masalan eski server bermasa) — shu manzil, o'z yorlig'i bilan. */
   orElse?: { label: string; icon: IconName; to: QuickTarget };
 }
 
@@ -130,9 +132,10 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     breakdown: null,
     progress: { section: /^(Topshiriqlar bajarilishi|Brigadalar — ochiq)/ },
     attention: [],
+    // Mexanik pul so'rovlarini ish boshqaruvchi tasdiqlaydi (`kirim`); eski server bermasa — Brigadalar
     quick: [
       { label: 'Topshiriqlar', icon: 'clipboard-list', to: { kind: 'tab', tab: 'work' } },
-      { label: 'Brigadalar', icon: 'hard-hat', to: { kind: 'list', key: 'brigades' } },
+      { label: "Mexanik so'rovlari", icon: 'hand-coins', to: { kind: 'list', key: 'kirim' }, orElse: { label: 'Brigadalar', icon: 'hard-hat', to: { kind: 'list', key: 'brigades' } } },
       { label: 'Muammolar', icon: 'triangle-alert', to: { kind: 'list', key: 'brig-issues' } },
       { label: 'Smena hisobotlari', icon: 'clipboard-check', to: { kind: 'list', key: 'brig-shifts' } },
     ],
@@ -259,7 +262,8 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     quick: [
       { label: "To'lov qabul qilish", icon: 'plus', to: { kind: 'new', key: 'payments' }, orElse: { label: "To'lov qabul", icon: 'plus', to: { kind: 'list', key: 'invoices' } } },
       { label: 'Kirim / chiqim', icon: 'arrow-up-down', to: { kind: 'new', key: 'cashflow' }, orElse: { label: 'Kirim-chiqim', icon: 'arrow-up-down', to: { kind: 'list', key: 'cashflow' } } },
-      { label: "To'lovlar", icon: 'banknote', to: { kind: 'tab', tab: 'work' } },
+      // Tasdiqlangan mexanik so'rovlari — kassa pulni beradi (`kirim`); eski server bermasa — To'lovlar
+      { label: "Mexanik so'rovlari", icon: 'hand-coins', to: { kind: 'list', key: 'kirim' }, orElse: { label: "To'lovlar", icon: 'banknote', to: { kind: 'tab', tab: 'work' } } },
       { label: 'Kassa ⇄ bank', icon: 'arrow-left-right', to: { kind: 'new', key: 'transfer' }, orElse: { label: "Ta'minot to'lovi", icon: 'clipboard-list', to: { kind: 'list', key: 'supply' } } },
     ],
     missing: ["Naqd / bank qoldig'i alohida", 'Click / Payme tushumi', 'Kirim usuli taqsimoti', 'Kassa limiti', 'Haydovchi topshirmagan pul'],
@@ -273,9 +277,10 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     breakdown: null,
     progress: { section: /^Ish jarayoni/ },
     attention: [/^Avtomatik ogohlantirish/],
+    // Sklad — «Xizmat» tabida; Texnika tabi o'rnida «Kirim», texnika esa shu yerdan (jonli xarita)
     quick: [
-      { label: 'Reyslar', icon: 'truck', to: { kind: 'tab', tab: 'work' } },
-      { label: 'Sklad', icon: 'package', to: { kind: 'list', key: 'stock' } },
+      { label: 'Reyslar', icon: 'route', to: { kind: 'tab', tab: 'work' } },
+      { label: 'Texnika', icon: 'truck', to: { kind: 'href', href: '/erp/fleet' } },
       { label: 'Muammolar', icon: 'triangle-alert', to: { kind: 'card', key: 't-problem' } },
       { label: 'Ertangi transport', icon: 'calendar-days', to: { kind: 'card', key: 'n-trucks' } },
     ],

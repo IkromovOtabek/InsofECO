@@ -1,16 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, StatusBar, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Callout, Card, EmptyState, KVList, SearchField, Txt } from '@/design/primitives';
+import { useQuery } from '@tanstack/react-query';
+import { Badge, Button, Callout, Card, EmptyState, IconButton, KVList, SearchField, Txt } from '@/design/primitives';
 import { ChipGroup, KpiGrid, PageHeader, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
+import { Icon } from '@/design/icons';
+import { toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
-import { space } from '@/design/tokens';
+import { radius, size, space } from '@/design/tokens';
 import { useHeaderRaise } from '@/design/motion';
+import { erpPhotoData } from '@/core/erp';
 import { DataTable, PeriodSwitch, type Cell, type Col } from './data-table';
 import {
-  STATUS_TONE, curMonth, errorText, hoursNum, hoursText, lateText, todayIso, useEmployeeMonth, useStaffDay, yesterdayIso,
-  type AttStatus, type EmployeeMonthDay, type StaffDayRow,
+  STATUS_TONE, curMonth, distText, errorText, hoursNum, hoursText, lateText, todayIso, useEmployeeMonth, useStaffDay, yesterdayIso,
+  type AttStatus, type EmployeeMonthDay, type OutsideMark, type StaffDayRow,
 } from './pay-api';
 
 /**
@@ -21,10 +25,12 @@ import {
  */
 
 /** Hamma qatorda bo'sh ustunlarni (manba, izoh) olib tashlaydi — server yashirgan ma'lumot uchun bo'sh ustun chiqmasin. */
-function withoutEmpty<T extends { source: string | null; note?: string | null }>(cols: Col<T>[], rows: readonly T[]): Col<T>[] {
+function withoutEmpty<T extends { source: string | null; note?: string | null; outsideIn?: OutsideMark | null; outsideOut?: OutsideMark | null; anywhere?: boolean }>(cols: Col<T>[], rows: readonly T[]): Col<T>[] {
   const hasSrc = rows.some((r) => r.source);
   const hasNote = rows.some((r) => r.note);
-  return cols.filter((c) => (c.key !== 'src' || hasSrc) && (c.key !== 'note' || hasNote));
+  // «Hudud» — faqat kimdir tashqarida belgilagan yoki ruxsati bo'lsa (eski ERP'da ustun yo'q)
+  const zone = hasZone(rows);
+  return cols.filter((c) => (c.key !== 'src' || hasSrc) && (c.key !== 'note' || hasNote) && (c.key !== 'zone' || zone));
 }
 
 type Filter = 'all' | 'in' | 'late' | 'absent' | 'none';
@@ -35,6 +41,147 @@ const statusCell = (s: AttStatus, label: string): Cell => {
   return { text: label, color: t === 'neutral' ? 'muted' : t, strong: s !== 'NONE' };
 };
 
+// ───────────────────────── Hududdan tashqarida ─────────────────────────
+
+/** "Hududdan tashqarida · 2,4 km" (masofa noma'lum bo'lsa — faqat birinchi qismi). */
+const outsideLabel = (m: OutsideMark) => (m.distanceM != null ? `Hududdan tashqarida · ${distText(m.distanceM)}` : 'Hududdan tashqarida');
+
+/** Jadvaldagi «Hudud» ustuni: tashqarida qo'yilgan belgi (eng uzoq masofa) yoki ruxsat. */
+function zoneCell(r: { outsideIn?: OutsideMark | null; outsideOut?: OutsideMark | null; anywhere?: boolean }): Cell | null {
+  const marks = [r.outsideIn, r.outsideOut].filter((m): m is OutsideMark => !!m);
+  if (marks.length) {
+    const far = Math.max(...marks.map((m) => m.distanceM ?? 0));
+    return { text: far ? `tashqarida · ${distText(far)}` : 'tashqarida', color: 'warning', strong: true };
+  }
+  return r.anywhere ? { text: 'istalgan joydan', color: 'muted' } : null;
+}
+const hasZone = (rows: readonly { outsideIn?: OutsideMark | null; outsideOut?: OutsideMark | null; anywhere?: boolean }[]) =>
+  rows.some((r) => r.outsideIn || r.outsideOut || r.anywhere);
+
+/** Xaritada ochish — Yandex xaritalar (ilova o'rnatilgan bo'lsa o'sha ochadi). */
+function openMap(m: OutsideMark) {
+  Linking.openURL(`https://yandex.uz/maps/?pt=${m.lng},${m.lat}&z=16&l=map`).catch(() => toast.error("Xaritani ochib bo'lmadi"));
+}
+
+/** Turgan joy surati — Bearer bilan (`erpPhotoData`), keshda 10 daqiqa. */
+const usePlacePhoto = (url: string | null) =>
+  useQuery({
+    queryKey: ['erp', 'place-photo', url ?? ''],
+    queryFn: () => erpPhotoData(url!),
+    enabled: !!url,
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
+    retry: 1,
+  });
+
+interface OutsideItem { key: string; title: string; sub: string; mark: OutsideMark }
+type PhotoView = { url: string; title: string; sub: string };
+
+/** Kunlik jadval qatorlaridan: har bir tashqaridagi belgi (keldi / ketdi) alohida. */
+function outsideOfDay(rows: StaffDayRow[]): OutsideItem[] {
+  const out: OutsideItem[] = [];
+  for (const r of rows) {
+    if (r.outsideIn) out.push({ key: `${r.id}-in`, title: r.fullName, sub: `Keldi ${r.checkIn ?? '—'} · ${r.position}`, mark: r.outsideIn });
+    if (r.outsideOut) out.push({ key: `${r.id}-out`, title: r.fullName, sub: `Ketdi ${r.checkOut ?? '—'} · ${r.position}`, mark: r.outsideOut });
+  }
+  return out;
+}
+
+/** Oylik varaqdagi kunlardan. */
+function outsideOfMonth(days: EmployeeMonthDay[]): OutsideItem[] {
+  const out: OutsideItem[] = [];
+  for (const d of days) {
+    const day = `${String(d.day).padStart(2, '0')} · ${d.weekday}`;
+    if (d.outsideIn) out.push({ key: `${d.date}-in`, title: day, sub: `Keldi ${d.checkIn ?? '—'}`, mark: d.outsideIn });
+    if (d.outsideOut) out.push({ key: `${d.date}-out`, title: day, sub: `Ketdi ${d.checkOut ?? '—'}`, mark: d.outsideOut });
+  }
+  return out;
+}
+
+/** Kichik surat — bosilsa to'liq ekranda. Yuklanmasa — kulrang plitka va rasm belgisi. */
+function PlaceThumb({ url, label, onPress }: { url: string; label: string; onPress: () => void }) {
+  const { c } = useTheme();
+  const p = usePlacePhoto(url);
+  const s = size.avatarLg;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={`${label} — joy suratini ochish`} hitSlop={space.xs}>
+      {p.data
+        ? <Image source={{ uri: p.data }} style={{ width: s, height: s, borderRadius: radius.md, backgroundColor: c.bgMuted }} accessibilityIgnoresInvertColors />
+        : (
+          <View style={{ width: s, height: s, borderRadius: radius.md, backgroundColor: c.bgMuted, alignItems: 'center', justifyContent: 'center' }}>
+            {p.isLoading ? <ActivityIndicator color={c.textMuted} /> : <Icon name="image" tone="faint" size={size.iconMd} />}
+          </View>
+        )}
+    </Pressable>
+  );
+}
+
+/** Tashqaridagi bitta belgi: surat, ism (yoki kun), vaqt, masofa nishoni; pastda «Surat» va «Xaritada». */
+function OutsideCard({ item, onPhoto }: { item: OutsideItem; onPhoto: (v: PhotoView) => void }) {
+  const view = () => onPhoto({ url: item.mark.photoUrl, title: item.title, sub: item.sub });
+  return (
+    <Card style={{ gap: space.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <PlaceThumb url={item.mark.photoUrl} label={item.title} onPress={view} />
+        <View style={{ flex: 1, minWidth: 0, gap: space.xs }}>
+          <Txt v="listTitle" numberOfLines={1}>{item.title}</Txt>
+          <Txt v="tSm" numberOfLines={1}>{item.sub}</Txt>
+          <Badge icon="map-pin" tone="warning" label={outsideLabel(item.mark)} style={{ alignSelf: 'flex-start' }} />
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}><Button size="md" variant="secondary" icon="image" title="Surat" onPress={view} /></View>
+        <View style={{ flex: 1 }}><Button size="md" variant="secondary" icon="map" title="Xaritada" onPress={() => openMap(item.mark)} /></View>
+      </View>
+    </Card>
+  );
+}
+
+/** Ko'pi bilan shuncha karta, qolgani "Barchasi" bilan. */
+const OUTSIDE_ROWS = 3;
+
+/** "Hududdan tashqaridagilar" bo'limi — sarlavha va kartalar (3 tadan ko'p bo'lsa yig'iladi). */
+function OutsideSection({ title, items, onPhoto }: { title: string; items: OutsideItem[]; onPhoto: (v: PhotoView) => void }) {
+  const [all, setAll] = useState(false);
+  const extra = items.length > OUTSIDE_ROWS;
+  return (
+    <View style={{ gap: space.sm }}>
+      <SectionHead title={title} count={items.length} icon="map-pin" action={extra ? (all ? 'Yashirish' : `Barchasi (${items.length})`) : undefined} onAction={extra ? () => setAll((v) => !v) : undefined} />
+      {(all ? items : items.slice(0, OUTSIDE_ROWS)).map((it) => <OutsideCard key={it.key} item={it} onPhoto={onPhoto} />)}
+    </View>
+  );
+}
+
+/** To'liq ekranli joy surati — qora fon, pastda ism va vaqt. */
+function PlacePhotoViewer({ view, onClose }: { view: PhotoView | null; onClose: () => void }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const p = usePlacePhoto(view?.url ?? null);
+  return (
+    <Modal visible={!!view} animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, backgroundColor: c.bgInverse }}>
+        {p.data ? (
+          <Image source={{ uri: p.data }} resizeMode="contain" style={{ flex: 1, width: '100%' }} accessibilityLabel={view?.title} accessibilityIgnoresInvertColors />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.pageX }}>
+            {p.error ? <Txt v="body" color="onSolid" align="center">{errorText(p.error)}</Txt> : <ActivityIndicator color={c.textOnInverse} size="large" />}
+          </View>
+        )}
+        <View style={{ position: 'absolute', top: insets.top + space.sm, right: space.pageX }}>
+          <IconButton icon="x" label="Yopish" onPress={onClose} variant="secondary" />
+        </View>
+        {view ? (
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.pageX, paddingTop: space.lg, paddingBottom: insets.bottom + space.lg, backgroundColor: c.scrim, gap: space.xs }}>
+            <Txt v="titleMd" color="onSolid" numberOfLines={1}>{view.title}</Txt>
+            <Badge label={view.sub} tone="neutral" style={{ alignSelf: 'flex-start' }} />
+          </View>
+        ) : null}
+      </View>
+    </Modal>
+  );
+}
+
 const DAY_COLS: Col<StaffDayRow>[] = [
   { key: 'in', title: 'Keldi', width: 60, align: 'center', cell: (r) => (r.checkIn ? { text: r.checkIn, color: r.lateMin ? 'danger' : undefined, strong: true } : null) },
   { key: 'out', title: 'Ketdi', width: 60, align: 'center', cell: (r) => (r.checkOut ? { text: r.checkOut, strong: true } : r.checkIn ? { text: 'ishda', color: 'success' } : null) },
@@ -42,6 +189,7 @@ const DAY_COLS: Col<StaffDayRow>[] = [
   { key: 'late', title: 'Kechikdi', width: 84, align: 'right', cell: (r) => (r.lateMin ? { text: lateText(r.lateMin), color: 'danger', strong: true } : null) },
   { key: 'early', title: 'Erta ketdi', width: 84, align: 'right', cell: (r) => (r.earlyMin ? { text: lateText(r.earlyMin), color: 'warning' } : null) },
   { key: 'st', title: 'Holat', width: 104, cell: (r) => statusCell(r.status, r.statusLabel) },
+  { key: 'zone', title: 'Hudud', width: 140, cell: zoneCell },
   { key: 'src', title: 'Manba', width: 100, cell: (r) => (r.source ? { text: r.source, color: 'muted' } : null) },
   { key: 'shift', title: 'Smena', width: 100, cell: (r) => ({ text: `${r.shift.start}–${r.shift.end}`, color: 'muted' }) },
 ];
@@ -55,8 +203,10 @@ export function StaffAttendanceScreen({ onBack, title = 'Davomat', overline = 'I
   const [date, setDate] = useState<string | undefined>(undefined);
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
+  const [photo, setPhoto] = useState<PhotoView | null>(null);
   const query = useStaffDay(date);
   const d = query.data;
+  const outside = useMemo(() => outsideOfDay(d?.rows ?? []), [d]);
   const iso = d?.date ?? date ?? todayIso();
   const dayKey = iso === todayIso() ? 'today' : iso === yesterdayIso() ? 'yesterday' : 'other';
 
@@ -102,6 +252,7 @@ export function StaffAttendanceScreen({ onBack, title = 'Davomat', overline = 'I
           <EmptyState icon="cloud-off" title="Davomat yuklanmadi" hint={errorText(query.error)} onRetry={() => void query.refetch()} />
         ) : (
           <Reveal loading={query.isLoading || !d} skeleton={<SkeletonList rows={6} />} replay={iso}>
+            {outside.length ? <OutsideSection key="out" title="Hududdan tashqaridagilar" items={outside} onPhoto={setPhoto} /> : null}
             {t ? (
               <KpiGrid
                 key="kpi"
@@ -148,6 +299,7 @@ export function StaffAttendanceScreen({ onBack, title = 'Davomat', overline = 'I
           </Reveal>
         )}
       </ScrollView>
+      <PlacePhotoViewer view={photo} onClose={() => setPhoto(null)} />
     </View>
   );
 }
@@ -161,6 +313,7 @@ const MONTH_COLS: Col<EmployeeMonthDay>[] = [
   { key: 'late', title: 'Kechikdi', width: 84, align: 'right', cell: (r) => (r.lateMin ? { text: lateText(r.lateMin), color: 'danger', strong: true } : null) },
   { key: 'early', title: 'Erta ketdi', width: 84, align: 'right', cell: (r) => (r.earlyMin ? { text: lateText(r.earlyMin), color: 'warning' } : null) },
   { key: 'st', title: 'Holat', width: 104, cell: (r) => (r.statusLabel ? statusCell(r.status, r.statusLabel) : { text: r.weekend ? 'Dam olish' : '—', color: 'faint' }) },
+  { key: 'zone', title: 'Hudud', width: 140, cell: zoneCell },
   { key: 'src', title: 'Manba', width: 100, cell: (r) => (r.source ? { text: r.source, color: 'muted' } : null) },
   { key: 'note', title: 'Izoh', width: 160, cell: (r) => (r.note ? { text: r.note, color: 'muted' } : null) },
 ];
@@ -173,6 +326,8 @@ export function EmployeeAttendanceScreen({ id, month: initial, onBack }: { id: s
   const query = useEmployeeMonth(id, month);
   const d = query.data;
   const t = d?.totals;
+  const [photo, setPhoto] = useState<PhotoView | null>(null);
+  const outside = useMemo(() => outsideOfMonth(d?.days ?? []), [d]);
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <PageHeader title={d?.employee.fullName ?? 'Xodim davomati'} overline="Oylik davomat" onBack={onBack} raised={raise.raised} style={{ paddingTop: insets.top + space.sm }} />
@@ -219,6 +374,10 @@ export function EmployeeAttendanceScreen({ id, month: initial, onBack }: { id: s
             {t && t.openDays ? (
               <Callout key="warn" tone="warning" icon="triangle-alert">«Ketdi» vaqti yozilmagan kunlar soatga qo'shilmaydi — tabelda to'ldiring.</Callout>
             ) : null}
+            {d?.employee.anywhere ? (
+              <Callout key="any" tone="info" icon="map-pin">Hududdan tashqarida ham belgilash mumkin — bunday belgi turgan joy surati bilan saqlanadi.</Callout>
+            ) : null}
+            {outside.length ? <OutsideSection key="out" title="Hududdan tashqarida" items={outside} onPhoto={setPhoto} /> : null}
             {d ? <SectionHead key="h" title="Kunlar" count={d.days.length || undefined} /> : null}
             {d && d.days.length ? (
               <DataTable
@@ -234,6 +393,7 @@ export function EmployeeAttendanceScreen({ id, month: initial, onBack }: { id: s
           </Reveal>
         )}
       </ScrollView>
+      <PlacePhotoViewer view={photo} onClose={() => setPhoto(null)} />
     </View>
   );
 }

@@ -521,6 +521,6 @@ export const ERP_ROLE_MODULE: Partial<Record<ErpRoleKey, ModuleTone>> = {
 export const LIST_MODULE: Record<string, ModuleTone> = {
   production: 'production', tasks: 'production', brigades: 'production', recipes: 'production',
   'brig-issues': 'production', 'brig-shifts': 'production',
-  trips: 'logistics', drivers: 'logistics',
+  trips: 'logistics', drivers: 'logistics', kirim: 'logistics',
   stock: 'warehouse', receipts: 'warehouse', supply: 'warehouse', snabjeniye: 'warehouse', suppliers: 'warehouse',
 };

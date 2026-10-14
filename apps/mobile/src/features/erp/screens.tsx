@@ -29,6 +29,7 @@ import { DailyReportSheet } from './daily-report';
 import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
+import { KirimScreen } from './kirim';
 import { pinStore } from '@/core/pin';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
@@ -98,6 +99,7 @@ export function ErpTabRoute({ role, route }: { role: ErpRole; route: string }) {
     case 'road': return <ErpRoadTab title={title} />;
     case 'menu': return <ErpMenu />;
     case 'attendance': return <StaffAttendanceScreen />;
+    case 'kirim': return <KirimScreen title={title} />;
     case 'notifications':
     case 'sections':
     default: return <ErpSections title={title} />;
@@ -504,8 +506,9 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
   const out: ActionItem[] = [];
   const add = (label: string, icon: ActionItem['icon'], href: string, m: ModuleTone = module) => out.push({ label, icon, module: m, onPress: () => go(href) });
   for (const spec of specs) {
-    // Forma rolga ochiq bo'lmasa (eski server / direktor ruxsat bermagan) — zaxira manzil
-    const q = spec.to.kind === 'new' && !hasNew(spec.to.key) && spec.orElse ? spec.orElse : spec;
+    // Forma yoki ro'yxat rolga ochiq bo'lmasa (eski server / direktor ruxsat bermagan) — zaxira manzil
+    const open = spec.to.kind === 'new' ? hasNew(spec.to.key) : spec.to.kind === 'list' ? data.list.key === spec.to.key || hasList(spec.to.key) : true;
+    const q = !open && spec.orElse ? spec.orElse : spec;
     const t = q.to;
     if (t.kind === 'new' && hasNew(t.key)) add(q.label, q.icon, `/erp/new/${t.key}`);
     else if (t.kind === 'list') {
@@ -513,6 +516,8 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
       else if (hasList(t.key)) add(q.label, q.icon, `/erp/list/${t.key}`, listModule(t.key) === 'brand' ? module : listModule(t.key));
     } else if (t.kind === 'tab') {
       if (t.tab !== 'ai' || hasAi) add(q.label, q.icon, `/${group}/${t.tab}`);
+    } else if (t.kind === 'href') {
+      add(q.label, q.icon, t.href);
     } else if (t.kind === 'card') {
       const card = data.cards.find((x) => (typeof t.key === 'string' ? x.key === t.key : t.key.test(x.key)));
       const h = card ? cardHref(card) : null;

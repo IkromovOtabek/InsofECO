@@ -151,6 +151,8 @@ import CloudOff from 'lucide-react-native/dist/esm/icons/cloud-off.mjs';
 import EllipsisVertical from 'lucide-react-native/dist/esm/icons/ellipsis-vertical.mjs';
 import Monitor from 'lucide-react-native/dist/esm/icons/monitor.mjs';
 import SunMoon from 'lucide-react-native/dist/esm/icons/sun-moon.mjs';
+import HandCoins from 'lucide-react-native/dist/esm/icons/hand-coins.mjs';
+import Shapes from 'lucide-react-native/dist/esm/icons/shapes.mjs';
 
 export const ICONS = {
   plus: Plus, 'circle-plus': CirclePlus, minus: Minus,
@@ -178,6 +180,7 @@ export const ICONS = {
   warehouse: Warehouse, activity: Activity, radio: Radio, send: Send, image: Image, sun: Sun, moon: Moon, sparkles: Sparkles, 'heart-pulse': HeartPulse,
   'arrow-up-right': ArrowUpRight, 'arrow-down-right': ArrowDownRight, 'arrow-down': ArrowDown, 'wifi-off': WifiOff, 'cloud-off': CloudOff,
   'ellipsis-vertical': EllipsisVertical, monitor: Monitor, 'sun-moon': SunMoon,
+  'hand-coins': HandCoins, shapes: Shapes,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

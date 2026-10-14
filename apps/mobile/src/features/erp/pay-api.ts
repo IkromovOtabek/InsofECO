@@ -12,12 +12,22 @@ import { usePollInterval } from '@/shared/hooks';
 export type AttStatus = 'PRESENT' | 'ABSENT' | 'LEAVE' | 'SICK' | 'DAYOFF' | 'NONE';
 export interface Shift { start: string; end: string }
 
+/**
+ * Ish hududidan tashqarida qo'yilgan belgi (`anywhere` ruxsati bilan): nuqta, ish joyigacha masofa va turgan joy surati.
+ * `photoUrl` — ERP API'ning nisbiy manzili, Bearer bilan yuklanadi (`erpPhotoData`). Eski ERP bermaydi.
+ */
+export interface OutsideMark { lat: number; lng: number; distanceM: number | null; photoUrl: string }
+
 export interface StaffDayRow {
   id: string; fullName: string; position: string; dept: string | null;
   status: AttStatus; statusLabel: string;
   checkIn: string | null; checkOut: string | null;
   minutes: number | null; lateMin: number | null; earlyMin: number | null;
   source: string | null; note: string | null; shift: Shift;
+  /** Keldi / ketdi hududdan tashqarida bo'lsa — nuqta va surat (aks holda null; eski ERP'da yo'q). */
+  outsideIn?: OutsideMark | null; outsideOut?: OutsideMark | null;
+  /** Xodimga hududdan tashqarida belgilash ruxsat etilgan. */
+  anywhere?: boolean;
 }
 export interface StaffDay {
   date: string; title: string; isToday: boolean; prev: string; next: string | null;
@@ -30,6 +40,7 @@ export interface EmployeeMonthDay {
   status: AttStatus; statusLabel: string | null;
   checkIn: string | null; checkOut: string | null; minutes: number | null; lateMin: number | null; earlyMin: number | null;
   source: string | null; note: string | null;
+  outsideIn?: OutsideMark | null; outsideOut?: OutsideMark | null;
 }
 export interface MonthTotals {
   present: number; absent: number; sick: number; leave: number; dayoff: number; notMarked: number;
@@ -37,7 +48,7 @@ export interface MonthTotals {
 }
 export interface EmployeeMonth {
   month: string; title: string; prev: string; next: string | null;
-  employee: { id: string; fullName: string; position: string; dept: string | null; phone: string | null };
+  employee: { id: string; fullName: string; position: string; dept: string | null; phone: string | null; anywhere?: boolean };
   shift: Shift; totals: MonthTotals; days: EmployeeMonthDay[];
 }
 
@@ -104,6 +115,9 @@ export const errorText = (e: unknown) =>
     : (e as Error)?.message || "Ma'lumot yuklanmadi";
 
 // ───────────────────────── Format ─────────────────────────
+
+/** Ish joyigacha masofa: 640 → "640 m", 2430 → "2,4 km". */
+export const distText = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
 
 /** 510 → "8,5"; 0 → "0". */
 export const hoursNum = (min: number) => (min / 60).toFixed(1).replace('.0', '').replace('.', ',');

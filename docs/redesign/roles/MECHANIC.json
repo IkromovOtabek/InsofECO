@@ -39,8 +39,8 @@
   ],
   "tabs": [
     { "label": "Nazorat", "icon": "home" },
-    { "label": "Texnika", "icon": "truck" },
     { "label": "Xizmat", "icon": "wrench" },
+    { "label": "Kirim", "icon": "hand-coins" },
     { "label": "Reyslar", "icon": "route" },
     { "label": "Menyu", "icon": "list" }
   ],

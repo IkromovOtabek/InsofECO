@@ -38,6 +38,8 @@ export type ErpTabScreen =
   | { kind: 'road' }
   /** Davomat jadvali — barcha xodimlar: keldi / ketdi / soat / kechikish (`features/erp/staff-attendance.tsx`). */
   | { kind: 'attendance' }
+  /** Mexanik "Kirim": pul so'rovi (Transport / Zavod / Boshqalar) va o'z so'rovlari (`features/erp/kirim.tsx`). */
+  | { kind: 'kirim' }
   | { kind: 'menu' };
 
 export interface ErpTabSpec { route: string; title: string; icon: IconName; screen: ErpTabScreen }
@@ -54,6 +56,7 @@ export const AI_TAB = { title: 'AI', icon: 'message-circle' } as const;
 
 export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   // Tab yorliqlari va ikonkalar — `docs/redesign/roles/<ROLE>.json` dagi `tabs` (mavjud ekranlarga mos keladiganlari)
+  // Mexanik: Texnika tabi o'rnida Xizmat, Xizmat o'rnida Kirim (pul so'rovi); Texnika — bosh sahifadagi tezkor amal (`/erp/fleet`)
   // Ikkinchi tab — direktor qarorini kutayotganlar (bloklangan zayavka, ta'minot tasdig'i/to'lovi); zayavkalar "Bo'limlar"da
   DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true , tabs: [HOME('Asosiy'), WORK('Tasdiqlar', 'check'), { route: 'sections', title: "Bo'limlar", icon: 'layers', screen: { kind: 'sections' } }, { route: 'ai', title: 'AI', icon: 'message-circle', screen: { kind: 'ai' } }, MENU()] },
   SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'orders',     workTitle: 'Zayavka',    workIcon: 'file-text' , tabs: [HOME('Bugun'), WORK('Zayavka', 'file-text'), LIST('customers', 'Mijozlar', 'users', 'customers'), LIST('nasiya', 'Nasiya', 'wallet', 'invoices'), MENU()] },
@@ -66,7 +69,7 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   FINANCE:     { group: '(erp-finance)',     label: 'Moliya',           homeTitle: 'Moliya',    homeIcon: 'house', listKey: 'cashflow',   workTitle: 'Oqim',       workIcon: 'trending-up' , tabs: [HOME('Moliya'), WORK('Oqim', 'trending-up'), LIST('qarzlar', 'Qarzlar', 'receipt', 'customers'), LIST('tolovlar', "To'lovlar", 'calendar-days', 'supply'), MENU()] },
   HR:          { group: '(erp-hr)',          label: 'Otdel kadr',       homeTitle: 'Kadrlar',   homeIcon: 'house', listKey: 'employees',  workTitle: 'Xodimlar',   workIcon: 'users' , tabs: [HOME('Kadrlar'), WORK('Xodimlar', 'users'), { route: 'davomat', title: 'Davomat', icon: 'clock', screen: { kind: 'attendance' } }, LIST('tabel', 'Tabel', 'clipboard-list', 'brigades'), MENU()] },
   CASHIER:     { group: '(erp-cashier)',     label: 'Kassa / bank',     homeTitle: 'Kassa',     homeIcon: 'house', listKey: 'payments',   workTitle: "To'lovlar",  workIcon: 'banknote' , tabs: [HOME('Kassa'), WORK("To'lovlar", 'banknote'), LIST('bank', 'Bank', 'layers', 'cashflow'), LIST('chek', 'Chek', 'receipt', 'invoices'), MENU()] },
-  MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',   homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'route' , tabs: [HOME('Nazorat'), LIST('texnika', 'Texnika', 'truck', 'drivers'), LIST('xizmat', 'Xizmat', 'wrench', 'stock'), WORK('Reyslar', 'route'), MENU()] },
+  MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',   homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'route' , tabs: [HOME('Nazorat'), LIST('xizmat', 'Xizmat', 'wrench', 'stock'), { route: 'kirim', title: 'Kirim', icon: 'hand-coins', screen: { kind: 'kirim' } }, WORK('Reyslar', 'route'), MENU()] },
   DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'truck' , tabs: [HOME('Bugun'), WORK('Reyslarim', 'truck'), { route: 'yol', title: "Yo'l", icon: 'navigation', screen: { kind: 'road' } }, MENU('user')] },
   BRIGADIER:   { group: '(erp-brigadier)',   label: 'Brigadir',         homeTitle: 'Brigadam',  homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' , tabs: [HOME('Brigadam'), WORK('Topshiriq', 'clipboard-list'), LIST('issues', 'Muammolar', 'triangle-alert', 'brig-issues'), LIST('shifts', 'Smenalar', 'calendar-days', 'brig-shifts'), MENU()] },
 };
