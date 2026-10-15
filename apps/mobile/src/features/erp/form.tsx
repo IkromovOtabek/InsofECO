@@ -7,7 +7,8 @@ import { Toggle } from '@/design/blocks';
 import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space, toneColors, type Tone } from '@/design/tokens';
-import type { ErpDayCell, ErpFormField, ErpFormOption, ErpQuickCreate } from '@/core/erp';
+import { erpApi, type ErpDayCell, type ErpFormField, type ErpFormOption, type ErpFormScan, type ErpQuickCreate, type ErpScanResult } from '@/core/erp';
+import { ApiException } from '@/core/api';
 
 /**
  * Serverdan kelgan forma tavsifini chizadigan qism.
@@ -255,6 +256,60 @@ function PhotoInput({ value, onChange, camera, cameraOnly }: { value: string; on
       </View>
       {value ? <Button title="Olib tashlash" variant="ghost" onPress={() => onChange('')} /> : null}
     </View>
+  );
+}
+
+// ───────────────────────── Hujjat skaneri (nakladnoy → forma) ─────────────────────────
+
+/**
+ * «Nakladnoyni skanerlash»: surat serverga ketadi, model o'qiydi, server nomlarni bazadagi yetkazuvchi va
+ * xomashyoga moslab formaga qiymat qaytaradi. Saqlashdan oldin xodim tekshiradi — o'zi hech narsa saqlamaydi.
+ * Hujjat sifati yaxshiroq o'qilishi uchun sifat 0.7 (yuz suratidan yuqori).
+ */
+export function ScanCard({ scan, onScanned }: { scan: ErpFormScan; onScanned: (values: ErpScanResult['values']) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<ErpScanResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  if (!ImagePicker) return null;
+  const picker = ImagePicker;
+  const run = async (fromCamera: boolean) => {
+    setErr(null);
+    if (fromCamera) {
+      const perm = await picker.requestCameraPermissionsAsync();
+      if (!perm.granted) { setErr("Kameraga ruxsat berilmagan — telefon sozlamalaridan ruxsat bering"); return; }
+    }
+    const opts: ImagePickerNS.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7, base64: true };
+    const r = fromCamera ? await picker.launchCameraAsync(opts) : await picker.launchImageLibraryAsync(opts);
+    const a = r.canceled ? null : r.assets[0];
+    if (!a?.base64) return;
+    setBusy(true);
+    try {
+      const out = await erpApi<ErpScanResult>(scan.path, { method: 'POST', body: { images: [`data:${a.mimeType ?? 'image/jpeg'};base64,${a.base64}`] } });
+      setRes(out);
+      onScanned(out.values);
+    } catch (e) {
+      setErr(e instanceof ApiException ? e.message : "Tarmoq xatosi. Internetni tekshiring");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card style={{ gap: space.sm, marginBottom: space.lg }}>
+      <Txt v="label">{scan.label}</Txt>
+      <Txt v="caption">{busy ? "Hujjat o'qilmoqda… 20–40 soniya" : scan.hint}</Txt>
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}><Button title="Suratga olish" icon="camera" loading={busy} onPress={() => void run(true)} /></View>
+        <View style={{ flex: 1 }}><Button title="Galereya" variant="secondary" icon="image" disabled={busy} onPress={() => void run(false)} /></View>
+      </View>
+      {err ? <Txt v="caption" color="danger">{err}</Txt> : null}
+      {res ? (
+        <View style={{ gap: 2 }}>
+          <Txt v="caption" color="success">{res.matched ? `${res.matched} ta qator to'ldirildi — miqdor va narxni tekshiring` : "Xomashyo qatorlari bazadan topilmadi"}</Txt>
+          {res.supplier.raw && !res.supplier.found ? <Txt v="caption" color="warning">{`Yetkazuvchi topilmadi: ${res.supplier.raw} — ro'yxatdan tanlang yoki «+» bilan qo'shing`}</Txt> : null}
+          {res.missing.length ? <Txt v="caption" color="warning">{`Bazada yo'q, qo'lda qo'shing: ${res.missing.map((m) => `${m.name}${m.qty ? ` (${m.qty}${m.unit ? ` ${m.unit}` : ''})` : ''}`).join('; ')}`}</Txt> : null}
+        </View>
+      ) : null}
+    </Card>
   );
 }
 

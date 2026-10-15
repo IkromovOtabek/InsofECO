@@ -12,7 +12,7 @@ import { radius, size, space } from '@/design/tokens';
 import { Appear, haptic } from '@/design/motion';
 import { ApiException, uuid } from '@/core/api';
 import { useErpCreate, useErpForm } from '@/features/erp/api';
-import { FieldInput, QuickCreateContext, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
+import { FieldInput, QuickCreateContext, ScanCard, clearError, initialValues, toPayload, validate, visibleFields, withChange, type FieldErrors, type ItemRow, type Values } from '@/features/erp/form';
 import { useQuickCreate } from '@/features/erp/quick-create';
 import { Loader } from '@/design/loader';
 
@@ -131,6 +131,18 @@ export default function ErpNew() {
               <Appear from={-6} scale={1} style={{ marginBottom: space.lg }}>
                 <Callout tone="danger">{serverError}</Callout>
               </Appear>
+            ) : null}
+            {data.scan ? (
+              <ScanCard scan={data.scan} onScanned={(v) => {
+                // Skaner topgan qiymatlar ustiga yoziladi; topmaganlari (bo'sh) xodim kiritganini o'chirmaydi
+                setServerError(null);
+                setErrors({});
+                setValues((s) => {
+                  let next = s;
+                  for (const [k, val] of Object.entries(v)) next = withChange(data.fields, next, k, val as string | ItemRow[]);
+                  return next;
+                });
+              }} />
             ) : null}
             {visible.map((f) => (
               <View key={f.name} onLayout={(e) => { pos.current[f.name] = e.nativeEvent.layout.y; }}>

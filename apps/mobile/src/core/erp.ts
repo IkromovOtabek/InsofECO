@@ -73,7 +73,16 @@ export interface ErpFormField {
 }
 /** Bitta kun — sana tanlovida kunlik quvvat rangi va hajmi. */
 export interface ErpDayCell { key: string; label: string; weekday: string; m3: number; pct: number; count: number; isToday: boolean }
-export interface ErpCreateForm { key: string; title: string; submitLabel: string; fields: ErpFormField[] }
+/** `scan` — formaning tepasida hujjat skaneri (masalan «Yangi kirim» → nakladnoy). Server `values` qaytaradi. */
+export interface ErpFormScan { path: string; label: string; hint: string }
+export interface ErpCreateForm { key: string; title: string; submitLabel: string; fields: ErpFormField[]; scan?: ErpFormScan }
+/** Skaner javobi: formaga qo'yiladigan qiymatlar va xodimga izoh (nima topilmadi). */
+export interface ErpScanResult {
+  values: Record<string, string | Record<string, string>[]>;
+  matched: number;
+  missing: { name: string; qty: string; unit: string }[];
+  supplier: { found: string | null; raw: string };
+}
 /** Tanlov ichidan yaratish: `fields` varaqda chiziladi, `/create` ga `key` bilan ketadi. */
 export interface ErpQuickCreate { key: string; label: string; fields: ErpFormField[] }
 /** `/create` javobi. `option` — yangi server: tanlovga qo'shiladigan tayyor variant. */
