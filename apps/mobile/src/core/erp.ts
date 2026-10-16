@@ -12,7 +12,7 @@ import { appHeaders, checkUpdateRequired } from './app-update';
  * ECO klientidan (`core/api.ts`) ajratilgan: boshqa server, boshqa token, X-Org-Id yo'q.
  * Tokenlar SecureStore'da alohida kalitlarda turadi — ikki tizim bir-birini bosib ketmaydi.
  */
-export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER';
+export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY';
 export interface ErpUser { id: string; login: string; fullName: string; role: ErpRole; roleLabel: string }
 export interface ErpTokens { accessToken: string; refreshToken: string }
 
@@ -328,6 +328,19 @@ export interface ErpMyAttendance {
   };
 }
 /** Ro'yxat ustidagi filtr chipi — serverdan keladi (masalan ishlab chiqarish "Zayavkalar"i). */
+/**
+ * Arenda (do'konlar ijarasi) oy varag'i — sekretar «Arenda» tabi (`GET /api/mobile/arenda?oy=YYYY-MM`, ERP `lib/mobile/arenda.ts`).
+ * Summalar tayyor matn (server formatlaydi); `*Num` — rang/ishora uchun.
+ */
+export interface ErpArendaRow { shopId: string; name: string; isActive: boolean; due: string; paid: string; left: string; dueNum: number; leftNum: number }
+export interface ErpArendaGroup { location: string; rows: ErpArendaRow[]; due: string; paid: string; left: string }
+export interface ErpArenda {
+  month: string; monthLabel: string; prev: string; next: string; current: string; opened: boolean; shops: number;
+  balance: { total: string; cash: string; bank: string; totalNum: number };
+  totals: { due: string; paid: string; left: string; leftNum: number };
+  groups: ErpArendaGroup[];
+  can: { create: boolean; shops: boolean; storno: boolean };
+}
 export interface ErpListFilter { key: string; label: string; count: number; active: boolean }
 export interface ErpListData { key: string; title: string; rows: ErpRow[]; filters?: ErpListFilter[] }
 
@@ -433,6 +446,8 @@ export const erpAuth = {
   /** Shu qurilmaning access/refresh tokenlarini serverda bekor qiladi (boshqa qurilmalar chiqarilmaydi). */
   logout: async () => erpApi<{ ok: true }>('/auth/logout', { method: 'POST', body: { refreshToken: (await secure.get(KEYS.erpRefresh)) ?? undefined, deviceId: deviceId() } }),
   home: (params?: Record<string, string>) => erpApi<ErpHomeData>('/home', { query: params }),
+  /** Arenda oy varag'i (sekretar). `oy` berilmasa — joriy oy. */
+  arenda: (oy?: string) => erpApi<ErpArenda>('/arenda', { query: { oy } }),
   list: (key: string, q?: string, filter?: string) => erpApi<ErpListData>('/list', { query: { key, q, filter } }),
   detail: (key: string, id: string) => erpApi<ErpDetailData>('/detail', { query: { key, id } }),
   /**

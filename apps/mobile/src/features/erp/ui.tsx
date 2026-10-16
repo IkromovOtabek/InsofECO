@@ -36,6 +36,8 @@ export const ROW_ICON: Record<string, IconName> = {
   approvals: 'circle-check', activity: 'activity',
   // Mexanik pul so'rovlari (Kirim tabi; ish boshqaruvchi tasdiqlaydi, kassa beradi)
   kirim: 'hand-coins', 'kirim-transport': 'truck', 'kirim-zavod': 'factory', 'kirim-boshqa': 'shapes',
+  // Arenda (sekretar): kirim-chiqim jurnali va do'konlar
+  'arenda-jurnal': 'arrow-up-down', 'arenda-tx': 'arrow-up-down', 'arenda-shops': 'store', 'arenda-shop': 'store',
 };
 
 // ───────────────────────── Raqam matnlari ─────────────────────────

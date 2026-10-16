@@ -247,6 +247,24 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     ],
     missing: ['Kechikkanlar', 'Ochiq vakansiyalar', 'Davomat bo\'limlar kesimida', 'Selfi tekshiruvi navbati', 'Hujjat muddati', "Ta'til arizalari", 'Oylik tabel'],
   },
+  // Sekretar — faqat Arenda (do'konlar ijarasi): kassa, shu oy kerak/tushgan/qoldiq (`lib/mobile/arenda.ts` arendaHome)
+  SECRETARY: {
+    title: 'Arenda',
+    periods: [],
+    hero: ['balance'],
+    kpis: ['due', 'paid', 'left'],
+    chart: null,
+    breakdown: null,
+    progress: null,
+    attention: [/^Shu oy qarzdorlar/],
+    quick: [
+      { label: 'Kirim', icon: 'circle-arrow-down', to: { kind: 'new', key: 'arenda-kirim' }, orElse: { label: 'Jurnal', icon: 'arrow-up-down', to: { kind: 'tab', tab: 'work' } } },
+      { label: 'Chiqim', icon: 'circle-arrow-up', to: { kind: 'new', key: 'arenda-chiqim' }, orElse: { label: "Do'konlar", icon: 'store', to: { kind: 'list', key: 'arenda-shops' } } },
+      { label: 'Oylik jadval', icon: 'calendar-days', to: { kind: 'href', href: '/(erp-secretary)/arenda' } },
+      { label: "Do'kon qo'shish", icon: 'plus', to: { kind: 'new', key: 'arenda-shop' }, orElse: { label: "Do'konlar", icon: 'store', to: { kind: 'list', key: 'arenda-shops' } } },
+    ],
+    missing: ['Oylar bo\'yicha tushum dinamikasi', 'Bozor (joy) kesimida ulush'],
+  },
   CASHIER: {
     title: 'Kassa',
     periods: [], fixedPeriod: 'day',

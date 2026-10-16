@@ -24,6 +24,9 @@ import { Loader } from '@/design/loader';
  * To'ldirilmagan maydonlar joyida qizil bilan ajraladi, tepada "N ta maydon" plashkasi chiqadi
  * va forma birinchi xatoli maydonga suriladi. Server rad etsa — sababi tepada (alohida oynasiz).
  */
+/** Bir martalik kalit yuboriladigan formalar: o'tkazma va arenda kassasi — qayta bosilsa ikkinchi yozuv ochilmaydi (server `clientToken` unique). */
+const TOKEN_FORMS = new Set(['transfer', 'arenda-kirim', 'arenda-chiqim']);
+
 export default function ErpNew() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const { c } = useTheme();
@@ -85,7 +88,7 @@ export default function ErpNew() {
       return;
     }
     try {
-      const r = await create.mutateAsync({ key: data.key, payload: data.key === 'transfer' ? { ...toPayload(data.fields, values), clientToken } : toPayload(data.fields, values) });
+      const r = await create.mutateAsync({ key: data.key, payload: TOKEN_FORMS.has(data.key) ? { ...toPayload(data.fields, values), clientToken } : toPayload(data.fields, values) });
       // Foydalanuvchi natijani o'qib ulgursin, kartochka shundan keyin ochiladi
       // Kassa yozuvlari "ochilmaydi" — saqlanadi
       result.success(['payments', 'cashflow', 'transfer'].includes(data.key) ? 'Saqlandi' : 'Ochildi', r.message, () => router.replace(`/erp/${r.key}/${r.id}` as never));

@@ -30,6 +30,7 @@ import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
 import { KirimScreen } from './kirim';
+import { ArendaScreen } from './arenda';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
 import { setBadge } from '@/core/push';
@@ -100,6 +101,7 @@ export function ErpTabRoute({ role, route }: { role: ErpRole; route: string }) {
     case 'menu': return <ErpMenu />;
     case 'attendance': return <StaffAttendanceScreen />;
     case 'kirim': return <KirimScreen title={title} />;
+    case 'arenda': return <ArendaScreen title={title} />;
     case 'notifications':
     case 'sections':
     default: return <ErpSections title={title} />;
@@ -204,7 +206,7 @@ const rowHref = (s: ErpSection, r: ErpRow) => (r.open ? `/erp/list/${r.open}` : 
  * "Smena hisobotlari" (`brig-shifts`) qatorlari ilgari `/erp/brig-issues/<id>` ni ochardi — server bunday
  * kartochkani bilmaydi ("Kartochka ochilmadi"); server ham endi xaritalaydi, eski server uchun bu yerda ham.
  */
-const DETAIL_OF: Record<string, string> = { 'brig-issues': 'brig-issue', 'brig-shifts': 'brig-shift' };
+const DETAIL_OF: Record<string, string> = { 'brig-issues': 'brig-issue', 'brig-shifts': 'brig-shift', 'arenda-jurnal': 'arenda-tx', 'arenda-shops': 'arenda-shop' };
 
 /** Jonli reyslar xaritasini kim ochadi (server `GET /api/mobile/fleet` ruxsati bilan bir xil). */
 const FLEET_ROLES: ErpRole[] = ['DIRECTOR', 'LOGISTICS', 'MECHANIC'];

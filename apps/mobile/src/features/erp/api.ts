@@ -21,6 +21,10 @@ export const useErpHome = (params?: Record<string, string>) =>
     placeholderData: keepPreviousData,
   });
 
+/** Arenda oy varag'i (sekretar). Oy almashganda oldingi varaq turadi — sakramaydi. */
+export const useErpArenda = (oy?: string) =>
+  useQuery({ queryKey: ['erp', 'arenda', oy ?? ''], queryFn: () => erpAuth.arenda(oy), placeholderData: keepPreviousData, refetchInterval: usePollInterval(60_000) });
+
 /** Ro'yxat. Qidiruv/filtr almashganda oldingi natija turadi (`keepPreviousData`) — har harfda skelet miltillamaydi. */
 export const useErpList = (key: string, q?: string, filter?: string) =>
   useQuery({ queryKey: ['erp', 'list', key, q ?? '', filter ?? ''], queryFn: () => erpAuth.list(key, q, filter), enabled: !!key, placeholderData: keepPreviousData });

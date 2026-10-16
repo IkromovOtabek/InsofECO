@@ -48,6 +48,10 @@ const ACTION_ICON: Record<string, IconName> = {
   'trip.unloading': 'hourglass',
   'trip.returned': 'truck',
   'trip.problem': 'triangle-alert',
+  // Arenda (sekretar)
+  'arenda.storno': 'circle-x',
+  'arenda.charge': 'pencil',
+  'arenda.shop.toggle': 'store',
   'trip.fuel': 'droplets',
   'trip.close': 'circle-check',
   'trip.resolve': 'circle-check',

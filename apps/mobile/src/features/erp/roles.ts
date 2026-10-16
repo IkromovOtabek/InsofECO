@@ -40,6 +40,8 @@ export type ErpTabScreen =
   | { kind: 'attendance' }
   /** Mexanik "Kirim": pul so'rovi (Transport / Zavod / Boshqalar) va o'z so'rovlari (`features/erp/kirim.tsx`). */
   | { kind: 'kirim' }
+  /** Sekretar «Arenda»: do'konlar ijarasi oy varag'i, kassa, kirim/chiqim (`features/erp/arenda.tsx`). */
+  | { kind: 'arenda' }
   | { kind: 'menu' };
 
 export interface ErpTabSpec { route: string; title: string; icon: IconName; screen: ErpTabScreen }
@@ -72,6 +74,8 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   MECHANIC:    { group: '(erp-mechanic)',    label: 'Mexanik',          homeTitle: 'Nazorat',   homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslar',    workIcon: 'route' , tabs: [HOME('Nazorat'), LIST('xizmat', 'Xizmat', 'wrench', 'stock'), { route: 'kirim', title: 'Kirim', icon: 'hand-coins', screen: { kind: 'kirim' } }, WORK('Reyslar', 'route'), MENU()] },
   DRIVER:      { group: '(erp-driver)',      label: 'Haydovchi',        homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'trips',      workTitle: 'Reyslarim',  workIcon: 'truck' , tabs: [HOME('Bugun'), WORK('Reyslarim', 'truck'), { route: 'yol', title: "Yo'l", icon: 'navigation', screen: { kind: 'road' } }, MENU('user')] },
   BRIGADIER:   { group: '(erp-brigadier)',   label: 'Brigadir',         homeTitle: 'Brigadam',  homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' , tabs: [HOME('Brigadam'), WORK('Topshiriq', 'clipboard-list'), LIST('issues', 'Muammolar', 'triangle-alert', 'brig-issues'), LIST('shifts', 'Smenalar', 'calendar-days', 'brig-shifts'), MENU()] },
+  // Sekretar: vebda faqat «Arenda» (do'konlar ijarasi) — ilovada ham shu: oy varag'i, kirim-chiqim jurnali, do'konlar
+  SECRETARY:   { group: '(erp-secretary)',   label: 'Sekretar',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'arenda-jurnal', workTitle: 'Jurnal', workIcon: 'arrow-up-down', tabs: [HOME('Asosiy'), { route: 'arenda', title: 'Arenda', icon: 'store', screen: { kind: 'arenda' } }, WORK('Jurnal', 'arrow-up-down'), LIST('dokonlar', "Do'konlar", 'building', 'arenda-shops'), MENU()] },
 };
 
 /**
