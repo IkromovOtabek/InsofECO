@@ -1,5 +1,9 @@
 import React from 'react';
 import { ErpTabs } from '@/features/erp/screens';
+import { RouteErrorBoundary } from '@/components/route-error';
+
+/** Ekran xatosi shu bo'lim ichida ushlanadi — butun navigator almashmaydi. */
+export { RouteErrorBoundary as ErrorBoundary };
 
 /** Insof ERP — Logistika bo'limi. Tablar va rang `features/erp/roles.ts` dagi sozlamadan. */
 export default function Layout() {

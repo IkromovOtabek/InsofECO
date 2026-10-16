@@ -19,7 +19,7 @@ import { useTheme } from '@/design/theme';
 import { Appear } from '@/design/motion';
 import { deliveryKeys, requestAcceptOtp, useDelivery, useDriverTransition, useSignDelivery, type Delivery } from '@/features/deliveries/api';
 import { useLivePosition } from '@/features/tracking/useLivePosition';
-import { startTracking, stopTracking } from '@/core/location';
+import { showTrackStartNote, startTracking, stopTracking } from '@/core/location';
 import { useSession } from '@/core/session';
 import { Loader } from '@/design/loader';
 import { AcceptDelivery } from '@/features/deliveries/accept';
@@ -110,6 +110,9 @@ export default function DeliveryScreen() {
   );
 }
 
+/** Yetkazishni qabul qilish kodi (quruvchi Telegram'ida) — 6 xonali, server bilan bir xil. */
+const OTP_LEN = 6;
+
 function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['data']> }) {
   const { t } = useTranslation();
   const tr = useDriverTransition(d.id);
@@ -134,9 +137,13 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
   const next = DRIVER_PRIMARY_NEXT[d.status];
   const err = (e: Error) => toast.error(e.message, 'Xato');
 
-  // Fon GPS: ACCEPTED dan boshlab yoqiladi, yakunda o'chadi
+  // Fon GPS: ACCEPTED dan boshlab yoqiladi, yakunda o'chadi. Ruxsat yetishmasa — bir marta (ekran ochilganda)
+  // aniq izoh: fon rad etilgan / umuman rad etilgan / bloklangan («Sozlamalar» tugmasi bilan).
+  const permWarned = useRef(false);
   useEffect(() => {
-    if (['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'].includes(d.status)) void startTracking(d.id);
+    if (['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'].includes(d.status)) {
+      void startTracking(d.id).then((r) => { if (r !== 'ok' && !permWarned.current) { permWarned.current = true; showTrackStartNote(r); } });
+    }
     if (['COMPLETED', 'FAILED', 'CANCELLED', 'DISPUTED'].includes(d.status)) void stopTracking();
   }, [d.status, d.id]);
 
@@ -184,8 +191,9 @@ function DriverPanel({ d }: { d: NonNullable<ReturnType<typeof useDelivery>['dat
         <Gap />
         {otpSent ? <Txt v="caption">Kod {otpSent} raqamining Telegram'iga yuborildi</Txt> : <Button title="Kodni Telegram'ga yuborish" variant="secondary" icon="send" onPress={() => requestAcceptOtp(d.id).then((r) => setOtpSent(r.sentTo)).catch(err)} />}
         <Gap />
-        <Input label="Quruvchi aytgan 4 xonali kod" mono value={otp} onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" />
-        <Button title={t('driver.UNLOADING')} size="xl" icon="check-check" disabled={otp.length !== 4} loading={sign.isPending} onPress={() => sign.mutate({ otpCode: otp, acceptedM3: Number(d.loadedM3 ?? d.plannedM3) }, { onError: err })} />
+        {/* Qabul kodi — 6 xonali (server `accept-otp` bilan bir xil uzunlik) */}
+        <Input label="Quruvchi aytgan 6 xonali kod" mono value={otp} onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, OTP_LEN))} keyboardType="number-pad" maxLength={OTP_LEN} textContentType="oneTimeCode" autoComplete="one-time-code" />
+        <Button title={t('driver.UNLOADING')} size="xl" icon="check-check" disabled={otp.length !== OTP_LEN} loading={sign.isPending} onPress={() => sign.mutate({ otpCode: otp, acceptedM3: Number(d.loadedM3 ?? d.plannedM3) }, { onError: err })} />
       </Card>
     );
   }

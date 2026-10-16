@@ -17,6 +17,7 @@ import {
 } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { TelegramGatewayService, devCodeAllowed, maskPhone } from '../../infra/telegram-gateway/telegram-gateway.service';
+import { DEV_OTP_CODE } from '../auth/otp.service';
 import { StorageService } from '../../infra/storage/storage.service';
 import { DomainError } from '../../common/errors/domain.error';
 import { tashkentDayRange } from '../../common/time';
@@ -28,6 +29,8 @@ import { assertAtSite, knownPoint } from './geofence';
 
 
 const SLA_QUEUE = 'sla';
+/** ERP (nakladnoy ERP'da imzolangan) tushirilayotgan reysni /sign'siz yakunlay oladi — boshqa hech kim. */
+export interface TransitionOpts { erp?: boolean }
 type SignInput = z.infer<typeof SignDeliverySchema>;
 type DisputeInput = z.infer<typeof DisputeDeliverySchema>;
 
@@ -76,9 +79,9 @@ export class DeliveriesService {
    * Yagona holat o'tish nuqtasi. Haydovchi, Tadbirkor (override), tizim (geofence) shu orqali.
    * Idempotency: clientEventId (Idempotency-Key) unique → takror so'rov yozuv yaratmaydi.
    */
-  async transition(a: AuthContext, id: string, input: DeliveryTransitionInput, clientEventId?: string) {
+  async transition(a: AuthContext, id: string, input: DeliveryTransitionInput, clientEventId?: string, opts: TransitionOpts = {}) {
     const d = await this.get(a, id);
-    const role = this.effectiveRole(a, d);
+    const role = await this.effectiveRole(a, d);
     const from = d.status as DeliveryStatus;
 
     if (clientEventId) {
@@ -89,8 +92,25 @@ export class DeliveriesService {
     if (!canTransition(DELIVERY_TRANSITIONS, from, input.to, role)) {
       throw new DomainError('DELIVERY_INVALID_TRANSITION', `${from} → ${input.to} (${role}) mumkin emas`, { from, to: input.to, current: from });
     }
-    if (input.to === 'COMPLETED' && role === 'HAYDOVCHI') {
+    // Tushirilayotgan reysni HECH KIM /transition bilan yakunlay olmaydi — faqat imzo yoki qabul kodi (POST /sign).
+    // Ilgari faqat haydovchi to'silgan edi: quruvchi/dispetcher imzosiz va qabul hajmisiz yopib, faktura
+    // haydovchi kiritgan loadedM3 bo'yicha chiqib ketardi.
+    if (input.to === 'COMPLETED' && from === 'UNLOADING' && !opts.erp) {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Yakunlash uchun quruvchi imzosi yoki qabul kodi kerak (POST /sign)');
+    }
+    // E'tiroz hal qilinganda dispetcher qabul qilingan hajmni aniq aytadi — faktura shu bo'yicha
+    let acceptedM3: Prisma.Decimal | undefined;
+    if (input.to === 'COMPLETED' && opts.erp && input.acceptedM3) acceptedM3 = this.assertAcceptedM3(d, input.acceptedM3);
+    if (input.to === 'COMPLETED' && from === 'DISPUTED') {
+      if (!input.acceptedM3) throw new DomainError('VALIDATION', "E'tirozni yopishda qabul qilingan hajm (acceptedM3) majburiy", { field: 'acceptedM3' });
+      acceptedM3 = this.assertAcceptedM3(d, input.acceptedM3);
+    }
+    // Yuklangan hajm mashina sig'imidan oshmasin (sig'im noma'lum bo'lsa — eng katta mikser 20 m³)
+    if (input.to === 'EN_ROUTE' && input.loadedM3) {
+      const cap = d.vehicle?.capacityM3 ?? new Prisma.Decimal(20);
+      if (new Prisma.Decimal(input.loadedM3).gt(cap)) {
+        throw new DomainError('VALIDATION', `Yuklangan hajm mashina sig'imidan (${cap.toString()} m³) oshmasin`, { loadedM3: input.loadedM3, capacityM3: cap.toNumber() });
+      }
     }
     // "Yetib keldim" / "Tushirishni boshladim" — faqat obyekt yonida. Dispetcher (TADBIRKOR)
     // override qila oladi: u telefonda emas, ofisda turib holatni to'g'rilaydi.
@@ -100,11 +120,11 @@ export class DeliveriesService {
 
     // Foto kaliti: faqat chaqiruvchining o'z prefiksidagi, omborda haqiqatan bor fayl
     const photoKey = await this.storage.verifyKey(a.userId, input.photoKey, ['waybill', 'report']);
-    const now = input.at > new Date() ? new Date() : input.at; // kelajak vaqt qabul qilinmaydi
+    const now = clampClientTime(input.at);
     const data: Prisma.DeliveryUpdateInput = { status: input.to };
     if (input.to === 'EN_ROUTE') { data.departedAt = now; if (input.loadedM3) data.loadedM3 = new Prisma.Decimal(input.loadedM3); }
     if (input.to === 'ARRIVED') data.arrivedAt = now;
-    if (input.to === 'COMPLETED') data.completedAt = now;
+    if (input.to === 'COMPLETED') { data.completedAt = now; if (acceptedM3) data.acceptedM3 = acceptedM3; }
     if (photoKey && ['EN_ROUTE', 'COMPLETED'].includes(input.to)) data.waybillPhotoKey = photoKey;
     if (input.to === 'ACCEPTED') {
       const busy = await this.prisma.delivery.count({ where: { driverId: d.driverId, status: { in: ['ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING'] }, NOT: { id } } });
@@ -137,25 +157,18 @@ export class DeliveriesService {
   async sign(a: AuthContext, id: string, input: SignInput, clientEventId?: string) {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirilayotgan reys imzolanadi');
-    const role = this.effectiveRole(a, d);
+    const role = await this.effectiveRole(a, d);
     // Imzo fayli: o'zi yuklagan (u/<userId>/signature/...) va omborda mavjud bo'lishi shart
     const signatureKey = await this.storage.verifyKey(a.userId, input.signatureKey, ['signature']);
 
     if (role === 'HAYDOVCHI') {
       // Haydovchi telefonidan: faqat qabul kodi bilan (quruvchi ilovasiz holat; kod mijozning Telegram'iga boradi)
-      if (!input.otpCode || !d.acceptOtpHash || !(await argon2.verify(d.acceptOtpHash, input.otpCode))) {
-        throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Qabul kodi noto\'g\'ri');
-      }
+      await this.verifyAcceptOtp(d, input.otpCode);
     } else if (!signatureKey) {
       throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', 'Imzo kerak');
     }
 
-    // Qabul qilingan hajm yuklangandan (yoki rejadan) ko'p bo'lolmaydi: faktura shu hajm bo'yicha yoziladi —
-    // haydovchi qabul kodi bilan yakunlaganda xato/ataylab katta son mijozga ortiqcha schyot bo'lardi.
-    const maxM3 = Prisma.Decimal.max(d.loadedM3 ?? d.plannedM3, d.plannedM3);
-    if (new Prisma.Decimal(input.acceptedM3).gt(maxM3)) {
-      throw new DomainError('VALIDATION', `Qabul qilingan hajm ${maxM3.toString()} m³ dan oshmasin`, { acceptedM3: input.acceptedM3, maxM3: maxM3.toNumber() });
-    }
+    const acceptedM3 = this.assertAcceptedM3(d, input.acceptedM3);
 
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -164,7 +177,7 @@ export class DeliveriesService {
       if (r.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Reys allaqachon yakunlangan');
       const u = await tx.delivery.update({
         where: { id },
-        data: { status: 'COMPLETED', completedAt: now, acceptedM3: new Prisma.Decimal(input.acceptedM3), signatureKey: signatureKey ?? null, acceptOtpHash: null },
+        data: { status: 'COMPLETED', completedAt: now, acceptedM3, signatureKey: signatureKey ?? null, acceptOtpHash: null, acceptOtpExpiresAt: null },
         include: this.include,
       });
       await tx.deliveryEvent.create({ data: { deliveryId: id, from: 'UNLOADING', to: 'COMPLETED', byUserId: a.userId, byRole: role, at: now, note: input.note, clientEventId } });
@@ -176,12 +189,16 @@ export class DeliveriesService {
 
   /**
    * Quruvchi ilovasiz bo'lsa: haydovchi so'raydi → mijoz raqamining Telegram'iga (Telegram Gateway)
-   * 4 xonali kod. SMS yo'q. Dev (Gateway yo'q, prod emas) — kod `0000`, hech narsa yuborilmaydi.
+   * 6 xonali kod, 30 daqiqa, 5 urinish. SMS yo'q. Dev (Gateway yo'q, prod emas) — kod `000000`, hech narsa yuborilmaydi.
    * Bu yerda xato ochiq aytiladi: chaqiruvchi — tizimga kirgan haydovchi, u kelmaydigan kodni kutmasin.
    */
   async requestAcceptOtp(a: AuthContext, id: string) {
     const d = await this.get(a, id);
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida');
+    // Qayta so'rash — kamida 60 s dan keyin (Gateway pullik, mijozga ketma-ket kod ketmasin)
+    if (d.acceptOtpExpiresAt && d.acceptOtpExpiresAt.getTime() - ACCEPT_OTP_TTL_MS + 60_000 > Date.now()) {
+      throw new DomainError('AUTH_OTP_RATE_LIMIT', "Kod yaqinda yuborilgan — bir daqiqadan so'ng qayta so'rang");
+    }
     const client = await this.prisma.membership.findFirst({ where: { organizationId: d.order.clientOrgId, isActive: true, ...VISIBLE_MEMBER }, include: { user: true }, orderBy: { createdAt: 'asc' } });
     if (!client) throw DomainError.notFound('Mijoz');
     const dev = devCodeAllowed(this.telegram.enabled);
@@ -189,11 +206,14 @@ export class DeliveriesService {
       this.logger.warn(`Qabul kodi yuborilmadi ${maskPhone(client.user.phone)}: TELEGRAM_GATEWAY_TOKEN sozlanmagan`);
       throw new DomainError('AUTH_OTP_SEND_FAILED', 'Qabul kodini Telegram orqali yuborish sozlanmagan. Quruvchi ilovada imzolasin yoki logistga ayting');
     }
-    const code = dev ? '0000' : String(randomInt(0, 10_000)).padStart(4, '0');
-    await this.prisma.delivery.update({ where: { id }, data: { acceptOtpHash: await argon2.hash(code) } });
+    const code = dev ? DEV_OTP_CODE : String(randomInt(0, 1_000_000)).padStart(6, '0');
+    await this.prisma.delivery.update({
+      where: { id },
+      data: { acceptOtpHash: await argon2.hash(code), acceptOtpExpiresAt: new Date(Date.now() + ACCEPT_OTP_TTL_MS), acceptOtpAttempts: 0 },
+    });
     if (!dev) {
       try {
-        await this.telegram.sendCode(client.user.phone, code, 1800);
+        await this.telegram.sendCode(client.user.phone, code, ACCEPT_OTP_TTL_MS / 1000);
       } catch (e) {
         // Haydovchi kelmaydigan kodni kutib turmasin — darhol aytamiz
         this.logger.warn(`Qabul kodi yuborilmadi ${maskPhone(client.user.phone)}: ${e instanceof Error ? e.message : String(e)}`);
@@ -205,7 +225,7 @@ export class DeliveriesService {
 
   async dispute(a: AuthContext, id: string, input: DisputeInput) {
     const d = await this.get(a, id);
-    if (this.effectiveRole(a, d) !== 'QURUVCHI' && d.order.clientOrgId !== a.orgId) throw DomainError.forbidden();
+    if ((await this.effectiveRole(a, d)) !== 'QURUVCHI' && d.order.clientOrgId !== a.orgId) throw DomainError.forbidden();
     if (d.status !== 'UNLOADING') throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Faqat tushirish bosqichida e\'tiroz bildiriladi');
     const photoKeys = await this.storage.verifyKeys(a.userId, input.photoKeys, ['dispute', 'report']);
     const now = new Date();
@@ -239,11 +259,47 @@ export class DeliveriesService {
 
   // ───────── ichki ─────────
 
-  private effectiveRole(a: AuthContext, d: { driver: { userId: string } | null; order: { plantOrgId: string; clientOrgId: string } }): Role {
-    if (d.driver?.userId === a.userId && (a.role === 'HAYDOVCHI' || !a.orgId)) return 'HAYDOVCHI';
+  private async effectiveRole(a: AuthContext, d: { driver: { userId: string } | null; order: { plantOrgId: string; clientOrgId: string } }): Promise<Role> {
+    if (d.driver?.userId === a.userId && (a.role === 'HAYDOVCHI' || !a.orgId)) {
+      // Tizim (geofence/SLA) emas, haqiqiy haydovchi bo'lsa — zavodda hali faol a'zo ekani tekshiriladi:
+      // X-Org-Id'siz so'rovda rol guard'i ishlamaydi, o'chirilgan haydovchi eski reysini boshqarishda davom etardi
+      if (a.sessionId !== 'system') {
+        const active = await this.prisma.membership.count({ where: { userId: a.userId, organizationId: d.order.plantOrgId, role: 'HAYDOVCHI', isActive: true } });
+        if (!active) throw DomainError.forbidden("Haydovchi a'zoligi faol emas");
+      }
+      return 'HAYDOVCHI';
+    }
     if (a.role === 'TADBIRKOR' && d.order.plantOrgId === a.orgId) return 'TADBIRKOR';
     if (a.orgId === d.order.clientOrgId) return 'QURUVCHI';
     throw DomainError.forbidden();
+  }
+
+  /**
+   * Qabul qilingan hajm yuklangandan (yoki rejadan) ko'p bo'lolmaydi: faktura shu hajm bo'yicha yoziladi —
+   * haydovchi qabul kodi bilan yakunlaganda xato/ataylab katta son mijozga ortiqcha schyot bo'lardi.
+   */
+  private assertAcceptedM3(d: { loadedM3: Prisma.Decimal | null; plannedM3: Prisma.Decimal }, acceptedM3: number): Prisma.Decimal {
+    const maxM3 = Prisma.Decimal.max(d.loadedM3 ?? d.plannedM3, d.plannedM3);
+    const v = new Prisma.Decimal(acceptedM3);
+    if (v.gt(maxM3)) {
+      throw new DomainError('VALIDATION', `Qabul qilingan hajm ${maxM3.toString()} m³ dan oshmasin`, { acceptedM3, maxM3: maxM3.toNumber() });
+    }
+    return v;
+  }
+
+  /**
+   * Qabul kodi tekshiruvi: muddat (30 daq) va urinishlar (5). Hisoblagich argon2'dan OLDIN atomar oshiriladi
+   * (`updateMany where attempts < 5`) — parallel so'rovlar bilan limitni aylanib o'tib bo'lmaydi.
+   */
+  private async verifyAcceptOtp(d: { id: string; acceptOtpHash: string | null; acceptOtpExpiresAt: Date | null }, otpCode?: string) {
+    if (!otpCode || !d.acceptOtpHash) throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', "Qabul kodi noto'g'ri");
+    if (!d.acceptOtpExpiresAt || d.acceptOtpExpiresAt < new Date()) throw new DomainError('AUTH_OTP_EXPIRED', "Qabul kodi muddati tugagan — yangi kod so'rang");
+    const claimed = await this.prisma.delivery.updateMany({
+      where: { id: d.id, acceptOtpAttempts: { lt: ACCEPT_OTP_MAX_ATTEMPTS } },
+      data: { acceptOtpAttempts: { increment: 1 } },
+    });
+    if (claimed.count !== 1) throw new DomainError('AUTH_OTP_INVALID', "Urinishlar tugadi — yangi kod so'rang");
+    if (!(await argon2.verify(d.acceptOtpHash, otpCode))) throw new DomainError('DELIVERY_SIGNATURE_REQUIRED', "Qabul kodi noto'g'ri");
   }
 
   private async afterTransition(
@@ -271,10 +327,32 @@ export class DeliveriesService {
       }
     }
     if (to === 'LOADING') await this.orders.systemTransition(d.orderId, 'IN_PROGRESS', byUserId);
-    if (to === 'COMPLETED') {
-      this.events.emit(DELIVERY_EVENTS.completed, { deliveryId: d.id, orderId: d.orderId });
-      const open = await this.prisma.delivery.count({ where: { orderId: d.orderId, status: { notIn: ['COMPLETED', 'CANCELLED', 'FAILED'] } } });
-      if (open === 0) await this.orders.systemTransition(d.orderId, 'DELIVERED', byUserId);
+    if (to === 'COMPLETED') this.events.emit(DELIVERY_EVENTS.completed, { deliveryId: d.id, orderId: d.orderId });
+    // Buyurtma yopilishi oxirgi reys COMPLETED bo'lganda EMAS, oxirgi reys YOPILGANDA tekshiriladi:
+    // oxirgisi FAILED/CANCELLED bo'lsa buyurtma IN_PROGRESS da osilib, faktura chiqmay qolardi
+    if (to === 'COMPLETED' || to === 'FAILED' || to === 'CANCELLED') {
+      const [open, completed] = await Promise.all([
+        this.prisma.delivery.count({ where: { orderId: d.orderId, status: { notIn: ['COMPLETED', 'CANCELLED', 'FAILED'] } } }),
+        this.prisma.delivery.count({ where: { orderId: d.orderId, status: 'COMPLETED' } }),
+      ]);
+      if (open === 0) {
+        // Birorta reys yetkazilgan — DELIVERED (faktura); birortasi ham yo'q — buyurtma bekor
+        await this.orders.systemTransition(d.orderId, completed > 0 ? 'DELIVERED' : 'CANCELLED', byUserId);
+      }
     }
   }
+}
+
+/** Qabul kodi umri va urinishlar — `sign` va `requestAcceptOtp` uchun umumiy. */
+const ACCEPT_OTP_TTL_MS = 30 * 60_000;
+const ACCEPT_OTP_MAX_ATTEMPTS = 5;
+
+/**
+ * Mijoz yuborgan vaqt: kelajak qabul qilinmaydi; oflayn navbat uchun o'tmish mumkin, lekin 24 soatdan
+ * ko'p emas — aks holda haydovchi SLA/vaqt tamg'alarini xohlagancha orqaga surardi.
+ */
+export function clampClientTime(at: Date, now = new Date()): Date {
+  if (at > now) return now;
+  const floor = new Date(now.getTime() - 24 * 3600_000);
+  return at < floor ? floor : at;
 }

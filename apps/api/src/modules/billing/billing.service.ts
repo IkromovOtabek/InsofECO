@@ -7,6 +7,11 @@ import { AuthContext } from '../../common/auth/decorators';
 
 const D = Prisma.Decimal;
 
+/** Faktura holati har doim summalardan kelib chiqadi (to'lov, yangi qator, yetkazish haqi — har qanday o'zgarishdan keyin). */
+export function invoiceStatusFor(amount: Prisma.Decimal, paidAmount: Prisma.Decimal): 'OPEN' | 'PARTIALLY_PAID' | 'PAID' {
+  return amount.gt(0) && paidAmount.gte(amount) ? 'PAID' : paidAmount.gt(0) ? 'PARTIALLY_PAID' : 'OPEN';
+}
+
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
@@ -37,39 +42,76 @@ export class BillingService {
       const line = await tx.invoiceLine.create({
         data: { invoiceId: invoice.id, deliveryId, description: `Reys ${d.sequence}: ${items.map((i) => i.gradeSnapshot).join('/')}`, quantityM3: qty, unitPrice, amount },
       });
-      await tx.invoice.update({ where: { id: invoice.id }, data: { amount: { increment: amount } } });
+      const inv = await tx.invoice.update({ where: { id: invoice.id }, data: { amount: { increment: amount } } });
+      // Summa o'sdi — "PAID" bo'lib qolgan faktura yana qarzdor bo'lishi mumkin
+      await tx.invoice.update({ where: { id: inv.id }, data: { status: invoiceStatusFor(inv.amount, inv.paidAmount) } });
       return line;
+    }).catch((e: unknown) => {
+      // Parallel ikki chaqiruv (hodisa + reconcile): qator unique(deliveryId) — ikkinchisi mavjudini qaytaradi
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return this.prisma.invoiceLine.findUnique({ where: { deliveryId } });
+      throw e;
     });
   }
 
-  /** order.delivered → yetkazish haqi qo'shiladi va faktura chiqariladi. */
+  /**
+   * order.delivered → yetkazish haqi qo'shiladi va faktura chiqariladi.
+   *
+   * Avval yarashtirish (reconcile): yakunlangan, lekin qatori yo'q reyslar qo'shiladi. `delivery.completed` va
+   * `order.delivered` ikkalasi asinxron hodisa — tartibi kafolatlanmagan, listener xato bersa qayta urinish yo'q edi.
+   * Shu sabab bir reysli buyurtmada faktura hali yaratilmay turib bu yerga kelinsa, yetkazish haqi abadiy qo'shilmay qolardi.
+   */
   async issueForOrder(orderId: string) {
-    const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    const order = await this.prisma.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { deliveries: { where: { status: 'COMPLETED', invoiceLine: null }, select: { id: true } } },
+    });
+    if (order.externalRef) return null;
+    for (const d of order.deliveries ?? []) await this.addDeliveryLine(d.id);
     const invoice = await this.prisma.invoice.findUnique({ where: { orderId } });
-    if (!invoice || order.externalRef) return null;
+    if (!invoice) return null; // birorta hisobga yoziladigan reys yo'q
     // Idempotent: order.delivered qayta kelsa (qayta urinish, poyga) yetkazish haqi ikkinchi marta qo'shilmaydi
     if (invoice.issuedAt) return invoice;
-    await this.prisma.invoice.updateMany({
+    const r = await this.prisma.invoice.updateMany({
       where: { id: invoice.id, issuedAt: null },
       data: { amount: { increment: order.deliveryFee }, issuedAt: new Date() },
     });
-    return this.prisma.invoice.findUnique({ where: { id: invoice.id } });
+    const inv = await this.prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } });
+    if (r.count === 1) await this.prisma.invoice.update({ where: { id: inv.id }, data: { status: invoiceStatusFor(inv.amount, inv.paidAmount) } });
+    return inv;
   }
 
-  /** Idempotent to'lov: externalId unique (tashqi tizim, masalan ERP, qayta yuborsa ham bir marta). */
+  /**
+   * Idempotent to'lov: externalId unique (tashqi tizim, masalan ERP, yoki kassadagi Idempotency-Key qayta yuborsa ham bir marta).
+   * Qoldiqdan ortiq to'lov qabul qilinmaydi — "ikki marta bosish" yoki xato summa qarzni manfiyga tushirmasin.
+   */
   async recordPayment(input: { invoiceId: string; method: PaymentMethod; amount: number; externalId?: string; byUserId?: string }) {
     if (input.externalId) {
       const exists = await this.prisma.payment.findUnique({ where: { externalId: input.externalId } });
       if (exists) return exists;
     }
+    const amount = new D(input.amount).toDecimalPlaces(2);
+    if (amount.lte(0)) throw new DomainError('VALIDATION', "To'lov summasi musbat bo'lsin");
     return this.prisma.$transaction(async (tx) => {
-      const target = await tx.invoice.findUniqueOrThrow({ where: { id: input.invoiceId }, select: { status: true } });
-      if (target.status === 'VOID') throw new DomainError('VALIDATION', 'Faktura bekor qilingan — to\'lov qabul qilinmaydi');
-      const p = await tx.payment.create({ data: { invoiceId: input.invoiceId, method: input.method, amount: new D(input.amount), externalId: input.externalId, recordedByUserId: input.byUserId } });
-      const inv = await tx.invoice.update({ where: { id: input.invoiceId }, data: { paidAmount: { increment: p.amount } } });
-      const status = inv.paidAmount.gte(inv.amount) ? 'PAID' : inv.paidAmount.gt(0) ? 'PARTIALLY_PAID' : 'OPEN';
-      await tx.invoice.update({ where: { id: inv.id }, data: { status } });
+      const target = await tx.invoice.findUniqueOrThrow({ where: { id: input.invoiceId }, select: { status: true, amount: true, paidAmount: true } });
+      if (target.status === 'VOID') throw new DomainError('VALIDATION', "Faktura bekor qilingan — to'lov qabul qilinmaydi");
+      const remaining = target.amount.minus(target.paidAmount);
+      if (amount.gt(remaining)) {
+        throw new DomainError('VALIDATION', `To'lov qoldiqdan (${remaining.toString()}) ko'p bo'lolmaydi`, { amount: amount.toNumber(), remaining: remaining.toNumber() });
+      }
+      const p = await tx.payment.create({ data: { invoiceId: input.invoiceId, method: input.method, amount, externalId: input.externalId, recordedByUserId: input.byUserId } });
+      // Atomar: qoldiq tekshiruvi bilan yozuv orasida boshqa to'lov tushgan bo'lsa — ortiqcha o'tib ketmaydi
+      const r = await tx.invoice.updateMany({ where: { id: input.invoiceId, paidAmount: { lte: target.amount.minus(amount) } }, data: { paidAmount: { increment: amount } } });
+      if (r.count !== 1) throw new DomainError('VALIDATION', "To'lov qoldiqdan ko'p — faktura shu orada to'langan");
+      const inv = await tx.invoice.findUniqueOrThrow({ where: { id: input.invoiceId } });
+      await tx.invoice.update({ where: { id: inv.id }, data: { status: invoiceStatusFor(inv.amount, inv.paidAmount) } });
       return p;
+    }).catch(async (e: unknown) => {
+      // Bir xil externalId bilan parallel takror — birinchisi yozilgan, ikkinchisiga o'sha
+      if (input.externalId && e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const exists = await this.prisma.payment.findUnique({ where: { externalId: input.externalId } });
+        if (exists) return exists;
+      }
+      throw e;
     });
   }
 
@@ -94,9 +136,15 @@ export class BillingService {
     return { totalDebt, clients: [...byClient.values()].sort((x, y) => y.debt.comparedTo(x.debt)), invoices: invoices.slice(0, 50) };
   }
 
-  async cashPayment(a: AuthContext, invoiceId: string, amount: number) {
-    const inv = await this.prisma.invoice.findFirst({ where: { id: invoiceId, order: { plantOrgId: a.orgId! } } });
+  /**
+   * Kassa: naqd to'lov. ERP buyurtmasining schyoti ERP kassasida yopiladi (u paidAmount'ni o'zi yuboradi) —
+   * bu yerda qabul qilinsa ERP keyingi sinxronda ustidan yozib, pul "yo'qolardi".
+   * `idempotencyKey` (ilovadagi Idempotency-Key) → externalId: tarmoq uzilib qayta yuborilsa ikkinchi to'lov yozilmaydi.
+   */
+  async cashPayment(a: AuthContext, invoiceId: string, amount: number, idempotencyKey?: string) {
+    const inv = await this.prisma.invoice.findFirst({ where: { id: invoiceId, order: { plantOrgId: a.orgId! } }, include: { order: { select: { externalRef: true } } } });
     if (!inv) throw DomainError.notFound('Faktura');
-    return this.recordPayment({ invoiceId, method: 'CASH', amount, byUserId: a.userId });
+    if (inv.order.externalRef) throw new DomainError('VALIDATION', "Bu schyot ERP'da yuritiladi — to'lovni ERP kassasida qabul qiling");
+    return this.recordPayment({ invoiceId, method: 'CASH', amount, byUserId: a.userId, externalId: idempotencyKey ? `cash:${a.orgId}:${idempotencyKey}` : undefined });
   }
 }

@@ -19,7 +19,7 @@ function setup(gateway: { enabled: boolean; sendCode?: jest.Mock }, allow = true
   const redis = { allow: jest.fn().mockResolvedValue(allow), client: {} };
   const telegram = { enabled: gateway.enabled, sendCode: gateway.sendCode ?? jest.fn().mockResolvedValue(undefined) };
   const otp = new OtpService(prisma as never, redis as never, telegram as never);
-  const auth = new AuthService(prisma as never, {} as never, otp, { emit: jest.fn() } as never, redis as never);
+  const auth = new AuthService(prisma as never, {} as never, otp, { emit: jest.fn() } as never, redis as never, { revoke: jest.fn() } as never);
   return { otp, auth, prisma, redis, telegram };
 }
 

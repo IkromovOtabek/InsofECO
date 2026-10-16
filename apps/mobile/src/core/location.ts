@@ -1,11 +1,13 @@
 import { brand } from '@/design/tokens';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { DEFAULT_RULES } from '@insof/shared';
 import { kv } from './storage';
 import { api } from './api';
 import { discloseBackgroundLocation } from './bg-disclosure';
+import { dialog } from '@/design/ui';
+import i18n from './i18n';
 
 /**
  * Fon GPS — faqat faol reys davomida (batareya + shaxsiy hayot).
@@ -166,11 +168,41 @@ export async function gpsHeartbeat() {
   await flushGps({ ping: true });
 }
 
-export async function startTracking(deliveryId: string, kind: TrackKind = 'delivery') {
+/**
+ * Kuzatuvni yoqish natijasi (ECO va ERP reyslari uchun bir xil):
+ *  `ok` — fon ruxsati bor; `bg-denied` — faqat ilova ochiq paytda (fon rad etilgan, yana so'rasa bo'ladi);
+ *  `fg-denied` — joylashuv umuman rad etilgan; `*-blocked` — tizim endi so'ramaydi, faqat Sozlamalardan;
+ *  `failed` — GPS xizmati ishga tushmadi (xizmat o'chiq).
+ */
+export type TrackStart = 'ok' | 'bg-denied' | 'bg-blocked' | 'fg-denied' | 'fg-blocked' | 'failed';
+
+/** Haydovchiga ko'rsatiladigan izoh; `null` — hammasi joyida. `settings` — faqat tizim Sozlamalaridan yoqiladi. */
+export function trackStartNote(r: TrackStart): { text: string; settings: boolean } | null {
+  switch (r) {
+    case 'ok': return null;
+    case 'bg-denied': return { text: 'Joylashuv fon rejimida ruxsat etilmagan — ilova yopilsa iz uzilib qoladi.', settings: false };
+    case 'bg-blocked': return { text: "Fon joylashuvi o'chirilgan va tizim endi so'ramaydi. Sozlamalar → Joylashuv → «Har doim» ni tanlang, aks holda ilova yopilganda iz uzilib qoladi.", settings: true };
+    case 'fg-denied': return { text: "Joylashuvga ruxsat berilmadi — mashina xaritada ko'rinmaydi va obyektga yetganingiz tasdiqlanmaydi. Ruxsat bering.", settings: false };
+    case 'fg-blocked': return { text: "Joylashuvga ruxsat o'chirilgan va tizim endi so'ramaydi. Sozlamalar → Joylashuv bo'limidan yoqing.", settings: true };
+    case 'failed': return { text: "Joylashuv xizmati ishga tushmadi — telefonda GPS yoqilganini tekshiring.", settings: false };
+  }
+}
+
+/** Izohni oyna bilan ko'rsatadi; bloklangan bo'lsa «Sozlamalar» tugmasi tizim sozlamalarini ochadi. `ok` — hech narsa. */
+export function showTrackStartNote(r: TrackStart) {
+  const n = trackStartNote(r);
+  if (!n) return;
+  dialog('Joylashuv', n.text, n.settings ? [{ text: 'Sozlamalar', onPress: () => void Linking.openSettings() }, { text: i18n.t('ui.close'), style: 'cancel' }] : undefined, { tone: 'warning', icon: 'map-pin' });
+}
+
+/** Ruxsat javobi → natija: berilgan / rad etilgan (yana so'rasa bo'ladi) / bloklangan. */
+export const permissionResult = (p: Location.PermissionResponse, scope: 'fg' | 'bg'): TrackStart => (p.status === 'granted' ? 'ok' : p.canAskAgain ? `${scope}-denied` : `${scope}-blocked`);
+
+export async function startTracking(deliveryId: string, kind: TrackKind = 'delivery'): Promise<TrackStart> {
   // Tushuntirish oynasi tizim so'rovlaridan oldin — Google Play talabi (bg-disclosure.ts)
   const allowBg = await discloseBackgroundLocation(`eco:${deliveryId}`, 'dispetcher va quruvchiga');
   const fg = await Location.requestForegroundPermissionsAsync();
-  if (fg.status !== 'granted') return false;
+  if (fg.status !== 'granted') return permissionResult(fg, 'fg');
   const bg = allowBg ? await Location.requestBackgroundPermissionsAsync() : await Location.getBackgroundPermissionsAsync();
   // Boshqa reysning yuborilmagan nuqtalari yangi reys iziga tushmasin
   const prev = kv.getString(ACTIVE);
@@ -186,9 +218,9 @@ export async function startTracking(deliveryId: string, kind: TrackKind = 'deliv
       await Location.startLocationUpdatesAsync(GPS_TASK, trackingOptions('moving'));
     }
   } catch {
-    return false;
+    return 'failed';
   }
-  return bg.status === 'granted';
+  return permissionResult(bg, 'bg');
 }
 
 /** `onlyId` berilsa — faqat shu reys kuzatilayotgan bo'lsa to'xtatadi (boshqa reysga tegmaydi). */

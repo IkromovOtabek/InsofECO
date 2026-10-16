@@ -15,6 +15,19 @@ const clean = (v?: string | null) => (v && v.trim() ? v.trim().replace(/\/+$/, '
 
 const apiUrl = clean(process.env.EXPO_PUBLIC_API_URL) ?? clean(extra?.apiUrl) ?? 'http://localhost:3010';
 const erpUrl = clean(process.env.EXPO_PUBLIC_ERP_URL) ?? clean(extra?.erpUrl) ?? 'http://localhost:3000';
+
+/**
+ * Production to'plam (NODE_ENV=production: do'kon build'i, OTA, release APK) lokal yoki LAN manzil bilan ochilmasin —
+ * u serverga umuman ulanmaydi va foydalanuvchi buni "ilova ishlamayapti" deb biladi. Shuning uchun ochilishdayoq
+ * aniq xato (yig'ish paytidagi tekshiruv — app.config.ts). Dev (simulyator, dev-client) o'zgarishsiz.
+ * `APP_ENV` ish vaqtida faqat `EXPO_PUBLIC_` prefiksi bilan to'plamga tushadi.
+ */
+const LOCAL_URL = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(?=[:/]|$)/i;
+if (process.env.NODE_ENV === 'production' || process.env.EXPO_PUBLIC_APP_ENV === 'production') {
+  for (const [name, v] of [['EXPO_PUBLIC_API_URL', apiUrl], ['EXPO_PUBLIC_ERP_URL', erpUrl]] as const) {
+    if (LOCAL_URL.test(v)) throw new Error(`[config] ${name}="${v}" — production to'plam uchun yaroqsiz (localhost / LAN IP). To'plam noto'g'ri muhit bilan yig'ilgan.`);
+  }
+}
 /**
  * Majburiy yangilanish ekrani uchun zaxira havolalar (server 426 javobida havola bermasa).
  * Android — Play Market sahifasi (paket nomi `app.config.ts` bilan bir xil). iOS — App Store havolasi

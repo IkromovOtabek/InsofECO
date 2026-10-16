@@ -31,7 +31,7 @@ function setup() {
     organization: { findFirst: jest.fn() },
     $transaction: jest.fn().mockRejectedValue(new Error('TX_REACHED')),
   };
-  const svc = new AuthService(prisma as never, {} as never, otp, { emit: jest.fn() } as never, redis as never);
+  const svc = new AuthService(prisma as never, {} as never, otp, { emit: jest.fn() } as never, redis as never, { revoke: jest.fn() } as never);
   return { svc, otp, prisma, redis };
 }
 

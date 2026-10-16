@@ -8,7 +8,8 @@ import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
 import { useSession } from '@/core/session';
 import { EcoRole, ROLE_LABEL, useAdminAction, useAdminOrgs, useAdminUser } from '@/features/admin/api';
-import { ReasonConfirm, useDebounced } from '@/features/admin/ui';
+import { ReasonConfirm } from '@/features/admin/ui';
+import { useDebounced } from '@/shared/hooks';
 
 type Ask =
   | { kind: 'block' }

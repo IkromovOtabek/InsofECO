@@ -429,6 +429,9 @@ model Delivery {
   waybillPhotoKey String?
   /// Quruvchi ilovasiz bo'lsa — mijozning Telegram'iga (Gateway) yuborilgan qabul kodi xeshi
   acceptOtpHash  String?
+  /// Qabul kodi muddati (30 daq) va noto'g'ri urinishlar (5 tadan keyin yangi kod kerak) — terib topishdan himoya
+  acceptOtpExpiresAt DateTime?
+  acceptOtpAttempts  Int       @default(0)
   disputeReason  String?
   disputeComment String?
   /// Tashqi tizim (Insof ERP) nakladnoy raqami — integratsiya orqali yaratilgan reyslar
@@ -1058,6 +1061,9 @@ model Review {
   shipment  Shipment?  @relation(fields: [shipmentId], references: [id])
 
   @@index([targetUserId, createdAt])
+  /// Bir muallif bir ish/yukka bitta baho (NULL'lar unique'ga kirmaydi — bu Postgres xususiyati)
+  @@unique([authorUserId, workOrderId])
+  @@unique([authorUserId, shipmentId])
 }
 
 model Document {

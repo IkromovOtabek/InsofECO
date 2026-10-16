@@ -8,7 +8,7 @@ import { LiveItem, LiveList } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
 import { EcoRole, ROLE_LABEL, useAdminUsers } from '@/features/admin/api';
-import { useDebounced } from '@/features/admin/ui';
+import { useDebounced } from '@/shared/hooks';
 
 type Filter = 'all' | EcoRole | 'blocked';
 

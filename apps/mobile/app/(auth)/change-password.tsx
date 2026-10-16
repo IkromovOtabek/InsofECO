@@ -5,7 +5,7 @@ import { size, space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { erpAuth } from '@/core/erp';
-import { useSession } from '@/core/session';
+import { setEcoTokens, useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
 import { AuthIcon, AuthScreen, ErrorBox, InfoCard, PrimaryButton, Requirements, Strength, Title, strengthOf } from '@/features/auth/ui';
 import { dialog } from '@/design/ui';
@@ -55,7 +55,9 @@ export default function ChangePassword() {
 
     setLoading(true);
     try {
-      await authApi.changePassword(current, next);
+      const r = await authApi.changePassword(current, next);
+      // Server joriy seansni ham yopadi va yangi juftlik beradi — saqlamasak keyingi so'rov 401 bilan chiqarib yuborardi
+      if (r.accessToken && r.refreshToken) await setEcoTokens({ accessToken: r.accessToken, refreshToken: r.refreshToken });
       dialog('Saqlandi', 'Parol o\'zgartirildi. Boshqa qurilmalardagi seanslar yopildi.', [
         { text: 'Yopish', onPress: () => router.back() },
       ]);

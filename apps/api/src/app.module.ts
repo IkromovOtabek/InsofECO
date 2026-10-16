@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import { LoggerModule } from 'nestjs-pino';
+import { isDevEnv } from './common/env';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { TelegramGatewayModule } from './infra/telegram-gateway/telegram-gateway.module';
@@ -46,7 +47,7 @@ import { AppVersionModule } from './common/app-version/app-version.middleware';
         level: process.env.LOG_LEVEL ?? 'info',
         // ERP integratsiyasining API kaliti ham log'ga tushmasin (authorization ham)
         redact: ['req.headers.authorization', 'req.headers["x-api-key"]', 'req.headers.cookie', 'req.body.phone', 'req.body.code'],
-        transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+        transport: isDevEnv() ? { target: 'pino-pretty' } : undefined,
       },
     }),
     EventEmitterModule.forRoot(),
@@ -84,7 +85,7 @@ import { AppVersionModule } from './common/app-version/app-version.middleware';
   controllers: [HealthController],
   providers: [
     // Dev/smoke-test uchun o'chirish mumkin; prod'da har doim yoqiq
-    ...(process.env.THROTTLE_DISABLED === 'true' && process.env.NODE_ENV !== 'production' ? [] : [{ provide: APP_GUARD, useClass: ThrottlerGuard }]),
+    ...(process.env.THROTTLE_DISABLED === 'true' && isDevEnv() ? [] : [{ provide: APP_GUARD, useClass: ThrottlerGuard }]),
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PolicyGuard },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },

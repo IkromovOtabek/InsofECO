@@ -41,6 +41,8 @@ export const queryClient = new QueryClient({
        * qiymatini beradi va u shu yerdagini bosib o'tadi.
        */
       refetchInterval: 30_000,
+      /** Fonda (AppState != active) davriy so'rov yurmaydi — batareya va trafik; qaytganda `refetchOnWindowFocus` darhol yangilaydi. */
+      refetchIntervalInBackground: false,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       /** Ekran qayta ochilganda eski ma'lumot ko'rsatilib, orqada yangilanadi. */

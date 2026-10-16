@@ -2,6 +2,7 @@ import '@/core/i18n';
 import { useErpHeartbeat } from '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
 import '@/core/location'; // ECO reysining fon GPS vazifasi (TaskManager.defineTask) — xuddi shunday
 import React, { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -214,12 +215,20 @@ export default function RootLayout() {
   const [fontsReady] = useFonts(APP_FONTS);
   // ERP reysi faol bo'lsa — ilova ochiq turganda 60 s da bir "tirikman" (iOS turgan telefonda fon vazifasi jim qolishi mumkin)
   useErpHeartbeat();
-  // SecureStore (Android Keystore) xatosi sovuq startni "loading" da abadiy qotirmasin — mehmon sifatida ochiladi
-  useEffect(() => { hydrate().catch(() => useSession.setState({ status: 'anon', kind: null })); }, [hydrate]);
+  // SecureStore (Android Keystore / iOS Keychain) vaqtincha o'qilmasa (qulflangan telefon, fonda uyg'otilgan ilova) —
+  // mehmonga O'TKAZILMAYDI (hisob "yo'qolib", kesh va GPS tozalanardi): holat "loading" da qoladi (ochilish
+  // ekrani turadi), ilova faol bo'lganda qayta o'qiladi.
+  useEffect(() => {
+    const run = () => hydrate().catch(() => {});
+    void run();
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active' && useSession.getState().status === 'loading') void run(); });
+    return () => sub.remove();
+  }, [hydrate]);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* Superadmin ma'lumoti (barcha foydalanuvchilar, telefonlar) diskka yozilmaydi — faqat xotirada */}
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000, dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.queryKey[0] !== 'admin' && q.queryKey[0] !== 'drive' } }}>
+      {/* Superadmin ma'lumoti (barcha foydalanuvchilar, telefonlar) diskka yozilmaydi — faqat xotirada.
+          Rasm so'rovlari (`*-photo` — base64 data URI, yuzlab KB) ham: disk keshini shishirib, ochilishni sekinlashtiradi. */}
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 24 * 3600_000, dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === 'success' && q.queryKey[0] !== 'admin' && q.queryKey[0] !== 'drive' && !q.queryKey.some((k) => typeof k === 'string' && k.endsWith('-photo')) } }}>
         <ThemeProvider>
           <Gate />
           <PushRouting />

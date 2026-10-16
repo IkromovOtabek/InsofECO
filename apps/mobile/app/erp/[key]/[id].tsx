@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Badge, Button, Card, EmptyState, FitTxt, KVList, Timeline, Txt, statusTone } from '@/design/primitives';
@@ -13,6 +13,7 @@ import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
 import { useErpAction, useErpDetail } from '@/features/erp/api';
 import { flushErpGps, pushErpFix, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
+import { trackStartNote } from '@/core/location';
 import { erpAuth, erpPhotoData } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { confirmAtSite } from '@/features/address/site-check';
@@ -89,6 +90,9 @@ const SUCCESS_TITLE: Record<string, string> = {
 /** Haydovchi obyektda turgani tekshiriladigan amallar (server ham tekshiradi — bu darhol va tushunarli javob uchun). */
 const SITE_ACTIONS: Record<string, string> = { 'trip.arrived': 'Yetib keldim', 'trip.unloading': 'Tushirishni boshladim', 'trip.delivered': 'Yetkazdim' };
 
+/** Amaldan keyingi ogohlantirish; `settings` — faqat tizim Sozlamalaridan hal bo'ladi (oynada «Sozlamalar» tugmasi). */
+type EffectNote = { text: string; settings: boolean } | null;
+
 /** Hujjat turi — kartochka ustki yozuvi (demo "BETON M300 · 12 M³" o'rnida tur nomi). */
 const KIND_LABEL: Record<string, string> = {
   orders: 'Zayavka', approvals: 'Tasdiq', invoices: 'Schyot', payments: "To'lov", cashflow: 'Kirim-chiqim', trips: 'Reys',
@@ -139,20 +143,21 @@ export default function ErpDetail() {
    * Amaldan keyingi ish — serverdagi `effect` aytadi (kuzatuv, marshrut, navigatsiya).
    * Tartib muhim: marshrut ekrani ustiga chiqadi, shuning uchun kuzatuv avval yoqiladi.
    */
-  const applyEffect = async (a: ErpAction): Promise<string | null> => {
+  const applyEffect = async (a: ErpAction): Promise<EffectNote> => {
     const e = a.effect;
     if (!e) return null;
-    let note: string | null = null;
+    let note: EffectNote = null;
     if (e.track === 'start') {
-      const bg = await startErpTracking(id!);
-      if (!bg) note = 'Joylashuv fon rejimida ruxsat etilmagan — ilova yopilsa iz uzilib qoladi.';
+      // Ruxsat holati aniq aytiladi: fon rad etilgan / umuman rad etilgan / bloklangan (faqat Sozlamalardan)
+      const n = trackStartNote(await startErpTracking(id!));
+      if (n) note = n;
     }
     if (e.track === 'stop') await stopErpTracking();
     // Marshrut ilova ichida ko'rsatiladi; tashqi navigator faqat `route` bo'lmaganda
     // (eski server javobi) — haydovchini ilovadan olib chiqib ketmaslik uchun.
     if (e.route) router.push(`/yolda/${id}` as never);
     else if (e.navigate && !(await openNavigation(e.navigate.lat, e.navigate.lng, e.navigate.label))) {
-      note = note ?? 'Navigatsiya ilovasi topilmadi.';
+      note = note ?? { text: 'Navigatsiya ilovasi topilmadi.', settings: false };
     }
     return note;
   };
@@ -182,12 +187,15 @@ export default function ErpDetail() {
     // Shu yerdan pastda amal serverda BAJARILGAN. Effekt (kuzatuv, marshrut) xatosi "Bajarilmadi"
     // deb ko'rsatilmasligi kerak — aks holda haydovchi tugmani qayta bosib, amalni takrorlaydi.
     setForm(null);
-    let note: string | null = null;
-    try { note = await applyEffect(a); } catch { note = "Amal bajarildi, lekin joylashuv kuzatuvi yoki marshrut ochilmadi — kartochkani yangilang."; }
+    let note: EffectNote = null;
+    try { note = await applyEffect(a); } catch { note = { text: "Amal bajarildi, lekin joylashuv kuzatuvi yoki marshrut ochilmadi — kartochkani yangilang.", settings: false }; }
     const message = res?.message ?? null;
     const title = SUCCESS_TITLE[a.id] ?? 'Bajarildi';
-    // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi
-    if (note) dialog(message || SUCCESS_TITLE[a.id] ? title : 'Diqqat', message ? `${message}\n\n${note}` : note);
+    // Ogohlantirish bo'lsa o'qib chiqilishi kerak — toast o'zi yo'qolib ketadi. Ruxsat bloklangan bo'lsa — «Sozlamalar» tugmasi.
+    if (note) {
+      dialog(message || SUCCESS_TITLE[a.id] ? title : 'Diqqat', message ? `${message}\n\n${note.text}` : note.text,
+        note.settings ? [{ text: 'Sozlamalar', onPress: () => void Linking.openSettings() }, { text: i18n.t('ui.close'), style: 'cancel' }] : undefined);
+    }
     // Muhim amal (zayavka qabul qilindi) — server chek yuborsa, katta chek oynasi
     else if (res?.receipt) receipt.show(res.receipt);
     else if (message || SUCCESS_TITLE[a.id]) result.success(title, message || `${a.label} — qayd etildi`);

@@ -5,6 +5,7 @@ import { AccountService } from './account.service';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { TelegramLoginService } from './telegram-login.service';
+import { isDevEnv } from '../../common/env';
 
 const pem = (v?: string) => v?.replace(/\\n/g, '\n');
 
@@ -16,15 +17,15 @@ const pem = (v?: string) => v?.replace(/\\n/g, '\n');
  * ketaverardi — u kod ichida, ya'ni reponi ko'rgan odam istalgan foydalanuvchi nomidan token
  * yasay olardi. Endi bunday holatda server umuman ko'tarilmaydi.
  */
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_PRIVATE_KEY) {
-  throw new Error("JWT_PRIVATE_KEY yo'q. Prodda RS256 kalitlari majburiy — .env ga qo'shing.");
+if (!isDevEnv() && !process.env.JWT_PRIVATE_KEY) {
+  throw new Error("JWT_PRIVATE_KEY yo'q. Prodda RS256 kalitlari majburiy — .env ga qo'shing (yoki NODE_ENV=development).");
 }
 
 @Global()
 @Module({
   imports: [
     JwtModule.register({
-      // Dev: kalit bo'lmasa HS256 fallback (faqat NODE_ENV !== production)
+      // Dev: kalit bo'lmasa HS256 fallback (faqat NODE_ENV=development/test — yuqoridagi tekshiruv)
       ...(process.env.JWT_PRIVATE_KEY
         ? {
             privateKey: pem(process.env.JWT_PRIVATE_KEY),

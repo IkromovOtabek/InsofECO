@@ -34,3 +34,10 @@ export function usePollInterval<T extends number | false | undefined>(ms: T): T 
   }, [nav]);
   return focused ? ms : false;
 }
+
+/** Qidiruv kiritilishi tugagach (350 ms) so'raladi — har harfda serverga bormaydi. */
+export function useDebounced<T>(v: T, ms = 350) {
+  const [d, setD] = useState(v);
+  useEffect(() => { const t = setTimeout(() => setD(v), ms); return () => clearTimeout(t); }, [v, ms]);
+  return d;
+}

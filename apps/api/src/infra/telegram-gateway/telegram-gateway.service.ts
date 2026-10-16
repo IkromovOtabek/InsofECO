@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isDevEnv } from '../../common/env';
 
 /**
- * Dev/test rejimi: Gateway sozlanmagan va prod emas — hech narsa yuborilmaydi, kod doimiy
- * (OTP `000000`, qabul kodi `0000`). Prodda (NODE_ENV=production) hech qachon.
+ * Dev/test rejimi: Gateway sozlanmagan va NODE_ENV aniq development/test — hech narsa yuborilmaydi, kod doimiy
+ * (OTP `000000`, qabul kodi `000000`). NODE_ENV bo'sh yoki production — hech qachon.
  */
-export const devCodeAllowed = (gatewayEnabled: boolean) => !gatewayEnabled && process.env.NODE_ENV !== 'production';
+export const devCodeAllowed = (gatewayEnabled: boolean) => !gatewayEnabled && isDevEnv();
 
 /** Raqam qisman yashiriladi — jurnalda to'liq telefon va kodning o'zi yozilmaydi. */
 export const maskPhone = (phone: string) => `${phone.slice(0, 7)}***`;

@@ -7,7 +7,7 @@ import { kv } from './storage';
 import { erpApi } from './erp';
 import { ApiException } from './api';
 import { discloseBackgroundLocation } from './bg-disclosure';
-import { nextGpsMode, type GpsMode } from './location';
+import { nextGpsMode, permissionResult, type GpsMode, type TrackStart } from './location';
 import {
   appendPoints, heartbeatDue, runFlush, stopOf, toTrackPoint, trackBody,
   type TrackBuffer, type TrackPoint,
@@ -237,12 +237,12 @@ export async function refreshErpPosition(tripId: string): Promise<boolean> {
   }
 }
 
-/** Reys boshlanganda. `false` — fon ruxsati berilmagan: ilova ochiq turganda ishlaydi. */
-export async function startErpTracking(tripId: string): Promise<boolean> {
+/** Reys boshlanganda. `ok` dan boshqasi — ruxsat yetishmaydi (`trackStartNote` izohlaydi); `bg-denied` da ilova ochiq turganda ishlaydi. */
+export async function startErpTracking(tripId: string): Promise<TrackStart> {
   // Tushuntirish oynasi tizim so'rovlaridan oldin — Google Play talabi (bg-disclosure.ts)
   const allowBg = await discloseBackgroundLocation(`erp:${tripId}`, 'logistika bo\'limiga');
   const fg = await Location.requestForegroundPermissionsAsync();
-  if (fg.status !== 'granted') return false;
+  if (fg.status !== 'granted') return permissionResult(fg, 'fg');
   const bg = allowBg ? await Location.requestBackgroundPermissionsAsync() : await Location.getBackgroundPermissionsAsync();
   // Boshqa reysning yuborilmagan nuqtalari — o'z reysi bilan yuboriladi; ketmasa tashlanadi (yangi izga tushmasin)
   const old = readBuf();
@@ -260,9 +260,9 @@ export async function startErpTracking(tripId: string): Promise<boolean> {
     }
   } catch {
     // Fon kuzatuvi ishga tushmadi (iOS'da "Doimo" yo'q, Android'da GPS o'chiq) — reys baribir davom etadi
-    return false;
+    return 'failed';
   }
-  return bg.status === 'granted';
+  return permissionResult(bg, 'bg');
 }
 
 /**

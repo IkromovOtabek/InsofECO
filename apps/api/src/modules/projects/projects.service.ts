@@ -69,6 +69,7 @@ export class ProjectsService {
   // ───── Vazifalar ─────
   async createTask(a: AuthContext, projectId: string, input: z.infer<typeof TaskCreateSchema>) {
     await this.own(a, projectId);
+    await this.assertAssignee(a, input.assigneeUserId);
     const count = await this.prisma.task.count({ where: { projectId } });
     return this.prisma.task.create({ data: { projectId, ...input, sortOrder: count } });
   }
@@ -83,10 +84,18 @@ export class ProjectsService {
       input = { status, photoKeys, comment };
     }
     if (input.photoKeys) input = { ...input, photoKeys: await this.storage.verifyKeys(a.userId, input.photoKeys, ['report'], t.photoKeys) };
+    await this.assertAssignee(a, input.assigneeUserId);
     const updated = await this.prisma.task.update({ where: { id: taskId }, data: { ...input, ...(input.status === 'DONE' ? { completedAt: new Date() } : {}) } });
     await this.recalcProgress(t.projectId);
     if (input.status === 'REVIEW') this.events.emit('task.submitted', { taskId, projectId: t.projectId, byUserId: a.userId, orgId: a.orgId });
     return updated;
+  }
+
+  /** Vazifa faqat o'z tashkilotining faol a'zosiga biriktiriladi (ilgari istalgan userId o'tib ketardi). */
+  private async assertAssignee(a: AuthContext, userId?: string | null) {
+    if (!userId) return;
+    const m = await this.prisma.membership.count({ where: { userId, organizationId: a.orgId!, isActive: true } });
+    if (!m) throw new DomainError('NOT_MEMBER', "Bu foydalanuvchi tashkilot a'zosi emas");
   }
 
   myTasks(a: AuthContext) {

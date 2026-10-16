@@ -14,7 +14,7 @@ import { ApiException } from '@/core/api';
 import { openInNavigator } from '@/core/navigate';
 import { Circle, MapUnavailable, MapView, Marker, DriverMarker, Polyline, type MapHandle } from '@/core/map';
 import { useLiveRoute } from '@/core/route';
-import { SITE_RADIUS_M, type Fix as SiteFix } from '@/core/location';
+import { SITE_RADIUS_M, showTrackStartNote, type Fix as SiteFix } from '@/core/location';
 import { confirmAtSite } from '@/features/address/site-check';
 import { activeErpTripId, flushErpGps, pushErpFix, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { alongRoute, arrivalClock, distanceLabel, durationLabel, haversineMeters, type LatLng } from '@/core/geo';
@@ -162,7 +162,8 @@ export default function TripRoute() {
   useEffect(() => {
     if (!id || !isDriver || data?.status !== 'ON_ROAD') return;
     if (activeErpTripId() === id) return;
-    void startErpTracking(id);
+    // Ruxsat yetishmasa — aniq izoh (bloklangan bo'lsa «Sozlamalar» tugmasi bilan)
+    void startErpTracking(id).then(showTrackStartNote);
   }, [id, isDriver, data?.status]);
 
   // Jonli joylashuv — ko'rsatkichlar uchun. Ruxsat "Yo'lga chiqdim" da so'ralgan;

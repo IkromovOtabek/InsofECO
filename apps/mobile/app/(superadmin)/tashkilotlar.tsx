@@ -7,7 +7,7 @@ import { LiveItem, LiveList } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useAdminOrgs } from '@/features/admin/api';
-import { useDebounced } from '@/features/admin/ui';
+import { useDebounced } from '@/shared/hooks';
 
 type Filter = 'all' | 'PLANT' | 'CONTRACTOR' | 'blocked';
 

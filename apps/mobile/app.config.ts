@@ -14,6 +14,20 @@ const LOC_ALWAYS = "Faol reys davomida mashina joylashuvini quruvchi va dispetch
 // yozsin, aks holda keyingi plagin oldingisini almashtiradi.
 const CAMERA = "Davomat uchun yuzingizni skanerlash, profil rasmi, nakladnoy va yetkazish fotosini olish uchun kamera kerak.";
 
+// Production (EAS production profili, `expo export`/OTA, `gradlew assembleRelease` — NODE_ENV=production) lokal yoki LAN
+// manzil bilan yig'ilmasin: bunday to'plam telefonda serverga umuman ulanmaydi va bu faqat do'konda bilinadi. Dev o'zgarishsiz.
+// Bir xil tekshiruv ish vaqtida ham bor (src/core/config.ts) — `extra` orqali kelgan manzil uchun.
+const IS_PROD = process.env.EAS_BUILD_PROFILE === 'production' || process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production';
+const LOCAL_URL = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(?=[:/]|$)/i;
+if (IS_PROD) {
+  for (const name of ['EXPO_PUBLIC_API_URL', 'EXPO_PUBLIC_ERP_URL'] as const) {
+    const v = process.env[name]?.trim();
+    if (!v || LOCAL_URL.test(v)) {
+      throw new Error(`[app.config] ${name}="${v ?? ''}" — production to'plam uchun yaroqsiz (bo'sh / localhost / LAN IP). EAS production muhitida haqiqiy HTTPS manzilni bering yoki --environment production bilan yig'ing.`);
+    }
+  }
+}
+
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9';
 
 // OTA kanali LOKAL yig'iladigan APK uchun (ERP orqali tarqatiladigan, `./gradlew assembleRelease`).
@@ -77,6 +91,9 @@ const config: ExpoConfig = {
       'POST_NOTIFICATIONS',
       'RECEIVE_BOOT_COMPLETED',
     ],
+    // Kutubxonalar manifestga qo'shadigan, lekin ilova ishlatmaydigan ruxsatlar: galereya/kamera fayllari ilova keshiga
+    // yoziladi (storage kerak emas), "boshqa ilovalar ustida" oynasi yo'q. Ortiqcha ruxsat — Play review'da savol. Native: yangi build.
+    blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE'],
   },
   plugins: [
     'expo-router',
@@ -133,8 +150,9 @@ const config: ExpoConfig = {
   // OTA HAR DOIM `--environment production` bilan: aks holda lokal apps/mobile/.env (Wi-Fi IP) to'plamga yoziladi.
   updates: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
-    // Ilova ochilganda yangilanishni 10 s kutadi, bo'lmasa eskisi bilan ishlayveradi
-    fallbackToCacheTimeout: 10000,
+    // Ochilishda yangilanish KUTILMAYDI (0): o'rnatilgan to'plam darhol ochiladi, yangisi fonda yuklanib keyingi
+    // ochilishda ishlaydi (10 s kutish sekin tarmoqda haydovchini oq ekranda ushlab turardi).
+    fallbackToCacheTimeout: 0,
     // Faqat lokal APK yig'ishda (yuqoridagi LOCAL_CHANNEL izohi)
     ...(LOCAL_CHANNEL ? { requestHeaders: { 'expo-channel-name': LOCAL_CHANNEL } } : {}),
   },

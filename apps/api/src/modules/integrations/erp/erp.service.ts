@@ -16,6 +16,8 @@ import { ErpCustomerInput, ErpInvoiceInput, ErpMaterialInput, ErpMixInput, ErpOr
 import { AccountService } from '../../auth/account.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { customerRefFor, notOtherPlantsWhere, plantClientWhere, scopedCustomerRef } from './erp-refs';
+import { ORDER_EVENTS, OrderStatusChangedEvent } from '../../orders/orders.events';
+import { invoiceStatusFor } from '../../billing/billing.service';
 
 /** ERP login (`auth/verify`): parol taxminini cheklash. Telefon bo'yicha — barcha kalitlar uchun umumiy. */
 export const VERIFY_LIMITS = {
@@ -27,6 +29,15 @@ const D = Prisma.Decimal;
 
 /** Oldinga yurish tartibi — ERP "Yuklandi"/"Yo'lga chiqdi"/"Yetkazildi" bosganda oraliq holatlar avtomatik o'tiladi. */
 const FORWARD: DeliveryStatus[] = ['ASSIGNED', 'ACCEPTED', 'LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'COMPLETED'];
+
+/** Zayavka holatlari tartibi — ERP sinxronida orqaga yurish yo'q. Yopiq (CANCELLED/REJECTED/COMPLETED) o'zgarmaydi. */
+const ORDER_RANK: Record<OrderStatus, number> = { DRAFT: 0, SUBMITTED: 1, CONFIRMED: 2, SCHEDULED: 3, IN_PROGRESS: 4, DELIVERED: 5, COMPLETED: 6, REJECTED: 7, CANCELLED: 7 };
+export function erpOrderStatus(current: OrderStatus, wanted: OrderStatus): OrderStatus {
+  if (current === wanted) return current;
+  if (['CANCELLED', 'REJECTED', 'COMPLETED'].includes(current)) return current; // yopiq zayavka tirilmaydi
+  if (ORDER_RANK[wanted] < ORDER_RANK[current]) return current; // orqaga emas (DELIVERED → SCHEDULED)
+  return wanted;
+}
 
 /** ERP zayavka holati → ECO buyurtma holati. ECO ERP'ga moslashadi, teskarisi emas. */
 const ORDER_STATUS: Record<string, OrderStatus> = {
@@ -182,10 +193,12 @@ export class ErpService {
     const mix = await this.ensureMix(orgId, input.product);
     const [driver, vehicle] = await Promise.all([this.resolveDriver(a, input), this.resolveVehicle(orgId, input)]);
 
-    const existing = await this.prisma.delivery.findUnique({ where: { externalRef: ref }, include: { order: { select: { id: true, plantOrgId: true } } } });
-    if (existing && existing.order.plantOrgId !== orgId) throw DomainError.forbidden();
-
     const result = await this.prisma.$transaction(async (tx) => {
+      // Mavjud reys TRANZAKSIYA ICHIDA o'qiladi: ilgari tashqarida edi — parallel ikki PUT bir xil `prevM3` ni ko'rib,
+      // delta'ni buyurtma jamiga ikki marta qo'shardi
+      const existing = await tx.delivery.findUnique({ where: { externalRef: ref }, include: { order: { select: { id: true, plantOrgId: true } } } });
+      if (existing && existing.order.plantOrgId !== orgId) throw DomainError.forbidden();
+
       // 1) Buyurtma: ERP zayavkasi = ECO buyurtmasi (reyslar unga yig'iladi)
       let order = await tx.order.findUnique({ where: { plantOrgId_externalRef: { plantOrgId: orgId, externalRef: input.orderRef } }, include: { items: true } });
       if (!order) {
@@ -203,6 +216,12 @@ export class ErpService {
       } else if (['SCHEDULED', 'CONFIRMED'].includes(order.status)) {
         // Manzil/vaqt ERP'da o'zgargan bo'lsa — hali boshlanmagan buyurtmada yangilanadi
         order = await tx.order.update({ where: { id: order.id }, data: { address: input.address, scheduledAt: input.scheduledAt, ...(input.location ? { lat: input.location.lat, lng: input.location.lng } : {}) }, include: { items: true } });
+      } else if (!existing && ['CANCELLED', 'REJECTED', 'COMPLETED'].includes(order.status)) {
+        // Yopiq zayavkaga yangi nakladnoy bo'lmaydi — haydovchi bekor qilingan buyurtmaga beton yuklamasin
+        throw new DomainError('ORDER_INVALID_TRANSITION', `Zayavka ${input.orderRef} ${order.status} holatida — unga yangi reys qo'shib bo'lmaydi`, { orderRef: input.orderRef, status: order.status });
+      } else if (!existing && order.status === 'DELIVERED') {
+        // ERP yetkazilgan zayavkaga qo'shimcha reys yubordi — zayavka yana bajarilmoqda
+        order = await tx.order.update({ where: { id: order.id }, data: { status: 'IN_PROGRESS', completedAt: null }, include: { items: true } });
       }
 
       // 2) Reys
@@ -240,12 +259,20 @@ export class ErpService {
         await tx.order.update({ where: { id: order.id }, data: { totalVolumeM3: order.totalVolumeM3.plus(deltaM3), totalAmount: order.totalAmount.plus(lineTotal) } });
       }
       return { delivery, order, created: !existing, changed: true, assignedChanged };
-    });
+    }).catch(ErpService.conflictToDomain);
 
     if (result.assignedChanged && result.delivery.driver) {
       this.events.emit('delivery.assigned', { deliveryId: result.delivery.id, driverUserId: result.delivery.driver.user.id, orderId: result.order.id });
     }
     return { created: result.created, changed: result.changed, delivery: result.delivery };
+  }
+
+  /** Bir xil nakladnoy bilan parallel birinchi PUT: unique(externalRef) — ikkinchisiga 500 emas, 409 "qayta yuboring". */
+  private static conflictToDomain(e: unknown): never {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      throw new DomainError('IDEMPOTENCY_CONFLICT', "Bu yozuv shu paytda yaratilmoqda — so'rovni qayta yuboring");
+    }
+    throw e;
   }
 
   /**
@@ -290,7 +317,7 @@ export class ErpService {
         // ilgari acceptedM3 hali yozilmagan bo'lib, faktura reja/yuklangan hajm bo'yicha chiqib qolardi.
         await this.prisma.delivery.update({ where: { id: d.id }, data: { acceptedM3: new D(input.acceptedM3) } });
       }
-      await this.deliveries.transition(ctx, d.id, body, `erp:${ref}:${step}:${at.getTime()}`);
+      await this.deliveries.transition(ctx, d.id, { ...body, ...(step === 'COMPLETED' && input.acceptedM3 ? { acceptedM3: input.acceptedM3 } : {}) }, `erp:${ref}:${step}:${at.getTime()}`, { erp: true });
     }
     return this.getTrip(a, ref);
   }
@@ -593,10 +620,18 @@ export class ErpService {
     }
     const totalVolumeM3 = input.items.reduce((sum, i) => sum.plus(new D(i.volumeM3)), new D(0));
     const totalAmount = input.items.reduce((sum, i) => sum.plus(new D(i.volumeM3).mul(new D(i.unitPrice))), new D(0));
-    const status = ORDER_STATUS[input.status] ?? 'DRAFT';
+    const wanted = ORDER_STATUS[input.status] ?? 'DRAFT';
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.order.findUnique({ where: { plantOrgId_externalRef: { plantOrgId: orgId, externalRef: ref } }, include: { items: true } });
+      // Holat mashinasi: ERP orqali ham orqaga yurish (DELIVERED → SCHEDULED) yoki yopiq zayavkani "tiriltirish" yo'q.
+      // Bekor qilishda haydovchi allaqachon yuklagan bo'lsa — rad (ERP avval nakladnoylarni yopsin).
+      const status = existing ? erpOrderStatus(existing.status as OrderStatus, wanted) : wanted;
+      if (existing && status === 'CANCELLED' && existing.status !== 'CANCELLED') {
+        const started = await tx.delivery.count({ where: { orderId: existing.id, status: { in: ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'DISPUTED'] } } });
+        if (started) throw new DomainError('ORDER_INVALID_TRANSITION', `Zayavka ${ref}: ${started} ta reys yo'lda — avval nakladnoylarni yoping`, { ref, started });
+        await tx.delivery.updateMany({ where: { orderId: existing.id, status: { in: ['ASSIGNED', 'DECLINED', 'ACCEPTED'] } }, data: { status: 'CANCELLED' } });
+      }
       const common = {
         clientOrgId: client.id,
         status,
@@ -637,19 +672,32 @@ export class ErpService {
         if (stale.length) await tx.orderItem.deleteMany({ where: { id: { in: stale } } });
       }
 
-      return { created: !existing, order: await tx.order.findUniqueOrThrow({ where: { id: order.id }, include: { items: true, client: { select: { id: true, name: true } } } }) };
-    });
+      return { created: !existing, from: existing?.status as OrderStatus | undefined, order: await tx.order.findUniqueOrThrow({ where: { id: order.id }, include: { items: true, client: { select: { id: true, name: true } } } }) };
+    }).catch(ErpService.conflictToDomain);
+    const o = result.order;
+    if (result.from && result.from !== o.status) {
+      // Mobil bildirishnomalar (va boshqa tinglovchilar) ERP o'zgartirgan holatni ham ko'rsin
+      this.events.emit(ORDER_EVENTS.statusChanged, { orderId: o.id, plantOrgId: o.plantOrgId, clientOrgId: o.clientOrgId, from: result.from, to: o.status as OrderStatus, byUserId: a.userId } satisfies OrderStatusChangedEvent);
+      if (o.status === 'CANCELLED') this.events.emit(ORDER_EVENTS.cancelled, { orderId: o.id, penalty: 0 });
+    }
+    return { created: result.created, order: o };
   }
 
   /** ERP schyoti → ECO hisob-fakturasi. ECO'da schyot buyurtmaga tegishli, shuning uchun zayavka avval yuborilgan bo'lishi kerak. */
   async upsertInvoice(a: AuthContext, ref: string, input: ErpInvoiceInput) {
     const order = await this.prisma.order.findUnique({ where: { plantOrgId_externalRef: { plantOrgId: a.orgId!, externalRef: input.orderRef } } });
     if (!order) throw DomainError.notFound(`Zayavka ${input.orderRef} (avval zayavkani yuboring)`);
+    // To'langan summa: ECO'da to'lovlar (PUT /erp/payments) bo'lsa — ularning yig'indisi (qarz = Σschyot − Σto'lov),
+    // bo'lmasa ERP schyotidagi raqam. Ilgari ERP qiymati har safar ustidan yozib, alohida yuborilgan to'lovlarni "yo'qotardi".
+    const paid = await this.prisma.payment.aggregate({ where: { invoice: { orderId: order.id }, status: 'CONFIRMED' }, _sum: { amount: true }, _count: true });
+    const amount = new D(input.amount);
+    const paidAmount = paid._count > 0 ? (paid._sum.amount ?? new D(0)) : new D(input.paidAmount ?? 0);
+    const erpStatus = INVOICE_STATUS[input.status] ?? 'OPEN';
     const data = {
       clientOrgId: order.clientOrgId,
-      status: INVOICE_STATUS[input.status] ?? 'OPEN',
-      amount: new D(input.amount),
-      paidAmount: new D(input.paidAmount ?? 0),
+      status: erpStatus === 'VOID' ? erpStatus : paid._count > 0 ? invoiceStatusFor(amount, paidAmount) : erpStatus,
+      amount,
+      paidAmount,
       issuedAt: input.issuedAt ?? new Date(),
     };
     const inv = await this.prisma.invoice.upsert({ where: { orderId: order.id }, create: { orderId: order.id, ...data }, update: data });
@@ -667,11 +715,16 @@ export class ErpService {
     const prev = await this.prisma.payment.findUnique({ where: { externalId: ref }, select: { invoiceId: true } });
     if (prev && prev.invoiceId !== order.invoice.id) throw DomainError.forbidden("Bu to'lov boshqa schyotga tegishli");
     const data = { amount: new D(input.amount), method: input.method ?? 'CASH', paidAt: input.paidAt ?? new Date(), status: 'CONFIRMED', recordedByUserId: a.userId };
-    const pay = await this.prisma.payment.upsert({
-      where: { externalId: ref },
-      create: { invoiceId: order.invoice.id, externalId: ref, ...data },
-      update: data,
-    });
+    const invoiceId = order.invoice.id;
+    const pay = await this.prisma.$transaction(async (tx) => {
+      const p = await tx.payment.upsert({ where: { externalId: ref }, create: { invoiceId, externalId: ref, ...data }, update: data });
+      // Schyotning to'langan summasi va holati to'lovlardan qayta hisoblanadi (ilgari upsertPayment paidAmount'ga tegmasdi)
+      const sum = await tx.payment.aggregate({ where: { invoiceId, status: 'CONFIRMED' }, _sum: { amount: true } });
+      const inv = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { amount: true, status: true } });
+      const paidAmount = sum._sum.amount ?? new D(0);
+      await tx.invoice.update({ where: { id: invoiceId }, data: { paidAmount, ...(inv.status === 'VOID' ? {} : { status: invoiceStatusFor(inv.amount, paidAmount) }) } });
+      return p;
+    }).catch(ErpService.conflictToDomain);
     return { id: pay.id, externalId: pay.externalId, amount: pay.amount, method: pay.method };
   }
 

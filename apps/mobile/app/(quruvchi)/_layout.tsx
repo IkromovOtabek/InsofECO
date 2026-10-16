@@ -5,6 +5,10 @@ import { useTheme } from '@/design/theme';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
 import { useReducedMotion } from '@/design/motion';
 import { HeaderBack, tabIcon } from '@/design/ui';
+import { RouteErrorBoundary } from '@/components/route-error';
+
+/** Ekran xatosi shu guruh ichida ushlanadi — butun navigator (ildiz chegarasi) almashmaydi. */
+export { RouteErrorBoundary as ErrorBoundary };
 
 /**
  * Quruvchi — roles/QURUVCHI.json tablari: Bosh · Obyektlar · Buyurtma (ish buyurtmalari) · Yetkazish

@@ -12,8 +12,9 @@ const ContactSchema = z.object({ chatId: z.string().regex(/^-?\d{1,20}$/), phone
 /**
  * `contact` tasdiqlagan telefon nomidan sessiya beriladi (bir martalik kod bilan teng). Shuning uchun bu yo'llarni
  * istalgan zavodning API kaliti emas, faqat botni yuritadigan ERP kaliti chaqira olishi kerak:
- * `TELEGRAM_LOGIN_CLIENT_IDS` — IntegrationClient.id lar (vergul bilan). Bo'sh bo'lsa (eski o'rnatish)
- * hamma faol kalitga ruxsat va ogohlantirish — prodda albatta to'ldiring.
+ * `TELEGRAM_LOGIN_CLIENT_IDS` — IntegrationClient.id lar (vergul bilan). BO'SH BO'LSA — YOPIQ (403):
+ * ilgari bo'sh ro'yxat "hammaga ruxsat" edi, ya'ni istalgan zavodning kaliti bilan istalgan raqam
+ * (superadmin ham) nomidan sessiya olish mumkin edi. Sozlanmaguncha Telegram orqali kirish ishlamaydi.
  */
 @Injectable()
 class TelegramLoginClientGuard implements CanActivate {
@@ -25,9 +26,9 @@ class TelegramLoginClientGuard implements CanActivate {
     if (!allow.length) {
       if (!TelegramLoginClientGuard.warned) {
         TelegramLoginClientGuard.warned = true;
-        this.logger.warn("TELEGRAM_LOGIN_CLIENT_IDS bo'sh — istalgan integratsiya kaliti Telegram orqali kirishni tasdiqlay oladi");
+        this.logger.error("TELEGRAM_LOGIN_CLIENT_IDS bo'sh — Telegram orqali kirish o'chiq. .env ga botni yuritadigan ERP kalitining IntegrationClient.id sini yozing");
       }
-      return true;
+      throw DomainError.forbidden('Telegram orqali kirish sozlanmagan (TELEGRAM_LOGIN_CLIENT_IDS)');
     }
     if (!auth?.integration || !allow.includes(auth.integration.id)) throw DomainError.forbidden("Bu kalitga Telegram orqali kirishni tasdiqlash ruxsat etilmagan");
     return true;

@@ -121,10 +121,20 @@ export class WorkOrdersService {
     return this.get(a, id);
   }
 
-  /** To'lov: DONE → PAID, payout PAID. */
+  /** To'lov: DONE → PAID va payout PAID — bitta tranzaksiyada (ikkinchisi yiqilsa ish "to'langan", pul esa "kutilmoqda" bo'lib qolmasin). */
   async pay(a: AuthContext, id: string) {
-    const wo = await this.transition(a, id, 'PAID');
-    await this.prisma.payout.updateMany({ where: { workOrderId: id, status: 'PENDING' }, data: { status: 'PAID', paidAt: new Date() } });
-    return wo;
+    const wo = await this.get(a, id);
+    if (!canTransition(WORK_ORDER_TRANSITIONS, wo.status as WorkOrderStatus, 'PAID', a.role!)) {
+      throw new DomainError('ORDER_INVALID_TRANSITION', `${wo.status} → PAID (${a.role}) mumkin emas`);
+    }
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.workOrder.updateMany({ where: { id, status: wo.status }, data: { status: 'PAID', paidAt: now } });
+      if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "Ish holati allaqachon o'zgargan — sahifani yangilang");
+      await tx.payout.updateMany({ where: { workOrderId: id, status: 'PENDING' }, data: { status: 'PAID', paidAt: now } });
+      return tx.workOrder.findUniqueOrThrow({ where: { id }, include });
+    });
+    this.events.emit('work_order.status_changed', { workOrderId: id, number: wo.number, title: wo.title, from: wo.status, to: 'PAID', orgId: a.orgId, workerUserId: updated.workerUserId, byUserId: a.userId });
+    return updated;
   }
 }

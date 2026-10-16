@@ -100,13 +100,15 @@ export class OtpService {
     });
     if (!otp) throw new DomainError('AUTH_OTP_INVALID', 'Kod noto\'g\'ri');
     if (otp.expiresAt < new Date()) throw new DomainError('AUTH_OTP_EXPIRED', 'Kod muddati tugagan');
-    if (otp.attempts >= 5) throw new DomainError('AUTH_OTP_INVALID', 'Urinishlar tugadi, yangi kod so\'rang');
+    // Urinish argon2'dan OLDIN atomar hisoblanadi (`where attempts < 5`): ilgari o'qish → tekshirish → yozish
+    // ketma-ketligi edi, parallel so'rovlar bilan bitta kodga 5 tadan ancha ko'p urinish o'tib ketardi
+    const claimed = await this.prisma.otpCode.updateMany({ where: { id: otp.id, usedAt: null, attempts: { lt: 5 } }, data: { attempts: { increment: 1 } } });
+    if (claimed.count !== 1) throw new DomainError('AUTH_OTP_INVALID', 'Urinishlar tugadi, yangi kod so\'rang');
     const ok = await argon2.verify(otp.codeHash, code);
-    if (!ok) {
-      await this.prisma.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
-      throw new DomainError('AUTH_OTP_INVALID', 'Kod noto\'g\'ri');
-    }
-    await this.prisma.otpCode.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
+    if (!ok) throw new DomainError('AUTH_OTP_INVALID', 'Kod noto\'g\'ri');
+    // Bir martalik: ikki parallel to'g'ri kod — faqat bittasi o'tadi
+    const used = await this.prisma.otpCode.updateMany({ where: { id: otp.id, usedAt: null }, data: { usedAt: new Date() } });
+    if (used.count !== 1) throw new DomainError('AUTH_OTP_INVALID', 'Kod allaqachon ishlatilgan');
   }
 
   /**

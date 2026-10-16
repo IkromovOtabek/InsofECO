@@ -60,9 +60,14 @@ export class DispatchService {
     const busy = await this.prisma.delivery.count({ where: { driverId: driver.id, status: { in: ACTIVE_DELIVERY_STATUSES as DeliveryStatus[] } } });
     if (busy > 0) throw new DomainError('DELIVERY_DRIVER_BUSY', 'Haydovchida faol reys bor');
 
-    const updated = await this.prisma.delivery.update({
-      where: { id: deliveryId },
+    // Atomar: shu orada haydovchi ACCEPTED qilgan bo'lsa — reys boshqa haydovchiga qayta yozilmaydi
+    const claimed = await this.prisma.delivery.updateMany({
+      where: { id: deliveryId, status: { in: ['ASSIGNED', 'DECLINED'] } },
       data: { driverId: driver.id, vehicleId, status: 'ASSIGNED' },
+    });
+    if (claimed.count !== 1) throw new DomainError('DELIVERY_INVALID_TRANSITION', 'Bu reys allaqachon boshlangan');
+    const updated = await this.prisma.delivery.findUniqueOrThrow({
+      where: { id: deliveryId },
       include: { order: { select: { id: true, number: true, address: true } } },
     });
     this.events.emit('delivery.assigned', { deliveryId, driverUserId, orderId: delivery.orderId });

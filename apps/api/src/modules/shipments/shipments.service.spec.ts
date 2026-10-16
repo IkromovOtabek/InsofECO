@@ -40,23 +40,22 @@ describe('ShipmentsService.transition — poyga', () => {
     expect(tx.payout.create).not.toHaveBeenCalled();
   });
 
-  it('CONFIRMED birinchi marta — ombor kamayadi, haq yoziladi', async () => {
+  it('CONFIRMED birinchi marta — ombor QAYTA ayirilmaydi (tasdiqda band qilingan), haq va xarajat yoziladi', async () => {
     const s = shipment({ status: 'DELIVERED', driverUserId: 'd1', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
     const { svc, tx } = setup(s, 1);
     await svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CONFIRMED' });
-    expect(tx.inventoryItem.updateMany).toHaveBeenCalledWith({
-      where: { warehouseId: 'w1', materialId: 'm1', quantity: { gte: new D(10) } },
-      data: { quantity: { decrement: new D(10) } },
-    });
+    expect(tx.inventoryItem.updateMany).not.toHaveBeenCalled();
+    expect(tx.materialRequest.update).toHaveBeenCalledWith({ where: { id: 'r1' }, data: { status: 'CONFIRMED' } });
     expect(tx.payout.create).toHaveBeenCalledTimes(1);
+    expect(tx.expense.create).toHaveBeenCalledTimes(2); // MATERIAL + DRIVER
   });
 
-  it('CONFIRMED — zaxira yetmasa (parallel tasdiq) xato, haq va xarajat yozilmaydi', async () => {
-    const s = shipment({ status: 'DELIVERED', driverUserId: 'd1', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
-    const { svc, tx, events } = setup(s, 1, 0);
-    await expect(svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CONFIRMED' })).rejects.toThrow('yetarli emas');
-    expect(tx.materialRequest.update).not.toHaveBeenCalled();
+  it("CANCELLED — band qilingan zaxira omborga qaytadi, so'rov yana PENDING", async () => {
+    const s = shipment({ status: 'NEW', request: { id: 'r1', materialId: 'm1', requestedByUserId: 'q1', material: { price: new D(5000) } } });
+    const { svc, tx } = setup(s, 1);
+    await svc.transition({ userId: 't1', role: 'TADBIRKOR', orgId: 'org', sessionId: 'x' }, 's1', { to: 'CANCELLED' });
+    expect(tx.inventoryItem.updateMany).toHaveBeenCalledWith({ where: { warehouseId: 'w1', materialId: 'm1' }, data: { quantity: { increment: new D(10) } } });
+    expect(tx.materialRequest.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'r1' }, data: expect.objectContaining({ status: 'PENDING' }) }));
     expect(tx.payout.create).not.toHaveBeenCalled();
-    expect(events.emit).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { z } from 'zod';
 import { ShipmentTransitionSchema } from '@insof/shared';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
@@ -56,5 +56,5 @@ export class ShipmentsController {
   plannedRoute(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(PlannedRouteSchema)) b: z.infer<typeof PlannedRouteSchema>) { return this.s.setPlannedRoute(a, id, b); }
 
   @Roles('TADBIRKOR', 'HAYDOVCHI', 'QURUVCHI') @Post(':id/transition') @HttpCode(200)
-  transition(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(ShipmentTransitionSchema)) b: z.infer<typeof ShipmentTransitionSchema>, @Headers('idempotency-key') _k?: string) { return this.s.transition(a, id, b); }
+  transition(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(ShipmentTransitionSchema)) b: z.infer<typeof ShipmentTransitionSchema>) { return this.s.transition(a, id, b); }
 }

@@ -33,6 +33,7 @@ import { KirimScreen } from './kirim';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
 import { setBadge } from '@/core/push';
+import { useDebounced } from '@/shared/hooks';
 
 export { SectionEmpty };
 
@@ -683,7 +684,9 @@ export function ErpList({ listKey, title, onBack, fallback }: { listKey: string;
   const [q, setQ] = useState('');
   // Filtrlar bo'lsa (ishlab chiqarish "Zayavkalar"i) — tanlangani serverga yuboriladi
   const [filter, setFilter] = useState<string | undefined>(undefined);
-  const { data, isLoading, refetch, isRefetching, error } = useErpList(listKey, q.trim() || undefined, filter);
+  // Qidiruv — yozib bo'lingach (350 ms) so'raladi; oldingi natija turadi, har harfda skelet chiqmaydi
+  const dq = useDebounced(q.trim());
+  const { data, isLoading, refetch, isRefetching, error } = useErpList(listKey, dq || undefined, filter);
   const home = useErpHome().data;
   const filters = data?.filters;
   const active = filters?.find((f) => f.active);

@@ -31,3 +31,29 @@ describe('MaterialsService.approve — IDOR', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
+
+describe('MaterialsService.approve — zaxira tasdiqda atomar band qilinadi', () => {
+  function setupTx(taken: number) {
+    const base = setup({ member: { id: 'm' }, vehicle: { id: 'v1' } });
+    const tx = {
+      materialRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }), update: jest.fn().mockResolvedValue({ shipment: { id: 's1' } }) },
+      inventoryItem: { updateMany: jest.fn().mockResolvedValue({ count: taken }) },
+      shipment: { create: jest.fn().mockResolvedValue({ id: 's1' }) },
+    };
+    base.prisma.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
+    return { ...base, tx };
+  }
+
+  it('zaxira yetarli — shartli ayiriladi (quantity >= miqdor), yuk yaratiladi', async () => {
+    const { svc, tx } = setupTx(1);
+    await svc.approve(a, 'r1', { driverUserId: 'd1', vehicleId: 'v1' } as never);
+    expect(tx.inventoryItem.updateMany).toHaveBeenCalledWith({ where: { warehouseId: 'w1', materialId: 'm1', quantity: { gte: new D(5) } }, data: { quantity: { decrement: new D(5) } } });
+    expect(tx.shipment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('parallel tasdiq zaxirani tugatgan — xato, yuk yaratilmaydi', async () => {
+    const { svc, tx } = setupTx(0);
+    await expect(svc.approve(a, 'r1', { driverUserId: 'd1', vehicleId: 'v1' } as never)).rejects.toThrow('yetarli emas');
+    expect(tx.shipment.create).not.toHaveBeenCalled();
+  });
+});

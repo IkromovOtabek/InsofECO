@@ -96,7 +96,6 @@ export function RoundKeypad({ onDigit, onDelete, extra }: { onDigit: (d: string)
 export function PinLock() {
   const { c } = useTheme();
   const status = useSession((s) => s.status);
-  const signOut = useSession((s) => s.signOut);
   const name = useDisplayName();
   const avatar = useSession((s) => (s.kind === 'eco' ? avatarUri(s.user?.avatarUrl) : null));
   const [locked, setLocked] = useState<boolean | null>(null);
@@ -133,9 +132,9 @@ export function PinLock() {
     dots.current?.shake();
     if (r.wiped) {
       setPin('');
-      // Chiqish darhol — dialog tugmasini kutmaymiz: ilova shu yerda yopilsa PIN allaqachon o'chgan,
-      // sessiya esa qolgan bo'lardi va keyingi ochilishda ilova PINsiz to'g'ridan-to'g'ri ochilardi.
-      void signOut();
+      // Tokenlar `pinStore.verify` da allaqachon o'chgan (ilova shu yerda yopilsa ham hisob qolmaydi); endi to'liq chiqish —
+      // serverdagi seans bekor qilinadi, push o'chadi, kesh tozalanadi. Dialog tugmasini kutmaymiz.
+      void logout();
       dialog("PIN o'chirildi", 'Kod bir necha marta xato kiritildi. Parol bilan qaytadan kiring.', [
         { text: 'Kirish', onPress: () => setLocked(false) },
       ], { tone: 'danger', icon: 'lock' });

@@ -101,8 +101,9 @@ export class MessagesService {
     return this.prisma.membership.findMany({ where: { ...contactsWhere(a), userId: { not: a.userId } }, select: { role: true, user: { select: { id: true, fullName: true, phone: true } } }, orderBy: { role: 'asc' } });
   }
 
+  /** Ishtirokchi VA suhbat joriy tashkilotniki: sobiq a'zo boshqa tashkilotdan turib eski chatni o'qiy/yoza olmasin. */
   private async member(a: AuthContext, conversationId: string) {
-    const p = await this.prisma.conversationParticipant.findUnique({ where: { conversationId_userId: { conversationId, userId: a.userId } } });
+    const p = await this.prisma.conversationParticipant.findFirst({ where: { conversationId, userId: a.userId, conversation: { organizationId: a.orgId ?? '' } } });
     if (!p) throw DomainError.notFound('Suhbat');
   }
 }

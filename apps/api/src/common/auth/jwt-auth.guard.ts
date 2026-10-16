@@ -17,6 +17,9 @@ export interface AccessTokenPayload {
   iat?: number;
 }
 
+/** X-Api-Key qabul qilinadigan yo'llar: /v1/erp/... (versiya prefiksi bilan). */
+const INTEGRATION_PATH = /^\/v\d+\/erp(\/|$)/;
+
 /** Kesh va bekor qilish — `user-gate.ts` (HTTP va WS /tracking uchun umumiy). */
 export { invalidateUserGate } from './user-gate';
 
@@ -35,8 +38,13 @@ export class JwtAuthGuard implements CanActivate {
     // Tashqi tizim (Insof ERP): X-Api-Key. Tashkilot va rol kalitning o'ziga bog'langan — X-Org-Id shart emas.
     const apiKey = req.headers['x-api-key'];
     if (typeof apiKey === 'string' && apiKey) {
+      // Kalit FAQAT /erp/* uchun: ilgari butun mobil API'da (buyurtma, moliya, a'zo taklifi) to'liq TADBIRKOR
+      // kabi ishlardi — sizib chiqqan bitta kalit bilan o'z raqamini tadbirkor qilib qo'yish mumkin edi
+      if (!INTEGRATION_PATH.test(req.path)) throw DomainError.forbidden('API kalit faqat /erp/* uchun');
       const client = await this.prisma.integrationClient.findUnique({ where: { keyHash: hashApiKey(apiKey) } });
       if (!client || !client.isActive) throw new DomainError('AUTH_TOKEN_INVALID', 'API kalit yaroqsiz');
+      // Kalit egasi (xizmat foydalanuvchisi) bloklangan/o'chirilgan bo'lsa — kalit ham ishlamaydi
+      if ((await checkUserGate(this.prisma, client.userId, Math.floor(Date.now() / 1000))) === 'INACTIVE') throw new DomainError('AUTH_TOKEN_INVALID', 'Hisob faol emas');
       void this.prisma.integrationClient.update({ where: { id: client.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
       req.auth = { userId: client.userId, sessionId: `integration:${client.id}`, orgId: client.organizationId, role: null, integration: { id: client.id, name: client.name } };
       return true;

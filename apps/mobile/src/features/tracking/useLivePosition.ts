@@ -19,7 +19,7 @@ export function useLivePosition(deliveryId: string | null) {
       s.on('connect', watch);
       if (s.connected) watch();
       cleanup = () => { s.off('position', handler); s.off('connect', watch); s.emit('unwatch', { deliveryId }); };
-    });
+    }).catch(() => {}); // soket ulanmasa (tarmoq, token) — ekran jim qoladi, xato ko'tarilmaydi
     return () => { active = false; cleanup(); };
   }, [deliveryId]);
   return pos;

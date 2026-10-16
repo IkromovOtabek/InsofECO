@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Role } from '@insof/shared';
-import { kv, KEYS, secure } from './storage';
+import { kv, KEYS, secure, wipeAuthTokens } from './storage';
 import type { ErpUser } from './erp';
 import { unregisterPush } from './push';
 
@@ -50,9 +50,28 @@ const ACTIVE_KEY = 'session.activeMembership';
 const KIND_KEY = 'session.kind';
 const ERP_USER_KEY = 'session.erpUser';
 const ADMIN_KEY = 'session.admin';
+/** Chiqish boshlangan (push/revoke so'rovlari ketmoqda). Ilova shu payt o'ldirilsa keyingi ochilishda `hydrate()` tozalashni tugatadi. */
+const WIPE_KEY = 'session.wipePending';
 
 /** Buzilgan kesh (yarim yozilgan JSON) sovuq startni "loading" da qotirib qo'ymasin — mehmon sifatida ochiladi. */
 const parse = <T,>(raw: string | undefined): T | null => { if (!raw) return null; try { return JSON.parse(raw) as T; } catch { return null; } };
+
+/** ECO tokenlarini yozish — kirishda va parol almashtirilganda (server barcha eski seanslarni yopib, yangi juftlik beradi). */
+export async function setEcoTokens(tokens: { accessToken: string; refreshToken: string }) {
+  await secure.set(KEYS.access, tokens.accessToken);
+  await secure.set(KEYS.refresh, tokens.refreshToken);
+}
+
+/** Telefondagi sessiya izlari: tokenlar + profil keshi. Serverga so'rov yo'q. */
+async function clearLocalSession() {
+  await wipeAuthTokens();
+  kv.delete('session.user');
+  kv.delete(ACTIVE_KEY);
+  kv.delete(KIND_KEY);
+  kv.delete(ERP_USER_KEY);
+  kv.delete(ADMIN_KEY);
+  kv.delete(WIPE_KEY);
+}
 
 export const useSession = create<SessionState>((set, get) => ({
   status: 'loading',
@@ -63,6 +82,8 @@ export const useSession = create<SessionState>((set, get) => ({
   admin: false,
 
   async hydrate() {
+    // Oldingi chiqish yarmida uzilgan (ilova o'ldirilgan) — avval tozalanadi, mehmon sifatida ochiladi
+    if (kv.getString(WIPE_KEY)) { await clearLocalSession(); return set({ status: 'anon', kind: null }); }
     const kind = kv.getString(KIND_KEY) as SessionKind | undefined;
 
     if (kind === 'erp') {
@@ -84,8 +105,7 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   async signIn(tokens, user) {
-    await secure.set(KEYS.access, tokens.accessToken);
-    await secure.set(KEYS.refresh, tokens.refreshToken);
+    await setEcoTokens(tokens);
     kv.set(KIND_KEY, 'eco');
     kv.set('session.user', JSON.stringify(user));
     // Faol a'zoligi yo'q superadmin — to'g'ridan-to'g'ri o'z bo'limiga; a'zoligi bor bo'lsa tanlaydi
@@ -142,17 +162,16 @@ export const useSession = create<SessionState>((set, get) => ({
     if (signingOut) return;
     signingOut = true;
     try {
+      // Chiqish qaytarilmas: quyidagi so'rovlar (7 s gacha) paytida ilova o'ldirilsa ham keyingi ochilishda
+      // `hydrate()` shu belgini ko'rib tokenlarni o'chiradi — hisob telefonda "tirilib" qolmaydi.
+      // Tokenlar so'rovlardan OLDIN o'chirilmaydi: push'ni o'chirish ham, serverdagi seansni bekor qilish ham tokensiz ishlamaydi.
+      kv.set(WIPE_KEY, '1');
       // Tokenlar o'chishidan OLDIN: shu telefonga endi xabar yuborilmasin, aks holda
       // ishdan ketgan xodimning ekranida zavod xabarlari chiqib turardi. Server javob
       // bermasa ham chiqish kutib qolmaydi (3 s).
       await Promise.race([unregisterPush(get().kind === 'erp' ? 'erp' : 'eco'), new Promise<void>((r) => setTimeout(r, 3000))]);
       if (opts?.revoke) await Promise.race([opts.revoke().catch(() => undefined), new Promise<void>((r) => setTimeout(r, 4000))]);
-      await Promise.all([secure.del(KEYS.access), secure.del(KEYS.refresh), secure.del(KEYS.erpAccess), secure.del(KEYS.erpRefresh)]);
-      kv.delete('session.user');
-      kv.delete(ACTIVE_KEY);
-      kv.delete(KIND_KEY);
-      kv.delete(ERP_USER_KEY);
-      kv.delete(ADMIN_KEY);
+      await clearLocalSession();
       set({ status: 'anon', kind: null, user: null, active: null, erp: null, admin: false });
     } finally {
       signingOut = false;

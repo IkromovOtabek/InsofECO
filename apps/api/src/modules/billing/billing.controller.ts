@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { AuthContext, CurrentUser, Roles } from '../../common/auth/decorators';
 import { Zod } from '../../common/validation/zod-validation.pipe';
@@ -18,7 +18,7 @@ export class BillingController {
 
   @Roles('TADBIRKOR')
   @Post('invoices/:id/payments/cash')
-  cash(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(CashSchema)) b: { amount: number }) {
-    return this.billing.cashPayment(a, id, b.amount);
+  cash(@CurrentUser() a: AuthContext, @Param('id') id: string, @Body(Zod(CashSchema)) b: { amount: number }, @Headers('idempotency-key') key?: string) {
+    return this.billing.cashPayment(a, id, b.amount, key);
   }
 }

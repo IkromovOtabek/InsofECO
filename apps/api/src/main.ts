@@ -8,6 +8,7 @@ import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/errors/domain-exception.filter';
+import { isDevEnv } from './common/env';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
@@ -22,7 +23,7 @@ async function bootstrap() {
   app.useGlobalFilters(new DomainExceptionFilter());
   app.enableShutdownHooks();
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (isDevEnv()) {
     const doc = SwaggerModule.createDocument(
       app,
       new DocumentBuilder().setTitle('Insof ECO API').setVersion('1').addBearerAuth().build(),
@@ -32,7 +33,7 @@ async function bootstrap() {
 
   // Prod'da faqat 127.0.0.1 — API'ga tashqaridan faqat nginx (api.insof-erp.uz) orqali kiriladi, to'g'ridan-to'g'ri
   // :3010 internetga ochiq bo'lmasin. Lokal ishlab chiqishda telefon Mac'ning LAN IP'siga ulanadi — 0.0.0.0.
-  const host = process.env.LISTEN_HOST ?? (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
+  const host = process.env.LISTEN_HOST ?? (isDevEnv() ? '0.0.0.0' : '127.0.0.1');
   await app.listen(Number(process.env.PORT ?? 3000), host);
 }
 void bootstrap();

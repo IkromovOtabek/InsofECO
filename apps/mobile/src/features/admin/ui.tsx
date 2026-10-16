@@ -1,9 +1,9 @@
 /**
  * Superadmin bo'limi uchun kichik bloklar: holat kartasi (yashil/sariq/qizil + kechikish + sparkline),
- * sabab so'raydigan tasdiq oynasi, qidiruv uchun debounce.
+ * sabab so'raydigan tasdiq oynasi (debounce — `@/shared/hooks`).
  * Hammasi dizayn tizimi tokenlari va primitivlaridan — hardcode rang/o'lcham yo'q.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Badge, Button, Card, IconTile, Input, Txt } from '@/design/primitives';
@@ -12,13 +12,6 @@ import { IconName } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { size, space, toneColors } from '@/design/tokens';
 import { HEALTH_LABEL, Health, healthTone } from './api';
-
-/** Qidiruv kiritilishi tugagach (350 ms) so'raladi — har harfda serverga bormaydi. */
-export function useDebounced<T>(v: T, ms = 350) {
-  const [d, setD] = useState(v);
-  useEffect(() => { const t = setTimeout(() => setD(v), ms); return () => clearTimeout(t); }, [v, ms]);
-  return d;
-}
 
 /** Kichik sparkline (kechikish tarixi) — chiziq holat rangida. Kamida 2 nuqta kerak. */
 export function MiniSpark({ data, tone, height = space.xxxl }: { data: number[]; tone: ReturnType<typeof healthTone>; height?: number }) {

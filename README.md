@@ -93,6 +93,8 @@ JWT_PUBLIC_KEY=$(awk 'BEGIN{ORS="\\n"}1' /tmp/jwt.pub)
 # Bir martalik kodlar FAQAT Telegram Gateway orqali (SMS yo'q): https://gateway.telegram.org → API token
 TELEGRAM_GATEWAY_TOKEN=
 # TELEGRAM_GATEWAY_SENDER=   # ixtiyoriy: tasdiqlangan kanal username'i (@ siz)
+# Telegram orqali kirish: botni yuritadigan ERP kalitining IntegrationClient.id si (bo'sh — kirish o'chiq)
+TELEGRAM_LOGIN_CLIENT_IDS=
 EOF
 rm -f /tmp/jwt.key /tmp/jwt.pub && chmod 600 apps/api/.env
 # Eski qatorlar ikki marta yozilgan bo'lishi mumkin — oxirgisi kuchga kiradi, lekin tekshirib chiqing:

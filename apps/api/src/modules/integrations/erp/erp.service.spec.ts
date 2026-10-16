@@ -103,3 +103,15 @@ describe('ErpService — tashkilot doirasi', () => {
     expect(prisma.organization.update).toHaveBeenCalledWith({ where: { id: 't1' }, data: { externalRef: 'erp:plantA:9' } });
   });
 });
+
+describe('erpOrderStatus — ERP sinxronida holat mashinasi', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { erpOrderStatus } = require('./erp.service') as typeof import('./erp.service');
+  it('oldinga yuradi', () => expect(erpOrderStatus('SCHEDULED', 'IN_PROGRESS')).toBe('IN_PROGRESS'));
+  it('orqaga yurmaydi (DELIVERED → SCHEDULED)', () => expect(erpOrderStatus('DELIVERED', 'SCHEDULED')).toBe('DELIVERED'));
+  it('yopiq zayavka tirilmaydi', () => {
+    expect(erpOrderStatus('CANCELLED', 'IN_PROGRESS')).toBe('CANCELLED');
+    expect(erpOrderStatus('COMPLETED', 'DELIVERED')).toBe('COMPLETED');
+  });
+  it('ochiq zayavka bekor qilinadi', () => expect(erpOrderStatus('IN_PROGRESS', 'CANCELLED')).toBe('CANCELLED'));
+});

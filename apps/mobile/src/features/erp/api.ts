@@ -21,8 +21,9 @@ export const useErpHome = (params?: Record<string, string>) =>
     placeholderData: keepPreviousData,
   });
 
+/** Ro'yxat. Qidiruv/filtr almashganda oldingi natija turadi (`keepPreviousData`) — har harfda skelet miltillamaydi. */
 export const useErpList = (key: string, q?: string, filter?: string) =>
-  useQuery({ queryKey: ['erp', 'list', key, q ?? '', filter ?? ''], queryFn: () => erpAuth.list(key, q, filter), enabled: !!key });
+  useQuery({ queryKey: ['erp', 'list', key, q ?? '', filter ?? ''], queryFn: () => erpAuth.list(key, q, filter), enabled: !!key, placeholderData: keepPreviousData });
 
 /**
  * Kartochka. Reys kartochkasi davriy yangilanadi — reys davomida "Yurilgan yo'l" raqami

@@ -7,6 +7,7 @@ import { randomBytes, randomUUID } from 'crypto';
 import { ChangePasswordInput, LoginInput, OtpVerify, RegisterInput, ResetPasswordInput } from '@insof/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
+import { UserRevocationService } from '../../common/auth/user-gate';
 import { DomainError } from '../../common/errors/domain.error';
 import { OtpService, PHONE_TOKEN_TTL_SECONDS } from './otp.service';
 import { avatarPath } from '../users/avatar';
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly events: EventEmitter2,
     private readonly redis: RedisService,
+    private readonly revocation: UserRevocationService,
   ) {}
 
   requestOtp(phone: string, ip: string) {
@@ -204,17 +206,19 @@ export class AuthService {
     if (!user) throw new DomainError('AUTH_USER_NOT_FOUND', 'Bu raqam bilan hisob topilmadi');
     assertNotBlocked(user);
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: await argon2.hash(input.password) } }),
-      this.prisma.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } }),
-    ]);
+    await this.revokeAllSessions(user.id, await argon2.hash(input.password));
 
     await this.touchDevice(user.id, input.device);
     const tokens = await this.issueSession(user.id, input.device.deviceId, randomUUID());
     return { ...tokens, user: await this.profile(user.id) };
   }
 
-  /** Tizimga kirgan holda: eski parol tekshiriladi, boshqa qurilmalardagi seanslar yopiladi. */
+  /**
+   * Tizimga kirgan holda: eski parol tekshiriladi, BARCHA seanslar (shu jumladan hozirgisining eski tokenlari)
+   * yopiladi va shu qurilmaga yangi juftlik qaytariladi — foydalanuvchi qaytadan kirmaydi.
+   * Ilgari faqat boshqa refresh seanslar yopilardi: o'g'irlangan access token 15 daqiqa, /tracking socketi esa
+   * cheksiz ishlashda davom etardi (`tokensValidAfter` va `revoke` chaqirilmasdi).
+   */
   async changePassword(userId: string, sessionId: string, input: ChangePasswordInput) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.passwordHash || !(await argon2.verify(user.passwordHash, input.current))) {
@@ -222,12 +226,24 @@ export class AuthService {
     }
     if (input.current === input.next) throw new DomainError('AUTH_SAME_PASSWORD', 'Yangi parol eskisidan farq qilsin');
 
+    const current = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { deviceId: true } });
+    await this.revokeAllSessions(user.id, await argon2.hash(input.next));
+    const tokens = await this.issueSession(user.id, current?.deviceId ?? 'unknown', randomUUID());
+    return { ok: true as const, ...tokens };
+  }
+
+  /**
+   * Parol yangilanadi va barcha seanslar bekor qilinadi: refresh (revokedAt) ham, access token (tokensValidAfter)
+   * ham, WebSocket (revoke → user-gate pub/sub) ham. `tokensValidAfter` soniyaga yaxlitlanadi — shundan keyin
+   * darhol berilgan yangi token (iat shu soniya) rad etilmaydi (user-gate `ceil` bilan solishtiradi).
+   */
+  private async revokeAllSessions(userId: string, passwordHash: string) {
+    const validAfter = new Date(Math.floor(Date.now() / 1000) * 1000);
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: await argon2.hash(input.next) } }),
-      // Shu qurilmadagi seans qoladi — foydalanuvchi qaytadan kirmaydi
-      this.prisma.session.updateMany({ where: { userId: user.id, revokedAt: null, id: { not: sessionId } }, data: { revokedAt: new Date() } }),
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash, tokensValidAfter: validAfter } }),
+      this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
     ]);
-    return { ok: true };
+    await this.revocation.revoke(userId);
   }
 
   private async touchDevice(userId: string, device: OtpVerify['device']) {

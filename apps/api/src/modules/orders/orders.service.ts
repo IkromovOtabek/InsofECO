@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import {
   CreateOrderInput,
   DEFAULT_RULES,
+  DeliveryStatus,
   ORDER_TRANSITIONS,
   OrderStatus,
   Role,
@@ -19,6 +20,8 @@ import { AuthContext } from '../../common/auth/decorators';
 import { ORDER_EVENTS, OrderStatusChangedEvent } from './orders.events';
 
 const D = Prisma.Decimal;
+/** Shu holatdagi reysi bor buyurtmani bekor qilib bo'lmaydi (beton allaqachon yuklangan/yo'lda). */
+const STARTED_DELIVERY: DeliveryStatus[] = ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'COMPLETED', 'DISPUTED'];
 const ALL_STATUSES = Object.values(OrderStatus) as OrderStatus[];
 type ConfirmInput = z.infer<typeof ConfirmOrderSchema>;
 
@@ -192,8 +195,9 @@ export class OrdersService {
 
   async cancel(a: AuthContext, id: string, reason?: string) {
     const order = await this.get(a, id);
-    // Beton yuklangan/yo'lda bo'lsa bekor qilib bo'lmaydi — reysni dispetcher FAILED qiladi
-    const started = order.deliveries.filter((d) => ['LOADING', 'EN_ROUTE', 'ARRIVED', 'UNLOADING', 'COMPLETED', 'DISPUTED'].includes(d.status));
+    // Beton yuklangan/yo'lda bo'lsa bekor qilib bo'lmaydi — reysni dispetcher FAILED qiladi.
+    // Bu yerdagi tekshiruv — foydalanuvchiga tushunarli xabar uchun; haqiqiy (poygasiz) tekshiruv `transition` tranzaksiyasida.
+    const started = order.deliveries.filter((d) => STARTED_DELIVERY.includes(d.status));
     if (started.length) throw new DomainError('ORDER_INVALID_TRANSITION', `Buyurtma reyslari boshlangan (${started.length} ta) — bekor qilib bo'lmaydi`);
     const penalty = ['CONFIRMED', 'SCHEDULED'].includes(order.status)
       ? cancellationPenalty(order.totalAmount.toNumber(), order.scheduledAt, new Date(), await this.rules(order.plantOrgId))
@@ -218,6 +222,7 @@ export class OrdersService {
     const updated = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
     this.emitStatus(updated, order.status as OrderStatus, to, byUserId);
     if (to === 'DELIVERED') this.events.emit(ORDER_EVENTS.delivered, { orderId });
+    if (to === 'CANCELLED') this.events.emit(ORDER_EVENTS.cancelled, { orderId, penalty: 0 });
     return updated;
   }
 
@@ -245,6 +250,9 @@ export class OrdersService {
       const r = await tx.order.updateMany({ where: { id, status: order.status }, data: { status: to } });
       if (r.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "Buyurtma holati allaqachon o'zgargan", { from: order.status, to });
       if (to === 'CANCELLED') {
+        // Tekshiruv bilan yozuv orasida haydovchi yuklashni boshlagan bo'lsa (TOCTOU) — bekor qilish rad etiladi
+        const started = await tx.delivery.count({ where: { orderId: id, status: { in: STARTED_DELIVERY } } });
+        if (started) throw new DomainError('ORDER_INVALID_TRANSITION', `Buyurtma reyslari boshlangan (${started} ta) — bekor qilib bo'lmaydi`);
         // Bekor qilingan buyurtmaning hali boshlanmagan reyslari ham yopiladi — aks holda haydovchi
         // bekor qilingan buyurtmani qabul qilib, beton yuklab ketishi mumkin edi
         await tx.delivery.updateMany({ where: { orderId: id, status: { in: ['ASSIGNED', 'DECLINED', 'ACCEPTED'] } }, data: { status: 'CANCELLED' } });

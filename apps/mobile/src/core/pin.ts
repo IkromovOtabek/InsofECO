@@ -1,4 +1,4 @@
-import { kv, secure } from './storage';
+import { kv, secure, wipeAuthTokens } from './storage';
 
 /**
  * Tez kirish uchun PIN.
@@ -27,7 +27,10 @@ export const pinStore = {
     await secure.del(KEY);
     kv.delete(FAILS);
   },
-  /** To'g'ri bo'lsa hisoblagich tozalanadi; 5 marta xato bo'lsa PIN o'chadi. */
+  /**
+   * To'g'ri bo'lsa hisoblagich tozalanadi; 5 marta xato bo'lsa PIN BILAN BIRGA tokenlar ham darhol o'chadi —
+   * serverga chiqish so'rovi (`logout()`) shundan keyin: ilova shu zahoti o'ldirilsa ham hisob telefonda qolmaydi.
+   */
   async verify(pin: string): Promise<{ ok: boolean; left: number; wiped?: boolean }> {
     const saved = await secure.get(KEY);
     if (!saved) return { ok: false, left: 0, wiped: true };
@@ -38,7 +41,7 @@ export const pinStore = {
     const fails = (kv.getNumber(FAILS) ?? 0) + 1;
     kv.set(FAILS, fails);
     if (fails >= MAX_FAILS) {
-      await this.clear();
+      await Promise.all([this.clear(), wipeAuthTokens()]);
       return { ok: false, left: 0, wiped: true };
     }
     return { ok: false, left: MAX_FAILS - fails };

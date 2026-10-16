@@ -169,7 +169,7 @@ Biznes qoidalari (beton texnologiyasi):
 - **90 daqiqa qoidasi:** `EN_ROUTE` dan `UNLOADING` gacha 90 daqiqadan oshsa — reys `SLA_BREACH` bayrog'i oladi, Tadbirkor va Quruvchiga push. (Sozlanadi: yozda 60 daq.)
 - GPS faqat `ACCEPTED…UNLOADING` oralig'ida yig'iladi (batareya va shaxsiy hayot).
 - `ARRIVED` avtomatik: mashina obyektdan 200 m radiusga kirsa (server tomonda geofence), lekin haydovchi qo'lda ham bosa oladi.
-- `COMPLETED` uchun Quruvchi imzosi (ekranga chizilgan) yoki OTP-kod (agar quruvchi ilovasiz bo'lsa — mijoz raqamining Telegram'iga (Telegram Gateway) 4 xonali kod, haydovchi kiritadi).
+- `COMPLETED` uchun Quruvchi imzosi (ekranga chizilgan) yoki OTP-kod (agar quruvchi ilovasiz bo'lsa — mijoz raqamining Telegram'iga (Telegram Gateway) 6 xonali kod — 30 daqiqa, 5 urinish; haydovchi kiritadi). `/transition` bilan UNLOADING → COMPLETED hech kimga mumkin emas, faqat `/sign`.
 - Bir haydovchida bir vaqtda faqat **bitta** faol reys.
 
 ### 4.3 Qurilish obyekti (Qishloq qurilishi)

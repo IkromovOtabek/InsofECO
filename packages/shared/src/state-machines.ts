@@ -18,6 +18,7 @@ export const ORDER_TRANSITIONS: readonly Transition<OrderStatus>[] = [
   { from: 'SCHEDULED', to: 'IN_PROGRESS', roles: ['TADBIRKOR', 'HAYDOVCHI'] }, // birinchi reys LOADING bo'lganda tizim
   { from: 'SCHEDULED', to: 'CANCELLED', roles: ['TADBIRKOR'] },
   { from: 'IN_PROGRESS', to: 'DELIVERED', roles: ['TADBIRKOR', 'HAYDOVCHI', 'QURUVCHI'] }, // oxirgi reys COMPLETED bo'lganda tizim
+  { from: 'IN_PROGRESS', to: 'CANCELLED', roles: ['TADBIRKOR'] }, // hamma reys FAILED/CANCELLED bo'lib, birortasi ham yetkazilmagan — tizim
   { from: 'DELIVERED', to: 'COMPLETED', roles: ['TADBIRKOR', 'QURUVCHI'] },
 ];
 
@@ -34,9 +35,9 @@ export const DELIVERY_TRANSITIONS: readonly Transition<DeliveryStatus>[] = [
   { from: 'ARRIVED', to: 'UNLOADING', roles: ['HAYDOVCHI', 'TADBIRKOR'] },
   { from: 'ARRIVED', to: 'FAILED', roles: ['HAYDOVCHI', 'TADBIRKOR'] },
   { from: 'UNLOADING', to: 'FAILED', roles: ['TADBIRKOR'] }, // dispetcher override
-  { from: 'UNLOADING', to: 'COMPLETED', roles: ['QURUVCHI', 'HAYDOVCHI', 'TADBIRKOR'] }, // imzo/OTP orqali
+  { from: 'UNLOADING', to: 'COMPLETED', roles: ['QURUVCHI', 'HAYDOVCHI', 'TADBIRKOR'] }, // FAQAT imzo/qabul kodi (POST /sign) orqali — /transition rad etadi
   { from: 'UNLOADING', to: 'DISPUTED', roles: ['QURUVCHI'] },
-  { from: 'DISPUTED', to: 'COMPLETED', roles: ['TADBIRKOR'] },
+  { from: 'DISPUTED', to: 'COMPLETED', roles: ['TADBIRKOR'] }, // e'tiroz hal qilindi — acceptedM3 majburiy
 ];
 
 export function canTransition<S extends string>(

@@ -107,7 +107,14 @@ export class WorkersService {
       input.shipmentId ? this.prisma.shipment.count({ where: { id: input.shipmentId, organizationId: a.orgId!, driverUserId: input.targetUserId } }) : Promise.resolve(1),
     ]);
     if (!member || !wo || !sh) throw DomainError.notFound('Ish yoki xodim');
-    const r = await this.prisma.review.create({ data: { organizationId: a.orgId!, authorUserId: a.userId, ...input } });
+    // Baho faqat aniq ish yoki yukka va bir muallifdan bir marta (DB'da unique ham bor) — reyting spam bo'lmasin
+    if (!input.workOrderId && !input.shipmentId) throw new DomainError('VALIDATION', 'Baho aniq ish yoki yukka beriladi');
+    const dup = await this.prisma.review.count({ where: { authorUserId: a.userId, ...(input.workOrderId ? { workOrderId: input.workOrderId } : { shipmentId: input.shipmentId }) } });
+    if (dup) throw new DomainError('VALIDATION', 'Bu ish allaqachon baholangan');
+    const r = await this.prisma.review.create({ data: { organizationId: a.orgId!, authorUserId: a.userId, ...input } }).catch((e: unknown) => {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new DomainError('VALIDATION', 'Bu ish allaqachon baholangan');
+      throw e;
+    });
     const agg = await this.prisma.review.aggregate({ where: { targetUserId: input.targetUserId }, _avg: { scoreOverall: true }, _count: true });
     await this.prisma.workerProfile.updateMany({ where: { userId: input.targetUserId }, data: { ratingAvg: agg._avg.scoreOverall ?? 0, ratingCount: agg._count } });
     return r;

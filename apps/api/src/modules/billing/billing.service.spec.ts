@@ -15,7 +15,7 @@ describe('BillingService', () => {
 
   it('qator summasi yaxlitlangan narxdan: hajm × narx = summa', async () => {
     const tx = {
-      invoice: { upsert: jest.fn().mockResolvedValue({ id: 'i1' }), update: jest.fn() },
+      invoice: { upsert: jest.fn().mockResolvedValue({ id: 'i1' }), update: jest.fn().mockResolvedValue({ id: 'i1', amount: new D(750_000), paidAmount: new D(0) }) },
       invoiceLine: { create: jest.fn((a: { data: unknown }) => a.data) },
     };
     const prisma = {

@@ -43,9 +43,9 @@ export const authApi = {
   /** Kod + yangi parol → barcha eski seanslar yopiladi, shu qurilmaga yangi seans beriladi. */
   resetPassword: (phone: string, code: string, password: string) =>
     api<{ accessToken: string; refreshToken: string; user: Profile }>('/auth/password/reset', { method: 'POST', body: { phone, code, password, device: deviceInfo() }, auth: false }),
-  /** Tizimga kirgan holda parolni almashtirish. */
+  /** Tizimga kirgan holda parolni almashtirish. Server BARCHA seanslarni (shu qurilmaniki ham) yopib, yangi tokenlar beradi; eski server faqat `ok`. */
   changePassword: (current: string, next: string) =>
-    api<{ ok: true }>('/auth/password/change', { method: 'POST', body: { current, next } }),
+    api<{ ok: true; accessToken?: string; refreshToken?: string }>('/auth/password/change', { method: 'POST', body: { current, next } }),
   plants: () => api<{ id: string; name: string; address?: string | null }[]>('/organizations/plants', { auth: false }),
   me: () => api<Profile>('/me'),
   /** Profil rasmi — ro'yxatdan o'tgach (sessiya bilan) yuboriladi. `uri` — image-picker fayli. */

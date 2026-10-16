@@ -100,7 +100,16 @@ export class MaterialsService {
       // Ikki marta "Tasdiqlash" — ikkinchisi aniq xato oladi (ikkinchi yuk yaratilmaydi)
       const claimed = await tx.materialRequest.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'APPROVED' } });
       if (claimed.count !== 1) throw new DomainError('ORDER_INVALID_TRANSITION', "So'rov allaqachon ko'rib chiqilgan");
-      const sh = await tx.shipment.create({
+      // Zaxira TASDIQDA atomar band qilinadi (`quantity >= miqdor` bo'lsagina ayiriladi). Ilgari faqat tekshirilib,
+      // ayirish qabul (CONFIRMED) paytida edi: bir nechta tasdiq bitta qoldiqni ortiqcha band qilar, yuk jo'nab
+      // ketgach CONFIRMED "zaxira yetarli emas" deb yiqilar va yuk abadiy DELIVERED da qolardi.
+      // Bekor qilinsa (`shipments.service` CANCELLED) qaytariladi.
+      const taken = await tx.inventoryItem.updateMany({
+        where: { warehouseId: warehouse.id, materialId: r.materialId, quantity: { gte: r.quantity } },
+        data: { quantity: { decrement: r.quantity } },
+      });
+      if (taken.count !== 1) throw new DomainError('VALIDATION', `Omborda ${r.material.name} yetarli emas`, { warehouseId: warehouse.id, materialId: r.materialId });
+      await tx.shipment.create({
         data: {
           organizationId: a.orgId!, materialRequestId: r.id, projectId: r.projectId, warehouseId: warehouse.id,
           driverUserId: input.driverUserId, vehicleId: input.vehicleId, status: 'NEW',

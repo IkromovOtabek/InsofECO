@@ -7,7 +7,7 @@ import { Confirm, toast } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { ApiException } from '@/core/api';
 import { EcoRole, adminApi, useAdminOrgs } from '@/features/admin/api';
-import { useDebounced } from '@/features/admin/ui';
+import { useDebounced } from '@/shared/hooks';
 
 type Target = 'all' | EcoRole;
 
