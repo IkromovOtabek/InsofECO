@@ -503,11 +503,11 @@ export const ECO_ROLE_NAME: Record<RoleKey, { name: string; tagline: string }> =
   HAYDOVCHI: { name: 'Kabina', tagline: 'Bitta yuk, bitta tugma' },
 };
 
-export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY';
+export type ErpRoleKey = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY' | 'AGENT';
 export const ERP_ROLE_NAME: Record<ErpRoleKey, string> = {
   DIRECTOR: 'Direktor', SALES: 'Sotuv', PRODUCTION: 'Ishlab chiqarish', SUPERVISOR: 'Ish boshqaruvchi',
   LOGISTICS: 'Logistika', WAREHOUSE: 'Sklad', PROCUREMENT: 'Snabjeniye', ACCOUNTING: 'Buxgalteriya',
-  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', MECHANIC: 'Mexanik', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir', SECRETARY: 'Sekretar',
+  FINANCE: 'Moliya', HR: 'Otdel kadr', CASHIER: 'Kassa / bank', MECHANIC: 'Mexanik', DRIVER: 'Haydovchi', BRIGADIER: 'Brigadir', SECRETARY: 'Sekretar', AGENT: 'Sotuv agenti',
 };
 
 /** Rol → modul toni (ikonka plitkasi). Boshqa rollar brend tonida. */

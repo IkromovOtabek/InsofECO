@@ -5,6 +5,8 @@ import { Icon } from '@/design/icons';
 import { useTheme } from '@/design/theme';
 import { elevation, radius, size, space, toneColors } from '@/design/tokens';
 import type { ErpSectionChart } from '@/core/erp';
+import { BarChartCard, BreakdownCard } from '@/design/blocks';
+import { fmtShort } from '@/design/ui';
 
 type Progress = Extract<ErpSectionChart, { kind: 'progress' }>;
 
@@ -41,4 +43,21 @@ export function ProgressChart({ chart, onOpen }: { chart: Progress; onOpen?: (li
       })}
     </View>
   );
+}
+
+/**
+ * Kartochka bo'limining diagrammasi (`/detail` javobidagi ixtiyoriy `section.chart`, masalan BI tahlil kartochkalari) —
+ * bosh sahifadagi bloklar bilan bir xil komponentlar. Qatorlar baribir ostida chiziladi (eski ilova faqat ularni ko'radi).
+ */
+export function SectionChartView({ chart, onOpen }: { chart: ErpSectionChart; onOpen?: (list: string) => void }) {
+  if (chart.kind === 'progress') return <ProgressChart chart={chart} onOpen={onOpen} />;
+  if (chart.kind === 'donut') {
+    const fmt = (n: number) => chart.items.find((i) => i.value === n)?.text ?? fmtShort(n);
+    return <BreakdownCard title={`Jami: ${chart.total}${chart.totalLabel ? ` ${chart.totalLabel}` : ''}`} items={chart.items.map((i) => ({ label: i.label, value: i.value }))} format={fmt} />;
+  }
+  if (chart.kind === 'bars') {
+    return <BarChartCard title={chart.total ? `Jami: ${chart.total}` : (chart.series[0]?.label ?? '')} labels={chart.points.map((p) => p.label)} series={[{ name: chart.series[0]?.label ?? '', data: chart.points.map((p) => p.values[0] ?? 0) }]} />;
+  }
+  const idx = [0, 1].filter((i) => i < chart.series.length);
+  return <BarChartCard title={idx.map((i) => chart.series[i]!.label).join(' / ')} labels={chart.groups.map((g) => g.label)} series={idx.map((i) => ({ name: chart.series[i]!.label, data: chart.groups.map((g) => g.values[i] ?? 0) }))} />;
 }

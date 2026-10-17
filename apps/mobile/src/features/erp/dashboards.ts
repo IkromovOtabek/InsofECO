@@ -247,6 +247,23 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     ],
     missing: ['Kechikkanlar', 'Ochiq vakansiyalar', 'Davomat bo\'limlar kesimida', 'Selfi tekshiruvi navbati', 'Hujjat muddati', "Ta'til arizalari", 'Oylik tabel'],
   },
+  // Sotuv agenti — o'z mijozlari, ularning qarzi va o'z zayavkalari (`lib/mobile/home.ts` AGENT, vebdagi `/agent`)
+  AGENT: {
+    title: 'Mijozlarim',
+    periods: [],
+    hero: ['debt'],
+    kpis: ['customers', 'debtors'],
+    chart: null,
+    breakdown: null,
+    progress: null,
+    attention: [],
+    quick: [
+      { label: 'Yangi zayavka', icon: 'plus', to: { kind: 'new', key: 'orders' } },
+      { label: 'Mijozlarim', icon: 'users', to: { kind: 'list', key: 'customers' } },
+      { label: 'Zayavkalarim', icon: 'file-text', to: { kind: 'tab', tab: 'work' } },
+    ],
+    missing: ['Agent sotuv plani', "Oylar bo'yicha sotuv dinamikasi"],
+  },
   // Sekretar — faqat Arenda (do'konlar ijarasi): kassa, shu oy kerak/tushgan/qoldiq (`lib/mobile/arenda.ts` arendaHome)
   SECRETARY: {
     title: 'Arenda',

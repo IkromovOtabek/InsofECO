@@ -19,6 +19,7 @@ import { useSession } from '@/core/session';
 import { confirmAtSite } from '@/features/address/site-check';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
+import { SectionChartView } from '@/features/erp/charts';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
 import { TripTrackSection, hasTrack, useErpTripTrack } from '@/features/erp/trip-track';
@@ -159,6 +160,8 @@ export default function ErpDetail() {
     if (e.track === 'stop') await stopErpTracking();
     // Marshrut ilova ichida ko'rsatiladi; tashqi navigator faqat `route` bo'lmaganda
     // (eski server javobi) — haydovchini ilovadan olib chiqib ketmaslik uchun.
+    // Havola (nakladnoy QR sahifasi) — faqat http(s)
+    if (e.openUrl && /^https?:\/\//.test(e.openUrl)) await Linking.openURL(e.openUrl).catch(() => { note = { text: "Havolani ochib bo'lmadi.", settings: false }; });
     if (e.route) router.push(`/yolda/${id}` as never);
     else if (e.navigate && !(await openNavigation(e.navigate.lat, e.navigate.lng, e.navigate.label))) {
       note = note ?? { text: 'Navigatsiya ilovasi topilmadi.', settings: false };
@@ -382,7 +385,9 @@ export default function ErpDetail() {
 
           {sections.flatMap((s) => [
             <SectionHead key={`h-${s.title}`} title={s.title} count={s.rows.length || undefined} />,
-            s.rows.length === 0 ? <SectionEmpty key={`e-${s.title}`} text={s.empty} /> : (
+            // Bo'lim diagrammasi (ixtiyoriy, masalan BI tahlil) — qatorlar ustida
+            s.chart ? <SectionChartView key={`c-${s.title}`} chart={s.chart} onOpen={(k) => router.push(`/erp/list/${k}` as never)} /> : null,
+            s.rows.length === 0 ? (s.chart ? null : <SectionEmpty key={`e-${s.title}`} text={s.empty} />) : (
               <RowsGroup
                 key={`r-${s.title}`}
                 rows={s.rows}

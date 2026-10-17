@@ -25,7 +25,7 @@ const str = (v: string | ItemRow[] | undefined) => (typeof v === 'string' ? v : 
 /** Boshlang'ich qiymatlar: serverdagi `value`, `items` uchun bitta bo'sh qator. */
 export function initialValues(fields: ErpFormField[]): Values {
   const v: Values = {};
-  for (const f of fields) v[f.name] = f.type === 'items' ? [emptyRow(f)] : (f.value ?? '');
+  for (const f of fields) v[f.name] = f.type === 'items' ? (f.rows?.length ? f.rows.map((r) => ({ ...emptyRow(f), ...r })) : [emptyRow(f)]) : (f.value ?? '');
   return v;
 }
 
@@ -179,8 +179,10 @@ export function FieldInput({ field, values, onChange, errors }: { field: ErpForm
           onChangeText={(v: string) => onChange(field.name, v)}
           placeholder={field.placeholder}
           keyboardType={field.type === 'number' ? 'numeric' : /phone|tel/i.test(field.name) ? 'phone-pad' : 'default'}
-          autoCapitalize={field.type === 'number' || /phone|tel/i.test(field.name) ? 'none' : 'sentences'}
+          autoCapitalize={field.type === 'number' || field.secure || /phone|tel/i.test(field.name) ? 'none' : 'sentences'}
           autoCorrect={false}
+          secureTextEntry={!!field.secure}
+          textContentType={field.secure ? 'newPassword' : undefined}
         />
       );
     default:

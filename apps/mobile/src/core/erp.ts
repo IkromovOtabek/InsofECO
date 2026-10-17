@@ -12,7 +12,7 @@ import { appHeaders, checkUpdateRequired } from './app-update';
  * ECO klientidan (`core/api.ts`) ajratilgan: boshqa server, boshqa token, X-Org-Id yo'q.
  * Tokenlar SecureStore'da alohida kalitlarda turadi — ikki tizim bir-birini bosib ketmaydi.
  */
-export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY';
+export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY' | 'AGENT';
 export interface ErpUser { id: string; login: string; fullName: string; role: ErpRole; roleLabel: string }
 export interface ErpTokens { accessToken: string; refreshToken: string }
 
@@ -64,8 +64,12 @@ export interface ErpFormField {
   /** `photo` uchun: old/orqa kamera va faqat jonli kadr (galereya yo'q) — yuz bilan davomat shunday. */
   camera?: 'front' | 'back';
   cameraOnly?: boolean;
+  /** `text`: maxfiy qiymat (parol) — yozilgani yulduzcha bilan ko'rinadi, avtoto'ldirish o'chiq. */
+  secure?: boolean;
   /** `items` turi uchun ustunlar. */
   columns?: ErpFormField[];
+  /** `items`: oldindan to'ldirilgan qatorlar (masalan taklif zayavkadan). Yo'q bo'lsa — bitta bo'sh qator (ustun `value`lari bilan). */
+  rows?: Record<string, string>[];
   /** `select`: qidiruv yonidagi "+" — yangi yozuvni (masalan xomashyo) shu yerda qo'shish varag'i (`features/erp/quick-create.tsx`). */
   create?: ErpQuickCreate;
   /** `date` maydoni uchun — 10 kunlik kunlik yuklama (veb "ish tartibi" bilan bir xil hisob). */
@@ -95,6 +99,8 @@ export interface ErpActionEffect {
   route?: boolean;
   /** Navigatsiya ilovasini shu nuqtaga ochish. `route` bo'lsa e'tiborga olinmaydi. */
   navigate?: { lat: number; lng: number; label: string };
+  /** Havolani ochish (masalan nakladnoyning QR tekshiruv sahifasi). Yangi ERP; eski server yubormaydi. */
+  openUrl?: string;
 }
 export interface ErpAction {
   id: string;
