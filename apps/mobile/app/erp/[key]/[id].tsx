@@ -53,6 +53,17 @@ const ACTION_ICON: Record<string, IconName> = {
   'arenda.storno': 'circle-x',
   'arenda.charge': 'pencil',
   'arenda.shop.toggle': 'store',
+  'arenda.shop.edit': 'pencil',
+  'arenda.lease.start': 'user-plus',
+  'arenda.lease.end': 'log-out',
+  'arenda.price': 'trending-up',
+  'arenda.price.cancel': 'circle-x',
+  'arenda.elec': 'zap',
+  'arenda.remind': 'send',
+  'arenda.pay.former': 'hand-coins',
+  'arenda.call': 'phone',
+  'arenda.receipt': 'receipt',
+  'order.public': 'scan-line',
   'trip.fuel': 'droplets',
   'trip.close': 'circle-check',
   'trip.resolve': 'circle-check',
@@ -160,8 +171,8 @@ export default function ErpDetail() {
     if (e.track === 'stop') await stopErpTracking();
     // Marshrut ilova ichida ko'rsatiladi; tashqi navigator faqat `route` bo'lmaganda
     // (eski server javobi) — haydovchini ilovadan olib chiqib ketmaslik uchun.
-    // Havola (nakladnoy QR sahifasi) — faqat http(s)
-    if (e.openUrl && /^https?:\/\//.test(e.openUrl)) await Linking.openURL(e.openUrl).catch(() => { note = { text: "Havolani ochib bo'lmadi.", settings: false }; });
+    // Havola (nakladnoy / kvitansiya QR sahifasi) — faqat http(s); `tel:` — ijarachiga qo'ng'iroq
+    if (e.openUrl && /^(https?:\/\/|tel:\+?\d+$)/.test(e.openUrl)) await Linking.openURL(e.openUrl).catch(() => { note = { text: "Havolani ochib bo'lmadi.", settings: false }; });
     if (e.route) router.push(`/yolda/${id}` as never);
     else if (e.navigate && !(await openNavigation(e.navigate.lat, e.navigate.lng, e.navigate.label))) {
       note = note ?? { text: 'Navigatsiya ilovasi topilmadi.', settings: false };

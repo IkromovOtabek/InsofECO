@@ -20,8 +20,9 @@ import { idSeg } from './ui';
  * pastda Excel'dagi oy varag'i — bozor bo'yicha guruhlangan, har do'konda to'lashi kerak / tushgan / qoldiq.
  *
  * Hisob serverda (`GET /api/mobile/arenda?oy=`, ERP `lib/rent.ts`); formalar — umumiy `/erp/new/<key>` ekrani
- * (`arenda-kirim`, `arenda-chiqim`, `arenda-shop`), do'kon kartochkasi — `/erp/arenda-shop/<id>` (shu oy hisobini
- * tahrirlash, yopish). Oy hisobi ochilmagan bo'lsa «Oyni ochish» amali (`arenda.open-month`).
+ * (`arenda-kirim`, `arenda-chiqim`, `arenda-shop`), ijarachi kartasi — `/erp/arenda-shop/<id>` (shartnoma, ijarachini
+ * almashtirish, joyni bo'shatish, narx o'zgarishi, svet, shu oy hisobi). Qarzdorlar va svet varag'i — server ro'yxatlari
+ * (`arenda-debtors`, `arenda-svet`). Oy hisobi ochilmagan bo'lsa «Oyni ochish» amali (`arenda.open-month`).
  */
 
 /** Server rad etdi (eski ERP — endpoint yo'q, yoki rolga yopiq). */
@@ -39,7 +40,7 @@ export function ArendaScreen({ title = 'Arenda' }: { title?: string }) {
 
   const openMonth = () => {
     if (!data) return;
-    dialog('Oyni ochish', `${data.monthLabel}: faol do'konlar uchun hisob o'tgan oy hisobidan (bo'lmasa do'kon andozasidan) nusxa olib ochiladi.`, [
+    dialog('Oyni ochish', `${data.monthLabel}: ijaradagi joylar uchun hisob o'tgan oy hisobidan (bo'lmasa do'kon andozasidan, rejalashtirilgan yangi narx bilan) ochiladi.`, [
       { text: 'Bekor qilish', style: 'cancel' },
       { text: 'Ochish', onPress: () => act.mutate({ action: 'arenda.open-month', id: data.month }, { onSuccess: (r) => toast.success(r.message), onError: (e) => toast.error(e instanceof ApiException ? e.message : 'Saqlanmadi') }) },
     ]);
@@ -93,7 +94,7 @@ export function ArendaScreen({ title = 'Arenda' }: { title?: string }) {
         {!data.opened && data.can.shops ? (
           <Callout key="open" tone="info" icon="calendar-days">
             <View style={{ gap: space.sm }}>
-              <Txt v="bodySm">Bu oy uchun do'konlar hisobi hali ochilmagan. Ochilsa har faol do'kon uchun «to'lashi kerak» qatori paydo bo'ladi.</Txt>
+              <Txt v="bodySm">Bu oy uchun do'konlar hisobi hali ochilmagan. Ochilsa ijaradagi har joy uchun «to'lashi kerak» qatori paydo bo'ladi.</Txt>
               <Button size="md" full={false} icon="plus" title="Oyni ochish" loading={act.isPending} onPress={openMonth} />
             </View>
           </Callout>
@@ -142,16 +143,22 @@ export function ArendaScreen({ title = 'Arenda' }: { title?: string }) {
             <Button variant="danger" size="lg" icon="circle-arrow-up" title="Chiqim" style={{ flex: 1 }} onPress={() => go('/erp/new/arenda-chiqim')} />
           </View>
         ) : null}
+        {data ? (
+          <View style={{ flexDirection: 'row', gap: space.md }}>
+            <Button variant="secondary" size="md" icon="user-x" title="Qarzdorlar" style={{ flex: 1 }} onPress={() => go('/erp/list/arenda-debtors')} />
+            <Button variant="secondary" size="md" icon="zap" title="Svet" style={{ flex: 1 }} onPress={() => go('/erp/list/arenda-svet')} />
+          </View>
+        ) : null}
         {body}
       </ScrollView>
     </View>
   );
 }
 
-/** Oy varag'i qatori: do'kon, to'lashi kerak / tushgan, o'ngda qoldiq nishoni (qarz — qizil, to'liq — yashil, yopiq do'kon — kulrang). */
+/** Oy varag'i qatori: do'kon, to'lashi kerak / tushgan, o'ngda qoldiq nishoni (qarz — qizil, to'liq — yashil, bo'sh joy — kulrang). */
 function ShopRow({ row, onPress }: { row: ErpArendaRow; onPress: () => void }) {
   const badge = !row.isActive
-    ? { text: 'Yopiq', tone: 'neutral' }
+    ? { text: "Bo'sh", tone: 'neutral' }
     : row.leftNum > 0.005
       ? { text: `−${row.left}`, tone: 'danger' }
       : row.leftNum < -0.005

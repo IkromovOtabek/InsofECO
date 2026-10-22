@@ -273,14 +273,16 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     chart: null,
     breakdown: null,
     progress: null,
-    attention: [/^Shu oy qarzdorlar/],
+    attention: [/^Shartnoma muddati/, /^Shu oy qarzdorlar/],
     quick: [
       { label: 'Kirim', icon: 'circle-arrow-down', to: { kind: 'new', key: 'arenda-kirim' }, orElse: { label: 'Jurnal', icon: 'arrow-up-down', to: { kind: 'tab', tab: 'work' } } },
       { label: 'Chiqim', icon: 'circle-arrow-up', to: { kind: 'new', key: 'arenda-chiqim' }, orElse: { label: "Do'konlar", icon: 'store', to: { kind: 'list', key: 'arenda-shops' } } },
+      { label: 'Qarzdorlar', icon: 'user-x', to: { kind: 'list', key: 'arenda-debtors' } },
+      { label: 'Svet', icon: 'zap', to: { kind: 'list', key: 'arenda-svet' } },
       { label: 'Oylik jadval', icon: 'calendar-days', to: { kind: 'href', href: '/(erp-secretary)/arenda' } },
       { label: "Do'kon qo'shish", icon: 'plus', to: { kind: 'new', key: 'arenda-shop' }, orElse: { label: "Do'konlar", icon: 'store', to: { kind: 'list', key: 'arenda-shops' } } },
     ],
-    missing: ['Oylar bo\'yicha tushum dinamikasi', 'Bozor (joy) kesimida ulush'],
+    missing: [],
   },
   CASHIER: {
     title: 'Kassa',
