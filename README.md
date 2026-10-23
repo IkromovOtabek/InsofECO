@@ -166,6 +166,32 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d api.insof-erp.uz          # DNS A-yozuvi shu serverga qaragan bo'lsin
 ```
 
+Fayllar (MinIO, presigned PUT/GET) — `files.insof-erp.uz`. `Host` saqlanishi shart: SigV4 imzosi shu nomga
+qo'yilgan. API o'zi esa MinIO'ga ichkaridan murojaat qiladi: `.env` → `S3_ENDPOINT=https://files.insof-erp.uz`,
+`S3_INTERNAL_ENDPOINT=http://127.0.0.1:9010`, `S3_BUCKET=insof` (bucket private, `mc mb` bilan bir marta yaratiladi).
+
+```bash
+sudo tee /etc/nginx/sites-available/insof-files >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name files.insof-erp.uz;
+    client_max_body_size 12m;          # MAX_UPLOAD_BYTES (10 MB) + zaxira
+    location / {
+        proxy_pass http://127.0.0.1:9010;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_read_timeout 120s;
+    }
+}
+EOF
+sudo ln -sf /etc/nginx/sites-available/insof-files /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d files.insof-erp.uz
+```
+
 | Ish | Buyruq |
 | --- | --- |
 | Loglar | `journalctl -u insof-eco -f` |
