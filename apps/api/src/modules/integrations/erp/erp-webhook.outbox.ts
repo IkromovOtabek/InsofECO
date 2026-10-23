@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma, WebhookOutbox } from '@prisma/client';
+import * as Sentry from '@sentry/node';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 
@@ -153,7 +154,10 @@ export class ErpWebhookOutbox implements OnModuleInit, OnModuleDestroy {
       error = (e as Error).message;
     }
     const final = (status !== null && !retryable(status)) || attempts >= MAX_ATTEMPTS;
-    if (final) this.logger.error(`webhook ${row.event} (${row.id}) yetib bormadi: ${error}, ${attempts} urinish`);
+    if (final) {
+      this.logger.error(`webhook ${row.event} (${row.id}) yetib bormadi: ${error}, ${attempts} urinish`);
+      Sentry.captureMessage(`ERP webhook yetib bormadi: ${row.event}`, { level: 'error', extra: { id: row.id, status, error, attempts } });
+    }
     else this.logger.warn(`webhook ${row.event} (${row.id}): ${error} (urinish ${attempts})`);
     await this.prisma.webhookOutbox.update({
       where: { id: row.id },

@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
 import { Response } from 'express';
 import { ApiError } from '@insof/shared';
 import { DomainError } from './domain.error';
@@ -11,11 +12,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse<Response>();
 
     if (exception instanceof DomainError) {
+      if (exception.status >= 500) Sentry.captureException(exception);
       const body: ApiError = { code: exception.code, message: exception.message, details: exception.details };
       return res.status(exception.status).json(body);
     }
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      if (status >= 500) Sentry.captureException(exception);
       const r = exception.getResponse() as { message?: string | string[] };
       const body: ApiError = {
         code: status === 429 ? 'RATE_LIMIT' : status === 401 ? 'AUTH_TOKEN_INVALID' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : status === 422 || status === 400 ? 'VALIDATION' : 'INTERNAL',
@@ -24,6 +27,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return res.status(status).json(body);
     }
     this.logger.error(exception);
+    Sentry.captureException(exception);
     const body: ApiError = { code: 'INTERNAL', message: 'Ichki xato' };
     return res.status(500).json(body);
   }

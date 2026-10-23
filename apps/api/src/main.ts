@@ -1,5 +1,7 @@
 // .env ni modullar dekoratorlari baholanishidan OLDIN yuklash shart (BullModule/JwtModule import vaqtida env o'qiydi)
 import 'dotenv/config';
+// Sentry — boshqa modullardan oldin (SENTRY_DSN bo'lmasa hech narsa qilmaydi)
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { VersioningType } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
