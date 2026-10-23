@@ -48,7 +48,9 @@ services:
       retries: 10
 
   minio:
-    image: quay.io/minio/minio:latest
+    # Rasmiy image eski VPS protsessorida ishlamaydi — binarlar Debian bazasiga ko'chiriladi (infra/minio/Dockerfile)
+    build: ./minio
+    image: insof-eco-minio:2025-09-07
     restart: unless-stopped
     logging: *logging
     command: server /data --console-address ":9001"
