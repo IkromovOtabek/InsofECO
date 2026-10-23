@@ -1,3 +1,5 @@
+// Sentry — birinchi (keyingi importlardagi xatolar ham ushlansin); DSN bo'lmasa o'chiq
+import '@/core/sentry';
 import '@/core/i18n';
 import { useErpHeartbeat } from '@/core/erp-track'; // fon GPS vazifasi ilova ishga tushganda ro'yxatdan o'tsin
 import '@/core/location'; // ECO reysining fon GPS vazifasi (TaskManager.defineTask) — xuddi shunday

@@ -1,6 +1,7 @@
 /** Insof ERP hooklari — mobil ilovadagi xodim bo'limlari uchun. */
 import { useMutation, keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as FileSystem from 'expo-file-system';
+// SDK 54: eski (yo'l bilan ishlaydigan) API — expo-file-system/legacy
+import * as FileSystem from 'expo-file-system/legacy';
 import { erpApi, erpAuth, type ErpFleetTruck, type ErpTripRoute } from '@/core/erp';
 import { config } from '@/core/config';
 import { KEYS, secure } from '@/core/storage';

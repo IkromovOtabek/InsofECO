@@ -1,4 +1,5 @@
 module.exports = function (api) {
   api.cache(true);
-  return { presets: ['babel-preset-expo'], plugins: ['react-native-reanimated/plugin'] };
+  // Reanimated 4: worklets plagini (react-native-worklets/plugin) babel-preset-expo tomonidan o'zi qo'shiladi
+  return { presets: ['babel-preset-expo'] };
 };

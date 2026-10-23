@@ -57,7 +57,7 @@ export interface FaceScanOptions {
 }
 
 type CameraModule = typeof import('expo-camera');
-type FsModule = typeof import('expo-file-system');
+type FsModule = typeof import('expo-file-system/legacy');
 let camCache: CameraModule | null | undefined;
 function loadCamera(): CameraModule | null {
   if (camCache !== undefined) return camCache;
@@ -74,7 +74,7 @@ function dropFile(uri?: string) {
   if (!uri) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('expo-file-system') as FsModule;
+    const fs = require('expo-file-system/legacy') as FsModule;
     void fs.deleteAsync(uri, { idempotent: true }).catch(() => undefined);
   } catch { /* modul yo'q — kesh baribir tozalanadi */ }
 }

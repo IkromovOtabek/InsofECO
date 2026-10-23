@@ -9,11 +9,20 @@ Android 1.0.0 APK xodimlarda; iOS build hali yo'q (Apple Developer hisobi kutilm
 
 | # | Muammo | Kim |
 |---|---|---|
-| 1 | **Google Play targetSdk.** Expo SDK 52 (RN 0.76) `targetSdkVersion 34` beradi. Play yangi ilova/yangilanish uchun API 35 (2025-08-31 dan), 2026-08-31 dan **API 36** talab qiladi; Android 15+ uchun 16 KB sahifa o'lchami ham shart. APK (ERP orqali) va TestFlight'ga ta'siri yo'q. Yechim: Expo SDK 54+ ga ko'tarish (RN 0.81, Yandex MapKit 16 KB mos versiya), keyin `expo-build-properties` bilan target 36. | Dasturchi |
+| 1 | ~~**Google Play targetSdk.**~~ 2026-10-23: Expo SDK 54 ga ko'tarildi (RN 0.81, compile/targetSdk 36, ilova **1.1.0**). iOS simulyator build'i tekshirildi; Android build va 16 KB sahifa tekshiruvi (`zipalign -c -P 16`) — EAS build'da. | Dasturchi |
 | 2 | **Android push.** `google-services.json` yo'q → Android'da Expo push token olinmaydi, bildirishnoma kelmaydi. Firebase → `uz.insofeco.app` → faylni EAS'ga `eas env:create --environment production --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json`, FCM V1 kalitini `eas credentials` ga. `app.config.ts` uni o'zi ulaydi. Keyin yangi build. | Siz |
 | 3 | **Demo hisoblar** production bazada: mijoz (telefon + parol, kodsiz kiradi) va ERP xodim (haydovchi, reys bilan). `08-app-store-matnlari.md` dagi `<…>` joylarini to'ldiring. | Siz |
 | 4 | **Play fon joylashuv deklaratsiyasi** + 30 s video ("Yo'lga chiqdim" → tushuntirish oynasi `src/core/bg-disclosure.ts` → "Har doim ruxsat" → xarita). | Siz |
 | 5 | Skrinshotlar: iPhone 6.9"/6.7" (1290×2796) va Android telefon, 4–6 ta. | Siz |
+
+## 1.1.0 (Expo SDK 54) — yangi native runtime
+
+- `version` 1.1.0 → `runtimeVersion` 1.1.0: 1.0.x telefonlar 1.1.0 OTA'larini **olmaydi** — do'kondan/APK'dan yangilanadi.
+  1.0.4 foydalanuvchilariga JS tuzatish kerak bo'lsa, OTA SDK 52 kodidan (1.1.0 dan oldingi commit) chiqariladi.
+- Kotlin pin plugini (`withKotlinVersion.js`) olib tashlandi — RN 0.81 o'z Kotlin 2.x versiyasini ishlatadi.
+- `expo-file-system` eski API — `expo-file-system/legacy`; Reanimated 4 (`react-native-worklets`), babel plagini avtomatik.
+- Sentry: `EXPO_PUBLIC_SENTRY_DSN` (EAS → production env). Source map yuklash ixtiyoriy: `SENTRY_AUTH_TOKEN`,
+  `SENTRY_ORG`, `SENTRY_PROJECT` EAS maxfiy o'zgaruvchilari berilsa plagin o'zi ulanadi.
 
 ## 1.0.1 reliz tartibi (har relizda shu ketma-ketlik)
 

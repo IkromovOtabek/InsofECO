@@ -28,6 +28,7 @@ if (IS_PROD) {
   }
 }
 
+const SENTRY_UPLOAD = !!(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT);
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'e6d74b95-9f55-43c6-93e7-4a8e056de8e9';
 
 // OTA kanali LOKAL yig'iladigan APK uchun (ERP orqali tarqatiladigan, `./gradlew assembleRelease`).
@@ -42,7 +43,8 @@ const config: ExpoConfig = {
   name: 'Insof ECO',
   slug: 'insof-eco',
   owner: 'otabekikromov',
-  version: '1.0.4',
+  // 1.1.0 — Expo SDK 54 (RN 0.81, Android targetSdk 36): yangi native runtime, 1.0.x OTA'lari bunga tushmaydi
+  version: '1.1.0',
   scheme: 'insofeco',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -115,8 +117,6 @@ const config: ExpoConfig = {
     // `icon` — Android status bar ikonkasi: oq siluet + shaffof fon (adaptive-icon foreground aynan shunday).
     // Busiz Android ilova ikonkasini oladi va u kulrang/oq kvadrat bo'lib ko'rinadi.
     ['expo-notifications', { icon: './assets/adaptive-icon.png', color: '#0b4fd6', sounds: ['./assets/bildirishnoma.wav'] }],
-    // Kotlin 1.9.24 — RN 0.76 bilan mos versiya, aks holda Android build yiqiladi (izoh plugin ichida)
-    './plugins/withKotlinVersion.js',
     // Yandex MapKit: FULL versiya (manzil takliflari va teskari geokodlash uchun) va Android minSdk 26 (izoh plugin ichida)
     './plugins/withYandexMapKit.js',
     // Android 11+: navigator ilovalarini ko'rish uchun <queries> (Yandex Navigator, Yandex Xaritalar, 2GIS, Google Maps, Waze)
@@ -127,6 +127,9 @@ const config: ExpoConfig = {
       // Faqat rasm (mediaTypes: ['images']) — mikrofon ishlatilmaydi. `false` bo'lmasa plugin Android'ga RECORD_AUDIO va
       // iOS'ga inglizcha NSMicrophoneUsageDescription qo'shadi: ishlatilmagan ruxsat — review'da rad etish sababi.
       microphonePermission: false }],
+    // Sentry: native crash'lar va source map yuklash. Yuklash faqat EAS'da SENTRY_AUTH_TOKEN (maxfiy) berilganda —
+    // aks holda build bosqichi tokensiz yiqilmasin. Ishlash vaqti (DSN) — EXPO_PUBLIC_SENTRY_DSN (src/core/sentry.ts).
+    ...(SENTRY_UPLOAD ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }] as [string, Record<string, unknown>]] : []),
   ],
   extra: {
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3010',

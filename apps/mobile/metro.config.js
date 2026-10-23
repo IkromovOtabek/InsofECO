@@ -1,13 +1,5 @@
-// Monorepo: packages/shared ni Metro ko'rishi uchun
+// Monorepo (packages/shared): SDK 52+ dan expo/metro-config ish maydonlarini o'zi topadi — qo'lda
+// watchFolders / nodeModulesPaths berish shart emas (expo-doctor ham buni tavsiya qiladi).
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '../..');
-const config = getDefaultConfig(projectRoot);
-
-config.watchFolders = [workspaceRoot];
-config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules'), path.resolve(workspaceRoot, 'node_modules')];
-config.resolver.disableHierarchicalLookup = true;
-
-module.exports = config;
+module.exports = getDefaultConfig(__dirname);

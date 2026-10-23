@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { useTheme } from '@/design/theme';
+import { reportError } from '@/core/sentry';
 import { ErrorScreen } from './offline';
 
 /**
@@ -13,6 +14,7 @@ import { ErrorScreen } from './offline';
  */
 export function RouteErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const { c } = useTheme();
+  useEffect(() => { reportError(error); }, [error]);
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <ErrorScreen
