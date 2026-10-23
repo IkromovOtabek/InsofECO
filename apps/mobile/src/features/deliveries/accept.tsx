@@ -9,8 +9,8 @@ import { dialog, toast } from '@/design/ui';
 import { Appear, haptic, stagger } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { DEMO_SCALE, elevation, radius, size, space } from '@/design/tokens';
-import { api } from '@/core/api';
 import { SignaturePad, SignaturePadHandle } from '@/components/signature-pad';
+import { putToStorage } from '@/features/files/photos';
 import { Delivery, useDispute, useSignDelivery } from './api';
 import i18n from '@/core/i18n';
 
@@ -28,15 +28,10 @@ const m3 = (v: number) => `${v.toFixed(1).replace('.', ',')} m³`;
 
 /** Imzo PNG'sini presigned URL orqali omborga yuklaydi va kalitini qaytaradi. */
 async function uploadSignature(base64: string): Promise<string> {
-  const p = await api<{ key: string; url: string; method: 'PUT'; headers: Record<string, string> }>('/files/presign', {
-    method: 'POST', body: { contentType: 'image/png', purpose: 'signature' },
-  });
   const bin = globalThis.atob(base64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const r = await fetch(p.url, { method: p.method ?? 'PUT', headers: p.headers, body: bytes.buffer });
-  if (!r.ok) throw new Error(`Imzo yuklanmadi (${r.status})`);
-  return p.key;
+  return putToStorage(bytes.buffer, bytes.length, 'image/png', 'signature');
 }
 
 /** Chizma palitrasidagi hero katagi — 14 css, textOnInverse 8%. */

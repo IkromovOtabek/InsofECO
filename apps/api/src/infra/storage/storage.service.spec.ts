@@ -43,6 +43,14 @@ describe('StorageService', () => {
     expect(r.url).toMatch(/X-Amz-Signature=[0-9a-f]{64}$/);
   });
 
+  it('presign: hajm berilsa — content-length imzoga kiradi, chegaradan oshsa rad etiladi', () => {
+    const r = new StorageService().presignPut('user1', 'signature', 'image/png', 1234);
+    expect(r.headers).toEqual({ 'content-type': 'image/png', 'content-length': '1234' });
+    expect(r.url).toContain('X-Amz-SignedHeaders=content-length%3Bcontent-type%3Bhost');
+    expect(() => new StorageService().presignPut('u', 'signature', 'image/png', MAX_UPLOAD_BYTES.signature + 1)).toThrow(/juda katta/);
+    expect(() => new StorageService().presignPut('u', 'waybill', 'image/jpeg', 0)).toThrow();
+  });
+
   it('presign: S3 kalitlari sozlanmagan bo\'lsa ishlamaydi (anonim bucket\'ga tushib qolmaydi)', () => {
     delete process.env.S3_SECRET_KEY;
     expect(() => new StorageService().presignPut('u', 'signature', 'image/png')).toThrow();

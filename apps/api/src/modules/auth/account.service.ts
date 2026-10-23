@@ -2,12 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Membership } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import * as argon2 from 'argon2';
 import { AuthContext } from '../../common/auth/decorators';
 import { DomainError } from '../../common/errors/domain.error';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { RedisService } from '../../infra/redis/redis.service';
 import { UserRevocationService } from '../../common/auth/user-gate';
 import { removeAvatar } from '../users/avatar';
 import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS } from '../organizations/organizations.events';
+import { OtpService } from './otp.service';
+
+/** Qayta tasdiq: parolli hisob — joriy parol; parolsiz (Telegram/kod bilan kirgan) — telefonga kelgan kod. */
+export interface DeleteProof { password?: string; code?: string }
 
 /**
  * Hisobni o'chirish — App Store (5.1.1) va Google Play talabi: ilovada o'zi ro'yxatdan o'tgan
@@ -28,13 +34,27 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
     private readonly revocation: UserRevocationService,
+    private readonly otp: OtpService,
+    private readonly redis: RedisService,
   ) {}
 
-  /** Ilovadan: "Hisobni o'chirish" tugmasi. */
-  async deleteMe(a: AuthContext): Promise<{ status: 'deleted' | 'requested' }> {
+  /** Parolsiz hisob uchun: o'chirishni tasdiqlash kodi egasining raqamiga yuboriladi. */
+  async sendDeleteCode(a: AuthContext, ip: string) {
+    if (a.integration) throw DomainError.forbidden('Integratsiya kaliti bilan emas');
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: a.userId }, select: { phone: true, deletedAt: true } });
+    if (user.deletedAt) throw DomainError.forbidden('Hisob o\'chirilgan');
+    return this.otp.request(user.phone, ip);
+  }
+
+  /**
+   * Ilovadan: "Hisobni o'chirish" tugmasi. Qaytarib bo'lmaydigan amal — faqat access token yetmaydi
+   * (o'g'irlangan/qolib ketgan telefon): parol yoki SMS/Telegram kod bilan qayta tasdiqlanadi.
+   */
+  async deleteMe(a: AuthContext, proof: DeleteProof): Promise<{ status: 'deleted' | 'requested' }> {
     if (a.integration) throw DomainError.forbidden('Integratsiya kaliti bilan emas');
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: a.userId }, include: { memberships: true } });
     if (user.deletedAt) return { status: 'deleted' };
+    await this.assertProof(user, proof);
     const employeeOf = user.memberships.filter((m) => m.role === 'HAYDOVCHI' && m.isActive);
     if (employeeOf.length === 0) {
       await this.anonymize(user.id, null);
@@ -45,6 +65,20 @@ export class AccountService {
       this.events.emit(ORG_EVENTS.accountDeleteRequested, { userId: user.id, organizationIds: employeeOf.map((m) => m.organizationId) } satisfies AccountDeleteRequestedEvent);
     }
     return { status: 'requested' };
+  }
+
+  private async assertProof(user: { id: string; phone: string; passwordHash: string | null }, proof: DeleteProof) {
+    if (user.passwordHash) {
+      if (!proof.password) throw new DomainError('VALIDATION', 'Tasdiqlash uchun parolingizni kiriting');
+      // Sessiya qo'lga tushgan bo'lsa parolni terib topishga yo'l qo'ymaymiz
+      if (!(await this.redis.allow(`reauth:${user.id}`, 5, 900))) {
+        throw new DomainError('AUTH_OTP_RATE_LIMIT', 'Juda ko\'p urinish. 15 daqiqadan keyin qayta urinib ko\'ring');
+      }
+      if (!(await argon2.verify(user.passwordHash, proof.password))) throw new DomainError('VALIDATION', 'Parol noto\'g\'ri');
+      return;
+    }
+    if (!proof.code) throw new DomainError('VALIDATION', 'Tasdiqlash kodini kiriting');
+    await this.otp.verify(user.phone, proof.code); // urinishlar soni va muddat OtpService ichida
   }
 
   /** Ilovadan: xodim so'rovini qaytarib olish (direktor hali tasdiqlamagan bo'lsa). */

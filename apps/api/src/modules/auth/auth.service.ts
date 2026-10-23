@@ -331,6 +331,8 @@ export class AuthService {
       locale: user.locale,
       avatarUrl: avatarPath(user.avatarKey),
       deleteRequestedAt: user.deleteRequestedAt,
+      /** Hisobni o'chirishda nima so'raladi: parol yoki kod. */
+      hasPassword: !!user.passwordHash,
       /** Faqat egasining o'ziga (/me, kirish javobi) qaytadi; ilova "Superadmin" bo'limini shu bilan ochadi. Server baribir har /admin so'rovida tekshiradi. */
       isSuperAdmin: user.isSuperAdmin,
       memberships: user.memberships.map((m) => ({ role: m.role, isActive: m.isActive, organization: m.organization })),

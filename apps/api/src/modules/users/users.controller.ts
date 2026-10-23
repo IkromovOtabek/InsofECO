@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Ip, Param, Post, Put, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { join } from 'path';
@@ -17,6 +18,7 @@ import { AVATAR_DIR, AVATAR_FILE_RE, AVATAR_MAX_BYTES, AVATAR_MIME, avatarExt, r
 /** Multer fayli (dest berilmagan — xotirada, `buffer` bilan). @types/multer qo'shilmagan. */
 interface UploadedPhoto { mimetype: string; size: number; buffer: Buffer }
 
+const DeleteProofSchema = z.object({ password: z.string().min(1).max(200).optional(), code: z.string().regex(/^\d{6}$/).optional() });
 const ProfileSchema = z.object({ fullName: z.string().min(2).max(80).optional(), locale: z.enum(['uz', 'uz-Cyrl', 'ru']).optional() });
 
 @Controller({ path: 'me', version: '1' })
@@ -67,8 +69,17 @@ export class UsersController {
 
   /** Hisobni o'chirish (do'kon talabi). Mijoz — darhol {status:'deleted'}; zavod haydovchisi — {status:'requested'}. */
   @Delete()
-  deleteMe(@CurrentUser() a: AuthContext) {
-    return this.account.deleteMe(a);
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  deleteMe(@CurrentUser() a: AuthContext, @Body(Zod(DeleteProofSchema)) body: z.infer<typeof DeleteProofSchema>) {
+    return this.account.deleteMe(a, body ?? {});
+  }
+
+  /** Parolsiz hisob: o'chirishni tasdiqlash kodi (Telegram) — `DELETE /me` ga `code` bilan. */
+  @Post('deletion/code')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  deletionCode(@CurrentUser() a: AuthContext, @Ip() ip: string) {
+    return this.account.sendDeleteCode(a, ip);
   }
 
   /** Haydovchi so'rovini qaytarib olish. */

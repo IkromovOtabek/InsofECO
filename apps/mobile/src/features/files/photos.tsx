@@ -45,15 +45,31 @@ export async function takePhoto(opts: { front?: boolean } = {}): Promise<Omit<Lo
   return { uri: a.uri, mimeType: mime };
 }
 
+type Presigned = { key: string; url: string; method: 'PUT'; headers: Record<string, string> };
+
+/**
+ * Presigned PUT. Hajm serverga oldindan aytiladi: katta fayl darhol rad etiladi, `content-length` imzoga kiradi.
+ * Hajm imzolangan PUT tarmoq qatlamida rad etilsa (403 — hajm sarlavhasi boshqacha ketgan) — bir marta hajmsiz
+ * qayta urinadi; hajm baribir server HEAD tekshiruvida (`verifyKey`) nazorat qilinadi.
+ */
+export async function putToStorage(body: Blob | ArrayBuffer, size: number, contentType: string, purpose: UploadPurpose): Promise<string> {
+  const presign = (withSize: boolean) => api<Presigned>('/files/presign', { method: 'POST', body: { contentType, purpose, size: withSize ? size : undefined } });
+  const put = (p: Presigned) => {
+    // Content-Length ni tarmoq qatlami o'zi qo'yadi (qiymati — shu hajm); qo'lda berish ba'zi platformada xato beradi
+    const { 'content-length': _len, ...headers } = p.headers;
+    return fetchWithTimeout(p.url, { method: p.method ?? 'PUT', headers, body }, 120_000);
+  };
+  let p = await presign(size > 0);
+  let r = await put(p);
+  if (r.status === 403 && p.headers['content-length']) { p = await presign(false); r = await put(p); }
+  if (!r.ok) throw new Error(`Fayl yuklanmadi (${r.status})`);
+  return p.key;
+}
+
 /** Faylni presigned URL orqali omborga yuklaydi va kalitini qaytaradi. */
 export async function uploadPhoto(photo: { uri: string; mimeType: Mime }, purpose: UploadPurpose): Promise<string> {
-  const p = await api<{ key: string; url: string; method: 'PUT'; headers: Record<string, string> }>('/files/presign', {
-    method: 'POST', body: { contentType: photo.mimeType, purpose },
-  });
   const blob = await (await fetch(photo.uri)).blob();
-  const r = await fetchWithTimeout(p.url, { method: p.method ?? 'PUT', headers: p.headers, body: blob }, 120_000);
-  if (!r.ok) throw new Error(`Foto yuklanmadi (${r.status})`);
-  return p.key;
+  return putToStorage(blob, blob.size, photo.mimeType, purpose);
 }
 
 /**

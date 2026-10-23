@@ -9,7 +9,10 @@ export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
 
 /** Presigned PUT URL amal qilish muddati (soniya). */
 export const PRESIGN_PUT_EXPIRES = 300;
-/** PUT uchun content-length-range yo'q — hajm yuklangandan keyin HEAD bilan tekshiriladi. */
+/**
+ * Hajm chegarasi. Mijoz `size` bersa — u oldindan tekshiriladi va `content-length` imzoga kiradi (S3 boshqa hajmdagi
+ * PUT'ni rad etadi). Har holda yuklangandan keyin HEAD bilan ham tekshiriladi (`verifyKey`).
+ */
 export const MAX_UPLOAD_BYTES: Record<UploadPurpose, number> = {
   signature: 2 * 1024 * 1024,
   waybill: 10 * 1024 * 1024,
@@ -142,12 +145,21 @@ export class StorageService {
     return presignUrl({ method, origin: base.origin, path: `${prefix}/${c.bucket}/${key}`, accessKey: c.accessKey, secretKey: c.secretKey, region: c.region, expiresSeconds, now: new Date(), headers });
   }
 
-  /** Mobil uchun presigned PUT. Javob shakli o'zgarmagan: { key, url, method, headers }. */
-  presignPut(userId: string, purpose: UploadPurpose, contentType: UploadContentType) {
+  /**
+   * Mobil uchun presigned PUT: { key, url, method, headers }. `size` (bayt) berilsa — chegaradan oshsa darhol rad,
+   * aks holda `content-length` imzolanadi. Eski ilova `size` yubormaydi — unda faqat keyingi HEAD tekshiruvi.
+   */
+  presignPut(userId: string, purpose: UploadPurpose, contentType: UploadContentType, size?: number) {
+    const max = MAX_UPLOAD_BYTES[purpose];
+    if (size !== undefined && (!Number.isInteger(size) || size <= 0 || size > max)) {
+      throw new DomainError('VALIDATION', `Fayl juda katta (≤ ${Math.round(max / 1024 / 1024)} MB)`, { size, max });
+    }
     const c = this.requireConfig();
     const key = `u/${userId}/${purpose}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${EXT[contentType]}`;
-    const url = this.sign(c, 'PUT', c.publicEndpoint, key, PRESIGN_PUT_EXPIRES, { 'content-type': contentType });
-    return { key, url, method: 'PUT' as const, headers: { 'content-type': contentType } };
+    const headers: Record<string, string> = { 'content-type': contentType };
+    if (size !== undefined) headers['content-length'] = String(size);
+    const url = this.sign(c, 'PUT', c.publicEndpoint, key, PRESIGN_PUT_EXPIRES, headers);
+    return { key, url, method: 'PUT' as const, headers };
   }
 
   /** O'qish uchun qisqa muddatli havola (bucket private bo'lgach rasmlarni ko'rsatish uchun). */

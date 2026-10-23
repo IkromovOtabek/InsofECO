@@ -67,8 +67,8 @@ export class AdminHealthService {
   ) {}
 
   async snapshot() {
-    const [db, redis, queue, erp, disk, clients] = await Promise.all([
-      this.db(), this.redisPing(), this.queue(), this.erp(), this.disk(), this.clientVersions(),
+    const [db, redis, queue, erp, disk, clients, webhooks] = await Promise.all([
+      this.db(), this.redisPing(), this.queue(), this.erp(), this.disk(), this.clientVersions(), this.webhooks(),
     ]);
     const sockets = this.sockets();
     const mem = process.memoryUsage();
@@ -93,6 +93,7 @@ export class AdminHealthService {
       redis,
       queue,
       erp,
+      webhooks,
       sockets,
       system: {
         hostname: os.hostname(),
@@ -144,6 +145,22 @@ export class AdminHealthService {
       return { status: (failed > 50 ? 'degraded' : 'ok') as Health, name: SLA_QUEUE, counts };
     } catch (e) {
       return { status: 'unknown' as Health, name: SLA_QUEUE, detail: short(e) };
+    }
+  }
+
+  /** ERP webhook navbati: kutayotganlar, so'nggi sutkadagi yetib bormaganlar, eng eski kutayotgan xabar. */
+  private async webhooks() {
+    try {
+      const day = new Date(Date.now() - 86_400_000);
+      const [pending, failed, oldest] = await withTimeout(Promise.all([
+        this.prisma.webhookOutbox.count({ where: { status: 'PENDING' } }),
+        this.prisma.webhookOutbox.count({ where: { status: 'FAILED', createdAt: { gte: day } } }),
+        this.prisma.webhookOutbox.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+      ]), 2000);
+      const lagMin = oldest ? Math.round((Date.now() - oldest.createdAt.getTime()) / 60_000) : 0;
+      return { status: (failed > 0 || lagMin > 10 ? 'degraded' : 'ok') as Health, pending, failed24h: failed, oldestPendingMin: oldest ? lagMin : null };
+    } catch (e) {
+      return { status: 'unknown' as Health, pending: null, failed24h: null, oldestPendingMin: null, detail: short(e) };
     }
   }
 

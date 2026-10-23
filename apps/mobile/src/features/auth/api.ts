@@ -58,7 +58,9 @@ export const authApi = {
   },
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
   /** Hisobni o'chirish (do'kon talabi). Mijoz — darhol `deleted`; zavod haydovchisi — `requested` (direktor tasdiqlaydi). */
-  deleteAccount: () => api<{ status: 'deleted' | 'requested' }>('/me', { method: 'DELETE' }),
+  /** Qayta tasdiq bilan: parolli hisob — `password`, parolsiz — `deletionCode()` bilan kelgan `code`. */
+  deleteAccount: (proof: { password?: string; code?: string }) => api<{ status: 'deleted' | 'requested' }>('/me', { method: 'DELETE', body: proof }),
+  deletionCode: () => api<{ retryAfter: number }>('/me/deletion/code', { method: 'POST' }),
   cancelDeletion: () => api<{ ok: true }>('/me/deletion', { method: 'DELETE' }),
   registerPush: (expoPushToken: string) => api('/me/devices', { method: 'PUT', body: { deviceId: deviceId(), expoPushToken } }),
 };

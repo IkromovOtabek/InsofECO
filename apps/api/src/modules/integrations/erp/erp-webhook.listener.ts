@@ -1,22 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { createHmac } from 'crypto';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { DeliveryStatusChangedEvent } from '../../deliveries/deliveries.events';
 import { AccountDeleteRequestedEvent, MembershipChangedEvent, ORG_EVENTS, UserUpdatedEvent, VehicleChangedEvent } from '../../organizations/organizations.events';
 import { customerRefFor, parseCustomerRef } from './erp-refs';
+import { ErpWebhookOutbox } from './erp-webhook.outbox';
 
 /**
  * ECO → ERP webhook. Haydovchi ilovada tugma bosganda (qabul, yuklash, yo'lda, keldi, imzo)
  * ERP nakladnoy holati ham o'zgarishi kerak. Faqat externalRef'li (ERP'dan kelgan) reyslar.
  *
- * Imzo: `X-Eco-Signature: sha256=HMAC(secret, "<timestamp>.<body>")`, `X-Eco-Timestamp` — replay himoyasi.
- * 3 urinish (1s, 5s, 15s). Yetib bormasa log — ERP o'z tomonidan GET /v1/erp/trips/:ref bilan sinxronlaydi.
+ * Imzo: `X-Eco-Signature: sha256=HMAC(secret, "<timestamp>.<body>")`, `X-Eco-Timestamp` — replay himoyasi,
+ * `X-Eco-Delivery` — xabar id'si (qayta urinishda o'zgarmaydi). Yuborish va qayta urinish — `ErpWebhookOutbox`
+ * (bazadagi navbat): ERP o'chiq bo'lsa ham xabar yo'qolmaydi.
  */
 @Injectable()
 export class ErpWebhookListener {
   private readonly logger = new Logger(ErpWebhookListener.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outbox: ErpWebhookOutbox,
+  ) {}
 
   @OnEvent('delivery.status_changed', { async: true })
   async onDelivery(e: DeliveryStatusChangedEvent) {
@@ -53,10 +57,8 @@ export class ErpWebhookListener {
       signed: !!d.signatureKey,
       slaBreached: d.slaBreached,
     };
-    for (const c of clients) {
-      // ERP o'zi yuborgan o'zgarishni ham qaytaramiz (byIntegration=true) — ERP uni idempotent qabul qiladi
-      void this.send(c.webhookUrl!, c.webhookSecret ?? '', { ...payload, byIntegration: e.byUserId === c.userId });
-    }
+    // ERP o'zi yuborgan o'zgarishni ham qaytaramiz (byIntegration=true) — ERP uni idempotent qabul qiladi
+    await this.outbox.enqueue(clients.map((c) => ({ clientId: c.id, event: payload.event, payload: { ...payload, byIntegration: e.byUserId === c.userId } })));
   }
 
   /** Haydovchi ro'yxatdan o'tdi / tasdiqlandi / bloklandi → ERP xodimlar ro'yxati o'zi yangilanadi. */
@@ -140,34 +142,8 @@ export class ErpWebhookListener {
   }
 
   /** Tashkilotning barcha faol integratsiya mijozlariga yuborish; byIntegration — o'zgarishni shu mijoz o'zi qilgan. */
-  private async broadcast(organizationId: string, byUserId: string | null, payload: Record<string, unknown>) {
-    const clients = await this.prisma.integrationClient.findMany({ where: { organizationId, isActive: true, webhookUrl: { not: null } } });
-    for (const c of clients) void this.send(c.webhookUrl!, c.webhookSecret ?? '', { ...payload, byIntegration: !!byUserId && byUserId === c.userId });
-  }
-
-  private async send(url: string, secret: string, payload: Record<string, unknown>) {
-    const body = JSON.stringify(payload);
-    const delays = [0, 1000, 5000, 15000];
-    for (let i = 0; i < delays.length; i++) {
-      if (delays[i]) await new Promise((r) => setTimeout(r, delays[i]));
-      const ts = String(Date.now());
-      const sig = createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-eco-event': String(payload.event), 'x-eco-timestamp': ts, 'x-eco-signature': `sha256=${sig}` },
-          body,
-          signal: AbortSignal.timeout(8000),
-        });
-        if (res.ok) return;
-        this.logger.warn(`webhook ${url} → ${res.status} (urinish ${i + 1})`);
-        // 404 — ERP qayta yig'ilayotgan bo'lishi mumkin (dev rejimda yo'nalish bir lahza yo'qoladi), 408/429 — vaqtinchalik.
-        // Qolgan 4xx (imzo/format) — qayta urinish foydasiz.
-        if (res.status >= 400 && res.status < 500 && ![404, 408, 429].includes(res.status)) return;
-      } catch (err) {
-        this.logger.warn(`webhook ${url} xato: ${(err as Error).message} (urinish ${i + 1})`);
-      }
-    }
-    this.logger.error(`webhook ${url} yetib bormadi: ${payload.event} ${payload.externalRef ?? payload.userId ?? payload.vehicleId ?? ''}`);
+  private async broadcast(organizationId: string, byUserId: string | null, payload: Record<string, unknown> & { event: string }) {
+    const clients = await this.prisma.integrationClient.findMany({ where: { organizationId, isActive: true, webhookUrl: { not: null } }, select: { id: true, userId: true } });
+    await this.outbox.enqueue(clients.map((c) => ({ clientId: c.id, event: payload.event, payload: { ...payload, byIntegration: !!byUserId && byUserId === c.userId } })));
   }
 }

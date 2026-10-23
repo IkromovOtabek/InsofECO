@@ -22,6 +22,8 @@ export interface AdminHealth {
   redis: Probe & { state?: string };
   queue: { status: Health; name: string; counts?: Record<string, number>; detail?: string };
   erp: Probe & { url: string | null; httpStatus?: number };
+  /** ERP webhook navbati (eski server javobida yo'q) */
+  webhooks?: { status: Health; pending: number | null; failed24h: number | null; oldestPendingMin: number | null; detail?: string };
   sockets: Probe & { connections: number | null; namespace: string };
   system: {
     hostname: string; platform: string; cpus: number; loadAvg: number[]; osUptimeSec: number;

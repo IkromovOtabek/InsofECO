@@ -8,10 +8,12 @@ import { StorageService, UPLOAD_CONTENT_TYPES, UPLOAD_PURPOSES } from './storage
 const PresignSchema = z.object({
   contentType: z.enum(UPLOAD_CONTENT_TYPES),
   purpose: z.enum(UPLOAD_PURPOSES),
+  /** Fayl hajmi (bayt) — yangi ilova yuboradi; chegara oldindan tekshiriladi va PUT hajmi imzoga kiradi */
+  size: z.number().int().positive().optional(),
 });
 
 /**
- * Presigned PUT URL (haqiqiy S3 SigV4, 5 daqiqa, content-type imzolangan). Mobil faylni to'g'ridan-to'g'ri
+ * Presigned PUT URL (haqiqiy S3 SigV4, 5 daqiqa, content-type va berilsa content-length imzolangan). Mobil faylni to'g'ridan-to'g'ri
  * S3/MinIO ga yuklaydi; kalit `u/<userId>/...` — keyin faqat egasi uni signatureKey/photoKey sifatida bera oladi.
  */
 @Controller({ path: 'files', version: '1' })
@@ -21,6 +23,6 @@ export class StorageController {
   @Post('presign')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   presign(@CurrentUser() a: AuthContext, @Body(Zod(PresignSchema)) b: z.infer<typeof PresignSchema>) {
-    return this.storage.presignPut(a.userId, b.purpose, b.contentType);
+    return this.storage.presignPut(a.userId, b.purpose, b.contentType, b.size);
   }
 }

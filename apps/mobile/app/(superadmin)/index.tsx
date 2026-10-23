@@ -99,6 +99,12 @@ export default function AdminStatus() {
                     caption={x.queue.detail ?? (x.queue.counts ? `faol ${x.queue.counts.active ?? 0} · xato ${x.queue.counts.failed ?? 0}` : undefined)}
                   />
                 </View>
+                {x.webhooks ? (
+                  <StatusCard
+                    icon="send" title="ERP webhook" status={x.webhooks.status} metric={x.webhooks.pending} unit="kutmoqda"
+                    caption={x.webhooks.detail ?? `24 soatda yetmagan: ${x.webhooks.failed24h ?? 0}${x.webhooks.oldestPendingMin ? ` · eng eskisi ${x.webhooks.oldestPendingMin} daq` : ''}`}
+                  />
+                ) : null}
                 <Callout tone={erpDev.data?.ok ? 'success' : erpDev.data ? 'warning' : 'neutral'} icon="smartphone">
                   {erpDev.data
                     ? `Telefondan ERP (${config.erpUrl}): ${erpDev.data.ok ? `javob ${erpDev.data.status}, ${erpDev.data.ms} ms` : 'javob yo\'q'}`
