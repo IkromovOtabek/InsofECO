@@ -121,6 +121,8 @@ const config: ExpoConfig = {
     './plugins/withYandexMapKit.js',
     // Android 11+: navigator ilovalarini ko'rish uchun <queries> (Yandex Navigator, Yandex Xaritalar, 2GIS, Google Maps, Waze)
     './plugins/withNavigatorQueries.js',
+    // iOS: Pod target'lari minimal 15.1 — Xcode 27 SDK eski deployment target'ni xato deb biladi (izoh plugin ichida)
+    './plugins/withPodsDeploymentTarget.js',
     // Profil rasmi, ERP forma fotolari va davomat selfisi — galereya va kamera ruxsat matnlari (native: qayta build kerak).
     // Apple review matn haqiqiy ishlatilishga mos bo'lishini tekshiradi — yangi foto holati qo'shilsa shu yerga ham yozing.
     ['expo-image-picker', { photosPermission: "Profil rasmi, nakladnoy yoki yetkazish fotosini galereyadan tanlash uchun.", cameraPermission: CAMERA,
