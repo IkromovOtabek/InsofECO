@@ -314,9 +314,11 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     breakdown: null,
     progress: { section: /^Ish jarayoni/ },
     attention: [/^Avtomatik ogohlantirish/],
-    // Sklad — «Xizmat» tabida; Texnika tabi o'rnida «Kirim», texnika esa shu yerdan (jonli xarita)
+    // Sklad — «Xizmat» tabida; Texnika tabi o'rnida «Kirim», texnika esa shu yerdan (jonli xarita).
+    // Birinchisi — sklad kabi snabjeniyega ta'minot so'rovi (holati Menyu → «Ta'minot zayavkalari»);
+    // eski server mexanikka formani bermasa — Reyslar (ular pastki tabda ham bor)
     quick: [
-      { label: 'Reyslar', icon: 'route', to: { kind: 'tab', tab: 'work' } },
+      { label: 'Snabjeniyega zayavka', icon: 'shopping-cart', to: { kind: 'new', key: 'supply' }, orElse: { label: 'Reyslar', icon: 'route', to: { kind: 'tab', tab: 'work' } } },
       { label: 'Texnika', icon: 'truck', to: { kind: 'href', href: '/erp/fleet' } },
       { label: 'Muammolar', icon: 'triangle-alert', to: { kind: 'card', key: 't-problem' } },
       { label: 'Ertangi transport', icon: 'calendar-days', to: { kind: 'card', key: 'n-trucks' } },
