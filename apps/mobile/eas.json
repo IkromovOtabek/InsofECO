@@ -19,6 +19,13 @@
       "environment": "production",
       "node": "22.20.0"
     },
+    "apk": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
