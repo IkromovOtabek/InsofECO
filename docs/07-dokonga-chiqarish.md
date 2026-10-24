@@ -70,7 +70,7 @@ build → restart. Migratsiyalar orqaga qaytmaydi — faqat kengaytiruvchi migra
 | Kanal | Buyruq | Kimga |
 |---|---|---|
 | Android APK (ERP orqali) | `eas build -p android --profile preview` → APK'ni serverga `…/uploads/app/insof-eco.apk` (yoki `tenants/insof.env` → `APK_PATH`) | Xodimlar: ERP → `/api/app/android`; yangilash ekranidagi `ECO_APP_URL` |
-| Android APK (EAS, 1.1.0+) | `eas build -p android --profile apk` — `production` kanali (OTA keladi), APK'ni yuqoridagidek serverga | Xodimlar |
+| Android APK (EAS, 1.1.0+) | `eas build -p android --profile apk` — `production` kanali (OTA keladi), faqat arm64 (~4 barobar kichik), APK'ni yuqoridagidek serverga | Xodimlar |
 | TestFlight | `eas build -p ios --profile production --auto-submit` | Xodimlar, sinovchilar |
 | Play internal | `eas build -p android --profile production` → `eas submit -p android --profile production` (track `internal`, `draft`) | Ichki sinov (targetSdk bloklovchisi yopilgach) |
 | OTA (faqat JS) | `eas update --channel production --environment production --message "..."` | 1.0.1 o'rnatilganlar |
