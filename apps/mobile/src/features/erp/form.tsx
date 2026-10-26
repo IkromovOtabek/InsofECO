@@ -408,6 +408,9 @@ const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 /** Kunlik yuklama foizidan rang — quvvat bo'sh (qizil) dan to'lgan (yashil) gacha, veb "ish tartibi" bilan bir xil g'oya. */
 const dayBand = (pct: number): Tone => (pct < 34 ? 'danger' : pct < 67 ? 'warning' : 'success');
 const m3Text = (n: number) => `${n.toFixed(n % 1 ? 1 : 0)} m³`;
+const numText = (n: number) => n.toFixed(n % 1 ? 1 : 0);
+/** "12/200 m³" — limit server yuborgan bo'lsa; aks holda faqat hajm. */
+const loadText = (n: number, cap: number | null | undefined, unit: string) => `${numText(n)}${cap ? `/${numText(cap)}` : ''} ${unit}`;
 
 /** Sana chipi — kunlik quvvat rangi bilan (server yuborgan bo'lsa). Zayavka formasidagi "10 kunlik ish tartibi". */
 function DayCapacityChip({ cell, on, onPress }: { cell: ErpDayCell; on: boolean; onPress: () => void }) {
@@ -417,7 +420,7 @@ function DayCapacityChip({ cell, on, onPress }: { cell: ErpDayCell; on: boolean;
     <Pressable
       onPress={onPress}
       accessibilityRole="radio" accessibilityState={{ selected: on }}
-      accessibilityLabel={`${cell.weekday} ${cell.label} — ${cell.count ? `${m3Text(cell.m3)}, ${cell.count} ta zayavka` : "bo'sh, joy ko'p"}`}
+      accessibilityLabel={`${cell.weekday} ${cell.label} — ${cell.count ? `${m3Text(cell.m3)}${cell.pcs ? `, ${numText(cell.pcs)} dona` : ''}, ${cell.count} ta zayavka` : "bo'sh, joy ko'p"}`}
       android_ripple={{ color: c.bgMuted }}
       style={({ pressed }) => [
         { minWidth: 68, minHeight: size.touch + space.lg, paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.md, borderCurve: 'continuous', borderWidth: size.ring, borderColor: on ? c.brand : 'transparent', backgroundColor: bg, alignItems: 'center', justifyContent: 'center', gap: 2 },
@@ -426,7 +429,14 @@ function DayCapacityChip({ cell, on, onPress }: { cell: ErpDayCell; on: boolean;
     >
       <Txt v="caption" color={cell.isToday ? 'brand' : 'muted'}>{cell.weekday}</Txt>
       <Txt v="bodyStrong" color={on ? 'brand' : 'strong'}>{cell.label}</Txt>
-      <Txt v="caption" style={{ color: ink }}>{cell.count ? m3Text(cell.m3) : "bo'sh"}</Txt>
+      {cell.capM3 != null ? (
+        <>
+          <Txt v="caption" style={{ color: ink }}>{loadText(cell.m3, cell.capM3, 'm³')}</Txt>
+          {(cell.capPcs != null || !!cell.pcs) && <Txt v="caption" style={{ color: ink }}>{loadText(cell.pcs ?? 0, cell.capPcs, 'dona')}</Txt>}
+        </>
+      ) : (
+        <Txt v="caption" style={{ color: ink }}>{cell.count ? m3Text(cell.m3) : "bo'sh"}</Txt>
+      )}
     </Pressable>
   );
 }

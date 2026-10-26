@@ -75,8 +75,8 @@ export interface ErpFormField {
   /** `date` maydoni uchun — 10 kunlik kunlik yuklama (veb "ish tartibi" bilan bir xil hisob). */
   cells?: ErpDayCell[];
 }
-/** Bitta kun — sana tanlovida kunlik quvvat rangi va hajmi. */
-export interface ErpDayCell { key: string; label: string; weekday: string; m3: number; pct: number; count: number; isToday: boolean }
+/** Bitta kun — sana tanlovida kunlik limit rangi va hajmi. `pcs`/`capM3`/`capPcs` — yangi server yuboradi (eski serverda yo'q). */
+export interface ErpDayCell { key: string; label: string; weekday: string; m3: number; pcs?: number; capM3?: number; capPcs?: number | null; pct: number; count: number; isToday: boolean }
 /** `scan` — formaning tepasida hujjat skaneri (masalan «Yangi kirim» → nakladnoy). Server `values` qaytaradi. */
 export interface ErpFormScan { path: string; label: string; hint: string }
 export interface ErpCreateForm { key: string; title: string; submitLabel: string; fields: ErpFormField[]; scan?: ErpFormScan }
