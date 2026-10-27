@@ -9,9 +9,9 @@
 #   2. apps/api/uploads (avatarlar) → tar.gz
 #   3. MinIO ma'lumotlari (fotolar) → tar.gz (volume'dan, faqat o'qish)
 #   4. SHA256SUMS, KEEP_DAYS (standart 14) dan eskilarini o'chirish
-#   5. Xato bo'lsa — Telegram ogohlantirish (ERP bilan umumiy /etc/insof/backup.env: ALERT_TG_BOT_TOKEN, ALERT_TG_CHAT_ID)
-#
-# Server TASHQARISIGA nusxa: OUT_DIR ni ERP backup'ining rclone/restic yo'liga qo'shing (yoki shu yerga rclone qo'shing).
+#   5. Server TASHQARISIGA: rclone → ECO_RCLONE_REMOTE/<sana> (ECO_RCLONE_KEEP_DAYS, standart 10 kun);
+#      berilmagan yoki xato bo'lsa — exit 1 + ogohlantirish (mahalliy nusxa baribir qoladi)
+#   6. Xato bo'lsa — Telegram ogohlantirish (ERP bilan umumiy /etc/insof/backup.env: ALERT_TG_BOT_TOKEN, ALERT_TG_CHAT_ID)
 # Tiklash: docker exec -i insof-eco-prod-postgres-1 pg_restore -U insof -d insof --clean --if-exists < eco.dump
 #
 # Cron (deploy ostida, `crontab -e`) — ERP backup'idan keyin:
@@ -26,7 +26,7 @@ PG_CONTAINER="${PG_CONTAINER:-insof-eco-prod-postgres-1}"
 MINIO_VOLUME="${MINIO_VOLUME:-insof-eco-prod_miniodata}"
 BACKUP_ENV="${BACKUP_ENV:-/etc/insof/backup.env}"
 
-env_get() { grep -E "^[[:space:]]*$2[[:space:]]*=" "$1" 2>/dev/null | tail -n1 | sed -E 's/^[^=]*=[[:space:]]*//; s/^"(.*)"$/\1/; s/[[:space:]]+$//' || true; }
+env_get() { grep -E "^[[:space:]]*$2[[:space:]]*=" "$1" 2>/dev/null | tail -n1 | sed -E 's/^[^=]*=[[:space:]]*//; s/[[:space:]]+#.*$//; s/^"(.*)"$/\1/; s/[[:space:]]+$//' || true; }
 TG_TOKEN="${ALERT_TG_BOT_TOKEN:-$(env_get "$BACKUP_ENV" ALERT_TG_BOT_TOKEN)}"
 TG_CHAT="${ALERT_TG_CHAT_ID:-$(env_get "$BACKUP_ENV" ALERT_TG_CHAT_ID)}"
 PG_USER="$(env_get "$ECO_DIR/apps/api/.env" POSTGRES_USER)"; PG_USER="${PG_USER:-insof}"
@@ -66,5 +66,37 @@ STEP="SHA256SUMS"
 rm -rf "$DEST" && mv "$DEST.partial" "$DEST"
 log "✓ $(du -sh "$DEST" | cut -f1) → $DEST"
 
+# ── Server tashqarisiga (rclone). Sozlama ERP bilan umumiy backup.env da: ECO_RCLONE_REMOTE, ECO_RCLONE_KEEP_DAYS ──
+STEP="server tashqarisiga (rclone)"
+RC_REMOTE="${ECO_RCLONE_REMOTE:-$(env_get "$BACKUP_ENV" ECO_RCLONE_REMOTE)}"
+RC_KEEP="${ECO_RCLONE_KEEP_DAYS:-$(env_get "$BACKUP_ENV" ECO_RCLONE_KEEP_DAYS)}"; RC_KEEP="${RC_KEEP:-10}"
+RC_CFG="${RCLONE_CONFIG:-$(env_get "$BACKUP_ENV" RCLONE_CONFIG)}"
+if [ -n "$RC_CFG" ]; then export RCLONE_CONFIG="$RC_CFG"; fi
+OFFSITE_ERR=""
+if [ -z "$RC_REMOTE" ]; then
+  OFFSITE_ERR="ECO_RCLONE_REMOTE berilmagan ($BACKUP_ENV) — nusxa faqat shu serverda"
+elif ! command -v rclone >/dev/null; then
+  OFFSITE_ERR="rclone o'rnatilmagan"
+else
+  # ERP server-backup.sh bilan bir xil: eskilar yuklashdan OLDIN va savatsiz o'chiriladi (Drive kvotasi qotib qolmasin)
+  if ! { rclone delete "$RC_REMOTE" --min-age "${RC_KEEP}d" --drive-use-trash=false \
+      && rclone rmdirs "$RC_REMOTE" --leave-root --drive-use-trash=false; }; then
+    log "⚠ rclone: eskilarni tozalashda xato"
+  fi
+  log "→ rclone: $RC_REMOTE/$(basename "$DEST")"
+  if rclone copy "$DEST" "$RC_REMOTE/$(basename "$DEST")" --transfers 2 --retries 3 \
+    && rclone check "$DEST" "$RC_REMOTE/$(basename "$DEST")" --one-way; then
+    log "  ok"
+  else
+    OFFSITE_ERR="rclone: yuklash yoki tekshiruv xato"
+  fi
+fi
+
 STEP="eski nusxalarni tozalash"
 find "$OUT_DIR" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +"$KEEP_DAYS" -exec rm -rf {} +
+
+if [ -n "$OFFSITE_ERR" ]; then
+  log "✗ $OFFSITE_ERR"
+  alert "$OFFSITE_ERR"
+  exit 1
+fi
