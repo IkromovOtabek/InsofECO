@@ -30,6 +30,7 @@ import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
 import { KirimScreen } from './kirim';
+import { AvtoPartsBanner } from './avto-parts';
 import { ArendaScreen } from './arenda';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
@@ -64,7 +65,7 @@ export function ErpTabs({ role }: { role: ErpRole }) {
   const driver = role === 'DRIVER';
   // Direktor: "Tasdiqlar" tabida kutayotganlar soni (bosh sahifadagi bilan bitta kesh)
   const approvals = useErpList(cfg.ai ? cfg.listKey : '').data?.rows.length ?? 0;
-  return (
+  const tabs = (
     <Tabs tabBar={floatingTabBar({ driver })} screenOptions={tabsOptions(c, insets.bottom, { driver, reduce })}>
       {cfg.tabs.map((t) => (
         <Tabs.Screen
@@ -79,6 +80,14 @@ export function ErpTabs({ role }: { role: ErpRole }) {
         />
       ))}
     </Tabs>
+  );
+  // Mexanik: yangi avto zapchastlar banneri ekranning tepasidan tushadi (qaysi tabda bo'lmasin)
+  if (role !== 'MECHANIC') return tabs;
+  return (
+    <View style={{ flex: 1 }}>
+      {tabs}
+      <AvtoPartsBanner />
+    </View>
   );
 }
 
