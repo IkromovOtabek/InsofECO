@@ -35,7 +35,7 @@
       "environment": "production",
       "node": "22.20.0",
       "ios": {
-        "image": "latest"
+        "image": "sdk-54"
       }
     }
   },

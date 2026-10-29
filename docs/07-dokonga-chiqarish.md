@@ -23,6 +23,10 @@ Android 1.0.0 APK xodimlarda; iOS build hali yo'q (Apple Developer hisobi kutilm
 - `expo-file-system` eski API — `expo-file-system/legacy`; Reanimated 4 (`react-native-worklets`), babel plagini avtomatik.
 - Sentry: `EXPO_PUBLIC_SENTRY_DSN` (EAS → production env). Source map yuklash ixtiyoriy: `SENTRY_AUTH_TOKEN`,
   `SENTRY_ORG`, `SENTRY_PROJECT` EAS maxfiy o'zgaruvchilari berilsa plagin o'zi ulanadi.
+- iOS build image — `sdk-54` (Xcode 26), **`latest` emas**. `latest` = Xcode 27 SDK: unda iOS 27 UIScene lifecycle'ni
+  majburiy qiladi va SDK 54 ilovasi ochilishda yiqiladi (`_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`,
+  build 31). Xcode 26 build'i iOS 27 da ishlaydi. Xcode 27 ga faqat Expo SDK 57+ (`enableSceneSupport`) bilan o'tiladi —
+  Apple 2027-aprelidan iOS 27 SDK'ni talab qilishi kutilmoqda.
 
 ## 1.0.1 reliz tartibi (har relizda shu ketma-ketlik)
 
