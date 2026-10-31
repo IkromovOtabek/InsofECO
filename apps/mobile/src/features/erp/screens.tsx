@@ -30,6 +30,7 @@ import { AttendanceHomeCard } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
 import { KirimScreen } from './kirim';
+import { ShipmentBanner } from './shipments';
 import { AvtoPartsBanner } from './avto-parts';
 import { ArendaScreen } from './arenda';
 import { kv } from '@/core/storage';
@@ -65,6 +66,8 @@ export function ErpTabs({ role }: { role: ErpRole }) {
   const driver = role === 'DRIVER';
   // Direktor: "Tasdiqlar" tabida kutayotganlar soni (bosh sahifadagi bilan bitta kesh)
   const approvals = useErpList(cfg.ai ? cfg.listKey : '').data?.rows.length ?? 0;
+  // Sklad: snabjeniye jo'natmasi kelsa ekranning tepasidan banner tushadi (qaysi tabda bo'lmasin)
+  const shipments = role === 'WAREHOUSE';
   const tabs = (
     <Tabs tabBar={floatingTabBar({ driver })} screenOptions={tabsOptions(c, insets.bottom, { driver, reduce })}>
       {cfg.tabs.map((t) => (
@@ -81,12 +84,12 @@ export function ErpTabs({ role }: { role: ErpRole }) {
       ))}
     </Tabs>
   );
-  // Mexanik: yangi avto zapchastlar banneri ekranning tepasidan tushadi (qaysi tabda bo'lmasin)
-  if (role !== 'MECHANIC') return tabs;
+  // Tepadan tushadigan bannerlar: sklad — jo'natma qabul qilish, mexanik — yangi avto zapchastlar
+  if (!shipments && role !== 'MECHANIC') return tabs;
   return (
     <View style={{ flex: 1 }}>
       {tabs}
-      <AvtoPartsBanner />
+      {shipments ? <ShipmentBanner /> : <AvtoPartsBanner />}
     </View>
   );
 }
@@ -925,6 +928,17 @@ export function ErpMenu() {
               {isDirector ? (
                 <ListItem icon="download" module={module} title="Kunlik hisobot (Excel)" subtitle="Kunni tanlang — fayl ulashiladi yoki ochiladi" onPress={() => setReportOpen(true)} />
               ) : null}
+            </ListGroup>
+          </Appear>
+        ) : null}
+
+        {erp?.role === 'WAREHOUSE' || erp?.role === 'PROCUREMENT' ? (
+          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+            <SectionHead title="Snabjeniye jo'natmalari" />
+            <ListGroup>
+              <ListItem icon="package-check" module="warehouse" title="Jo'natmalar"
+                subtitle={erp.role === 'WAREHOUSE' ? 'Qabul kutayotgan nakladnoylar' : "Skladga jo'natganlaringiz va natijasi"}
+                onPress={() => router.push('/erp/jonatma' as never)} />
             </ListGroup>
           </Appear>
         ) : null}

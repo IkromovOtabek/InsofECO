@@ -132,6 +132,7 @@ import Funnel from 'lucide-react-native/icons/funnel';
 import Settings from 'lucide-react-native/icons/settings';
 import Warehouse from 'lucide-react-native/icons/warehouse';
 import PackageCheck from 'lucide-react-native/icons/package-check';
+import Square from 'lucide-react-native/icons/square';
 import Activity from 'lucide-react-native/icons/activity';
 import Radio from 'lucide-react-native/icons/radio';
 import MapPinned from 'lucide-react-native/icons/map-pinned';
@@ -165,7 +166,7 @@ export const ICONS = {
   banknote: Banknote, 'message-square': MessageSquare, 'message-circle': MessageCircle, 'messages-square': MessagesSquare,
   'square-check': SquareCheck, check: Check, copy: Copy, 'circle-check': CircleCheck, 'check-check': CheckCheck,
   'chevron-left': ChevronLeft, 'chevron-right': ChevronRight, 'chevron-up': ChevronUp, 'chevron-down': ChevronDown,
-  'clipboard-list': ClipboardList, x: X, 'circle-x': CircleX, wrench: Wrench, package: Package, 'package-check': PackageCheck,
+  'clipboard-list': ClipboardList, x: X, 'circle-x': CircleX, wrench: Wrench, package: Package, 'package-check': PackageCheck, square: Square,
   'file-text': FileText, files: Files, download: Download, circle: Circle, 'circle-dot': CircleDot, dot: Dot, ellipsis: Ellipsis,
   eye: Eye, 'eye-off': EyeOff, inbox: Inbox, archive: Archive, fingerprint: Fingerprint, flag: Flag, zap: Zap, folder: Folder,
   'layout-grid': LayoutGrid, hammer: Hammer, 'hard-hat': HardHat, 'circle-question-mark': CircleQuestionMark, house: House,

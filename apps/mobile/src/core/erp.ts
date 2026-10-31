@@ -347,6 +347,17 @@ export interface ErpArenda {
   groups: ErpArendaGroup[];
   can: { create: boolean; shops: boolean; storno: boolean };
 }
+/** Snabjeniye jo'natmasi (ERP `lib/mobile/shipments.ts`): sklad tepadagi bannerdan ochib qabul qiladi. */
+export interface ErpShipmentRow { id: string; docNo: string; date: string; supplier: string; by: string; lines: number; pendingLines: number; total: string; status: string; statusLabel: string }
+export interface ErpShipments { canAccept: boolean; pending: number; rows: ErpShipmentRow[] }
+export interface ErpShipmentItem {
+  id: string; name: string; isNew: boolean; category: string; unit: string; qty: number; price: number;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; acceptedQty: number | null; rejectReason: string | null; receiptNo: string | null; decidedBy: string | null;
+}
+export interface ErpShipment {
+  id: string; docNo: string; status: string; statusLabel: string; canAccept: boolean; date: string; supplier: string; warehouse: string; by: string;
+  waybillNo: string | null; carrier: string | null; note: string | null; sentAt: string | null; total: string; items: ErpShipmentItem[];
+}
 export interface ErpListFilter { key: string; label: string; count: number; active: boolean }
 export interface ErpListData { key: string; title: string; rows: ErpRow[]; filters?: ErpListFilter[] }
 
@@ -467,6 +478,13 @@ export const erpAuth = {
   /** Kartochkadagi tugma — veb ERP'dagi bilan bir xil amal (audit ham yoziladi). */
   action: (action: string, id: string, payload?: Record<string, unknown>) =>
     erpApi<{ ok: true; message: string; receipt?: Receipt }>('/action', { method: 'POST', body: { action, id, payload } }),
+  /** Snabjeniye jo'natmalari: sklad kutayotganlari (banner) va bitta jo'natma (qabul ekrani). */
+  shipments: () => erpApi<ErpShipments>('/shipments'),
+  shipment: (id: string) => erpApi<ErpShipment>('/shipments', { query: { id } }),
+  acceptShipment: (id: string, lines: { itemId: string; qty: number }[]) =>
+    erpApi<{ ok: true; message: string }>('/shipments', { method: 'POST', body: { id, action: 'accept', lines } }),
+  rejectShipment: (id: string, itemIds: string[], reason: string) =>
+    erpApi<{ ok: true; message: string }>('/shipments', { method: 'POST', body: { id, action: 'reject', itemIds, reason } }),
   /** Bildirishnomalar ro'yxati va o'qilmaganlar soni. */
   notifications: () => erpApi<{ unread: number; rows: ErpNotification[] }>('/notifications'),
   /** O'qilgan deb belgilash. `ids` berilmasa — hammasi (ro'yxat ochilganda). */

@@ -35,6 +35,11 @@ const VISUAL: Record<string, { icon: IconName; module?: ModuleTone; tone?: Tone;
   SUPPLY_APPROVED: { icon: 'circle-check', tone: 'success' },
   SUPPLY_FUNDED: { icon: 'wallet', module: 'warehouse' },
   SUPPLY_REJECTED: { icon: 'circle-x', tone: 'danger' },
+  // Snabjeniye jo'natmasi (ERP `lib/shipments.ts`): skladga «yangi mahsulotlar keldi», snabjenetsga qabul/rad natijasi
+  SHIPMENT_SENT: { icon: 'package', module: 'warehouse' },
+  SHIPMENT_ACCEPTED: { icon: 'package-check', tone: 'success' },
+  SHIPMENT_REJECTED: { icon: 'ban', tone: 'danger' },
+  SHIPMENT_CANCELLED: { icon: 'circle-x', tone: 'warning' },
 };
 
 export default function ErpNotifications() {
