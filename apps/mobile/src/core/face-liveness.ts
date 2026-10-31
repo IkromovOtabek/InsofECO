@@ -34,8 +34,12 @@ export const LIVENESS_FRAMES = 3;
 export const MAX_FRAME_B64 = 1_400_000;
 /** Kamera tayyor bo'lgach [0] kadrgacha — topshiriqni o'qib olish va yuzni ramkaga joylash vaqti. */
 export const TASK_SETTLE_MS = 1800;
-/** `steps[0]` ko'rsatilgandan [1] kadrgacha (boshni burish / ko'zni yumish uchun). */
-export const STEP1_MS = 700;
+/**
+ * `steps[0]` ko'rsatilgandan [1] kadrgacha (boshni burish / ko'zni yumish uchun). 700 ms da prod'da (2026-10, 30 kun)
+ * jonlilik xatolarining yarmida [1] kadr odam boshini burishdan OLDIN olingan (burun siljishi ~0): matnni o'qish va
+ * burish ~1–1,2 s. 1400 ms — odam ulguradi; kech qolsa ham [2] kadr ("Kameraga qarang" dan `STEP2_MS` keyin) burilishni ushlaydi.
+ */
+export const STEP1_MS = 1400;
 /** `steps[1]` ko'rsatilgandan [2] kadrgacha. */
 export const STEP2_MS = 350;
 /**
