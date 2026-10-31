@@ -221,7 +221,7 @@ const rowHref = (s: ErpSection, r: ErpRow) => (r.open ? `/erp/list/${r.open}` : 
 const DETAIL_OF: Record<string, string> = { 'brig-issues': 'brig-issue', 'brig-shifts': 'brig-shift', 'arenda-jurnal': 'arenda-tx', 'arenda-shops': 'arenda-shop', 'arenda-debtors': 'arenda-shop', 'arenda-svet': 'arenda-shop' };
 
 /** Jonli reyslar xaritasini kim ochadi (server `GET /api/mobile/fleet` ruxsati bilan bir xil). */
-const FLEET_ROLES: ErpRole[] = ['DIRECTOR', 'LOGISTICS', 'MECHANIC'];
+const FLEET_ROLES: ErpRole[] = ['DIRECTOR', 'LOGISTICS', 'MECHANIC', 'DISPATCHER'];
 
 /** Ro'yxat bo'limlarida bosh sahifada ko'rinadigan qatorlar soni ("Barchasi" — qolgani). */
 const SECTION_ROWS = 6;
@@ -850,7 +850,7 @@ function payLinksFor(role: ErpRole, canViewTable: boolean | null): { href: strin
   if (role !== 'HR' && (canViewTable ?? (role === 'DIRECTOR' || role === 'PRODUCTION' || role === 'SUPERVISOR'))) {
     out.push({ href: '/erp/davomat', title: 'Xodimlar davomati', subtitle: 'Keldi, ketdi, soat, kechikish — barcha xodimlar', icon: 'clock' });
   }
-  if (role === 'DIRECTOR' || role === 'HR' || role === 'LOGISTICS') {
+  if (role === 'DIRECTOR' || role === 'HR' || role === 'LOGISTICS' || role === 'DISPATCHER') {
     out.push({ href: '/erp/haydovchilar', title: 'Haydovchilar: reyslar va davomat', subtitle: "Oy bo'yicha reys, hajm, km, ish kunlari", icon: 'truck', module: 'logistics' });
   }
   if (role === 'DRIVER') {

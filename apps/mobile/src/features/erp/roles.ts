@@ -78,6 +78,8 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   SECRETARY:   { group: '(erp-secretary)',   label: 'Sekretar',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'arenda-jurnal', workTitle: 'Jurnal', workIcon: 'arrow-up-down', tabs: [HOME('Asosiy'), { route: 'arenda', title: 'Arenda', icon: 'store', screen: { kind: 'arenda' } }, WORK('Jurnal', 'arrow-up-down'), LIST('dokonlar', "Do'konlar", 'building', 'arenda-shops'), MENU()] },
   // Sotuv agenti: vebda faqat «/agent» — o'z mijozlari, ularning qarzi va o'z mijoziga zayavka (server egalikni o'zi filtrlaydi)
   AGENT:       { group: '(erp-agent)',       label: 'Sotuv agenti',     homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'orders',     workTitle: 'Zayavkalarim', workIcon: 'file-text', tabs: [HOME('Bugun'), WORK('Zayavkalarim', 'file-text'), LIST('customers', 'Mijozlarim', 'users', 'customers'), MENU()] },
+  // Dispetcher: haydovchilar (kartochka, guvohnoma), reys haqi (narxsiz reyslar → narx/to'lov turi) va transport (holat, texnik xizmat)
+  DISPATCHER:  { group: '(erp-dispatcher)',  label: 'Dispetcher',       homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'drivers',    workTitle: 'Haydovchilar', workIcon: 'id-card', tabs: [HOME('Asosiy'), WORK('Haydovchilar', 'id-card'), LIST('reys-haqi', 'Reys haqi', 'hand-coins', 'trip-pay'), LIST('transport', 'Transport', 'truck', 'vehicles'), MENU()] },
 };
 
 /**

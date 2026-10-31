@@ -305,6 +305,24 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     ],
     missing: ["Naqd / bank qoldig'i alohida", 'Click / Payme tushumi', 'Kirim usuli taqsimoti', 'Kassa limiti', 'Haydovchi topshirmagan pul'],
   },
+  // Dispetcher — KPI dashboardi serverda yo'q; bosh sahifa ish navbati: narxsiz reyslar va texnik xizmat muddati
+  // (`lib/mobile/home.ts` DISPATCHER, `./trip-pay.ts`, `logistika-extra.ts` mechanicServiceSection)
+  DISPATCHER: {
+    title: 'Dispetcher',
+    periods: [],
+    kpis: [],
+    chart: null,
+    breakdown: null,
+    progress: null,
+    attention: [/^Narx belgilanmagan reyslar/, /^Texnik xizmat muddati/],
+    quick: [
+      { label: 'Reys haqi', icon: 'hand-coins', to: { kind: 'list', key: 'trip-pay' } },
+      { label: 'Reyslar', icon: 'route', to: { kind: 'list', key: 'trips' } },
+      { label: 'Xaritada', icon: 'map', to: { kind: 'href', href: '/erp/fleet' } },
+      { label: "Transport qo'shish", icon: 'plus', to: { kind: 'new', key: 'vehicles' }, orElse: { label: 'Transport', icon: 'truck', to: { kind: 'list', key: 'vehicles' } } },
+    ],
+    missing: ['Bugungi reyslar soni', "Yo'ldagi / bo'sh transport", 'Guvohnoma muddati tugayotgan haydovchilar', "Shu oy reys haqi jami"],
+  },
   MECHANIC: {
     title: 'Nazorat',
     periods: ['day', 'week', 'month'],

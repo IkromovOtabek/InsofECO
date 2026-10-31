@@ -12,7 +12,7 @@ import { appHeaders, checkUpdateRequired } from './app-update';
  * ECO klientidan (`core/api.ts`) ajratilgan: boshqa server, boshqa token, X-Org-Id yo'q.
  * Tokenlar SecureStore'da alohida kalitlarda turadi — ikki tizim bir-birini bosib ketmaydi.
  */
-export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY' | 'AGENT';
+export type ErpRole = 'DIRECTOR' | 'SALES' | 'PRODUCTION' | 'SUPERVISOR' | 'LOGISTICS' | 'WAREHOUSE' | 'PROCUREMENT' | 'ACCOUNTING' | 'FINANCE' | 'HR' | 'CASHIER' | 'MECHANIC' | 'DRIVER' | 'BRIGADIER' | 'SECRETARY' | 'AGENT' | 'DISPATCHER';
 export interface ErpUser { id: string; login: string; fullName: string; role: ErpRole; roleLabel: string }
 export interface ErpTokens { accessToken: string; refreshToken: string }
 
