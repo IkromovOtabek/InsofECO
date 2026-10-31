@@ -115,6 +115,8 @@ const ST: Record<ErpShipmentItem['status'], { label: string; tone: 'warning' | '
   PENDING: { label: 'Kutmoqda', tone: 'warning' }, ACCEPTED: { label: 'Qabul qilindi', tone: 'success' }, REJECTED: { label: 'Rad etildi', tone: 'danger' },
 };
 const parse = (v: string) => Number(v.replace(/\s+/g, '').replace(',', '.'));
+/** Miqdor: 3 xonagacha kasr, ortiqcha nollarsiz — "10.000 dona" o'n mingdek o'qilmasin (10, 9.5). */
+const qtyText = (n: number) => fmtNum(n, 3).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 
 export function ShipmentAcceptScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const { c } = useTheme();
@@ -209,17 +211,17 @@ export function ShipmentAcceptScreen({ id, onBack }: { id: string; onBack: () =>
                   </View>
                   {live && isPending ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                      <Txt v="bodySm" style={{ flex: 1, color: c.textMuted }}>Jo&apos;natildi: {fmtNum(i.qty, 3)} {i.unit}</Txt>
+                      <Txt v="bodySm" style={{ flex: 1, color: c.textMuted }}>Jo&apos;natildi: {qtyText(i.qty)} {i.unit}</Txt>
                       <Txt v="bodySm">Keldi:</Txt>
                       <TextInput value={qty[i.id] ?? ''} editable={on} keyboardType="decimal-pad" selectTextOnFocus
                         onChangeText={(t) => setQty((q) => ({ ...q, [i.id]: t }))}
                         style={{ width: 96, height: 40, borderRadius: radius.sm, borderWidth: 1, borderColor: on && f < i.qty ? c.warningSolid : c.borderDefault, paddingHorizontal: space.sm, textAlign: 'right', color: c.textStrong, backgroundColor: on ? c.bgApp : c.bgMuted }} />
-                      <Txt v="bodySm" style={{ width: 28 }}>{i.unit}</Txt>
+                      <Txt v="bodySm" numberOfLines={1} style={{ minWidth: 28 }}>{i.unit}</Txt>
                     </View>
                   ) : (
                     <Txt v="bodySm" style={{ color: c.textMuted }}>
-                      {fmtNum(i.qty, 3)} {i.unit}
-                      {i.acceptedQty != null ? ` → qabul ${fmtNum(i.acceptedQty, 3)} ${i.unit}` : ''}
+                      {qtyText(i.qty)} {i.unit}
+                      {i.acceptedQty != null ? ` → qabul ${qtyText(i.acceptedQty)} ${i.unit}` : ''}
                       {i.receiptNo ? ` · ${i.receiptNo}` : ''}{i.rejectReason ? ` · ${i.rejectReason}` : ''}{i.decidedBy ? ` · ${i.decidedBy}` : ''}
                     </Txt>
                   )}
