@@ -107,6 +107,12 @@ export default function Login() {
         await signInErp({ accessToken: r.accessToken, refreshToken: r.refreshToken }, r.user);
       }
     } catch (e) {
+      // ERP: vaqtinchalik parol (dispetcher bergan) to'g'ri — avval o'z parolini o'rnatadi, keyin kiradi
+      const changeToken = e instanceof ApiException && (e.code as string) === 'PASSWORD_CHANGE_REQUIRED' ? (e.body as { changeToken?: unknown }).changeToken : undefined;
+      if (typeof changeToken === 'string') {
+        router.push({ pathname: '/(auth)/temp-password', params: { token: changeToken } });
+        return;
+      }
       setError({ form: e instanceof ApiException ? e.message : 'Tarmoq xatosi. Internetni tekshiring' });
     } finally {
       setLoading(false);

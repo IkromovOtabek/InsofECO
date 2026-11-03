@@ -12,7 +12,7 @@ import { useReducedMotion } from '@/design/motion';
  */
 export const unstable_settings = { initialRouteName: 'login' };
 
-const SCREENS = ['welcome', 'login', 'select-role', 'phone', 'otp', 'register', 'forgot', 'new-password', 'change-password', 'pin', 'done'];
+const SCREENS = ['welcome', 'login', 'select-role', 'phone', 'otp', 'register', 'forgot', 'new-password', 'temp-password', 'change-password', 'pin', 'done'];
 
 /** Autentifikatsiya ekranlari o'z orqaga tugmasini chizadi (AuthScreen) — nav header yo'q; qadamlar orasida yumshoq fade. */
 export default function AuthLayout() {

@@ -459,6 +459,9 @@ export async function erpPhotoData(url: string): Promise<string> {
 export const erpAuth = {
   login: (login: string, password: string) =>
     erpApi<ErpTokens & { user: ErpUser }>('/auth/login', { method: 'POST', body: { login, password }, auth: false }),
+  /** Vaqtinchalik parol (dispetcher bergan) bilan kirilgandan keyingi qadam: o'z paroli → odatdagi tokenlar. */
+  setTempPassword: (changeToken: string, password: string) =>
+    erpApi<ErpTokens & { user: ErpUser }>('/auth/temp-password', { method: 'POST', body: { changeToken, password }, auth: false }),
   me: () => erpApi<ErpUser>('/me'),
   /** Shu qurilmaning access/refresh tokenlarini serverda bekor qiladi (boshqa qurilmalar chiqarilmaydi). */
   logout: async () => erpApi<{ ok: true }>('/auth/logout', { method: 'POST', body: { refreshToken: (await secure.get(KEYS.erpRefresh)) ?? undefined, deviceId: deviceId() } }),
