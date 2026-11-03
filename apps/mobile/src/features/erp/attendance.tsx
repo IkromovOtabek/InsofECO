@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import type * as ImagePickerNS from 'expo-image-picker';
@@ -183,8 +183,38 @@ function useSelfMark() {
 
 const stateTone = (s: ErpSelfAttendance) => (s.state === 'in' ? 'success' : s.state === 'out' ? 'info' : s.state === 'other' ? 'warning' : 'neutral');
 
+/** Bosh sahifada "Ketdim" shu soatdan chiqadi (kunduzgi smena undan oldin tugasa — smena oxiridan). */
+const LEAVE_FROM = '16:30';
+const hhmmMin = (t: string) => { const [h, m] = t.split(':').map(Number); return (h ?? NaN) * 60 + (m ?? NaN); };
+
+/** Bugungi "Ketdim" chiqish vaqti (ms); tungi smena yoki noto'g'ri soat — `null` (cheklov yo'q). */
+function leaveAt(s: ErpSelfAttendance): number | null {
+  const start = hhmmMin(s.shift.start), end = hhmmMin(s.shift.end);
+  if (!(end > start)) return null;
+  const d = new Date();
+  d.setHours(0, Math.min(hhmmMin(LEAVE_FROM), end), 0, 0);
+  return d.getTime();
+}
+
 /**
- * Davomat ekrani tablari (`face-kiosk.tsx`) va bosh sahifadagi «Davomat» tugmasi. Yangi ERP `attendance` beradi (hamma xodimga);
+ * Bosh sahifa kartasi ko'rinadimi: kelmagan — "Keldim"; ishda — faqat ketish soatidan keyin "Ketdim"; qolgan holatda yo'q.
+ * Ilova ochiq turganda soat yetsa — o'zi qayta chiziladi. Erta ketish — sarlavhadagi «Davomat» → "Men" orqali.
+ */
+function useSelfCardVisible(s: ErpSelfAttendance | null | undefined): boolean {
+  const [, bump] = useReducer((n: number) => n + 1, 0);
+  const at = s?.next === 'out' ? leaveAt(s) : null;
+  useEffect(() => {
+    const ms = at == null ? 0 : at - Date.now();
+    if (ms <= 0) return;
+    const t = setTimeout(bump, ms + 500);
+    return () => clearTimeout(t);
+  }, [at]);
+  if (s?.next === 'in') return true;
+  return s?.next === 'out' && (at == null || Date.now() >= at);
+}
+
+/**
+ * Davomat ekrani tablari (`face-kiosk.tsx`) va bosh sahifa sarlavhasidagi «Davomat» ikonkasi. Yangi ERP `attendance` beradi (hamma xodimga);
  * eski ERP'da faqat `faceAttendance` (skanerga ruxsati borlar) — undan olinadi, tugma faqat ularda chiqadi.
  */
 export function attendanceAccessOf(data: ErpHomeData | undefined): ErpAttendanceAccess | null {
@@ -241,21 +271,19 @@ export function SelfAttendanceCard({ s, module }: { s: ErpSelfAttendance; module
 }
 
 /**
- * Bosh sahifa tepasidagi davomat bloki (sarlavha ostida): o'z "Keldim/Ketdim" kartasi, hamma xodimga «Davomat» tugmasi
- * (o'z davomati, umumiy jadval, ruxsat bo'lsa skaner) va rahbarda — "Xodimlar davomati" (boshqalarni belgilash) qatori.
+ * Bosh sahifa tepasidagi davomat bloki (sarlavha ostida): o'z "Keldim/Ketdim" kartasi — faqat bosish kerak bo'lganda
+ * (`useSelfCardVisible`), rahbarda — "Xodimlar davomati" (boshqalarni belgilash) qatori. «Davomat» — sarlavhadagi ikonka.
  */
 export function AttendanceHomeCard({ data, module }: { data: ErpHomeData; module: ModuleTone }) {
   const router = useRouter();
   const s = data.selfAttendance;
   const manage = data.attendanceManage;
-  const access = attendanceAccessOf(data);
-  if (!s && !manage && !access) return null;
+  const showSelf = useSelfCardVisible(s);
+  if (!(s && showSelf) && !manage) return null;
   const go = (href: string) => router.push(href as never);
   return (
     <View style={{ gap: space.md }}>
-      {s ? <SelfAttendanceCard s={s} module={module} /> : null}
-      {/* ERP Bosh sahifa → «Davomat» kabi: o'z davomati, umumiy jadval; ruxsat bo'lsa Face ID skaneri va yuzlar */}
-      {access ? <Button size="lg" icon={access.canScan ? 'scan-line' : 'clipboard-list'} title="Davomat" onPress={() => go('/erp/face')} /> : null}
+      {s && showSelf ? <SelfAttendanceCard s={s} module={module} /> : null}
       {manage ? (
         <ListGroup>
           <ListItem icon="users" module={module} title={manage.title} subtitle={manage.subtitle} onPress={() => go(`/erp/${manage.key}/${encodeURIComponent(manage.id)}`)} />

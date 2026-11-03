@@ -26,7 +26,7 @@ import { RangeCalendar } from './range-calendar';
 import { ProgressChart } from './charts';
 import { ErpAiChat } from './ai-chat';
 import { DailyReportSheet } from './daily-report';
-import { AttendanceHomeCard } from './attendance';
+import { AttendanceHomeCard, attendanceAccessOf } from './attendance';
 import { FleetScreen } from './fleet';
 import { StaffAttendanceScreen } from './staff-attendance';
 import { KirimScreen } from './kirim';
@@ -267,6 +267,8 @@ export function ErpHome() {
   const rcfg = erpRoleConfig(data?.role ?? sessionRole);
   const roleLabel = data?.roleLabel ?? erp?.roleLabel ?? rcfg.label;
   const fullName = data?.fullName ?? erp?.fullName ?? '';
+  // «Davomat» (o'z davomati, jadval, ruxsat bo'lsa skaner) — kontentni egallamasin: sarlavhada, qo'ng'iroq yonida
+  const attAccess = attendanceAccessOf(data);
 
   const header = (
     <PageHeader
@@ -274,6 +276,7 @@ export function ErpHome() {
       title={cfg.title}
       avatar={{ name: fullName || roleLabel }}
       onAvatar={() => go(`/${rcfg.group}/menu`)}
+      actions={attAccess ? [{ icon: 'user-check', label: 'Davomat', onPress: () => go('/erp/face') }] : undefined}
       bell={{ onPress: () => go('/erp/bildirishnomalar'), count: unread || undefined }}
       raised={raise.raised}
       style={{ paddingTop: insets.top + space.sm }}
@@ -319,8 +322,8 @@ export function ErpHome() {
       setParams((prev) => ({ ...prev, [filtered.filterParam!]: 'custom', from, to }));
     };
 
-    // ── Davomat (sarlavha ostida): o'zi "Keldim / Ketdim" (GPS + yuz skaneri) va rahbarga "Xodimlar davomati" ──
-    if (data.selfAttendance || data.attendanceManage || data.faceAttendance || data.attendance) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
+    // ── Davomat (sarlavha ostida): "Keldim", 16:30 dan "Ketdim" (GPS + yuz skaneri) va rahbarga "Xodimlar davomati" ──
+    if (data.selfAttendance || data.attendanceManage) blocks.push(<AttendanceHomeCard key="att-self" data={data} module={module} />);
 
     if (error) blocks.push(<OfflineBanner key="off" visible title="Yangilab bo'lmadi" onRetry={() => void refetch()} />);
 
