@@ -1,0 +1,542 @@
+<title>Insof ECO shablonlari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&family=Unbounded:wght@800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sarlavha + ilham rasmlari → 5 ta shablon bo'limi (har birida 3 telefon: Kirish / Asosiy / Asosiy-surilgan) → umumiy skelet */
+:root{
+  --pg-bg:#eff1ec; --pg-surf:#ffffff; --pg-ink:#161a14; --pg-mut:#5f6759; --pg-line:#d9ddd2; --pg-acc:#3f6d22; --pg-chip:#e3e7dc;
+  --f-ui:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#0d100c;--pg-surf:#161b14;--pg-ink:#eef2ea;--pg-mut:#9aa392;--pg-line:#2a3226;--pg-acc:#9fd46f;--pg-chip:#20271d;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#0d100c;--pg-surf:#161b14;--pg-ink:#eef2ea;--pg-mut:#9aa392;--pg-line:#2a3226;--pg-acc:#9fd46f;--pg-chip:#20271d;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--pg-bg);color:var(--pg-ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 72px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-acc)}
+h1{font-size:clamp(26px,3.6vw,40px);line-height:1.1;margin:6px 0 10px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.lede{color:var(--pg-mut);max-width:64ch;margin:0}
+.refs{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:18px}
+.refs figure{margin:0;display:flex;flex-direction:column;gap:6px;width:110px}
+.refs img{width:110px;height:150px;object-fit:cover;object-position:50% 32%;border-radius:12px;border:1px solid var(--pg-line)}
+.refs figcaption{font-size:12px;color:var(--pg-mut)}
+.refs .arrow{align-self:center;font-size:13px;color:var(--pg-mut);max-width:22ch}
+
+.tpl{display:flex;flex-direction:column;gap:16px;padding-top:28px;border-top:1px solid var(--pg-line)}
+.tpl-head{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;justify-content:space-between}
+.tpl-head>div{min-width:0}
+.tpl h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px}
+.tpl h2 .n{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--pg-surf);background:var(--pg-ink);border-radius:8px;padding:2px 8px}
+.tpl p{margin:6px 0 0;color:var(--pg-mut);max-width:62ch;font-size:14px}
+.meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--pg-mut)}
+.sw{display:flex}
+.sw i{width:22px;height:22px;border-radius:50%;border:2px solid var(--pg-bg);margin-left:-6px}
+.sw i:first-child{margin-left:0}
+.rail{display:flex;gap:24px;overflow-x:auto;padding:4px 2px 14px}
+.slot{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+.slot b{font-size:13px}
+.slot span{font-size:12px;color:var(--pg-mut);font-weight:400}
+
+.skel{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.skel div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:16px;min-width:0}
+.skel h3{margin:0 0 8px;font-size:15px}
+.skel ul{margin:0;padding-left:18px;color:var(--pg-mut);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.skel em{font-style:normal;color:var(--pg-ink);font-weight:600}
+
+/* ───────── telefon ───────── */
+.phone{width:272px;height:588px;border-radius:44px;padding:8px;background:#0b0d0f;box-shadow:0 22px 44px -22px #0b120880,inset 0 0 0 1px #2b3036}
+.scr{position:relative;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:11px;line-height:1.35;display:flex;flex-direction:column}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:80px;height:23px;border-radius:12px;background:#000;z-index:6}
+.sb{position:absolute;top:0;left:0;right:0;height:40px;display:flex;justify-content:space-between;align-items:center;padding:3px 24px 0;font-size:11px;font-weight:700;color:var(--hInk);z-index:5;font-family:var(--f-ui)}
+.sb .r{display:flex;gap:4px;align-items:center}
+.sb .bat{width:20px;height:10px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat::after{content:"";position:absolute;inset:1px 4px 1px 1px;background:currentColor;border-radius:1px}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.muted{color:var(--mut)}
+.row{display:flex;align-items:center;gap:6px}
+.between{justify-content:space-between}
+
+/* kirish */
+.hero{position:relative;flex:0 0 auto;height:236px;padding:46px 18px 0;background:var(--hero);color:var(--hInk);overflow:hidden}
+.brand{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.brand span{color:var(--brandDot)}
+.tagline{margin-top:6px;font-size:11.5px;opacity:.88;max-width:13ch}
+.blob{position:absolute;right:-6px;bottom:-34px;width:150px;height:150px;border-radius:50%;background:var(--blob)}
+.hero .truck{position:absolute;right:-4px;bottom:10px;width:156px;height:92px}
+.sheet{flex:1;display:flex;flex-direction:column;gap:7px;padding:14px 18px 12px;background:var(--sheet)}
+.sheet h3{margin:0 0 2px;font-size:18px;font-weight:800;letter-spacing:-.01em}
+.fld{height:36px;border-radius:var(--rf);background:var(--field);display:flex;align-items:center;gap:8px;padding:0 13px;color:var(--mut);border:1.5px solid transparent}
+.fld .v{color:var(--ink);font-weight:600;flex:1}
+.fld .v::after{content:"";display:inline-block;width:1.5px;height:13px;background:var(--ink);vertical-align:-2px;margin-left:1px}
+.fld .ph{flex:1}
+.fld.err{border-color:var(--err);background:var(--errBg)}
+.errtx{color:var(--err);font-size:9.5px;margin:-5px 0 0 14px}
+.chk{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:4px;background:var(--acc);color:var(--accInk)}
+.chk .ic{width:10px;height:10px;stroke-width:3}
+.link{color:var(--link);font-weight:700}
+.cta{height:40px;border:0;border-radius:var(--rb);background:var(--cta);color:var(--ctaInk);font:700 13px var(--font);display:grid;place-items:center;margin-top:4px}
+.or{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:9.5px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.soc{height:34px;border-radius:var(--rb);background:var(--field);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;color:var(--ink)}
+.foot{text-align:center;color:var(--mut);margin-top:auto;padding-bottom:6px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:96px;height:4px;border-radius:3px;background:var(--ink);opacity:.85;z-index:6}
+
+
+/* logo + 3D sahna */
+.logo{position:relative;z-index:2;display:inline-flex;align-items:center;background:#ffffff;border-radius:14px;padding:8px 11px;box-shadow:0 8px 18px -10px #0b134180}
+.logo img{display:block;width:132px;height:auto}
+.hero .tagline{position:relative;z-index:2;margin-top:8px;font-size:10.5px;max-width:12ch}
+.hero .glow{position:absolute;right:-30px;bottom:-40px;width:230px;height:150px;border-radius:50%;background:var(--blob)}
+.hero .scene{position:absolute;right:-14px;bottom:-6px;width:222px;height:162px}
+
+/* qahramon shakllari */
+[data-hero="round"] .hero{border-radius:0 0 30px 30px}
+[data-hero="round"] .sheet{background:var(--bg)}
+[data-hero="diag"] .hero{height:250px;clip-path:polygon(0 0,100% 0,100% 80%,0 100%)}
+[data-hero="diag"] .hero .scene{bottom:30px}
+[data-hero="diag"] .sheet{margin-top:-14px}
+[data-hero="card"] .sb{color:var(--ink)}
+[data-hero="card"] .hero{margin:42px 10px 0;height:196px;border-radius:24px;padding-top:14px}
+[data-hero="card"] .hero .scene{width:190px;height:139px;right:-10px}
+[data-hero="full"] .scr{background:var(--hero)}
+[data-hero="full"] .hero{background:transparent;flex:1;height:auto}
+[data-hero="full"] .sheet{flex:0 0 auto;margin:0 10px 18px;border-radius:26px;border:1px solid var(--line)}
+[data-hero="wave"] .sheet{position:relative;margin-top:-28px;border-radius:28px 28px 0 0}
+
+/* asosiy */
+.hd{flex:0 0 auto;padding:44px 14px 12px;background:var(--hero);color:var(--hInk);border-radius:0 0 var(--rh) var(--rh);display:flex;align-items:center;gap:9px;position:relative;z-index:2}
+.av{width:32px;height:32px;border-radius:50%;background:var(--avBg);color:var(--avInk);display:grid;place-items:center;font-weight:800;font-size:11px;flex:0 0 auto;border:2px solid var(--hInk)}
+.addr{flex:1;min-width:0}
+.addr .k{font-size:9px;opacity:.85;display:flex;align-items:center;gap:3px}
+.addr .k .ic{width:10px;height:10px}
+.addr .v{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.addr .v span{font-weight:500;opacity:.9}
+.bell{width:32px;height:32px;border-radius:50%;background:var(--bellBg);display:grid;place-items:center;position:relative;flex:0 0 auto}
+.bell::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--err);box-shadow:0 0 0 1.5px var(--hInk)}
+.body{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding-top:12px}
+.promo{position:relative;margin:0 12px;flex:0 0 auto;border-radius:24px;background:var(--p-bgInverse);overflow:hidden;box-shadow:0 18px 30px -20px color-mix(in srgb,var(--p-bgInverse) 80%,transparent)}
+.promo::before{content:"";position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--p-textOnInverse) 6%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--p-textOnInverse) 6%,transparent) 1px,transparent 1px);background-size:14px 14px;pointer-events:none}
+.track{position:relative;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;cursor:grab;touch-action:pan-x}
+.track::-webkit-scrollbar{display:none}
+.track.drag{cursor:grabbing;scroll-snap-type:none}
+.slide{flex:0 0 100%;scroll-snap-align:start;position:relative;height:124px;padding:13px 104px 26px 14px;display:flex;flex-direction:column;gap:3px;user-select:none}
+.slide .ov{font-size:7.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--p-textOnInverseMuted)}
+.slide .tt{font-size:14px;font-weight:800;line-height:1.15;color:var(--p-textOnInverse)}
+.slide .tt span{display:block;font-weight:600;font-size:10.5px;color:var(--p-textOnInverseMuted);margin-top:2px}
+.slide .btn{align-self:flex-start;margin-top:auto;background:var(--p-brand);color:var(--p-textOnBrand);font-size:9px;font-weight:800;padding:5px 12px;border-radius:99px}
+.slide svg.art{position:absolute;right:-6px;bottom:8px;width:112px;height:74px;pointer-events:none}
+.dots{position:absolute;left:14px;bottom:10px;display:flex;gap:4px;pointer-events:none}
+.dots i{width:6px;height:6px;border-radius:99px;background:var(--p-textOnInverseMuted);opacity:.45;transition:width .2s,opacity .2s}
+.dots i.on{width:16px;background:var(--p-brand);opacity:1}
+/* Foodie joylashuvi: shapka foni banner ortiga cho'ziladi, karta yarmigacha shapka ustida turadi */
+.hd.tall{padding-bottom:76px}
+.body.over{margin-top:-68px;position:relative;z-index:3}
+.st{display:flex;justify-content:space-between;align-items:baseline;padding:0 12px;font-size:13px;font-weight:800;flex:0 0 auto}
+.st a{font-size:10px;color:var(--link);font-weight:700}
+.cats{display:flex;gap:9px;padding:0 12px;flex:0 0 auto}
+.cat{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:8.5px;font-weight:600;width:44px;text-align:center}
+.cat .t{width:44px;height:48px;border-radius:var(--rt);background:var(--surf);display:grid;place-items:center;box-shadow:var(--shadow);border:1px solid var(--line)}
+.cat .t svg{width:30px;height:30px}
+.cat.on .t{background:var(--catOn);border-color:transparent}
+.cat.on{color:var(--ink)}
+.hrow{display:flex;gap:8px;padding:0 12px;flex:0 0 auto}
+.ag{width:160px;flex:0 0 auto;background:var(--surf);border:1px solid var(--line);border-radius:var(--rc);padding:8px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow)}
+.ag svg.p{width:34px;height:34px;flex:0 0 auto}
+.ag .tx{flex:1;min-width:0}
+.ag .tx b{display:block;font-size:10.5px;white-space:nowrap}
+.ag .tx span{font-size:8.5px;color:var(--mut);white-space:nowrap}
+.rep{width:24px;height:24px;border-radius:8px;background:var(--soft);color:var(--link);display:grid;place-items:center;flex:0 0 auto}
+.rep .ic{width:12px;height:12px}
+.deal{position:relative;width:176px;height:88px;flex:0 0 auto;border-radius:var(--rc);background:var(--deal);color:var(--p-textOnInverse);padding:9px 11px;overflow:hidden}
+.deal.b{background:var(--deal2);color:var(--p-textOnSolid)}
+.deal .k{font-size:7.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.deal .big{font-size:22px;font-weight:900;line-height:1.05}
+.deal .bot{position:absolute;left:10px;bottom:9px;display:flex;gap:5px}
+.deal .code{font-family:var(--f-mono);font-size:7.5px;background:#0000004d;border:1px solid #ffffff4d;padding:2px 6px;border-radius:6px}
+.deal .go{font-size:8px;font-weight:800;background:var(--dealBtn);color:var(--dealBtnInk);padding:2px 9px;border-radius:6px}
+.deal svg.p{position:absolute;right:-8px;bottom:-8px;width:76px;height:76px;opacity:.95}
+.tabs{flex:0 0 auto;height:64px;background:var(--surf);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:7px 6px 0;position:relative;z-index:3}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8.5px;font-weight:600;color:var(--mut);width:48px}
+.tab i{width:34px;height:24px;border-radius:10px;display:grid;place-items:center}
+.tab .ic{width:16px;height:16px}
+.tab.on{color:var(--tabOn)}
+.tab.on i{background:var(--tabOnBg)}
+
+/* surilgan holat */
+.fac{width:170px;flex:0 0 auto;background:var(--surf);border:1px solid var(--line);border-radius:var(--rc);padding:9px 10px;box-shadow:var(--shadow)}
+.fac b{font-size:11px}
+.fac .star{color:#e3a008;font-weight:800;font-size:9.5px;display:flex;align-items:center;gap:2px}
+.fac .star .ic{width:10px;height:10px;fill:currentColor;stroke:none}
+.fac .s{font-size:8.5px;color:var(--mut);margin:2px 0 5px}
+.fac .m{display:flex;gap:10px;font-size:8.5px;color:var(--mut)}
+.fac .m span{display:flex;align-items:center;gap:3px}
+.fac .m .ic{width:10px;height:10px}
+.cut{margin-top:-30px}
+.pc{position:relative;width:112px;flex:0 0 auto;background:var(--surf);border:1px solid var(--line);border-radius:var(--rc);padding:9px 8px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:var(--shadow);text-align:center}
+.pc b{font-size:10.5px}
+.pc .pr{font-size:9.5px;color:var(--mut)}
+.pc svg.p{width:62px;height:62px;margin:4px 0}
+.pc .m{align-self:stretch;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:8.5px;color:var(--mut)}
+.pc .m span{display:flex;align-items:center;gap:3px}
+.pc .m .ic{width:10px;height:10px}
+.pc .m .hot{color:var(--hot)}
+.add{position:absolute;right:8px;bottom:8px;width:22px;height:22px;border-radius:7px;background:var(--acc);color:var(--accInk);display:grid;place-items:center}
+.add .ic{width:12px;height:12px;stroke-width:3}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px}
+.grid2 .pc{width:auto}
+
+/* ───────── ECO mavzusi: tokenlar ilovadagi tokens.ts → palettes dan (JS --p-* qilib qo'yadi). Shablonlar faqat shakl bilan farq qiladi ───────── */
+.phone{--font:"Nunito",ui-rounded,system-ui,sans-serif;
+  --bg:var(--p-bgApp);--sheet:var(--p-bgApp);--surf:var(--p-bgSurface);--ink:var(--p-textStrong);--mut:var(--p-textMuted);--line:var(--p-borderSubtle);
+  --field:var(--p-bgSurface);--soft:var(--p-brandSoft);--link:var(--p-brand);--acc:var(--p-brand);--accInk:var(--p-textOnBrand);
+  --cta:var(--p-brand);--ctaInk:var(--p-textOnBrand);--err:var(--p-danger);--errBg:var(--p-dangerBg);
+  --hero:linear-gradient(140deg,var(--p-brandHover),var(--p-brand));--hInk:var(--p-textOnBrand);--brandDot:var(--p-accent);
+  --blob:color-mix(in srgb,var(--hInk) 16%,transparent);--bellBg:color-mix(in srgb,var(--hInk) 18%,transparent);
+  --avBg:var(--p-accent);--avInk:var(--p-textStrong);--catOn:var(--p-brand);
+  --deal:linear-gradient(135deg,var(--p-bgInverse),var(--p-bgInverseChip));--deal2:linear-gradient(135deg,var(--p-moduleLogistics),var(--p-infoSolid));
+  --dealBtn:var(--p-brand);--dealBtnInk:var(--p-textOnBrand);--tabOn:var(--p-brand);--tabOnBg:var(--p-brandSoft);--hot:var(--p-warning);
+  --shadow:0 1.4px 2.8px color-mix(in srgb,var(--p-textStrong) 5%,transparent),0 8px 22px -12px color-mix(in srgb,var(--p-textStrong) 16%,transparent);
+  --truckA:var(--p-accent);--truckB:#eef1f6;--truckC:#1e293b;
+  --rf:99px;--rb:99px;--rc:20px;--rt:18px;--rh:28px}
+/* 1 · Gradient shapka — Foodie'ning o'zi */
+.t1{--cta:linear-gradient(90deg,var(--p-brandHover),var(--p-brand))}
+/* 2 · Qiya kesim — to'q shapka, burchaklar kichik */
+.t2{--hero:var(--p-bgInverse);--hInk:var(--p-textOnInverse);--rf:12px;--rb:12px;--rc:14px;--rt:12px;--rh:0px;--shadow:none;--field:var(--p-bgSurface)}
+/* 3 · To'q fon — butun kirish ekrani to'q, forma suzib turadi */
+.t3{--hero:linear-gradient(170deg,var(--p-bgInverseChip),var(--p-bgInverse) 70%);--hInk:var(--p-textOnInverse);--sheet:var(--p-bgSurface);--field:var(--p-bgSubtle);--rf:16px;--rb:16px;--rc:22px;--rt:18px}
+/* 4 · Suzuvchi karta — shapka alohida karta */
+.t4{--sheet:var(--p-bgApp);--rf:14px;--rb:14px;--rc:16px;--rt:14px;--rh:24px}
+/* 5 · To'lqin — brend → aksent, katta yumaloqlar */
+.t5{--hero:linear-gradient(140deg,var(--p-brandHover),var(--p-brand) 55%,var(--p-accent));--rf:20px;--rb:20px;--rc:24px;--rt:20px;--rh:32px;--cta:linear-gradient(90deg,var(--p-brand),var(--p-accent))}
+
+/* rasm bo'laklari (simbollar ichida) */
+.tA{fill:var(--truckA)}.tB{fill:var(--truckB)}.tC{fill:var(--truckC)}.tW{fill:#cfe3f3}.tS{fill:none;stroke:var(--truckC);stroke-width:2.2;stroke-linecap:round;opacity:.35}
+.g1{fill:#d7dadb}.g2{fill:#b6bbbe}.g3{fill:#959b9f}.g4{fill:#7d8387}.gA{fill:var(--p-brand)}
+
+@media (prefers-reduced-motion:no-preference){.hero .scene{animation:float 4s ease-in-out infinite alternate}}
+@keyframes float{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.ctrl .lbl{font-size:12px;color:var(--pg-mut);margin-right:2px}
+.seg{display:inline-flex;background:var(--pg-chip);border-radius:12px;padding:4px;gap:2px}
+.seg button{font:600 13px var(--f-ui);border:0;background:transparent;color:var(--pg-mut);padding:8px 14px;border-radius:9px;cursor:pointer;min-height:38px;display:flex;align-items:center;gap:7px}
+.seg button[aria-pressed="true"]{background:var(--pg-surf);color:var(--pg-ink);box-shadow:0 1px 3px #0000001f}
+.seg button:focus-visible{outline:2px solid var(--pg-acc);outline-offset:2px}
+.seg .d{width:12px;height:12px;border-radius:50%}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- beton aralashtirgich (mikser) -->
+    <symbol id="truck" viewBox="0 0 160 96">
+      <rect class="tC" x="8" y="66" width="140" height="8" rx="3"/>
+      <path class="tA" d="M112 30h22c3 0 5 1 6 3l10 16c1 2 2 4 2 6v15h-40z"/>
+      <path class="tW" d="M118 35h15l8 13h-23z"/>
+      <rect class="tC" x="108" y="56" width="44" height="4" rx="2"/>
+      <g transform="rotate(-10 60 44)">
+        <ellipse class="tB" cx="58" cy="44" rx="48" ry="23"/>
+        <path class="tS" d="M28 26q10 18 2 36M48 22q10 22 2 44M68 22q10 22 2 44M88 26q8 18 2 36"/>
+        <ellipse class="tA" cx="104" cy="44" rx="6" ry="14"/>
+      </g>
+      <rect class="tA" x="12" y="58" width="96" height="8" rx="2"/>
+      <circle class="tC" cx="34" cy="76" r="11"/><circle class="tB" cx="34" cy="76" r="4.5"/>
+      <circle class="tC" cx="62" cy="76" r="11"/><circle class="tB" cx="62" cy="76" r="4.5"/>
+      <circle class="tC" cx="132" cy="76" r="11"/><circle class="tB" cx="132" cy="76" r="4.5"/>
+    </symbol>
+    <!-- beton kub (marka) -->
+    <symbol id="p-cube" viewBox="0 0 64 64">
+      <path class="g1" d="M32 8l22 11-22 11-22-11z"/>
+      <path class="g3" d="M10 19l22 11v26L10 45z"/>
+      <path class="g2" d="M54 19L32 30v26l22-11z"/>
+      <path class="gA" d="M14 27l14 7v5l-14-7z" opacity=".9"/>
+    </symbol>
+    <!-- FBS blok -->
+    <symbol id="p-block" viewBox="0 0 64 64">
+      <path class="g1" d="M6 26l30-12 22 9-30 12z"/>
+      <path class="g3" d="M6 26l22 9v16L6 42z"/>
+      <path class="g2" d="M58 23L28 35v16l30-12z"/>
+      <circle class="g4" cx="36" cy="22" r="2"/><circle class="g4" cx="46" cy="26" r="2"/>
+    </symbol>
+    <!-- quduq halqasi KS -->
+    <symbol id="p-ring" viewBox="0 0 64 64">
+      <path class="g3" d="M8 22v20c0 7 11 12 24 12s24-5 24-12V22z"/>
+      <ellipse class="g1" cx="32" cy="22" rx="24" ry="10"/>
+      <ellipse class="g4" cx="32" cy="22" rx="16" ry="6"/>
+      <path class="gA" d="M8 34c0 7 11 12 24 12s24-5 24-12v3c0 7-11 12-24 12S8 44 8 37z" opacity=".85"/>
+    </symbol>
+    <!-- qorishma qopi -->
+    <symbol id="p-sack" viewBox="0 0 64 64">
+      <path class="g1" d="M16 12c6 3 26 3 32 0l4 40c-8 4-32 4-40 0z"/>
+      <path class="g2" d="M16 12c6 3 26 3 32 0l1 6c-7 3-27 3-34 0z"/>
+      <rect class="gA" x="20" y="28" width="24" height="12" rx="3"/>
+    </symbol>
+    <!-- nasos -->
+    <symbol id="p-pump" viewBox="0 0 64 64">
+      <path class="g3" d="M14 44l26-30 4 3-22 27z"/>
+      <path class="g2" d="M40 14l14 8-2 3-14-8z"/>
+      <rect class="gA" x="6" y="42" width="40" height="10" rx="2"/>
+      <path class="gA" d="M46 42h8l4 6v4H46z"/>
+      <circle class="g4" cx="16" cy="54" r="5"/><circle class="g4" cx="48" cy="54" r="5"/>
+    </symbol>
+    <!-- plita -->
+    <symbol id="p-slab" viewBox="0 0 64 64">
+      <path class="g1" d="M4 30l34-12 22 8-34 12z"/>
+      <path class="g3" d="M4 30l22 8v6L4 36z"/>
+      <path class="g2" d="M60 26L26 38v6l34-12z"/>
+      <path class="g4" d="M12 30l28-10M18 32l28-10M24 34l28-10" stroke="#7d8387" stroke-width="1" fill="none" opacity=".4"/>
+    </symbol>
+
+    <symbol id="logo-mark" viewBox="0 0 24 24"><path fill="#ffffff" d="M4 4h16v4.2h-5.6v1.6L17 12l-2.6 2.2v1.6H20V20H4v-4.2h5.6v-1.6L7 12l2.6-2.2V8.2H4z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><path d="M3 3l18 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3L3 11l7 3 3 7z"/><path d="M10 14l11-11"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2 12h11l2-8H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Insof ECO · do'kon ilovasi · qayta dizayn</div>
+    <h1>Foodie arxitekturasi, 5 xil ko'rinishda</h1>
+    <p class="lede">Foodie'ning 3 ta ekrani tuzilishi saqlangan: kirish, asosiy sahifa va uning pastga surilgan holati. Ranglar ilovadagi ECO mavzusidan olingan, shrift Nunito. Shablonlar faqat shakli bilan farq qiladi. Kirishda logo va 3D zavod sahnasi bor, asosiy sahifadagi reklama banneri ilovadagidek suriladi. Narxlar namuna uchun.</p>
+    <div class="ctrl" role="group" aria-label="ECO mavzusi">
+      <span class="lbl">Mavzu:</span>
+      <div class="seg"><button type="button" id="pal-chizma" data-pal="chizma"><span class="d" style="background:#5266ee"></span>Chizma</button><button type="button" id="pal-marjon" data-pal="marjon"><span class="d" style="background:#dc3316"></span>Marjon</button></div>
+      <div class="seg"><button type="button" id="mode-light" data-mode="light">Yorug'</button><button type="button" id="mode-dark" data-mode="dark">Qorong'i</button></div>
+    </div>
+    <div class="refs">
+      <figure><img src="shots/ilham/foodie-1-kirish.jpg" alt="Foodie kirish ekrani"><figcaption>1 · Kirish</figcaption></figure>
+      <figure><img src="shots/ilham/foodie-2-bosh-sahifa.jpg" alt="Foodie bosh sahifa"><figcaption>2 · Asosiy</figcaption></figure>
+      <figure><img src="shots/ilham/foodie-3-mahsulotlar.jpg" alt="Foodie bosh sahifa pastga surilgan"><figcaption>3 · Surilgan</figcaption></figure>
+      <span class="arrow">Ilhom manbai. Pastda shu tuzilish Insof ECO uchun.</span>
+    </div>
+  </header>
+
+  <main id="list" style="display:flex;flex-direction:column;gap:40px"></main>
+
+  <section class="tpl">
+    <h2>Barcha shablonlarda bir xil skelet</h2>
+    <div class="skel">
+      <div><h3>Kirish</h3><ul>
+        <li>Yuqorida <em>Insof JBI logosi</em>, shior va <em>3D sahna</em>: zavod, kran, mikser, FBS va KS halqalar</li>
+        <li><em>Login yoki telefon</em> va <em>Parol</em> maydonlari, xato matni maydon ostida chiqadi</li>
+        <li>Eslab qolish, Parolni unutdingizmi?</li>
+        <li>Asosiy <em>Kirish</em> tugmasi, pastida SMS kod va Telegram</li>
+      </ul></div>
+      <div><h3>Asosiy</h3><ul>
+        <li>Shapka: profil, <em>obyekt manzili</em>, bildirishnoma</li>
+        <li><em>Bugungi taklif</em>: ERP'dan keladigan reklamalar suriladi, ostida nuqtalar</li>
+        <li>Kategoriyalar: Beton, Temir-beton, Qorishma, Nasos</li>
+        <li><em>Qayta buyurtma</em>: oxirgi buyurtmani bir bosishda takrorlash</li>
+        <li>Siz uchun takliflar (promo-kod)</li>
+      </ul></div>
+      <div><h3>Pastga surilganda</h3><ul>
+        <li>Shapka yuqorida <em>yopishib</em> qoladi</li>
+        <li>Yaqin zavodlar: reyting, masofa, yetkazish vaqti</li>
+        <li><em>Tez yetkazish</em>: mahsulot kartasi, narx so'm/m³, marka, +</li>
+        <li>Ko'p sotilganlar: 2 ustunli setka</li>
+        <li>Tablar: Asosiy, Katalog, Savat, Buyurtma, Profil</li>
+      </ul></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ECO palitralari — apps/mobile/src/design/tokens.ts → palettes (faqat shu sahifada kerakli kalitlar) */
+const PAL={
+ chizma:{
+  light:{bgApp:'#f0f2f8',bgSurface:'#fafbfd',bgSubtle:'#f5f7fb',bgMuted:'#e6e9f2',borderSubtle:'#e9ecf3',textStrong:'#0e1430',textMuted:'#535c7a',textOnBrand:'#ffffff',brand:'#5266ee',brandHover:'#394feb',brandSoft:'#e2e5fd',accent:'#ff7a52',bgInverse:'#0b1341',bgInverseChip:'#131f68',textOnInverse:'#f2f4ff',textOnInverseMuted:'#aab4e6',warning:'#914a09',danger:'#d60e17',dangerBg:'#fdeeee',infoSolid:'#097bb1',moduleLogistics:'#0d6e9c',textOnSolid:'#ffffff'},
+  dark:{bgApp:'#090c1d',bgSurface:'#121735',bgSubtle:'#181e40',bgMuted:'#1f274d',borderSubtle:'#181e40',textStrong:'#eef0fb',textMuted:'#959cc0',textOnBrand:'#0a0e22',brand:'#8fa0ff',brandHover:'#a9b6ff',brandSoft:'#1d2558',accent:'#ff8a6b',bgInverse:'#1c2a7a',bgInverseChip:'#2a3a96',textOnInverse:'#f2f4ff',textOnInverseMuted:'#b2bcef',warning:'#ffb35c',danger:'#ff8a8f',dangerBg:'#2d1520',infoSolid:'#0a6d9c',moduleLogistics:'#5cc4f0',textOnSolid:'#ffffff'}},
+ marjon:{
+  light:{bgApp:'#f8f2f0',bgSurface:'#fdfbfa',bgSubtle:'#fbf7f5',bgMuted:'#f2e9e6',borderSubtle:'#f3ece9',textStrong:'#1f140f',textMuted:'#6b5e57',textOnBrand:'#ffffff',brand:'#dc3316',brandHover:'#bc2b13',brandSoft:'#fde6e2',accent:'#58c6c2',bgInverse:'#320f09',bgInverseChip:'#541e15',textOnInverse:'#fff2ee',textOnInverseMuted:'#e0b2a6',warning:'#914a09',danger:'#aa0b25',dangerBg:'#fdecef',infoSolid:'#097bb1',moduleLogistics:'#0d6e9c',textOnSolid:'#ffffff'},
+  dark:{bgApp:'#140e0b',bgSurface:'#201713',bgSubtle:'#281f1a',bgMuted:'#342823',borderSubtle:'#281f1a',textStrong:'#f6f1ee',textMuted:'#aca09a',textOnBrand:'#2a0c06',brand:'#ff8a6e',brandHover:'#ffa58f',brandSoft:'#3a1a13',accent:'#58c6c2',bgInverse:'#4a2219',bgInverseChip:'#613024',textOnInverse:'#fff2ee',textOnInverseMuted:'#e8bcb0',warning:'#ffb35c',danger:'#ff8aa0',dangerBg:'#2d1520',infoSolid:'#0a6d9c',moduleLogistics:'#5cc4f0',textOnSolid:'#ffffff'}}
+};
+
+const T=[
+  {c:'t1',hero:'round',name:"Gradient shapka",
+   d:"Rasmga eng yaqini. Yuqori qism brend gradientida, pastki burchaklari yumaloq. Maydon va tugmalar pill shaklida."},
+  {c:'t2',hero:'diag',name:"Qiya kesim",
+   d:"Yuqori qism to'q inverse rangda va qiya kesilgan. Burchaklar kichik, soya yo'q, sanoatga xos aniq ko'rinish."},
+  {c:'t3',hero:'full',name:"To'q fon",
+   d:"Kirish ekranining hammasi to'q. Forma pastda alohida karta bo'lib suzib turadi, 3D sahna ham to'q fonda ko'rinadi."},
+  {c:'t4',hero:'card',name:"Suzuvchi karta",
+   d:"Yuqori qism ekran chetiga tegmaydi, alohida karta bo'lib turadi. Ilovadagi Card uslubiga eng yaqini."},
+  {c:'t5',hero:'wave',name:"To'lqin",
+   d:"Gradient brenddan aksentga o'tadi, forma esa yuqori qismning ustiga chiqib turadi. Burchaklar eng yumaloq."}
+];
+
+/* ── 3D (izometrik) qurilish sahnasi: zavod, kran, mikser, FBS, KS halqalar. Ranglar — tokens.ts → illus ── */
+const K={ground:['#eef1f6','#dde2ea','#c9d0db'],conc:['#f6f7fb','#dfe3ed','#bfc6d6'],crane:['#fbbf24','#f59e0b','#d97706'],metal:['#64748b','#475569','#334155'],win:'#8f9bb3',glass:'#9bd4f5',track:'#1e293b'};
+const SC=6.2,OX=118,OY=70;
+const iso=(x,y,z)=>[OX+(x-y)*.866*SC,OY+(x+y)*.5*SC-z*SC];
+const pt=a=>a.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
+const poly=(a,f,x='')=>`<polygon points="${pt(a)}" fill="${f}"${x}/>`;
+function box(x,y,z,w,d,h,c,x2=''){return poly([iso(x,y+d,z),iso(x+w,y+d,z),iso(x+w,y+d,z+h),iso(x,y+d,z+h)],c[1],x2)+poly([iso(x+w,y,z),iso(x+w,y+d,z),iso(x+w,y+d,z+h),iso(x+w,y,z+h)],c[2],x2)+poly([iso(x,y,z+h),iso(x+w,y,z+h),iso(x+w,y+d,z+h),iso(x,y+d,z+h)],c[0],x2)}
+function hull(ps){ps=ps.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];for(const p of ps){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}for(const p of ps.reverse()){while(up.length>1&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}return lo.slice(0,-1).concat(up.slice(0,-1))}
+const circ=(f,n=28)=>Array.from({length:n},(_,i)=>f(i/n*Math.PI*2));
+/* vertikal silindr (KS halqa) */
+function ring(cx,cy,z,r,h){const b=circ(a=>iso(cx+r*Math.cos(a),cy+r*Math.sin(a),z)),tp=circ(a=>iso(cx+r*Math.cos(a),cy+r*Math.sin(a),z+h)),ho=circ(a=>iso(cx+r*.62*Math.cos(a),cy+r*.62*Math.sin(a),z+h));
+  return poly(hull(b.concat(tp)),K.conc[2])+poly(tp,K.conc[0])+poly(ho,K.win)}
+/* gorizontal silindr (mikser barabani), o'qi x bo'ylab, biroz qiya */
+function drum(x0,x1,cy,cz,r){const e0=circ(a=>iso(x0,cy+r*.8*Math.cos(a),cz+r*.8*Math.sin(a))),e1=circ(a=>iso(x1,cy+r*Math.cos(a),cz+.6+r*Math.sin(a)));
+  let s=poly(hull(e0.concat(e1)),'#e3e7ef');
+  for(let k=1;k<4;k++){const xx=x0+(x1-x0)*k/4;s+=`<polyline points="${pt(circ(a=>iso(xx,cy+r*.95*Math.cos(a),cz+.3+r*.95*Math.sin(a)),28).filter((_,i)=>i>=4&&i<=18))}" fill="none" stroke="#9aa9bd" stroke-width="1.1"/>`}
+  return s+poly(e1,'var(--p-accent)')}
+function scene(){
+  let s='';
+  s+=box(-1,-1,-.7,22,15,.7,K.ground);                         // maydon
+  // zavod binosi (sex) + silos
+  s+=box(0,0,0,7,5,5,K.conc);
+  for(let i=0;i<4;i++)s+=box(.8+i*1.6,5,1.6,.9,.02,1.3,[K.glass,K.glass,K.glass]);
+  s+=box(0,0,5,7,5,.35,[K.metal[0],K.metal[1],K.metal[2]]);
+  s+=box(7.6,.4,0,2.4,2.4,9,K.conc)+box(7.6,.4,9,2.4,2.4,.6,[K.crane[0],K.crane[1],K.crane[2]]);
+  s+=box(10.4,.4,0,2.4,2.4,7.5,K.conc)+box(10.4,.4,7.5,2.4,2.4,.6,[K.crane[0],K.crane[1],K.crane[2]]);
+  // kran
+  s+=box(15,1,0,.7,.7,15,K.crane);
+  s+=box(4,1,15,15,.7,.6,K.crane)+box(17.4,.6,15.6,1.6,1.6,1.2,K.metal);
+  const a=iso(8.4,1.35,15),b=iso(8.4,1.35,10.2);s+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${K.track}" stroke-width=".9"/>`;
+  s+=box(7.4,.7,9.4,2,1.3,.8,K.conc);                           // ko'tarilayotgan plita
+  // FBS bloklar taxlami
+  s+=box(1,8,0,3.4,1.4,1.1,K.conc)+box(1,9.6,0,3.4,1.4,1.1,K.conc)+box(1.3,8.6,1.1,3.4,1.4,1.1,K.conc);
+  // KS halqalar
+  s+=ring(6.6,11.5,0,1.2,1.4)+ring(6.6,11.5,1.4,1.2,1.4)+ring(9.4,12.2,0,1.2,1.4);
+  // beton mikser
+  s+=box(10.8,7.6,.6,7.6,2.2,.6,[K.metal[0],K.metal[1],K.metal[2]]);
+  s+=drum(11,16,8.7,2.6,1.55);
+  s+=box(16.6,7.6,1.2,2.2,2.2,2.4,['var(--p-brandHover)','var(--p-brand)','var(--p-brandHover)']);
+  s+=box(18.8,7.9,1.9,.02,1.6,1.1,[K.glass,K.glass,K.glass]);
+  for(const wx of [12.2,14.4,17.6]){const c=iso(wx,9.8,.6);s+=`<ellipse cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" rx="3.4" ry="3.9" fill="${K.track}"/>`}
+  // ishchi (kaska)
+  s+=box(13,12.6,0,.5,.5,1.4,[ '#1e3a8a','#1e3a8a','#172554'])+box(13,12.6,1.4,.5,.5,.8,['#f59e0b','#f59e0b','#d97706'])+box(12.95,12.55,2.2,.6,.6,.35,['#fde047','#facc15','#eab308']);
+  return s;
+}
+document.querySelector('defs').insertAdjacentHTML('beforeend',`<symbol id="scene" viewBox="0 0 236 172">${scene()}</symbol>`);
+
+const I=(id,cls='ic')=>`<svg class="${cls}"><use href="#${id}"/></svg>`;
+const P=id=>`<svg class="p"><use href="#${id}"/></svg>`;
+const sb=`<div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg class="ic" style="width:12px;height:12px"><use href="#i-gauge"/></svg><span class="bat"></span></span></div>`;
+const hb=`<div class="homebar"></div>`;
+const head=`<div class="hd"><div class="av">OI</div><div class="addr"><div class="k">${I('i-pin')}Yetkazish manzili</div><div class="v">Obyekt <span>Yunusobod, 19-kvartal</span></div></div>${I('i-chev')}<div class="bell">${I('i-bell')}</div></div>`;
+const tabs=`<nav class="tabs">
+  <div class="tab on"><i>${I('i-home')}</i>Asosiy</div><div class="tab"><i>${I('i-grid')}</i>Katalog</div>
+  <div class="tab"><i>${I('i-cart')}</i>Savat</div><div class="tab"><i>${I('i-list')}</i>Buyurtma</div><div class="tab"><i>${I('i-user')}</i>Profil</div></nav>`;
+const logo=`<div class="logo"><img src="logo-insof.png" alt="Insof JBI — temir beton mahsulotlari" width="132" height="29"></div>`;
+
+const login=()=>`<div class="scr">${sb}
+  <div class="hero">${logo}<div class="tagline">Beton zavod narxida, obyektgacha.</div>
+    <div class="glow"></div><svg class="scene" aria-label="Zavod, kran va beton mikser — 3D sahna"><use href="#scene"/></svg></div>
+  <div class="sheet">
+    <h3>Xush kelibsiz</h3>
+    <div class="fld err">${I('i-phone')}<span class="v">+998 90 123 45</span></div>
+    <div class="errtx">Telefon raqam to'liq emas</div>
+    <div class="fld">${I('i-lock')}<span class="ph">Parol</span>${I('i-eye')}</div>
+    <div class="row between"><span class="row"><span class="chk">${I('i-check')}</span>Eslab qolish</span><span class="link">Parolni unutdingizmi?</span></div>
+    <div class="cta">Kirish</div>
+    <div class="or">yoki</div>
+    <div class="two"><div class="soc">${I('i-msg')}SMS kod</div><div class="soc">${I('i-send')}Telegram</div></div>
+    <div class="foot">Hisobingiz yo'qmi? <span class="link">Ro'yxatdan o'tish</span></div>
+  </div>${hb}</div>`;
+
+/* ERP'dagi reklamalar (sarlavha / izoh / tugma) — ilovadagi PromoCard kabi suriladi */
+const ADS=[
+  {t:'Nasos bepul',s:'30 m³ dan katta buyurtmalarga',b:'Buyurtma',art:'truck'},
+  {t:'B25 · M350',s:"690 000 so'm/m³ dan",b:"Ko'rish",art:'p-cube'},
+  {t:'FBS bloklar',s:'40 donadan −7% chegirma',b:'Katalog',art:'p-block'}
+];
+const promo=()=>`<div class="promo"><div class="track">${ADS.map(a=>`<div class="slide"><span class="ov">Bugungi taklif</span><span class="tt">${a.t}<span>${a.s}</span></span><span class="btn">${a.b}</span><svg class="art"><use href="#${a.art}"/></svg></div>`).join('')}</div><div class="dots">${ADS.map((_,i)=>`<i${i?'':' class="on"'}></i>`).join('')}</div></div>`;
+
+const home=()=>`<div class="scr">${sb}${head.replace('class="hd"','class="hd tall"')}
+  <div class="body over">
+    ${promo()}
+    <div class="st">Kategoriyalar<a>Hammasi</a></div>
+    <div class="cats">
+      <div class="cat on"><div class="t">${P('p-cube')}</div>Hammasi</div>
+      <div class="cat"><div class="t">${P('p-cube')}</div>Beton</div>
+      <div class="cat"><div class="t">${P('p-ring')}</div>Temir-beton</div>
+      <div class="cat"><div class="t">${P('p-sack')}</div>Qorishma</div>
+      <div class="cat"><div class="t">${P('p-pump')}</div>Nasos</div>
+    </div>
+    <div class="st">Qayta buyurtma</div>
+    <div class="hrow">
+      <div class="ag">${P('p-cube')}<div class="tx"><b>B25 · M350</b><span>Kecha · 12 m³</span></div><span class="rep">${I('i-repeat')}</span></div>
+      <div class="ag">${P('p-block')}<div class="tx"><b>FBS 24.4.6</b><span>3 kun oldin · 40 dona</span></div><span class="rep">${I('i-repeat')}</span></div>
+    </div>
+    <div class="st">Siz uchun takliflar<a>Hammasi</a></div>
+    <div class="hrow">
+      <div class="deal"><div class="k">30 m³ dan buyurtma</div><div class="big">−5%</div><div class="bot"><span class="code">ECO5</span><span class="go">Qo'llash</span></div>${P('p-cube')}</div>
+      <div class="deal b"><div class="k">Nasos xizmati</div><div class="big">BEPUL</div><div class="bot"><span class="code">NASOS0</span><span class="go">Qo'llash</span></div>${P('p-pump')}</div>
+    </div>
+  </div>${tabs}${hb}</div>`;
+
+const scroll=()=>`<div class="scr">${sb}${head}
+  <div class="body">
+    <div class="hrow cut">
+      <div class="fac"><div class="row between"><b>Insof Zavod №1</b><span class="star">${I('i-star')}4.9</span></div><div class="s">Beton · Temir-beton</div><div class="m"><span>${I('i-clock')}2–3 soat</span><span>${I('i-route')}8 km</span></div></div>
+      <div class="fac"><div class="row between"><b>Sergeli RBU</b><span class="star">${I('i-star')}4.7</span></div><div class="s">Beton · Qorishma</div><div class="m"><span>${I('i-clock')}3–4 soat</span><span>${I('i-route')}14 km</span></div></div>
+    </div>
+    <div class="st">Tez yetkazish · 3 soatgacha</div>
+    <div class="hrow">
+      <div class="pc"><b>M200 · B15</b><span class="pr">620 000 so'm/m³</span>${P('p-cube')}<div class="m"><span class="hot">${I('i-gauge')}B15 · F100</span><span>${I('i-clock')}2 soat</span></div><span class="add">${I('i-plus')}</span></div>
+      <div class="pc"><b>Qorishma M100</b><span class="pr">540 000 so'm/m³</span>${P('p-sack')}<div class="m"><span class="hot">${I('i-gauge')}M100</span><span>${I('i-clock')}2 soat</span></div><span class="add">${I('i-plus')}</span></div>
+      <div class="pc"><b>Plita PK 60</b><span class="pr">1 480 000 so'm</span>${P('p-slab')}<div class="m"><span class="hot">${I('i-gauge')}6.0 m</span><span>${I('i-clock')}1 kun</span></div><span class="add">${I('i-plus')}</span></div>
+    </div>
+    <div class="st">Ko'p sotilgan<a>Hammasi</a></div>
+    <div class="grid2">
+      <div class="pc"><b>M300 · B22.5</b><span class="pr">690 000 so'm/m³</span>${P('p-cube')}<div class="m"><span class="hot">${I('i-gauge')}B22.5 · W6</span><span>${I('i-clock')}3 soat</span></div><span class="add">${I('i-plus')}</span></div>
+      <div class="pc"><b>Halqa KS 10.9</b><span class="pr">410 000 so'm</span>${P('p-ring')}<div class="m"><span class="hot">${I('i-gauge')}Ø 1 m</span><span>${I('i-clock')}1 kun</span></div><span class="add">${I('i-plus')}</span></div>
+    </div>
+  </div>${tabs}${hb}</div>`;
+
+document.getElementById('list').innerHTML=T.map((t,i)=>`
+  <section class="tpl" id="shablon-${i+1}">
+    <div class="tpl-head"><div><h2><span class="n">${i+1}</span>${t.name}</h2><p>${t.d}</p></div></div>
+    <div class="rail">
+      <div class="slot"><b>Kirish <span>· 1-rasm</span></b><div class="phone ${t.c}" data-hero="${t.hero}">${login()}</div></div>
+      <div class="slot"><b>Asosiy <span>· 2-rasm · bannerni suring</span></b><div class="phone ${t.c}">${home()}</div></div>
+      <div class="slot"><b>Asosiy, surilgan <span>· 3-rasm</span></b><div class="phone ${t.c}">${scroll()}</div></div>
+    </div>
+  </section>`).join('');
+
+/* Mavzu tanlovi — ilovadagi Sozlamalar → Mavzu kabi */
+const st={pal:'chizma',mode:'light'};
+try{const v=JSON.parse(localStorage.getItem('eco-tpl')||'{}');if(PAL[v.pal])st.pal=v.pal;if(v.mode==='dark'||v.mode==='light')st.mode=v.mode}catch(e){}
+const list=document.getElementById('list');
+function apply(){
+  const p=PAL[st.pal][st.mode];
+  for(const k in p)list.style.setProperty('--p-'+k,p[k]);
+  document.querySelectorAll('[data-pal]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pal===st.pal));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===st.mode));
+  try{localStorage.setItem('eco-tpl',JSON.stringify(st))}catch(e){}
+}
+document.querySelectorAll('[data-pal]').forEach(b=>b.onclick=()=>{st.pal=b.dataset.pal;apply()});
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{st.mode=b.dataset.mode;apply()});
+apply();
+
+/* Banner karuseli: barmoq/trekpad bilan suriladi, sichqoncha bilan tortiladi, nuqtalar ergashadi */
+document.querySelectorAll('.promo').forEach(pr=>{
+  const tr=pr.querySelector('.track'),dots=[...pr.querySelectorAll('.dots i')];
+  tr.addEventListener('scroll',()=>{const i=Math.round(tr.scrollLeft/tr.clientWidth);dots.forEach((d,j)=>d.classList.toggle('on',j===i))},{passive:true});
+  let sx=0,sl=0,on=false;
+  tr.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;on=true;sx=e.clientX;sl=tr.scrollLeft;tr.classList.add('drag');tr.setPointerCapture(e.pointerId)});
+  tr.addEventListener('pointermove',e=>{if(on)tr.scrollLeft=sl-(e.clientX-sx)});
+  const end=e=>{if(!on)return;on=false;tr.classList.remove('drag');const w=tr.clientWidth,d=sl-tr.scrollLeft;let i=Math.round(sl/w)+(d<-30?1:d>30?-1:0);i=Math.max(0,Math.min(dots.length-1,i));tr.scrollTo({left:i*w,behavior:'smooth'})};
+  tr.addEventListener('pointerup',end);tr.addEventListener('pointercancel',end);
+});
+</script>
