@@ -184,8 +184,21 @@ function useBack(onBack: () => void) {
 }
 
 type Phase = 'align' | 'scan' | 'verify' | 'ok' | 'fail';
-/** Kadr hajmi chegarasi (base64 belgilari, ~1,5 MB) — oshsa pastroq sifat bilan qayta olinadi. */
+/** Kadr hajmi chegarasi (base64 belgilari, ~1,5 MB) — oshsa (kamera to'liq kadr bergan) past sifat bilan qayta olinadi. */
 const MAX_B64 = 2_000_000;
+/**
+ * JPEG sifati. Kadr o'lchami allaqachon kichik (~1280x720, `pickPictureSize`), shuning uchun sifat tushirilmaydi:
+ * 0,4–0,5 da yuzda 8x8 blok artefaktlari qolardi va ERP'dagi yuz vektori buzilib, tanish yomonlashardi.
+ * 0,7 da 1280x720 kadr ~0,2–0,45 M base64 — `MAX_FRAME_B64` (1,4 M) ga jonlilikning 3 kadri ham bemalol sig'adi.
+ */
+const QUALITY = 0.7;
+/**
+ * Faqat kamera `pictureSize` ni e'tiborsiz qoldirib to'liq kadr (12+ MP) bersa — chegaraga sig'ish uchun past sifat.
+ * Bunday kadrda yuz katta (1000+ px), server uni kichraytirganda artefaktlar deyarli yo'qoladi.
+ */
+const BIG_QUALITY = { one: 0.3, multi: 0.25 };
+/** O'lchamlar ro'yxati olinmasa: Android (CameraX) shunga eng yaqinini tanlaydi — aks holda eng katta kadr (12+ MP) beradi. */
+const FALLBACK_SIZE = '1280x720';
 /** Kamera tayyor bo'lgach kadr olinguncha (yuzni ramkaga joylash vaqti). */
 const SETTLE_MS = 1200;
 /** "Tanildi" ko'rinib turadigan vaqt. */
@@ -194,8 +207,9 @@ const OK_HOLD_MS = 900;
 const VERIFY_TIMEOUT_MS = 20_000;
 /**
  * Kadr o'lchami: katta tomoni kamida shuncha. 640 px'da (640x480) oval ichidagi yuz ~200 px qolardi — uzoqroq turgan
- * yoki qiyaroq yuzni server yomonroq tanirdi. 960 px'da yuz ~2 baravar ko'p piksel, JPEG (sifat 0,4) esa baribir
- * ~0,2–0,4 MB base64 — `MAX_FRAME_B64` dan ancha kam. 12 MP kadr chegaradan oshadi, shuning uchun eng kichigi tanlanadi.
+ * yoki qiyaroq yuzni server yomonroq tanirdi. 960 px'da yuz ~2 baravar ko'p piksel, JPEG (`QUALITY`) esa baribir
+ * `MAX_FRAME_B64` dan ancha kam. 12 MP kadr chegaradan oshadi, shuning uchun eng kichigi tanlanadi. Kichikroq (uzun tomoni
+ * ~720) qilish kerak emas: oval ichidagi yuz yana ~200 px ga tushadi — artefakt emas, piksel yetishmasligi tanishni buzadi.
  */
 const MIN_SIDE_PX = 960;
 const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
@@ -243,6 +257,8 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
   const mountFailed = useRef(false);
   const [pictureSize, setPictureSize] = useState<string | undefined>(undefined);
   const sized = useRef(false);
+  // Kamera `pictureSize` ni e'tiborsiz qoldirib katta kadr berishi aniqlandi — keyingi kadrlar darhol past sifatda
+  const big = useRef(false);
   const busy = useRef(false);
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
@@ -259,13 +275,15 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
 
   /**
    * Bitta kadr (data-URL). Hajm chegarasi: topshiriqli ketma-ketlikda har kadr `MAX_FRAME_B64` (3 tasi birga yuboriladi),
-   * bitta kadrda `MAX_B64`; oshsa past sifat bilan bir marta qayta olinadi.
+   * bitta kadrda `MAX_B64`. Oddiy kadr kichik va `QUALITY` da sig'adi; oshsa — kamera to'liq kadr bergan: past sifat bilan
+   * bir marta qayta olinadi va keyingi kadrlar ham darhol past sifatda (jonlilik ketma-ketligi vaqtlari surilmasin).
    */
   const shoot = async (multi: boolean): Promise<string> => {
     const limit = multi ? MAX_FRAME_B64 : MAX_B64;
+    const low = multi ? BIG_QUALITY.multi : BIG_QUALITY.one;
     const shot = (quality: number) => ref.current!.takePictureAsync({ quality, base64: true, skipProcessing: false, shutterSound: false, imageType: 'jpg', exif: false });
-    let pic = await shot(multi ? 0.4 : 0.5);
-    if (pic?.base64 && pic.base64.length > limit) { dropFile(pic.uri); pic = await shot(multi ? 0.25 : 0.3); }
+    let pic = await shot(big.current ? low : QUALITY);
+    if (pic?.base64 && pic.base64.length > limit && !big.current) { big.current = true; dropFile(pic.uri); pic = await shot(low); }
     dropFile(pic?.uri);
     if (!pic?.base64) throw new ShotError("Kadr olinmadi — qayta urining.");
     if (pic.base64.length > limit) throw new ShotError("Kadr hajmi juda katta — qayta urinib ko'ring.");
@@ -370,6 +388,7 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
     setMsg(null);
     setReady(false); // yangi kamera tayyor bo'lgach kadr olinadi (oldingisining "ready"si emas)
     sized.current = false;
+    big.current = false;
     setPictureSize(undefined);
     setFacing((f) => (f === 'front' ? 'back' : 'front'));
   };
@@ -381,7 +400,10 @@ function Scanner({ cam, req }: { cam: CameraModule; req: Req }) {
         const size = pickPictureSize(await ref.current.getAvailablePictureSizesAsync());
         if (!alive.current) return;
         if (size) setPictureSize(size);
-      } catch { /* ro'yxat yo'q — standart o'lcham, hajm baribir tekshiriladi */ }
+      } catch {
+        // Ro'yxat yo'q — standart (eng katta) kadr o'rniga ~1280x720 so'raymiz; hajm baribir tekshiriladi
+        if (alive.current) setPictureSize(FALLBACK_SIZE);
+      }
     }
     if (alive.current) setReady(true);
   };
