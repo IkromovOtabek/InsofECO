@@ -10,7 +10,7 @@ import { authApi } from '@/features/auth/api';
 import { erpAuth } from '@/core/erp';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
-import { useTelegramLogin } from '@/features/auth/telegram';
+import { TELEGRAM_LOGIN, useTelegramLogin } from '@/features/auth/telegram';
 import { AuthLogo, AuthScreen, Divider, ErrorBox, PhonePrefix, PrimaryButton, TextLink, Title } from '@/features/auth/ui';
 import { SocialLogin } from '@/features/auth/social';
 import { afterLogin } from '@/features/shop/after-login';
@@ -193,17 +193,19 @@ export default function Login() {
         {mode === 'password' ? <TextLink onPress={() => router.push('/(auth)/forgot')}>Parolni unutdingizmi?</TextLink> : null}
       </Appear>
 
-      <Appear delay={300}>
-        <Divider />
-        {/* Telegram va telefon-kod — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
-        <SocialLogin onTelegram={() => void tg.start()} telegramBusy={tg.starting || tg.waiting} />
-        {tg.waiting ? (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
-            <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
-            <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
-          </View>
-        ) : null}
-      </Appear>
+      {TELEGRAM_LOGIN ? (
+        <Appear delay={300}>
+          <Divider />
+          {/* Telegram va telefon-kod — dumaloq belgilar, yozuvsiz (o'z brend ranglarida) */}
+          <SocialLogin onTelegram={() => void tg.start()} telegramBusy={tg.starting || tg.waiting} />
+          {tg.waiting ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+              <Txt v="caption">Botda «Raqamni ulashish» ni bosing — kirish o'zi bo'ladi</Txt>
+              <TextLink onPress={tg.cancel}>Bekor qilish</TextLink>
+            </View>
+          ) : null}
+        </Appear>
+      ) : null}
     </AuthScreen>
   );
 }

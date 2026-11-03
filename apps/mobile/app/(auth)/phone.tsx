@@ -7,7 +7,7 @@ import { space } from '@/design/tokens';
 import { Appear } from '@/design/motion';
 import { authApi } from '@/features/auth/api';
 import { ApiException } from '@/core/api';
-import { useTelegramLogin } from '@/features/auth/telegram';
+import { TELEGRAM_LOGIN, useTelegramLogin } from '@/features/auth/telegram';
 import { AuthIcon, AuthScreen, ConsentCheck, Divider, ErrorBox, FooterLink, GhostButton, PhonePrefix, PrimaryButton, REGISTER_STEPS, Steps, TextLink, Title } from '@/features/auth/ui';
 
 const CONSENT_MSG = 'Davom etish uchun maxfiylik siyosatiga rozilik bildiring';
@@ -95,7 +95,8 @@ export default function PhoneScreen() {
         <PrimaryButton title={loading ? 'Yuborilmoqda…' : 'Kodni yuborish'} onPress={submit} loading={loading} disabled={isRegister && !agree} />
       </Appear>
 
-      <Appear delay={240}>
+      {/* iOS'da ro'yxatdan o'tishda Telegram tugmasi yo'q (TELEGRAM_LOGIN izohi) — ajratuvchi chiziq ham kerak emas */}
+      {!isRegister || TELEGRAM_LOGIN ? <Appear delay={240}>
         <Divider />
         {isRegister ? (
           <>
@@ -117,7 +118,7 @@ export default function PhoneScreen() {
             <GhostButton title="PIN kod bilan kirish" icon="grid-3x3" onPress={() => router.push('/(auth)/pin')} />
           </View>
         )}
-      </Appear>
+      </Appear> : null}
     </AuthScreen>
   );
 }

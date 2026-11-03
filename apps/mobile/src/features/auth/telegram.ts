@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import { authApi } from '@/features/auth/api';
 import { useSession } from '@/core/session';
 import { ApiException } from '@/core/api';
+
+/**
+ * Telegram bot orqali kirish/ro'yxatdan o'tish tugmalari — iOS'da yo'q. App Store 4.8-band: uchinchi tomon login
+ * xizmati bo'lsa, unga teng maxfiy variant (Sign in with Apple) ham bo'lishi shart, aks holda review rad etadi.
+ * Telefon raqam + Telegram'ga kod (Telegram Gateway) va login-parol iOS'da ham qoladi — bu ilovaning o'z hisobi.
+ */
+export const TELEGRAM_LOGIN = Platform.OS !== 'ios';
 
 const EVERY_MS = 2000;
 
