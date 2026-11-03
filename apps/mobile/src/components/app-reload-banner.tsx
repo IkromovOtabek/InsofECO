@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import { Button, IconButton, Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
+import { toast } from '@/design/ui';
+import { SetRow } from '@/components/set-row';
 import { Appear } from '@/design/motion';
 import { useTheme } from '@/design/theme';
 import { radius, shadow, size, space } from '@/design/tokens';
@@ -54,5 +56,52 @@ export function AppReloadBanner() {
         </View>
       </Appear>
     </View>
+  );
+}
+
+const MONTHS = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek'];
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Ishlayotgan JS to'plami: "3-noy 09:59" (OTA) yoki "o'rnatilgan" (build ichidagi). Telefonda qaysi yangilanish
+ * turgani shundan bilinadi — TestFlight/APK ilovasi buni hech qayerga yozmaydi.
+ */
+export function runningUpdateLabel(): string {
+  const d = Updates.createdAt;
+  if (Updates.isEmbeddedLaunch || !d) return "o'rnatilgan";
+  return `${d.getDate()}-${MONTHS[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Sozlamalar → "Yangilanishni tekshirish": ilovani yopib-ochmasdan yangi OTA'ni shu zahoti yuklab, qayta ochadi.
+ * Yuklangan, lekin hali ishga tushmagan yangilanish bo'lsa — darhol qayta ochadi.
+ */
+export function AppUpdateRow() {
+  const { isUpdatePending } = Updates.useUpdates();
+  const [busy, setBusy] = useState(false);
+  const check = async () => {
+    if (busy) return;
+    if (__DEV__ || !Updates.isEnabled) { toast.info("Dev rejimida yangilanish yo'q"); return; }
+    setBusy(true);
+    try {
+      if (!isUpdatePending) {
+        const r = await Updates.checkForUpdateAsync();
+        if (!r.isAvailable) { toast.success("Eng so'nggi versiya o'rnatilgan"); return; }
+        await Updates.fetchUpdateAsync();
+      }
+      await Updates.reloadAsync();
+    } catch {
+      toast.error("Yangilanishni yuklab bo'lmadi — internetni tekshiring");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <SetRow
+      icon="refresh-cw" module="brand" title="Yangilanishni tekshirish"
+      subtitle={`Joriy: ${runningUpdateLabel()}`}
+      value={busy ? 'Yuklanmoqda…' : isUpdatePending ? 'Tayyor' : undefined}
+      onPress={() => void check()}
+    />
   );
 }

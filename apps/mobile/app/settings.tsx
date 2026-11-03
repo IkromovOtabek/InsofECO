@@ -16,6 +16,7 @@ import { kv } from '@/core/storage';
 import { avatarUri } from '@/features/auth/api';
 import { DeleteAccountRow } from '@/features/auth/delete-account';
 import { SetGroup, SetRow } from '@/components/set-row';
+import { AppUpdateRow, runningUpdateLabel } from '@/components/app-reload-banner';
 
 /**
  * Sozlamalar — demo "Sozlamalar" (docs/redesign/shots/26): profil kartasi, Ilova (til, mavzu mini-segment),
@@ -213,6 +214,7 @@ export default function SettingsScreen() {
           <SetGroup>
             <SetRow icon="circle-question-mark" module="brand" title="Yordam markazi" value="insof-erp.uz" onPress={() => void Linking.openURL(SUPPORT_URL)} />
             <SetRow icon="shield-check" module="brand" title="Maxfiylik siyosati" onPress={() => void Linking.openURL(`${SUPPORT_URL}/maxfiylik`)} />
+            <AppUpdateRow />
           </SetGroup>
         </Appear>
 
@@ -226,7 +228,7 @@ export default function SettingsScreen() {
           </Appear>
         ) : null}
 
-        {version ? <Txt v="tSm" align="center" style={{ marginTop: space.xs }}>{`Versiya ${version}`}</Txt> : null}
+        {version ? <Txt v="tSm" align="center" style={{ marginTop: space.xs }}>{`Versiya ${version} · yangilanish: ${runningUpdateLabel()}`}</Txt> : null}
       </ScrollView>
     </>
   );
