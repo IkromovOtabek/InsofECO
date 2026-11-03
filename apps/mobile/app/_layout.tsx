@@ -29,6 +29,7 @@ import { afterLogin } from '@/features/shop/after-login';
 import { initMaps } from '@/core/map';
 import { RouteErrorBoundary } from '@/components/route-error';
 import { UpdateRequired } from '@/components/update-required';
+import { AppReloadBanner } from '@/components/app-reload-banner';
 import { takeLogoutRedirect } from '@/features/auth/logout';
 import { FaceScanHost } from '@/features/erp/face-scan';
 
@@ -235,6 +236,8 @@ export default function RootLayout() {
           <Gate />
           <PushRouting />
           <Nav key={fontsReady ? 'fonts-ready' : 'fonts-loading'} />
+          {/* OTA fonda yuklandi — "Yangi versiya tayyor" (PIN qulfi va dialoglar uning ustida) */}
+          <AppReloadBanner />
           {/* PIN qulfi — hisob ustida; ochilish ekrani esa hammasining ustida */}
           <PinLock />
           <ToastHost />
