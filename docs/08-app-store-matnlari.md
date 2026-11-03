@@ -25,6 +25,16 @@ Shu sababli review 5.2.1 (brend egasi boshqa) bilan rad etmasligi uchun zavod is
 | Age rating | Yangi so'rovnoma: Messaging and Chat — **Yes**, User-Generated Content — **Yes** (ichki chat, izoh va baho — faqat bitta tashkilot a'zolari o'rtasida); Unrestricted Web Access, Advertising, Gambling, Medical — **No**; kontent savollari — **None**. Yosh chegarasini Apple o'zi hisoblaydi |
 | Price | Free |
 
+## Skrinshotlar (iPhone 6.9")
+
+`docs/app-store-skrinshotlar/<konsept>/01–05.png` — 1290×2796, App Store Connect'ning 6.9" uyasiga (kichikroq iPhone
+ekranlari uchun Apple shularni o'zi kichraytiradi; `supportsTablet: false` — iPad kerak emas). Asosiy to'plam — **chizma** (ilova palitrasi bilan bir xil);
+qolgan 4 konsept — `toza`, `tungi`, `panorama`, `rollar`, umumiy ko'rinish — `barcha-konseptlar.png`. Tartib: 01 direktor
+paneli, 02 buyurtmalar, 03 haydovchi, 04 tasdiqlash, 05 sklad. Manba — "Insof ECO Do'kon Sahifasi" artifakti
+(https://claude.ai/artifact/MxkLftqDqhTd1W54s8Wk46): har kadr headless Chrome'da `--window-size=430,932
+--force-device-scale-factor=3 --force-prefers-reduced-motion` bilan olingan (animatsiya va skeletonsiz).
+Maket yorliqlari ilovadagi `src/features/erp/dashboards.ts` bilan mos; ilova ekranlari o'zgarsa skrinshot ham yangilanadi.
+
 ---
 
 ## Russian (asosiy)
