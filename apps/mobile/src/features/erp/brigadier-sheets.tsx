@@ -53,7 +53,8 @@ function Question({ children }: { children: string }) {
 
 // ───────────────────────── Fakt yozish ─────────────────────────
 
-export interface FactTask { id: string; taskNo: string; product: string; unit: string; left: number }
+/** `brigade` — sarlavha ustidagi yorliq (topshiriq raqami ko'rsatilmaydi); bo'lmasa faqat mahsulot. */
+export interface FactTask { id: string; brigade?: string; product: string; unit: string; left: number }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'del'] as const;
 
@@ -90,7 +91,7 @@ export function FactSheet({ task, reasons, onClose }: { task: FactTask; reasons:
         ? { action: 'task.finish', id: task.id, payload: defect }
         : { action: 'task.progress', id: task.id, payload: { qty: String(n), ...defect } });
       haptic.success();
-      toast.success(r?.message ?? 'Qayd qilindi', `${task.taskNo}: +${fmt(n)} ${task.unit}`);
+      toast.success(r?.message ?? 'Qayd qilindi', `${task.brigade ?? task.product}: +${fmt(n)} ${task.unit}`);
       onClose();
     } catch (e) {
       haptic.error();
@@ -108,7 +109,7 @@ export function FactSheet({ task, reasons, onClose }: { task: FactTask; reasons:
       <View style={{ gap: space.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md }}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Txt v="caption" color="muted">{task.taskNo}</Txt>
+            {task.brigade ? <Txt v="caption" color="muted" numberOfLines={1}>{task.brigade}</Txt> : null}
             <Txt v="titleSm" numberOfLines={1}>{task.product}</Txt>
           </View>
           <Txt v="bodyStrong" color="warning">qoldiq {fmt(task.left)} {task.unit}</Txt>
@@ -177,7 +178,8 @@ const OTHER = [{ key: 'DELAY', label: 'Kechikish' }, { key: 'QUALITY', label: 'S
  */
 export function IssueScreen({ refId, tasks, equipment, open, kind: initial, onBack, onDone, onOpen }: {
   refId: string;
-  tasks: { id: string; taskNo: string }[];
+  /** Topshiriq tanlovi — `label` tayyor yorliq ("Brigada · mahsulot"). */
+  tasks: { id: string; label: string }[];
   equipment: string[];
   /** Hozir ochiq muammolar (1-qadam ostida). */ open: { id: string; title: string; subtitle?: string; right?: string; tone?: Tone }[];
   kind?: IssueKind;
@@ -291,7 +293,7 @@ export function IssueScreen({ refId, tasks, equipment, open, kind: initial, onBa
               <>
                 <Question>Qaysi topshiriq?</Question>
                 <Chips>
-                  {tasks.map((t) => <Chip key={t.id} label={t.taskNo} on={taskId === t.id} onPress={() => setTaskId(t.id)} />)}
+                  {tasks.map((t) => <Chip key={t.id} label={t.label} on={taskId === t.id} onPress={() => setTaskId(t.id)} />)}
                   <Chip label="Umumiy" on={!taskId} onPress={() => setTaskId('')} />
                 </Chips>
               </>

@@ -22,7 +22,7 @@ export default function IssueRoute() {
   return (
     <IssueScreen
       refId={refId}
-      tasks={fromTask ? [] : t?.tasks.map((x) => ({ id: x.id, taskNo: x.taskNo })) ?? []}
+      tasks={fromTask ? [] : t?.tasks.map((x) => ({ id: x.id, label: `${x.brigade ?? x.taskNo} · ${x.product}` })) ?? []}
       equipment={t?.equipment ?? []}
       open={fromTask ? [] : t?.issues.rows ?? []}
       kind={isIssueKind(kind) ? kind : undefined}

@@ -49,11 +49,14 @@ function OfflineState({ onRetry, refreshing }: { onRetry: () => void; refreshing
 
 type SheetKind = null | { kind: 'fact'; task: ErpBrigTask } | { kind: 'defect' };
 
+/** Topshiriq yorlig'i — brigada nomi (topshiriq raqami ko'rsatilmaydi); eski ERP `brigade` bermaydi — raqam. */
+const brigOf = (x: ErpBrigTask) => x.brigade ?? x.taskNo;
+
 /** «Ishni boshlash» — tasdiq bilan (`task.start`; smena yo'q — faqat topshiriqqa vaqt yoziladi). */
 function useStartTask() {
   const run = useErpAction();
   const [busy, setBusy] = useState<string | null>(null);
-  const start = (x: ErpBrigTask) => dialog('Ishni boshlash', `${x.taskNo} · ${x.product} — boshlansinmi? Boshlangan vaqt topshiriqqa yoziladi.`, [
+  const start = (x: ErpBrigTask) => dialog('Ishni boshlash', `${brigOf(x)} · ${x.product} — boshlansinmi? Boshlangan vaqt topshiriqqa yoziladi.`, [
     { text: "Yo'q", style: 'cancel' },
     {
       text: 'Ha, boshlash',
@@ -61,7 +64,7 @@ function useStartTask() {
         setBusy(x.id);
         try {
           const r = await run.mutateAsync({ action: 'task.start', id: x.id });
-          toast.success(r?.message ?? 'Ish boshlandi', x.taskNo);
+          toast.success(r?.message ?? 'Ish boshlandi', `${brigOf(x)} · ${x.product}`);
         } catch (e) {
           toast.error(errText(e));
         } finally {
@@ -78,7 +81,7 @@ function BrigSheets({ t, sheet, onClose }: { t: ErpBrigadeToday; sheet: SheetKin
   if (!sheet) return null;
   if (sheet.kind === 'fact') {
     const x = sheet.task;
-    return <FactSheet task={{ id: x.id, taskNo: x.taskNo, product: x.product, unit: x.unit, left: x.left }} reasons={t.defectReasons} onClose={onClose} />;
+    return <FactSheet task={{ id: x.id, brigade: brigOf(x), product: x.product, unit: x.unit, left: x.left }} reasons={t.defectReasons} onClose={onClose} />;
   }
   return <DefectSheet refId={t.ref} products={t.products} reasons={t.defectReasons} onClose={onClose} />;
 }
@@ -175,7 +178,7 @@ export function BrigadierHome() {
     } else if (step === 2 && now) {
       blocks.push(
         <PressScale key="now" onPress={() => go(`/erp/tasks/${idSeg(now.id)}`)} scale={0.985} accessibilityRole="button">
-          <HeroCard label={`${now.taskNo} · muddat ${now.dueToday ? 'bugun' : now.due}`} value={fmt(now.done)} unit={`/ ${fmt(now.qty)} ${now.unit}`}>
+          <HeroCard label={`${brigOf(now)} · muddat ${now.dueToday ? 'bugun' : now.due}`} value={fmt(now.done)} unit={`/ ${fmt(now.qty)} ${now.unit}`}>
             <Txt v="titleMd" numberOfLines={1} style={{ color: c.textOnInverse }}>{now.product}</Txt>
             <ProgressBar value={now.pct} tone={now.blocked ? 'danger' : now.late ? 'warning' : 'brand'} />
             <Txt v="caption" numberOfLines={1} style={{ color: c.textOnInverseMuted }}>
@@ -200,7 +203,7 @@ export function BrigadierHome() {
         ? now.blocked
           ? { el: <Button title={now.phase} icon="clock" size="lg" variant="secondary" disabled onPress={() => undefined} />, hint: "muammo hal bo'lishini kuting yoki «Topshiriqlar»dan boshqasini oching" }
           : !now.started
-            ? { el: <Button title="Ishni boshlash" icon="zap" size="lg" variant="success" loading={starter.busy === now.id} onPress={() => starter.start(now)} />, hint: `${now.taskNo} · ${fmt(now.left)} ${now.unit}` }
+            ? { el: <Button title="Ishni boshlash" icon="zap" size="lg" variant="success" loading={starter.busy === now.id} onPress={() => starter.start(now)} />, hint: `${brigOf(now)} · ${fmt(now.left)} ${now.unit}` }
             : { el: <Button title="Fakt yozish" icon="plus" size="lg" onPress={() => setSheet({ kind: 'fact', task: now })} />, hint: `qoldiq ${fmt(now.left)} ${now.unit} · «Hammasi» bilan yakunlanadi` }
         : { el: <Button title="Ish tarixi" icon="history" size="lg" variant="secondary" onPress={() => go('/erp/list/brig-days')} />, hint: 'kunlar bo‘yicha bajarilgan ish va brak' };
     blocks.push(
@@ -234,7 +237,7 @@ export function BrigadierHome() {
               key={x.id}
               icon={x.blocked ? 'package' : 'clipboard-list'}
               tone={x.blocked ? 'danger' : x.started ? 'warning' : 'info'}
-              title={`${x.taskNo} · ${x.product}`}
+              title={`${brigOf(x)} · ${x.product}`}
               subtitle={`${x.blocked ? x.phase : `muddat ${x.dueToday ? 'bugun' : x.due}`} · ${fmt(x.done)}/${fmt(x.qty)}`}
               value={`${fmt(x.left)} ${x.unit}`}
               onPress={() => go(`/erp/tasks/${idSeg(x.id)}`)}
@@ -285,7 +288,7 @@ function TaskCard({ t, busy, onOpen, onFact, onStart }: { t: ErpBrigTask; busy: 
     <PressScale onPress={onOpen} scale={0.985} accessibilityRole="button">
       <Card style={{ gap: space.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-          <Txt v="caption" color="muted" mono>{t.taskNo}</Txt>
+          <Txt v="caption" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>{brigOf(t)}</Txt>
           <Badge label={t.phase} tone={t.tone} />
           <View style={{ flex: 1 }} />
           <Txt v="caption" color={t.late ? 'danger' : 'muted'}>{t.dueToday ? 'bugun' : t.due}</Txt>

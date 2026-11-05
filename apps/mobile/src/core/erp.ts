@@ -260,9 +260,12 @@ export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: strin
   /** Brigadir «Bugun» sahifasi — smenasiz (ERP `lib/mobile/brigadier.ts` → `brigadeToday`). Eski ERP'da yo'q — umumiy bosh sahifa. */
   brigadeToday?: ErpBrigadeToday | null }
 
-/** Brigadaning faol topshirig'i — raqamlar son ko'rinishida (progress, raqam klaviaturasi), `unit` tayyor yorliq ("m³", "dona"). */
+/**
+ * Brigadaning faol topshirig'i — raqamlar son ko'rinishida (progress, raqam klaviaturasi), `unit` tayyor yorliq ("m³", "dona").
+ * Ekranda topshiriq raqami (`taskNo`) emas, brigada nomi (`brigade`) ko'rinadi; eski ERP `brigade` bermaydi — `taskNo` zaxira.
+ */
 export interface ErpBrigTask {
-  id: string; taskNo: string; product: string; productId: string; unit: string;
+  id: string; taskNo: string; brigade?: string; product: string; productId: string; unit: string;
   qty: number; done: number; left: number; pct: number;
   due: string; late: boolean; dueToday: boolean; customer: string;
   phase: string; tone: Tone; started: boolean; blocked: boolean; urgent: boolean;

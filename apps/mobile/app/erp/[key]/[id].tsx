@@ -507,7 +507,9 @@ function BrigTaskSheet({ sheet, detail, onClose }: { sheet: BrigSheet; detail: E
   if (sheet.kind === 'fact') {
     const q = field('task.progress', 'qty');
     const product = detail.fields.find((f) => f.label === 'Mahsulot')?.value ?? detail.subtitle ?? '';
-    return <FactSheet task={{ id: detail.id, taskNo: detail.title, product, unit: q?.label.match(/\(([^)]+)\)/)?.[1] ?? '', left: Number(q?.value) || 0 }} reasons={reasons} onClose={onClose} />;
+    // Yorliq — brigada nomi (topshiriq raqami emas): «Bugun» sahifasidagi shu topshiriqdan, bo'lmasa brigadirning brigadasi
+    const brigade = today?.tasks.find((x) => x.id === detail.id)?.brigade ?? today?.brigade.name;
+    return <FactSheet task={{ id: detail.id, brigade, product, unit: q?.label.match(/\(([^)]+)\)/)?.[1] ?? '', left: Number(q?.value) || 0 }} reasons={reasons} onClose={onClose} />;
   }
   if (sheet.kind === 'issue') return null;
   const products = (field('task.defect', 'productId')?.options ?? []).map((o) => {
