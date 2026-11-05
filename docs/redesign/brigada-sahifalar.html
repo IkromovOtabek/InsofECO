@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brigadir sahifalari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sarlavha + hisob (hozir 46 → sodda 36) + oqim → qoidalar → 6 guruh (har sahifa = bitta telefon) → moslik jadvali */
+:root{
+  --pg-bg:#f1f2f7; --pg-surf:#ffffff; --pg-ink:#12162b; --pg-mut:#5f6580; --pg-line:#dcdfeb; --pg-acc:#3d50d6; --pg-chip:#e6e9f5;
+  --pg-ok:#12844f; --pg-bad:#c42f26;
+  --f-ui:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#0c0e18;--pg-surf:#151827;--pg-ink:#eceefa;--pg-mut:#9ba1bd;--pg-line:#272b40;--pg-acc:#9aa8ff;--pg-chip:#1d2135;--pg-ok:#5fd39a;--pg-bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#0c0e18;--pg-surf:#151827;--pg-ink:#eceefa;--pg-mut:#9ba1bd;--pg-line:#272b40;--pg-acc:#9aa8ff;--pg-chip:#1d2135;--pg-ok:#5fd39a;--pg-bad:#ff8a80;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg-bg);color:var(--pg-ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1240px;margin:0 auto;padding-block:32px 72px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-acc)}
+h1{font-size:clamp(26px,3.6vw,40px);line-height:1.1;margin:6px 0 10px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.lede{color:var(--pg-mut);max-width:70ch;margin:0}
+code{font-family:var(--f-mono);font-size:12px;background:var(--pg-chip);border-radius:5px;padding:1px 5px;overflow-wrap:anywhere}
+h2.sec{font-size:22px;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+
+.count{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
+.count div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:12px 14px;min-width:0}
+.count small{display:block;font-size:12px;color:var(--pg-mut);font-weight:600}
+.count b{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
+.count b s{color:var(--pg-mut);font-weight:600;font-size:16px;text-decoration:none}
+.count .tot{background:var(--pg-ink);color:var(--pg-surf);border-color:var(--pg-ink)}
+.count .tot small{color:inherit;opacity:.75}
+
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px}
+.flow a{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--pg-chip);color:var(--pg-ink);text-decoration:none;font-size:12.5px;font-weight:600;white-space:nowrap}
+.flow a span{font-family:var(--f-mono);font-size:10.5px;background:var(--pg-ink);color:var(--pg-surf);border-radius:999px;padding:1px 6px}
+.flow a:hover{outline:1.5px solid var(--pg-acc)}
+.flow em{font-style:normal;color:var(--pg-mut);font-size:13px}
+.flow .br{flex-basis:100%;height:0}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.rules div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px;min-width:0}
+.rules b{display:block;font-size:14px;margin-bottom:3px}
+.rules p{margin:0;font-size:13.5px;color:var(--pg-mut)}
+.rules a{color:var(--pg-acc)}
+
+.grp{display:flex;flex-direction:column;gap:18px;padding-top:28px;border-top:1px solid var(--pg-line);scroll-margin-top:12px}
+.grp-head{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
+.grp h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px}
+.grp h2 .n{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--pg-surf);background:var(--pg-ink);border-radius:8px;padding:2px 8px}
+.grp-head p{margin:4px 0 0;color:var(--pg-mut);font-size:14px;max-width:70ch}
+.tag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--pg-chip);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:30px 20px;justify-items:center}
+.slot{display:flex;flex-direction:column;gap:8px;width:272px;scroll-margin-top:12px}
+.cap{display:flex;align-items:center;gap:8px}
+.cap .num{font-family:var(--f-mono);font-size:11px;font-weight:600;background:var(--pg-ink);color:var(--pg-surf);border-radius:6px;padding:1px 6px}
+.cap b{font-size:14px}
+.slot .note{margin:2px 0 0;font-size:13px;color:var(--pg-mut)}
+.slot .now{margin:0;font-size:12px;color:var(--pg-mut)}
+.slot .now b{color:var(--pg-ink);font-weight:600}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--pg-line);border-radius:14px;background:var(--pg-surf)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--pg-line);vertical-align:top}
+th{font-size:12px;font-weight:700;color:var(--pg-mut);text-transform:uppercase;letter-spacing:.04em;background:var(--pg-chip)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-family:var(--f-mono);font-size:12px;color:var(--pg-mut);white-space:nowrap}
+td.m{color:var(--pg-ok);font-weight:700}
+.fn{font-size:12.5px;color:var(--pg-mut);margin:8px 2px 0}
+
+/* ───────── telefon (ilova palitrasi — `apps/mobile/src/design/tokens.ts`, light) ───────── */
+.phone{width:272px;height:588px;border-radius:44px;padding:8px;background:#0b0d0f;box-shadow:0 22px 44px -22px #0b134180,inset 0 0 0 1px #2b3036}
+.scr{
+  --bg:#f5f6fb;--surf:#fff;--ink:#0e1330;--mut:#646b8a;--line:#e4e7f1;
+  --brand:#5266ee;--brandSoft:#e2e5fd;--brandInk:#0b1c8e;--inv:#0b1341;
+  --ok:#12844f;--okSolid:#16a34a;--okBg:#e2f5ea;--warn:#9a5800;--warnSolid:#f59e0b;--warnBg:#fff1d9;
+  --bad:#c42f26;--badSolid:#e5483d;--badBg:#fde6e4;--info:#0a6f9f;--infoBg:#e6f4fb;--prod:#7523ed;--prodBg:#f2ecff;
+  position:relative;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:600 11px/1.35 "Nunito",ui-sans-serif,system-ui,sans-serif;display:flex;flex-direction:column;color-scheme:light}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:80px;height:23px;border-radius:12px;background:#000;z-index:8}
+.sb{position:absolute;top:0;left:0;right:0;height:40px;display:flex;justify-content:space-between;align-items:center;padding:3px 24px 0;font-size:11px;font-weight:800;color:var(--ink);z-index:7;font-family:var(--f-ui)}
+.sb .r{display:flex;gap:4px;align-items:center}
+.sb .sig{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.sb .sig i{width:2.5px;background:currentColor;border-radius:1px}
+.sb .bat{width:20px;height:10px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat::after{content:"";position:absolute;inset:1px 5px 1px 1px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;border-radius:3px;background:var(--ink);opacity:.85;z-index:9}
+.scr.dark{background:#07090f;color:#fff}
+.scr.dark .sb{color:#fff}
+.scr.dark .homebar{background:#fff}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ic.fill{fill:currentColor;stroke:none}
+
+.main{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:9px;padding:44px 12px 8px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--mut)}
+.row{display:flex;align-items:center;gap:6px}
+.hdr{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+.av{width:34px;height:34px;border-radius:50%;background:var(--brandSoft);color:var(--brandInk);display:grid;place-items:center;font-weight:900;font-size:11px;flex:0 0 auto}
+.av.lg{width:46px;height:46px;font-size:14px}
+.who{flex:1;min-width:0}
+.who small{display:block;font:600 8.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.who b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bell{width:32px;height:32px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center;position:relative;flex:0 0 auto}
+.bell::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--badSolid);box-shadow:0 0 0 1.5px var(--surf)}
+.back{display:flex;align-items:center;gap:7px;flex:0 0 auto;min-width:0}
+.back i{width:30px;height:30px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center;flex:0 0 auto}
+.back b{font-size:15px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttl{margin:0;font-size:20px;font-weight:900;letter-spacing:-.01em}
+.sub{margin:-4px 0 0;color:var(--mut);font-size:11px}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:10px 12px;flex:0 0 auto}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px}
+.ch b{font-size:12px;font-weight:900}
+.li{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.ch+.li,.card>.li:first-child{border-top:0}
+.li b{display:block;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li small{display:block;font-size:9px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .r{font-weight:900;font-size:10.5px;white-space:nowrap}
+.li .dot{width:7px;height:7px;border-radius:50%;background:var(--brand);flex:0 0 auto}
+.it{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto}
+.t-brand{background:var(--brandSoft);color:var(--brandInk)}
+.t-ok{background:var(--okBg);color:var(--ok)}
+.t-warn{background:var(--warnBg);color:var(--warn)}
+.t-bad{background:var(--badBg);color:var(--bad)}
+.t-info{background:var(--infoBg);color:var(--info)}
+.t-prod{background:var(--prodBg);color:var(--prod)}
+.t-gray{background:var(--bg);color:var(--mut)}
+.c-bad{color:var(--bad)!important}
+.c-ok{color:var(--ok)!important}
+.c-warn{color:var(--warn)!important}
+.c-brand{color:var(--brand)!important}
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;font-size:8.5px;font-weight:900;white-space:nowrap;flex:0 0 auto}
+.bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden;flex:0 0 auto}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:4px}
+.bar.ok i{background:var(--okSolid)} .bar.bad i{background:var(--badSolid)} .bar.warn i{background:var(--warnSolid)}
+.no{font:600 9px var(--f-mono);color:var(--mut);white-space:nowrap}
+
+.dock{flex:0 0 auto;padding:6px 12px 10px;display:flex;flex-direction:column;gap:6px;position:relative;z-index:2}
+.scr:not([data-tabs]) .dock{padding-bottom:22px}
+.hint{font-size:9px;color:var(--mut);text-align:center}
+.btn{height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:900;font-size:13px;color:#fff;background:var(--brand);box-shadow:0 10px 20px -10px var(--brand);flex:0 0 auto;white-space:nowrap}
+.btn .ic{width:16px;height:16px}
+.btn.big{height:50px;font-size:14px;border-radius:16px}
+.btn.ok{background:var(--okSolid);box-shadow:0 10px 20px -10px var(--okSolid)}
+.btn.bad{background:var(--badSolid);box-shadow:0 10px 20px -10px var(--badSolid)}
+.btn.warn{background:var(--warnSolid);box-shadow:0 10px 20px -10px var(--warnSolid)}
+.btn.inv{background:var(--inv);box-shadow:0 10px 20px -10px var(--inv)}
+.btn.ghost{background:var(--surf);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.sm{height:36px;font-size:11px;border-radius:12px;gap:5px}
+.btn.sm .ic{width:13px;height:13px}
+.btns{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+
+.tabs{flex:0 0 auto;height:58px;background:var(--surf);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px 14px;position:relative;z-index:2}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;font-weight:800;color:var(--mut);min-width:64px}
+.tab i{width:40px;height:23px;border-radius:10px;display:grid;place-items:center}
+.tab .ic{width:16px;height:16px}
+.tab.on{color:var(--brand)}
+.tab.on i{background:var(--brandSoft)}
+
+/* qadamlar va «hozirgi ish» kartasi */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);position:relative;flex:0 0 auto}
+.steps::before{content:"";position:absolute;top:10px;left:12.5%;right:12.5%;height:2px;background:var(--line);border-radius:2px}
+.steps .fill{position:absolute;top:10px;left:12.5%;height:2px;background:var(--okSolid);border-radius:2px}
+.step{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;font-weight:800;color:var(--mut)}
+.step b{width:21px;height:21px;border-radius:50%;display:grid;place-items:center;background:var(--surf);border:1.5px solid var(--line);font-size:9.5px;font-weight:900}
+.step b .ic{width:11px;height:11px;stroke-width:3}
+.step.done b{background:var(--okSolid);border-color:var(--okSolid);color:#fff}
+.step.on{color:var(--ink)}
+.step.on b{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 0 4px var(--brandSoft)}
+.hero{background:var(--inv);color:#fff;border-radius:20px;padding:12px 14px;position:relative;overflow:hidden;flex:0 0 auto}
+.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(#ffffff0d 1px,transparent 1px),linear-gradient(90deg,#ffffff0d 1px,transparent 1px);background-size:14px 14px}
+.hero>*{position:relative}
+.hero .k{font:600 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#aab4ff}
+.hero h4{margin:3px 0 2px;font-size:16px;font-weight:900;letter-spacing:-.01em;line-height:1.15}
+.hero p{margin:0;font-size:10px;color:#c9cff5}
+.hero .num{display:flex;align-items:baseline;gap:4px;margin:4px 0 6px}
+.hero .num b{font-size:28px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.hero .num span{font-size:12px;color:#c9cff5}
+.hero .bar{background:#ffffff26;margin-bottom:6px}
+.hero .bar i{background:#8fa0ff}
+.hero.okH{background:var(--okSolid)} .hero.okH .k,.hero.okH p,.hero.okH .num span{color:#e5fbe9}
+.hero.badH{background:var(--badSolid)} .hero.badH .k,.hero.badH p,.hero.badH .num span{color:#ffe3df}
+
+/* plitkalar */
+.tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;flex:0 0 auto}
+.tiles.c3{grid-template-columns:repeat(3,1fr);gap:6px}
+.tile{border-radius:18px;padding:10px 11px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;position:relative;min-height:0;border:1px solid transparent}
+.tile .ti{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--surf)}
+.tile .ti .ic{width:18px;height:18px}
+.tile b{display:block;font-size:13px;font-weight:900;line-height:1.1}
+.tile small{display:block;font-size:9px;font-weight:800;opacity:.85;margin-top:2px}
+.tiles.c3 .tile{padding:9px;border-radius:15px;gap:6px}
+.tiles.c3 .tile .ti{width:28px;height:28px;border-radius:9px}
+.tiles.c3 .tile .ti .ic{width:15px;height:15px}
+.tiles.c3 .tile b{font-size:11px}
+.tiles.hz{gap:6px}
+.tiles.hz .tile{flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;padding:9px 10px;border-radius:15px}
+.tiles.hz .tile .ti{width:30px;height:30px;border-radius:10px;flex:0 0 auto}
+.tiles.hz .tile .ti .ic{width:16px;height:16px}
+.tiles.hz .tile>div{min-width:0;flex:1}
+.tiles.hz .tile b{font-size:11.5px}
+.tiles.hz .tile small{white-space:nowrap}
+.tiles.hz .tile .bar{height:4px;margin-top:4px;background:#ffffffb3}
+.tiles.hz .tile .badge{top:6px;right:6px}
+.brandS{background:var(--brandSoft);color:var(--brandInk);border-color:#cdd3fb}
+.tile.on{outline:2px solid var(--brand);outline-offset:1px}
+.brandT{background:var(--brand);color:#fff}
+.brandT .ti{background:#ffffff2e}
+.invT{background:var(--inv);color:#fff}
+.invT .ti{background:#ffffff1f}
+.okT{background:var(--okBg);color:var(--ok);border-color:#c4ebd4}
+.badT{background:var(--badBg);color:var(--bad);border-color:#f8cdc8}
+.warnT{background:var(--warnBg);color:var(--warn);border-color:#f6ddb0}
+.infoT{background:var(--infoBg);color:var(--info);border-color:#c5e5f4}
+.prodT{background:var(--prodBg);color:var(--prod);border-color:#e1d3fd}
+.grayT{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.grayT .ti{background:var(--bg)}
+.tile .badge{position:absolute;top:8px;right:8px;min-width:18px;height:18px;border-radius:9px;background:var(--badSolid);color:#fff;font-weight:900;font-size:9.5px;display:grid;place-items:center;padding:0 5px}
+
+/* tanlov, maydon, klaviatura */
+.q{font-size:11px;font-weight:900;margin:2px 0 -3px}
+.chips{display:flex;gap:5px;flex-wrap:wrap;flex:0 0 auto}
+.chip{height:32px;padding:0 10px;border-radius:11px;background:var(--surf);border:1px solid var(--line);display:inline-flex;align-items:center;gap:4px;font-weight:800;font-size:10.5px;white-space:nowrap}
+.chip .ic{width:11px;height:11px;stroke-width:2.8}
+.chip.on{background:var(--brandSoft);border-color:var(--brand);color:var(--brandInk)}
+.chips.sm .chip{height:27px;border-radius:999px;padding:0 9px;font-size:10px}
+.flt{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;flex:0 0 auto}
+.flt span{height:38px;border-radius:12px;background:var(--surf);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:8.5px;white-space:nowrap;color:var(--mut)}
+.flt span i{font-style:normal;font-size:13px;font-weight:900;line-height:1.1;color:var(--ink)}
+.flt span.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.flt span.on i{color:#fff}
+.flt span.bad i{color:var(--bad)}
+.tog{display:flex;background:#e9ebf3;border-radius:12px;padding:3px;flex:0 0 auto}
+.tog span{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-weight:800;font-size:10.5px;color:var(--mut)}
+.tog span.on{background:var(--surf);color:var(--ink);box-shadow:0 1px 3px #0b134122}
+.fl{flex:0 0 auto}
+.fl label{display:block;font-size:10px;font-weight:800;color:var(--mut);margin:0 0 4px 2px}
+.fld{height:44px;border-radius:13px;background:var(--surf);border:1.5px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12.5px}
+.fld .ic{width:16px;height:16px;color:var(--mut)}
+.fld.focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brandSoft)}
+.fld .v{flex:1;font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fld .pv{flex:1;color:#9aa0b8;min-width:0}
+.fld.area{height:70px;align-items:flex-start;padding-top:10px;font-size:11px;line-height:1.35}
+.fld.area .v{white-space:normal;font-weight:700}
+.fl small{display:block;font-size:9px;color:var(--mut);margin:3px 0 0 2px}
+.lnk{color:var(--brand);font-weight:800;font-size:10.5px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;flex:0 0 auto}
+.key{height:34px;border-radius:11px;background:var(--bg);display:grid;place-items:center;font-size:16px;font-weight:800}
+.key .ic{width:17px;height:17px}
+.keys.big{gap:8px;padding:0 10px}
+.keys.big .key{height:46px;border-radius:50%;width:46px;justify-self:center;background:var(--surf);border:1px solid var(--line);font-size:19px}
+.keys.big .key.e{background:none;border:0}
+.dots{display:flex;gap:16px;justify-content:center;flex:0 0 auto}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--brand)}
+.dots i.f{background:var(--brand)}
+.disp{display:flex;align-items:baseline;justify-content:center;gap:5px;padding:2px 0}
+.disp b{font-size:38px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.disp b::after{content:"";display:inline-block;width:2px;height:28px;background:var(--brand);margin-left:2px;vertical-align:-3px}
+.disp span{font-size:15px;color:var(--mut);font-weight:800}
+.segrow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:10.5px;flex:0 0 auto}
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:2px}
+.seg span{padding:5px 12px;border-radius:8px;font-weight:800;font-size:10px;color:var(--mut)}
+.seg span.on{background:var(--surf);color:var(--ink);box-shadow:0 1px 3px #0b134122}
+.step-in{display:flex;align-items:center;justify-content:center;gap:14px;flex:0 0 auto}
+.step-in i{width:46px;height:46px;border-radius:14px;background:var(--bg);display:grid;place-items:center}
+.step-in i .ic{width:20px;height:20px;stroke-width:2.6}
+.step-in b{font-size:34px;font-weight:900;min-width:80px;text-align:center}
+.step-in b span{font-size:14px;color:var(--mut)}
+.ph{height:46px;border-radius:12px;border:1.5px dashed #c9cde0;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--mut);font-weight:800;flex:0 0 auto;background:var(--surf)}
+.ph .ic{width:16px;height:16px}
+.sw{width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;flex:0 0 auto}
+.sw.on{background:var(--okSolid)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0003}
+.sw.on::after{left:16px}
+
+/* pastki oyna */
+.dim{position:absolute;inset:0;background:#0b134173;z-index:3}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surf);border-radius:24px 24px 0 0;padding:8px 14px 22px;box-shadow:0 -12px 30px -12px #0b134166;z-index:4;display:flex;flex-direction:column;gap:8px}
+.grab{width:36px;height:4px;border-radius:3px;background:var(--line);margin:0 auto 1px;flex:0 0 auto}
+.sh-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sh-h b{display:block;font-size:14px;font-weight:900}
+.center{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px}
+.center h4{margin:2px 0 0;font-size:17px;font-weight:900}
+.center p{margin:0;color:var(--mut);font-size:10.5px;max-width:30ch}
+.bigic{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;flex:0 0 auto}
+.bigic .ic{width:26px;height:26px}
+
+/* turli bloklar */
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;padding:6px 0;border-top:1px solid var(--line)}
+.card>.kv:first-child,.ch+.kv{border-top:0}
+.kv span{color:var(--mut)}
+.kv b{font-weight:900;text-align:right;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;flex:0 0 auto}
+.st{border-radius:13px;padding:8px 9px;background:var(--surf);border:1px solid var(--line);min-width:0}
+.st b{display:block;font-size:15px;font-weight:900;line-height:1.15;white-space:nowrap}
+.st span{display:block;font-size:8.5px;color:var(--mut);font-weight:800;white-space:nowrap}
+.call{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:9px 10px;font-size:10px;font-weight:700;flex:0 0 auto}
+.call .ic{margin-top:1px}
+.rules-in{display:flex;flex-direction:column;gap:5px;flex:0 0 auto}
+.rules-in div{display:flex;gap:6px;align-items:center;font-size:10.5px;font-weight:800;color:var(--ok)}
+.rules-in .ic{width:13px;height:13px;stroke-width:3}
+.avs{display:flex;padding-left:6px}
+.avs span{width:27px;height:27px;border-radius:50%;background:var(--brandSoft);color:var(--brandInk);border:2px solid var(--surf);margin-left:-6px;display:grid;place-items:center;font-size:8.5px;font-weight:900}
+.avs span.x{background:var(--badBg);color:var(--bad)}
+.avs span.m{background:var(--bg);color:var(--mut)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .h{font-size:8.5px;color:var(--mut);font-weight:800}
+.cal .d{height:25px;border-radius:8px;display:grid;place-items:center;font-size:10px;font-weight:800;background:var(--bg);color:#a3a9bf}
+.cal .d.ok{background:var(--okBg);color:var(--ok)}
+.cal .d.warn{background:var(--warnBg);color:var(--warn)}
+.cal .d.off{background:none;color:#a3a9bf}
+.cal .d.today{background:var(--brand);color:#fff}
+.cal .d.e{background:none}
+.chk{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-weight:800;font-size:11px}
+.ch+.chk{border-top:0}
+.cb{width:21px;height:21px;border-radius:7px;border:2px solid #c9cde0;display:grid;place-items:center;flex:0 0 auto}
+.cb .ic{width:12px;height:12px;stroke-width:3.2}
+.cb.on{background:var(--okSolid);border-color:var(--okSolid);color:#fff}
+.chk.done span{color:var(--mut);text-decoration:line-through}
+.opt{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--surf);border:1.5px solid var(--line);font-weight:800;font-size:12px;flex:0 0 auto}
+.opt.on{border-color:var(--brand);background:var(--brandSoft);color:var(--brandInk)}
+.rd{width:18px;height:18px;border-radius:50%;border:2px solid #c9cde0;flex:0 0 auto}
+.opt.on .rd{border:5px solid var(--brand);background:#fff}
+.tl{display:flex;align-items:center;gap:4px;font-size:8.5px;font-weight:800;color:var(--mut);padding:6px 0 2px}
+.tl i{width:9px;height:9px;border-radius:50%;background:var(--line);flex:0 0 auto}
+.tl i.ok{background:var(--okSolid)} .tl i.on{background:var(--warnSolid);box-shadow:0 0 0 3px var(--warnBg)}
+.tl .ln{flex:1;height:2px;background:var(--line)} .tl .ln.ok{background:var(--okSolid)}
+.week{display:flex;flex-direction:column;gap:5px;flex:0 0 auto}
+.wd{display:flex;align-items:center;gap:9px;background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:7px 10px}
+.wd .d{width:34px;text-align:center;flex:0 0 auto}
+.wd .d b{display:block;font-size:13px;font-weight:900;line-height:1}
+.wd .d span{font-size:8px;color:var(--mut);font-weight:800}
+.wd .t{flex:1;min-width:0}
+.wd .t b{display:block;font-size:11px;font-weight:900}
+.wd .t small{font-size:9px;color:var(--mut)}
+.wd.today{border-color:var(--brand);box-shadow:0 0 0 2px var(--brandSoft)}
+.wd.off{background:transparent;border-style:dashed}
+.wd.off b{color:var(--mut)}
+.logo{display:inline-flex;align-self:flex-start;background:#fff;border-radius:16px;padding:10px 13px;box-shadow:0 10px 22px -14px #0b134180;border:1px solid var(--line)}
+.logo img{display:block;width:150px;height:auto}
+.wel{flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:0 4px}
+.wel h2{font-size:24px;margin:4px 0 0;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.wel p{margin:0;color:var(--mut);font-size:11.5px}
+.cam{flex:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:46px 16px 24px}
+.cam .top{align-self:stretch;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:12px}
+.cam .top i{width:30px;height:30px;border-radius:50%;background:#ffffff1a;display:grid;place-items:center}
+.oval{margin-top:8px;width:176px;height:228px;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#29314f,#0c1020 70%);box-shadow:0 0 0 3px #ffffff1f}
+.oval::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:4px solid transparent;border-top-color:#4ade80;border-right-color:#4ade80;transform:rotate(-20deg)}
+.oval .ic{width:96px;height:96px;color:#ffffff2e;stroke-width:1.2}
+.camtip{background:#ffffff1a;border-radius:999px;padding:7px 14px;font-weight:800;font-size:11.5px;display:flex;align-items:center;gap:6px}
+.camdots{display:flex;gap:6px}
+.camdots i{width:22px;height:4px;border-radius:2px;background:#ffffff33}
+.camdots i.on{background:#4ade80}
+.campers{margin-top:auto;align-self:stretch;background:#ffffff12;border:1px solid #ffffff1f;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.campers .av{background:#ffffff1f;color:#fff}
+.campers b{display:block;font-size:12px}
+.campers small{display:block;font-size:9px;color:#b9c0dd}
+.task{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:10px 11px;display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.task .t1{display:flex;align-items:center;gap:6px}
+.task h5{margin:0;font-size:12.5px;font-weight:900}
+.task .t3{display:flex;align-items:center;gap:8px}
+.task .t3 .meta{flex:1;font-size:9px;color:var(--mut);min-width:0}
+.task .t3 .meta b{color:var(--ink);font-size:11px;font-weight:900}
+.act{height:32px;padding:0 12px;border-radius:11px;background:var(--brand);color:#fff;font-weight:900;font-size:11px;display:inline-flex;align-items:center;gap:4px;flex:0 0 auto}
+.act .ic{width:13px;height:13px;stroke-width:2.6}
+.act.okA{background:var(--okSolid)}
+.act.dis{background:var(--bg);color:var(--mut);border:1px dashed #c9cde0}
+.ver{text-align:center;font-size:9px;color:var(--mut)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><path d="M18 7 8 17l-4-4"/><path d="m22 10-7 7-1.5-1.5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5h11v14H10l-7-7z"/><path d="m18 9-6 6M12 9l6 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M15 8l2 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3h-4a2 2 0 0 0 0 4h4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+  <symbol id="i-listcheck" viewBox="0 0 24 24"><path d="M11 6h10M11 12h10M11 18h10"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="m3 11 18-6v14L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M7 11v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4V6a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2h-7a3 3 0 0 1-3-3"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Insof ECO · Brigadir kabineti · barcha sahifalar · smenasiz · 2026-11-05</div>
+    <h1>Kirishdan oxirgi sahifagacha: 46 → 31 sahifa</h1>
+    <p class="lede">Brigadir ilovada ko'radigan har bir sahifa va oyna sanaldi (kod bo'yicha: <code>apps/mobile/app</code>, ERP <code>lib/mobile/*</code>). Hammasiga bitta sodda dizayn berildi. Bir xil ishni qiladigan sahifalar birlashtirildi; smena va kerak bo'lmagan bo'limlar (ta'til, kasallik, dam olish, so'rovnoma, xabarlar, murojaatlar) olib tashlandi: hozirgi 46 ta o'rniga 31 ta. Har telefon ostida u hozirgi qaysi sahifani almashtirishi yozilgan.</p>
+    <div class="count" id="count"></div>
+  </header>
+
+  <section>
+    <h2 class="sec">Oqim — kirishdan chiqishgacha</h2>
+    <div class="flow" id="flow"></div>
+  </section>
+
+  <section>
+    <h2 class="sec">Sodda dizayn qoidalari — hamma sahifada bir xil</h2>
+    <div class="rules">
+      <div><b>3 ta tab</b><p>Bugun · Topshiriqlar · Men. Hozir 5 ta (Brigadam, Topshiriq, Muammolar, Smenalar, Menyu). Muammolar va ish tarixi ichki sahifaga o'tadi.</p></div>
+      <div><b>Har ekranda bitta asosiy tugma</b><p>Pastda, 46–50 px balandlikda, katta yozuv bilan. Qo'shimcha amallar — undan kichik kulrang tugmalar.</p></div>
+      <div><b>Yozish o'rniga tanlash</b><p>Chip, plitka, raqam klaviaturasi. Matn maydoni faqat «izoh» uchun va doim ixtiyoriy.</p></div>
+      <div><b>Har amalning o'z rangi</b><p>Fakt — ko'k «+», Muammo — qizil «⚠», Brak — sariq qalqon, Davomat — yashil, Yopish — to'q bayroq. Hamma sahifada o'zgarmaydi.</p></div>
+      <div><b>Ro'yxat → karta o'rniga bitta sahifa</b><p>Oylik varag'i, arizalar, vazifa va cheklist: ochib-yopish o'rniga hammasi bir sahifada.</p></div>
+      <div><b>Xato tuzaladi</b><p>Har yozuvdan keyin 5 soniya «Bekor qilish». Tasdiq oynasi faqat muhim amalda (ishni boshlash, yakunlash).</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec">Olib tashlangan — nima o'zgardi</h2>
+    <div class="rules">
+      <div><b>Smenani boshlash va yopish — yo'q</b><p>Brigadir kunni ochmaydi va yopmaydi. Ish topshiriqdagi «Boshlash» tugmasidan boshlanadi.</p></div>
+      <div><b>Smena kartasi → <a href="#p11">Brigada davomati</a></b><p>Kim keldi — alohida sahifa. Face ID bilan kelganlar o'zi belgilanadi.</p></div>
+      <div><b>Smena hisoboti → <a href="#p12">Kun hisoboti</a></b><p>Kun oxirida o'zi tuziladi. «Smenalar» tabi o'rniga — <a href="#p8">Ish tarixi</a>.</p></div>
+      <div><b>Smena grafigi → <a href="#p24">davomat kalendari</a></b><p>Ish kunlari «Mening davomatim» kalendarida ko'rinadi — alohida sahifa kerak emas.</p></div>
+      <div><b>Ta'til, kasallik, dam olish — yo'q</b><p>Arizada faqat avans, kechikish va kelmaslik sababi, boshqa qoldi.</p></div>
+      <div><b>So'rovnoma, xabarlar, murojaatlar — yo'q</b><p>«Men» tabida ham, menyuda ham chiqmaydi. Tizim bildirishnomalari (yangi topshiriq, muammo hal bo'ldi) qoladi.</p></div>
+      <div><b>Kodda nima qilinadi</b><p>ERP'da smena (<code>BrigadeShift</code>) bor: brigadirga <code>shift.open</code>/<code>shift.close</code> ko'rsatilmaydi, <code>task.start</code> smena ochmaydi, davomat va kun hisoboti sana bo'yicha hisoblanadi. Brigadir menyusidan <code>sorovnomalar</code>, <code>xabarlar</code>, <code>murojaatlarim</code>, <code>murojaat</code> yashiriladi, ariza turlaridan <code>VACATION</code>, <code>SICK</code>, <code>DAYOFF</code> olinadi.</p></div>
+    </div>
+  </section>
+
+  <div id="groups"></div>
+
+  <section class="grp" id="moslik">
+    <div class="grp-head"><div><h2>Moslik jadvali</h2><p>Sodda sahifa qaysi hozirgi sahifa(lar)ni almashtiradi va kodda qayerda turadi.</p></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Sodda sahifa</th><th>Hozirgi sahifa(lar)</th><th>Kod (ECO / ERP)</th></tr></thead><tbody id="map"></tbody></table></div>
+    <p class="fn">«Amal oynalari» guruhida hozir 13 ta alohida forma bor: fakt va yakunlash, 4 xil muammo formasi, brak, 3 xil tasdiq (smena ochish, ishni boshlash, qolganlari keldi), yuz skaneri, «hal qilindi», smenani yopish. Smenaga oid ikkitasi (ochish, yopish) olib tashlandi, qolgani 7 ta oyna turiga keltirildi. Shaxsiy bo'limlarning bir qismi korxona tarifida o'chirilgan bo'lishi mumkin (<code>moduleClosed</code>), unda ular menyuda chiqmaydi. Maketdagi ism va raqamlar namuna.</p>
+  </section>
+
+</div>
+
+<script>
+// ───────── yordamchi bloklar (hamma sahifa shu bloklardan yig'iladi — dizayn bir xil bo'lishi uchun) ─────────
+const I = (n, c = "") => `<svg class="ic ${c}"><use href="#i-${n}"/></svg>`;
+const hdr = (t, s, av = "BQ") => `<div class="hdr"><div class="av">${av}</div><div class="who"><small>${s}</small><b>${t}</b></div><div class="bell">${I("bell")}</div></div>`;
+const back = (t, r = "") => `<div class="back"><i>${I("left")}</i><b>${t}</b>${r ? `<span class="grow"></span>${r}` : ""}</div>`;
+const pill = (t, tone) => `<span class="pill t-${tone}">${t}</span>`;
+const bar = (p, tone = "") => `<div class="bar ${tone}"><i style="width:${p}%"></i></div>`;
+const li = ({ ic, tone = "brand", t, s = "", r = "", rc = "", chev, dot }) =>
+  `<div class="li">${ic ? `<span class="it t-${tone}">${I(ic)}</span>` : ""}<div class="grow"><b>${t}</b>${s ? `<small>${s}</small>` : ""}</div>${r ? `<span class="r ${rc}">${r}</span>` : ""}${dot ? `<span class="dot"></span>` : ""}${chev ? I("right", "muted") : ""}</div>`;
+const card = (title, right, rows, style = "") => `<div class="card" ${style ? `style="${style}"` : ""}>${title ? `<div class="ch"><b>${title}</b>${right || ""}</div>` : ""}${rows.map(li).join("")}</div>`;
+const kv = (title, rows, right = "") => `<div class="card">${title ? `<div class="ch"><b>${title}</b>${right}</div>` : ""}${rows.map(([k, v, c = ""]) => `<div class="kv"><span>${k}</span><b class="${c}">${v}</b></div>`).join("")}</div>`;
+const btn = (t, ic, cls = "") => ic === "right"
+  ? `<div class="btn ${cls}">${t}${I(ic)}</div>`
+  : `<div class="btn ${cls}">${ic ? I(ic, ic === "play" ? "fill" : "") : ""}${t}</div>`;
+const btns = (...b) => `<div class="btns">${b.join("")}</div>`;
+const dock = (...items) => `<div class="dock">${items.join("")}</div>`;
+const hint = (t) => `<div class="hint">${t}</div>`;
+// cols: 2 | 3 | "hz" (2×2, ikonka chapda — bosh sahifa ko'rsatkichlari); x.bar — plitka ichida kichik progress
+const tiles = (arr, { cols = 2, h } = {}) => `<div class="tiles ${cols === 3 ? "c3" : cols === "hz" ? "hz" : ""}" ${h ? `style="grid-auto-rows:${h}px"` : ""}>${arr.map((x) =>
+  `<div class="tile ${x.cls}${x.on ? " on" : ""}">${x.badge ? `<span class="badge">${x.badge}</span>` : ""}<span class="ti">${I(x.ic)}</span><div><b>${x.t}</b>${x.s ? `<small>${x.s}</small>` : ""}${x.bar != null ? bar(x.bar, x.barTone || "") : ""}</div></div>`).join("")}</div>`;
+const chips = (label, items, on = [], cls = "") => `${label ? `<div class="q">${label}</div>` : ""}<div class="chips ${cls}">${items.map((x, i) => `<span class="chip ${on.includes(i) ? "on" : ""}">${on.includes(i) ? I("check") : ""}${x}</span>`).join("")}</div>`;
+const flt = (items, on = 0) => `<div class="flt">${items.map(([l, c, cls = ""], i) => `<span class="${i === on ? "on" : cls}"><i>${c}</i>${l}</span>`).join("")}</div>`;
+const field = (label, val, o = {}) => `<div class="fl">${label ? `<label>${label}</label>` : ""}<div class="fld ${o.cls || ""}">${o.ic ? I(o.ic) : ""}<span class="${val ? "v" : "pv"}">${val || o.ph || ""}</span>${o.right || ""}</div>${o.hint ? `<small>${o.hint}</small>` : ""}</div>`;
+const stats = (arr) => `<div class="stats">${arr.map(([l, v, c = ""]) => `<div class="st"><b class="${c}">${v}</b><span>${l}</span></div>`).join("")}</div>`;
+const call = (t, tone = "info", ic = "info") => `<div class="call t-${tone}">${I(ic)}<span>${t}</span></div>`;
+const hero = ({ k, h, num, unit, p, pct, cls = "" }) => `<div class="hero ${cls}">${k ? `<span class="k">${k}</span>` : ""}${h ? `<h4>${h}</h4>` : ""}${num ? `<div class="num"><b>${num}</b><span>${unit || ""}</span></div>` : ""}${pct != null ? bar(pct) : ""}${p ? `<p>${p}</p>` : ""}</div>`;
+const keys = () => `<div class="keys">${["1","2","3","4","5","6","7","8","9",",","0"].map((k) => `<div class="key">${k}</div>`).join("")}<div class="key">${I("del")}</div></div>`;
+const sheet = (bgMain, content) => `<div class="main">${bgMain}</div><div class="dim"></div><div class="sheet"><div class="grab"></div>${content}</div>`;
+const center = (ic, tone, h, p) => `<div class="center"><span class="bigic t-${tone}">${I(ic, ic === "play" ? "fill" : "")}</span><h4>${h}</h4>${p ? `<p>${p}</p>` : ""}</div>`;
+const chk = (t, on) => `<div class="chk ${on ? "done" : ""}"><span class="cb ${on ? "on" : ""}">${on ? I("check") : ""}</span><span>${t}</span></div>`;
+const opt = (t, on) => `<div class="opt ${on ? "on" : ""}"><span class="rd"></span>${t}</div>`;
+const segrow = (t, a, b, on = 0) => `<div class="segrow"><span>${t}</span><div class="seg"><span class="${on === 0 ? "on" : ""}">${a}</span><span class="${on === 1 ? "on" : ""}">${b}</span></div></div>`;
+const task = (no, st, tone, due, name, pct, barTone, meta, act) => `<div class="task"><div class="t1"><span class="no">${no}</span>${pill(st, tone)}<span class="grow"></span><span class="no">${due}</span></div><h5>${name}</h5>${bar(pct, barTone)}<div class="t3"><div class="meta">${meta}</div>${act}</div></div>`;
+
+// Kalendar: 2026-yil noyabr — 1-noyabr yakshanba, bugun 5-noyabr (payshanba)
+const cal = () => {
+  const mark = { 1: "off", 2: "ok", 3: "warn", 4: "ok", 5: "today" };
+  let h = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"].map((d) => `<span class="h">${d}</span>`).join("");
+  h += `<span class="d e"></span>`.repeat(6);
+  for (let d = 1; d <= 30; d++) h += `<span class="d ${mark[d] || ""}">${d}</span>`;
+  return `<div class="card"><div class="cal">${h}</div></div>`;
+};
+
+// ───────── sahifalar: g — guruh, n — sodda raqami, now — hozirgi sahifa(lar), src — kod ─────────
+const G = [
+  { id: "A", title: "Kirish", desc: "Ilova ochilgandan bosh sahifagacha. Vaqtinchalik parol faqat birinchi kirishda, PIN — ixtiyoriy.", now: 4 },
+  { id: "B", title: "Asosiy sahifalar", desc: "3 ta tab (Bugun, Topshiriqlar, Men) va ulardan ochiladigan ikkita ichki ro'yxat: muammolar va ish tarixi.", now: 5 },
+  { id: "C", title: "Ish kartochkalari", desc: "Topshiriq, brigada davomati, kun hisoboti, muammo, sklad va xodim — tepada natija, pastda bitta asosiy tugma.", now: 6 },
+  { id: "D", title: "Amal oynalari", desc: "Pastdan chiqadigan oynalar: fakt, yakunlash, muammo, brak, tasdiq, yuz skaneri, «hal qilindi». Smenani ochish va yopish yo'q.", now: 8 },
+  { id: "E", title: "Shaxsiy bo'limlar", desc: "«Men» tabidan: davomat (ish kunlari bilan), ish haqi, arizalar (avans, kechikish sababi), vazifalar, rivojlanish. 20 ta sahifa 6 taga tushdi.", now: 20 },
+  { id: "F", title: "Sozlamalar", desc: "Til, mavzu, PIN, parol, bildirishnomalar va chiqish.", now: 3 },
+];
+
+const S = [
+  // ── A. Kirish ──
+  { g: "A", n: 1, name: "Boshlash oynasi", note: "Ilova ochilganda birinchi oyna. Brigadir faqat «Kirish»ni bosadi.", now: "Welcome", src: "(auth)/welcome",
+    main: `<div class="wel"><span class="logo"><img src="logo-insof.png" alt="Insof"></span><h2>Zavod, qurilish va yetkazish — bitta ilovada</h2><p>Zavod xodimlari login bilan, mijozlar telefon raqami bilan kiradi.</p>
+      ${card("", "", [{ ic: "users", tone: "prod", t: "Zavod xodimi", s: "login va parol — admin beradi" }, { ic: "user", tone: "info", t: "Mijoz", s: "buyurtma va kuzatish" }])}</div>`,
+    dock: dock(btn("Kirish", "right", "big"), btn("Ro'yxatdan o'tish", "", "ghost sm")) },
+  { g: "A", n: 2, name: "Kirish", note: "Login yozilsa — zavod (ERP) xodimi deb taniladi. Faqat 2 maydon.", now: "Kirish (login + telefon rejimi)", src: "(auth)/login",
+    main: `<div style="height:14px"></div><h3 class="ttl">Kirish</h3><p class="sub">Zavod xodimi — login va parol</p>
+      <div class="tog"><span>Telefon</span><span class="on">Login va parol</span></div>
+      ${field("Login", "bahodir.q", { ic: "user", cls: "focus", right: pill("Insof ERP", "prod") })}
+      ${field("Parol", "••••••••", { ic: "lock", right: I("eye", "muted") })}
+      <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:10px">Parol esdan chiqdimi?</span><span class="lnk">Kadrlar bo'limiga ayting</span></div>`,
+    dock: dock(btn("Kirish", "right", "big"), btn("PIN kod bilan kirish", "lock", "ghost sm")) },
+  { g: "A", n: 3, name: "O'z parolini o'rnatish", note: "Birinchi kirishda (admin vaqtinchalik parol bergan bo'lsa). Qoidalar ko'z oldida.", now: "Vaqtinchalik parol", src: "(auth)/temp-password",
+    main: `${back("Yangi parol")}${call("Vaqtinchalik parol bilan kirdingiz. Endi o'zingizning parolingizni o'rnating.", "info")}
+      ${field("Yangi parol", "••••••••••", { ic: "lock", cls: "focus" })}${field("Yana bir marta", "••••••••••", { ic: "lock" })}
+      <div class="rules-in"><div>${I("check")}Kamida 8 belgi</div><div>${I("check")}Harf va raqam aralash</div><div>${I("check")}Ikkalasi bir xil</div></div>`,
+    dock: dock(btn("Saqlash va kirish", "check", "big ok")) },
+  { g: "A", n: 4, name: "PIN kod", note: "Har safar parol yozmaslik uchun. Keyin «Keyinroq» bilan o'tkazib yuborish mumkin.", now: "PIN (o'rnatish / ochish)", src: "(auth)/pin",
+    main: `<div style="height:22px"></div>${center("lock", "brand", "PIN kod o'rnating", "Keyingi safar 4 ta raqam bilan kirasiz")}<div style="height:6px"></div>
+      <div class="dots"><i class="f"></i><i class="f"></i><i></i><i></i></div><div style="height:10px"></div>
+      <div class="keys big">${["1","2","3","4","5","6","7","8","9"].map((k) => `<div class="key">${k}</div>`).join("")}<div class="key e"></div><div class="key">0</div><div class="key">${I("del")}</div></div>`,
+    dock: dock(btn("Keyinroq", "", "ghost sm")) },
+
+  // ── B. Asosiy sahifalar ──
+  { g: "B", n: 5, name: "Bugun (bosh sahifa)", tabs: 0, note: "Bir ekranda: hozirgi ish va 4 ta ko'rsatkich — topshiriqlarning nechtasi bajarilgani (4 / 7), muammo, davomat, brak. Har biri bosilsa o'z sahifasi ochiladi. Pastda — «Fakt yozish».", now: "Brigadam (KPI, diagramma, 5 bo'lim)", src: "(erp-brigadier)/index · brigadierHome (topshiriq: DONE / jami, oy)",
+    main: `${hdr("Xayrli tong, Bahodir", "Brigadir · Gazoblok-1")}
+      ${hero({ k: "Hozirgi ish · TB-118", h: "Gazoblok D500", num: "42", unit: "/ 60 m³", pct: 70, p: "18 m³ qoldi · muddat bugun" })}
+      ${tiles([{ cls: "brandS", ic: "clip", t: "Topshiriq", s: "4 / 7 bajarildi", bar: 57 }, { cls: "badT", ic: "alert", t: "Muammo", s: "2 ta ochiq" }, { cls: "okT", ic: "users", t: "Davomat", s: "11 / 12 keldi" }, { cls: "warnT", ic: "shield", t: "Brak", s: "0,6 m³ · 1,4%" }], { cols: "hz" })}
+      ${card("", "", [{ ic: "wrench", tone: "bad", t: "Kesish mashinasi to'xtagan", s: "Mexanik ko'ryapti · 35 daq", chev: 1 }])}`,
+    dock: dock(btn("Fakt yozish", "plus", "big")) },
+  { g: "B", n: 6, name: "Topshiriqlar", tabs: 1, note: "Holat bo'yicha 4 filtr. «Fakt» va «Boshlash» tugmasi kartaning o'zida — ochish shart emas.", now: "Topshiriq tabi (ro'yxat)", src: "(erp-brigadier)/work · list tasks",
+    main: `<h3 class="ttl">Topshiriqlar</h3>${flt([["Bugun", 3], ["Ishda", 1], ["To'xtagan", 1, "bad"], ["Tayyor", 4]])}
+      ${task("TB-118", "Qisman bajarildi", "warn", "bugun", "Gazoblok D500 · 600×300×200", 70, "warn", "<b>42 / 60 m³</b> · 18 qoldi", `<span class="act">${I("plus")}Fakt</span>`)}
+      ${task("TB-121", "Brigadaga berildi", "info", "ertaga", "Gazoblok D600 · 600×250×300", 0, "", "<b>0 / 24 m³</b>", `<span class="act okA">${I("play", "fill")}Boshlash</span>`)}
+      ${task("TB-115", "Material yetishmaydi", "bad", "7-noy", "Peremichka PB-1", 67, "bad", "<b>80 / 120 dona</b> · Sklad", `<span class="act dis">${I("clock")}Kutish</span>`)}` },
+  { g: "B", n: 7, name: "Muammolar", note: "«Bugun»dagi «Muammo» plitkasidan ochiladi. Ochiq muammolarda kim mas'ul va qancha vaqt o'tgani ko'rinadi.", now: "Muammolar tabi", src: "(erp-brigadier)/issues · brig-issues",
+    main: `${back("Muammolar")}${flt([["Ochiq", 2], ["Hal bo'ldi", 5], ["Hammasi", 7]])}
+      ${card("Ochiq", pill("2", "bad"), [{ ic: "wrench", tone: "bad", t: "Kesish mashinasi", s: "TB-118 · Mexanik", r: "35 daq", rc: "c-bad" }, { ic: "box", tone: "warn", t: "Alyumin kukuni kam", s: "TB-118 · Sklad, Snabjeniye", r: "3 soat", rc: "c-warn" }])}
+      ${card("Hal bo'lgan", "", [{ ic: "check", tone: "ok", t: "Vibrostol", s: "kecha · ta'mirlandi · 20 daq" }, { ic: "check", tone: "ok", t: "Qo'shimcha ishchi — 2 kishi", s: "3-noy · Otdel kadr" }, { ic: "check", tone: "ok", t: "Armatura 12 mm", s: "2-noy · material berildi" }])}`,
+    dock: dock(btn("Muammo bildirish", "alert", "big bad")) },
+  { g: "B", n: 8, name: "Ish tarixi", note: "«Men» tabidan ochiladi. Har kun bitta qator: qancha bajarildi, brak, to'xtash. Kunni bossangiz — kun hisoboti.", now: "Smenalar tabi (smena hisobotlari)", src: "(erp-brigadier)/shifts → TaskProgress kun bo'yicha",
+    main: `${back("Ish tarixi")}${card("", "", [{ ic: "bolt", tone: "brand", t: "Bugun · ish davom etmoqda", s: "42 / 60 m³ · 70%", chev: 1 }])}
+      ${card("Noyabr", "", [
+        { ic: "check", tone: "ok", t: "4-noyabr, chorshanba", s: "60/60 m³ · brak 1%", r: "100%", rc: "c-ok" },
+        { ic: "check", tone: "warn", t: "3-noyabr, seshanba", s: "52/60 m³ · to'xtash 40 daq", r: "87%", rc: "c-warn" },
+        { ic: "check", tone: "ok", t: "2-noyabr, dushanba", s: "58/60 m³", r: "97%", rc: "c-ok" },
+        { ic: "cal", tone: "gray", t: "1-noyabr, yakshanba", s: "ish yo'q" },
+        { ic: "check", tone: "bad", t: "31-oktabr, shanba", s: "45/60 m³ · material kutildi", r: "75%", rc: "c-bad" }])}` },
+  { g: "B", n: 9, name: "Men", tabs: 2, note: "Shaxsiy hamma narsa bitta joyda: 4 ta katta plitka va qisqa ro'yxat (hozirgi menyudagi 14 ta bo'lim o'rniga). Sozlamalar — tepadagi tishli g'ildirak.", now: "Menyu (Bo'limlar ro'yxati, 14 ta)", src: "(erp-brigadier)/menu · ErpMenu",
+    main: `<div class="card row" style="gap:10px"><div class="av lg">BQ</div><div class="grow"><b style="font-size:13px;font-weight:900">Bahodir Qodirov</b><div class="muted" style="font-size:9.5px">Brigadir · Gazoblok-1 · bahodir.q</div></div><span class="bell" style="border-radius:11px">${I("gear")}</span></div>
+      ${tiles([{ cls: "okT", ic: "cal", t: "Davomatim", s: "4 kun · 1 kechikish" }, { cls: "brandT", ic: "wallet", t: "Ish haqim", s: "4,85 mln so'm" }, { cls: "infoT", ic: "listcheck", t: "Vazifalar", s: "cheklist 3 / 5" }, { cls: "warnT", ic: "file", t: "Arizalarim", s: "1 kutilmoqda", badge: 1 }], { h: 72 })}
+      ${card("", "", [{ ic: "bolt", tone: "brand", t: "Ish tarixi", chev: 1 }, { ic: "box", tone: "info", t: "Mening skladim", r: "4,2 mln", chev: 1 }, { ic: "star", tone: "prod", t: "Rivojlanish", s: "KPI, kurslar, suhbat", chev: 1 } ])}` },
+
+  // ── C. Ish kartochkalari ──
+  { g: "C", n: 10, name: "Topshiriq kartasi", note: "Tepada — qancha bajarildi, pastda — «Fakt yozish». Muammo, brak, yakunlash — yonidagi kichik tugmalar.", now: "Topshiriq kartochkasi (tasks/<id>)", src: "erp/[key]/[id] · taskDetail",
+    main: `${back("TB-118", pill("Qisman bajarildi", "warn"))}
+      ${hero({ k: "Gazoblok D500 · 600×300×200", num: "42", unit: "/ 60 m³", pct: 70, p: "18 m³ qoldi · muddat bugun 20:00" })}
+      ${kv("", [["Mijoz", "Insof Qurilish MCHJ"], ["Brak", "0,6 m³ · 1,4%", "c-warn"]])}
+      ${card("Bajarilganlar", `<span class="muted" style="font-size:9.5px">bugun</span>`, [{ ic: "plus", tone: "brand", t: "+12 m³", s: "10:40 · Bahodir Q.", r: "42" }, { ic: "plus", tone: "brand", t: "+18 m³", s: "09:15 · Bahodir Q.", r: "30" }, { ic: "plus", tone: "brand", t: "+12 m³", s: "08:30 · Bahodir Q.", r: "12" }])}`,
+    dock: dock(btn("Fakt yozish", "plus", "big"), btns(btn("Muammo", "alert", "ghost sm"), btn("Brak", "shield", "ghost sm"), btn("Yakunlash", "flag", "ghost sm"))) },
+  { g: "C", n: 11, name: "Brigada davomati", note: "Kim keldi — bitta ro'yxatda. Face ID bilan kelganlar o'zi belgilanadi, qolganlarini bir bosishda belgilaysiz.", now: "Smena kartasi ichidagi davomat (brig-shift/b~)", src: "att.* · brigadeMembers — smenasiz",
+    main: `${back("Brigada davomati", pill("5-noyabr", "brand"))}${stats([["keldi", "10", "c-ok"], ["kechikdi", "1", "c-warn"], ["kelmadi", "1", "c-bad"]])}
+      ${card("Gazoblok-1 · 12 kishi", "", [
+        { ic: "face", tone: "ok", t: "Sardor Toshmatov", s: "Face ID · 07:41", r: "Keldi", rc: "c-ok" },
+        { ic: "face", tone: "ok", t: "Jasur Karimov", s: "Face ID · 07:45", r: "Keldi", rc: "c-ok" },
+        { ic: "check", tone: "ok", t: "Akmal Rahimov", s: "brigadir belgiladi · 07:50", r: "Keldi", rc: "c-ok" },
+        { ic: "clock", tone: "warn", t: "Farrux Ergashev", s: "Face ID · 08:24", r: "Kechikdi", rc: "c-warn" },
+        { ic: "x", tone: "bad", t: "Rustam Nazarov", s: "belgilanmagan · 08:30 dan keyin", r: "Kelmadi", rc: "c-bad" },
+        { ic: "users", tone: "gray", t: "Yana 7 kishi — keldi", s: "ro'yxatni ochish", chev: 1 }])}`,
+    dock: dock(btn("Yuz bilan belgilash", "face", "big ok"), btn("Qolganlari keldi", "check", "ghost sm")) },
+  { g: "C", n: 12, name: "Kun hisoboti", note: "Kun oxirida o'zi tuziladi — yopish tugmasi yo'q. «Ish tarixi»dagi kunni bosganda ochiladi.", now: "Smena hisoboti (brig-shift/<id>)", src: "buildShiftReport — kun 00:00–24:00",
+    main: `${back("4-noyabr hisoboti")}${hero({ cls: "okH", k: "Reja bajarildi", num: "60", unit: "/ 60 m³ · 100%" })}
+      ${kv("", [["Ishlagan xodim", "12 / 12", "c-ok"], ["To'xtash", "20 daq", "c-warn"], ["Brak", "0,6 m³ · 1%", "c-warn"], ["Muammo", "1 · hal qilingan"]])}
+      ${card("Topshiriqlar", "", [{ ic: "check", tone: "ok", t: "TB-112 · D500", s: "36 / 36 m³", r: "yopildi", rc: "c-ok" }, { ic: "clip", tone: "warn", t: "TB-118 · D500", s: "24 m³ shu kuni", r: "davom" }])}
+      ${call("Hisobot o'zi tuziladi va ishlab chiqarishga ko'rinadi — brigadir hech narsa yopmaydi.", "info", "info")}` },
+  { g: "C", n: 13, name: "Muammo kartasi", note: "Qancha vaqtdan beri to'xtab turgani katta raqamda. Hal bo'lsa — bitta yashil tugma.", now: "Muammo kartochkasi (brig-issue/<id>)", src: "erp/[key]/[id] · brigIssueDetail",
+    main: `${back("Uskuna nosozligi", pill("Ochiq", "bad"))}${hero({ cls: "badH", k: "To'xtab turibdi · 11:05 dan", num: "35", unit: "daqiqa" })}
+      ${kv("", [["Uskuna", "Kesish mashinasi"], ["Topshiriq", "TB-118 · D500"], ["Sabab", "pichoq tiqilib qoldi"], ["Bildirdi", "Bahodir Q."], ["Mas'ul", "Mexanik, ishlab chiqarish"]])}
+      <div class="ph">${I("camera")}1 ta rasm biriktirilgan</div>`,
+    dock: dock(btn("Hal qilindi", "check", "big ok")) },
+  { g: "C", n: 14, name: "Mening skladim", note: "Qo'ldagi xomashyo va undan nima chiqarish mumkinligi. Kam qolgan material qizil rangda, yonida «so'rash» tugmasi.", now: "Mening skladim (brig-stock)", src: "erp/[key]/[id] · brigStockDetail",
+    main: `${back("Mening skladim")}${hero({ k: "Qo'limda · 1-noyabrdan", num: "4,2", unit: "mln so'm", p: "6 xil xomashyo" })}
+      ${card("Shu bilan chiqara olaman", "", [{ ic: "box", tone: "ok", t: "Gazoblok D500 — 26 m³", s: "avval tugaydi: alyumin kukuni" }])}
+      ${card("Xomashyo", "", [{ t: "Sement M500", r: "2,1 t" }, { t: "Qum", r: "14 t" }, { t: "Ohak", r: "900 kg" }, { t: "Alyumin kukuni", s: "kam qoldi", r: "3 kg", rc: "c-bad" }, { t: "Gips", r: "120 kg" }])}`,
+    dock: dock(btn("Material so'rash", "box", "ghost")) },
+  { g: "C", n: 15, name: "Xodim (davomat)", note: "Brigada a'zosini bosganda. Holat — 4 ta katta tugma, yozish yo'q.", now: "Xodim kartasi (sex-emp/<id>)", src: "erp/[key]/[id] · sex-emp · att.*",
+    main: `${back("Farrux Ergashev")}<div class="card row" style="gap:10px"><div class="av lg">FE</div><div class="grow"><b style="font-size:13px;font-weight:900">Formovkachi</b><div class="muted" style="font-size:9.5px">Gazoblok-1 · +998 90 *** 12 34</div></div></div>
+      ${hero({ cls: "", k: "Bugun", h: "08:24 da keldi", p: "24 daqiqa kechikdi · Face ID" })}
+      <div class="q">Holatini o'zgartirish</div>
+      ${tiles([{ cls: "okT", ic: "check", t: "Keldi" }, { cls: "warnT", ic: "clock", t: "Kechikdi", on: 1 }, { cls: "badT", ic: "x", t: "Kelmadi" }, { cls: "grayT", ic: "logout", t: "Ketdi" }], { h: 70 })}
+      ${stats([["noyabr: keldi", "4"], ["kechikdi", "2", "c-warn"], ["kelmadi", "0"]])}` },
+
+  // ── D. Amal oynalari ──
+  { g: "D", n: 16, name: "Fakt yozish", note: "Raqam klaviaturasi pastdan chiqadi. «Hammasi» bir bosishda qoldiqni yozadi. Brak — oddiy Yo'q / Ha.", now: "task.progress formasi", src: "action task.progress",
+    main: sheet(`${back("TB-118")}${task("TB-118", "Qisman bajarildi", "warn", "bugun", "Gazoblok D500", 70, "warn", "<b>42 / 60 m³</b>", "")}`,
+      `<div class="sh-h"><div><span class="no">TB-118 · bugun</span><b>Gazoblok D500</b></div>${pill("qoldiq 18 m³", "warn")}</div>
+      <div class="disp"><b>12</b><span>m³</span></div>
+      <div class="chips sm" style="justify-content:center;flex-wrap:nowrap;gap:4px"><span class="chip" style="background:var(--okBg);color:var(--ok);border-color:#9fd9b9">${I("check")}Hammasi · 18</span><span class="chip">+1</span><span class="chip">+5</span><span class="chip">+10</span></div>
+      ${keys()}${segrow("Brak chiqdimi?", "Yo'q", "Ha")}${btn("Saqlash · 12 m³", "", "")}`) },
+  { g: "D", n: 17, name: "Ishni yakunlash", note: "Qoldiq 0 bo'lsa yoki «Yakunlash» bosilsa. Nima bo'lishi bir jumlada yozilgan.", now: "task.finish formasi", src: "action task.finish",
+    main: sheet(`${back("TB-118")}${hero({ k: "Gazoblok D500", num: "54", unit: "/ 60 m³", pct: 90 })}`,
+      `${center("flag", "ok", "TB-118 yakunlansinmi?", "Qolgan 6 m³ bajarildi deb yoziladi va topshiriq yopiladi.")}${segrow("Brak chiqdimi?", "Yo'q", "Ha")}
+      ${btn("Ha, yakunlash", "check", "big ok")}${btn("Orqaga", "", "ghost sm")}`) },
+  { g: "D", n: 18, name: "Muammo bildirish · 1-qadam", note: "Nima bo'ldi — 4 ta plitkadan biri. Kim hal qilishi plitkaning o'zida yozilgan.", now: "issue.equipment / material / staff / other (4 forma)", src: "action issue.*",
+    main: `${back("Nima bo'ldi?")}<p class="muted" style="margin:0;font-size:10px">Bitta plitkani bosing — yozish shart emas.</p>
+      ${tiles([{ cls: "badT", ic: "wrench", t: "Uskuna buzildi", s: "→ Mexanik" }, { cls: "warnT", ic: "box", t: "Material yo'q", s: "→ Sklad, Snabjeniye" }, { cls: "infoT", ic: "userplus", t: "Ishchi kerak", s: "→ Otdel kadr" }, { cls: "grayT", ic: "dots", t: "Boshqa", s: "→ Ishlab chiqarish" }], { h: 118 })}
+      ${card("Hozir ochiq", pill("2", "bad"), [{ ic: "wrench", tone: "bad", t: "Kesish mashinasi", s: "35 daq" }, { ic: "box", tone: "warn", t: "Alyumin kukuni kam", s: "3 soat" }])}` },
+  { g: "D", n: "18b", same: 1, name: "Muammo bildirish · 2-qadam", note: "Uskuna, topshiriq va vaqt — faqat tanlanadi. Uskunalar ro'yxati so'nggi 30 kunlik nosozliklardan olinadi.", now: "(o'sha 4 forma — matn maydonlari o'rniga)", src: "action issue.equipment",
+    main: `${back("Uskuna buzildi")}${chips("Qaysi uskuna?", ["Kesish mashinasi", "Vibrostol", "Aralashtirgich", "Avtoklav", "+ Boshqa"], [0])}
+      ${chips("Qaysi topshiriq?", ["TB-118", "TB-121", "Umumiy"], [0])}${chips("Qachondan beri to'xtagan?", ["Hozir", "15 daq", "30 daq", "1 soat+"], [2])}
+      <div class="ph">${I("camera")}Rasmga olish (ixtiyoriy)</div>`,
+    dock: dock(btn("Yuborish · Mexanik", "send", "big bad")) },
+  { g: "D", n: 19, name: "Brak qayd qilish", note: "Miqdor — «−/+» bilan, sabab — tayyor variantlardan. Rasm ixtiyoriy.", now: "task.defect / shift.defect", src: "action task.defect",
+    main: sheet(`${back("TB-118")}${hero({ k: "Gazoblok D500", num: "42", unit: "/ 60 m³", pct: 70 })}`,
+      `<div class="sh-h"><b>Brak qayd qilish</b>${pill("Gazoblok D500", "brand")}</div>
+      <div class="step-in"><i>${I("minus")}</i><b>0,6 <span>m³</span></b><i>${I("plus")}</i></div>
+      ${chips("Sababi", ["Yoriq / sinish", "O'lcham mos emas", "Mustahkamlik yetmadi", "Armatura chiqib qolgan", "Tashishda shikastlandi", "Boshqa"], [0], "sm")}
+      <div class="ph">${I("camera")}Rasm (ixtiyoriy)</div>${btn("Brakni yozish", "shield", "big warn")}`) },
+  { g: "D", n: 20, name: "Tasdiq oynasi", note: "Faqat muhim amalda: ishni boshlash va «qolganlari keldi». Shakli doim bir xil.", now: "task.start · att.all (smena ochish — olib tashlandi)", src: "action confirm",
+    main: sheet(`<h3 class="ttl">Topshiriqlar</h3>${task("TB-121", "Brigadaga berildi", "info", "ertaga", "Gazoblok D600 · 600×250×300", 0, "", "<b>0 / 24 m³</b>", `<span class="act okA">${I("play", "fill")}Boshlash</span>`)}`,
+      `${center("play", "ok", "TB-121 ni boshlaysizmi?", "Gazoblok D600 · 24 m³. Boshlangan vaqt topshiriqqa yoziladi.")}
+      ${btns(btn("Yo'q", "", "ghost"), btn("Ha, boshlash", "play", "ok"))}${hint("xuddi shu oyna: «Qolganlari keldi»")}`) },
+  { g: "D", n: 21, name: "Yuz skaneri (Face ID)", note: "Davomat uchun: o'zi kelganda va brigada a'zosini belgilashda. Bitta ko'rsatma, katta yozuv.", now: "att.face · o'z davomati (Keldim/Ketdim)", src: "erp/face · att.face · self-attendance", cls: "dark",
+    raw: `<div class="cam"><div class="top"><i>${I("x")}</i><span>Davomat · Face ID</span><i>${I("info")}</i></div>
+      <div class="oval">${I("user")}</div><div class="camtip">${I("right")}Boshingizni sekin o'ngga buring</div><div class="camdots"><i class="on"></i><i class="on"></i><i></i></div>
+      <div class="campers"><div class="av">ST</div><div><b>Sardor Toshmatov</b><small>Gazoblok-1 · 2/3 qadam</small></div></div></div>` },
+  { g: "D", n: 22, name: "Hal qilindi", note: "Muammo yopilganda. To'xtash vaqti o'zi hisoblab qo'yiladi — faqat tasdiqlash qoladi.", now: "issue.resolve formasi", src: "action issue.resolve",
+    main: sheet(`${back("Uskuna nosozligi")}${hero({ cls: "badH", k: "To'xtab turibdi", num: "35", unit: "daqiqa" })}`,
+      `<div class="sh-h"><b>Qanday hal bo'ldi?</b>${pill("Kesish mashinasi", "bad")}</div>
+      ${chips("", ["Ta'mirlandi", "Qism almashtirildi", "Material berildi", "Boshqa"], [0])}${chips("Jami to'xtash", ["30 daq", "35 daq", "45 daq", "1 soat+"], [1])}
+      ${field("", "", { ph: "Izoh (ixtiyoriy)" })}${btn("Hal qilindi", "check", "big ok")}`) },
+
+  // ── E. Shaxsiy bo'limlar ──
+  { g: "E", n: 24, name: "Mening davomatim", note: "Oy kalendari ranglarda — ish kunlari ham shu yerda, alohida grafik sahifasi kerak emas. Pastda — «Ketdim».", now: "Mening davomatim + Smena grafigim", src: "erp/davomatim · selfAttendance",
+    main: `${back("Mening davomatim")}<div class="row" style="justify-content:space-between"><b style="font-size:13px;font-weight:900">Noyabr 2026</b><span class="row muted">${I("left")}${I("right")}</span></div>
+      ${stats([["keldi", "4", "c-ok"], ["kechikdi", "1", "c-warn"], ["kelmadi", "0"]])}${cal()}
+      ${card("", "", [{ ic: "face", tone: "ok", t: "Bugun 07:48 da keldingiz", s: "Face ID · zavod hududida" }])}`,
+    dock: dock(btn("Ketdim", "logout", "big inv"), hint("ishdan ketayotganda bosing — yuz bilan tasdiqlanadi")) },
+  { g: "E", n: 25, name: "Ish haqim", note: "Oyni tanlang — varaq shu yerda. Ro'yxat va alohida karta o'rniga bitta sahifa.", now: "Ish haqim (ro'yxat) + oylik varaq (karta)", src: "list oyligim + detail",
+    main: `${back("Ish haqim")}${chips("", ["Oktabr", "Sentabr", "Avgust"], [0], "sm")}
+      ${hero({ cls: "okH", k: "Qo'lga tegadi · oktabr", num: "4 850 000", unit: "so'm" })}
+      ${kv("Hisob", [["Hisoblandi", "5 600 000"], ["Ishlagan kun", "24 / 26"], ["Ustama (reja 100%)", "+300 000", "c-ok"], ["Avans", "−1 000 000", "c-bad"], ["Ushlanma", "−50 000", "c-bad"]])}` },
+  { g: "E", n: 27, name: "Arizalarim", note: "Holat rangda. Qator ochilganda bosqichlari ko'rinadi va «Bekor qilish» mumkin. Alohida karta kerak emas.", now: "Arizalarim (ro'yxat) + ariza kartasi", src: "list arizalarim + detail · hrreq.cancel",
+    main: `${back("Arizalarim")}<div class="card"><div class="ch"><b>Avans · 1 000 000 so'm</b>${pill("Kutilmoqda", "warn")}</div>
+        <div class="tl"><i class="ok"></i>Yuborildi<span class="ln ok"></span><i class="on"></i>Ko'rilmoqda<span class="ln"></span><i></i>Javob</div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><span class="muted" style="font-size:9.5px">2-noy · Otdel kadr</span><span class="lnk" style="color:var(--bad)">Bekor qilish</span></div></div>
+      ${card("Oldingilar", "", [{ ic: "wallet", tone: "ok", t: "Avans · 500 000 so'm", s: "28-okt", r: "Tasdiqlandi", rc: "c-ok" }, { ic: "clock", tone: "ok", t: "Kechikish sababi", s: "3-noy · avtobus", r: "Qabul qilindi", rc: "c-ok" }, { ic: "info", tone: "bad", t: "Kelmaslik sababi", s: "15-okt", r: "Rad etildi", rc: "c-bad" }])}`,
+    dock: dock(btn("Ariza yuborish", "plus", "big")) },
+  { g: "E", n: 28, name: "Ariza yuborish", note: "Faqat 4 tur: avans, kechikish va kelmaslik sababi, boshqa. Summa — tayyor variantlar.", now: "Ariza yuborish formasi", src: "new ariza",
+    main: `${back("Ariza")}${tiles([{ cls: "brandT", ic: "wallet", t: "Avans", on: 1 }, { cls: "grayT", ic: "clock", t: "Kechikish sababi" }, { cls: "grayT", ic: "info", t: "Kelmaslik sababi" }, { cls: "grayT", ic: "dots", t: "Boshqa" }], { h: 64 })}
+      ${field("Summa", "500 000 so'm", { ic: "wallet", cls: "focus" })}${chips("", ["300 000", "500 000", "1 000 000"], [1], "sm")}${field("Izoh (ixtiyoriy)", "", { ph: "masalan: oilaviy sabab" })}`,
+    dock: dock(btn("Yuborish · Otdel kadr", "send", "big")) },
+  { g: "E", n: 29, name: "Vazifalar va cheklist", note: "Kunlik cheklist va vazifalar bitta sahifada. Belgilash — bitta bosish.", now: "Vazifalarim + vazifa kartasi + Bugungi cheklist", src: "list vazifalarim, cheklistim · wtask.*",
+    main: `${back("Vazifalar")}${flt([["Cheklist", "3/5"], ["Vazifalar", "2"]])}
+      <div class="card"><div class="ch"><b>Bugungi cheklist</b>${pill("3 / 5", "ok")}</div>${chk("Uskunani ishga tekshirish", 1)}${chk("Xavfsizlik yo'riqnomasi", 1)}${chk("Material qoldig'ini ko'rish", 1)}${chk("Ish joyini tozalash", 0)}${chk("Bajarilgan ishni yozish", 0)}</div>
+      <div class="card"><div class="ch"><b>Vazifa · 7-noyabrgacha</b>${pill("Jarayonda", "info")}</div><div class="muted" style="font-size:10px;margin:2px 0 7px">Yangi ishchi Islom B. ga kesish mashinasini o'rgatish</div>${btns(btn("Bajarildi", "check", "ok sm"), btn("Izoh", "msg", "ghost sm"))}</div>` },
+  { g: "E", n: 30, name: "Rivojlanish", note: "KPI, kurslar, moslashuv va suhbatlar — 4 ta bo'lim bitta sahifada.", now: "KPI'm + Kurslarim + Moslashuv + Suhbatlarim", src: "list kpim, kurslarim, moslashuvim, suhbatlarim",
+    main: `${back("Rivojlanish")}${hero({ cls: "", k: "KPI · oktabr", num: "92", unit: "ball / 100", pct: 92, p: "reja 98% · brak 1,2% · kechikish 1 marta" })}
+      ${card("Kurslar", "", [{ ic: "book", tone: "prod", t: "Mehnat xavfsizligi", s: "2 / 3 dars", r: "67%" }, { ic: "book", tone: "ok", t: "Gazoblok texnologiyasi", s: "tugallangan", r: "✓", rc: "c-ok" }])}
+      ${card("Suhbat va moslashuv", "", [{ ic: "users", tone: "info", t: "1:1 suhbat — ishlab chiqarish boshlig'i", s: "12-noyabr, 10:00", r: "rejada" }, { ic: "check", tone: "ok", t: "Moslashuv dasturi", s: "2025-yil, 14/14 kun", r: "✓", rc: "c-ok" }])}` },
+
+  // ── F. Sozlamalar ──
+  { g: "F", n: 34, name: "Sozlamalar", note: "Uchta guruh, har birida 2 qator. Pastda — «Chiqish».", now: "Sozlamalar", src: "settings",
+    main: `${back("Sozlamalar")}${card("Ko'rinish", "", [{ ic: "globe", tone: "info", t: "Til", r: "O'zbekcha", chev: 1 }, { ic: "moon", tone: "prod", t: "Mavzu", r: "Yorug'", chev: 1 }])}
+      ${card("Xavfsizlik", "", [{ ic: "lock", tone: "warn", t: "PIN kod", r: "yoqilgan", rc: "c-ok", chev: 1 }, { ic: "key", tone: "brand", t: "Parolni o'zgartirish", chev: 1 }])}
+      ${card("Boshqa", "", [{ ic: "bell", tone: "brand", t: "Bildirishnomalar", r: "3 yangi", chev: 1 }, { ic: "help", tone: "gray", t: "Yordam markazi", r: "insof-erp.uz", chev: 1 }])}`,
+    dock: dock(btn("Chiqish", "logout", "ghost c-bad"), `<div class="ver">Insof ECO 1.1.0</div>`) },
+  { g: "F", n: 35, name: "Bildirishnomalar", note: "Kunlar bo'yicha. Har birini bosganda o'sha kartochka ochiladi.", now: "Bildirishnomalar", src: "erp/bildirishnomalar",
+    main: `${back("Bildirishnomalar", `<span class="lnk">${I("check2")}</span>`)}
+      ${card("Bugun", "", [{ ic: "check", tone: "ok", t: "Kesish mashinasi ta'mirlandi", s: "Mexanik Anvar · 11:40", dot: 1 }, { ic: "clip", tone: "brand", t: "Yangi topshiriq TB-121", s: "D600 · 24 m³ · 09:02", dot: 1 }, { ic: "box", tone: "warn", t: "Alyumin kukuni ertaga keladi", s: "Snabjeniye · 08:50", dot: 1 }])}
+      ${card("Kecha", "", [{ ic: "check", tone: "ok", t: "TB-112 yopildi — qabul qilindi", s: "Ishlab chiqarish · 18:05" }, { ic: "wallet", tone: "ok", t: "Avans arizasi tasdiqlandi", s: "Otdel kadr · 16:20" }])}` },
+  { g: "F", n: 36, name: "Parolni o'zgartirish", note: "Tasdiq kodi Telegram'ga keladi. Saqlangach boshqa telefonlardan chiqib ketadi.", now: "Parol / login almashtirish", src: "(auth)/change-password",
+    main: `${back("Parolni o'zgartirish")}${call("Tasdiq kodi Telegram'ga keladi: +998 90 *** 45 67", "info", "send")}
+      ${field("Login", "bahodir.q", { ic: "user", hint: "o'zgartirmasangiz shunday qoladi" })}${field("Yangi parol", "••••••••••", { ic: "lock", cls: "focus" })}
+      ${field("Telegram kodi", "", { ic: "key", ph: "6 xonali kod", right: `<span class="lnk">Yuborish</span>` })}`,
+    dock: dock(btn("Saqlash", "check", "big")) },
+];
+
+// ───────── chizish ─────────
+const TABS = [["Bugun", "home"], ["Topshiriqlar", "clip"], ["Men", "user"]];
+const phone = (s) => {
+  const tabs = s.tabs != null ? `<nav class="tabs">${TABS.map(([l, ic], i) => `<div class="tab${i === s.tabs ? " on" : ""}"><i>${I(ic)}</i>${l}</div>`).join("")}</nav>` : "";
+  const inner = s.raw ?? (s.main.startsWith('<div class="main">') ? s.main : `<div class="main">${s.main}</div>`) + (s.dock || "");
+  return `<div class="phone"><div class="scr ${s.cls || ""}" ${s.tabs != null ? "data-tabs" : ""}>
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+    ${inner}${tabs}<div class="homebar"></div></div></div>`;
+};
+const id = (n) => `p${n}`;
+// Ko'rinadigan raqam — tartib bo'yicha; `same` — oldingi sahifaning 2-qadami (masalan 18b)
+const NUM = {};
+{ let k = 0; for (const s of S) { if (!s.same) k++; NUM[s.n] = String(k).padStart(2, "0") + (s.same ? "b" : ""); } }
+G.forEach((g) => { g.soda = S.filter((s) => s.g === g.id && !s.same).length; });
+
+document.getElementById("groups").innerHTML = G.map((g) => `
+  <section class="grp" id="g${g.id}">
+    <div class="grp-head"><div><h2><span class="n">${g.id}</span>${g.title}</h2><p>${g.desc}</p></div><span class="tag">hozir ${g.now} → sodda ${g.soda}</span></div>
+    <div class="grid">${S.filter((s) => s.g === g.id).map((s) => `
+      <div class="slot" id="${id(s.n)}"><div class="cap"><span class="num">${NUM[s.n]}</span><b>${s.name}</b></div>${phone(s)}
+        <p class="note">${s.note}</p><p class="now">Hozir: <b>${s.now}</b></p></div>`).join("")}</div>
+  </section>`).join("");
+
+const nowTotal = G.reduce((a, g) => a + g.now, 0), sodaTotal = G.reduce((a, g) => a + g.soda, 0);
+document.getElementById("count").innerHTML = G.map((g) => `<div><small>${g.id} · ${g.title}</small><b>${g.now === g.soda ? g.now : `<s>${g.now} →</s> ${g.soda}`}</b></div>`).join("")
+  + `<div class="tot"><small>Jami sahifa</small><b>${nowTotal} → ${sodaTotal}</b></div>`;
+
+const F = (n, t) => `<a href="#${id(n)}"><span>${NUM[n]}</span>${t}</a>`;
+document.getElementById("flow").innerHTML = [
+  F(1, "Boshlash"), "<em>→</em>", F(2, "Kirish"), "<em>→ birinchi marta →</em>", F(3, "O'z paroli"), "<em>→</em>", F(4, "PIN"), "<em>→</em>", F(5, "Bugun"),
+  '<span class="br"></span>', "<em>Ertalab:</em>", F(11, "Brigada davomati"), "<em>→</em>", F(21, "Yuz skaneri"),
+  '<span class="br"></span>', "<em>Ish:</em>", F(6, "Topshiriqlar"), "<em>→</em>", F(20, "Ishni boshlash"), "<em>→</em>", F(10, "Topshiriq"), "<em>→</em>", F(16, "Fakt"), "<em>→</em>", F(17, "Yakunlash"),
+  '<span class="br"></span>', "<em>Muammo:</em>", F(18, "Nima bo'ldi"), "<em>→</em>", F("18b", "Tafsilot"), "<em>→</em>", F(13, "Muammo kartasi"), "<em>→</em>", F(22, "Hal qilindi"), "<em>·</em>", F(19, "Brak"),
+  '<span class="br"></span>', "<em>Kun oxiri:</em>", F(12, "Kun hisoboti — o'zi tuziladi"), "<em>→</em>", F(8, "Ish tarixi"),
+  '<span class="br"></span>', "<em>Men:</em>", F(9, "Men"), "<em>→</em>", F(24, "Davomatim"), F(25, "Ish haqim"), F(27, "Arizalar"), F(29, "Vazifalar"), F(30, "Rivojlanish"), "<em>→</em>", F(34, "Sozlamalar"), "<em>→ Chiqish</em>",
+].join("");
+
+document.getElementById("map").innerHTML = S.map((s) => `<tr><td>${NUM[s.n]}</td><td class="${/\+/.test(s.now) ? "m" : ""}">${s.name}</td><td>${s.now}</td><td><code>${s.src}</code></td></tr>`).join("");
+</script>
+</body>
+</html>

@@ -256,7 +256,34 @@ export interface ErpHomeData { role: ErpRole; roleLabel: string; fullName: strin
    * «Davomat» tugmasi — hamma xodimga: "Men" (o'z Keldim/Ketdim), Jadval (faqat ko'rish), ruxsat bo'lsa Skaner / Yuzlar.
    * Eski ERP'da yo'q — u holda `faceAttendance` dan olinadi (`attendanceAccessOf`).
    */
-  attendance?: ErpAttendanceAccess }
+  attendance?: ErpAttendanceAccess;
+  /** Brigadir «Bugun» sahifasi — smenasiz (ERP `lib/mobile/brigadier.ts` → `brigadeToday`). Eski ERP'da yo'q — umumiy bosh sahifa. */
+  brigadeToday?: ErpBrigadeToday | null }
+
+/** Brigadaning faol topshirig'i — raqamlar son ko'rinishida (progress, raqam klaviaturasi), `unit` tayyor yorliq ("m³", "dona"). */
+export interface ErpBrigTask {
+  id: string; taskNo: string; product: string; productId: string; unit: string;
+  qty: number; done: number; left: number; pct: number;
+  due: string; late: boolean; dueToday: boolean; customer: string;
+  phase: string; tone: Tone; started: boolean; blocked: boolean; urgent: boolean;
+}
+export interface ErpBrigMember { id: string; fullName: string; position: string; label: string; tone: Tone; marked: boolean; present: boolean; late: boolean; face: boolean }
+/** `ref` (`b~<brigadeId>`) — davomat, muammo va brak amallari topshiriqsiz shu id bilan yuboriladi. */
+export interface ErpBrigadeToday {
+  brigade: { id: string; name: string };
+  ref: string;
+  now: ErpBrigTask | null;
+  tasks: ErpBrigTask[];
+  done: { done: number; total: number; label: string };
+  issues: { open: number; rows: ErpRow[] };
+  attendance: { present: number; late: number; absent: number; notMarked: number; total: number; members: ErpBrigMember[] };
+  defect: { text: string; pct: string | null };
+  /** Bugungi reja / fakt (asosiy birlik, `unit` — tayyor yorliq); topshiriq bo'lmasa null. Eski ERP bermaydi. */
+  day?: { plan: number; fact: number; unit: string } | null;
+  equipment: string[];
+  products: { id: string; name: string; unit: string }[];
+  defectReasons: string[];
+}
 
 /** Davomat ekrani tablari: skaner, yuzlarni ro'yxatga olish, umumiy jadval; `linked` — login xodim kartasiga bog'langan. */
 export interface ErpAttendanceAccess { canScan: boolean; canEnroll: boolean; canViewTable: boolean; linked: boolean }

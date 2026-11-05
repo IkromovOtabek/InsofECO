@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brigada kabineti shablonlari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sarlavha + hozirgi muammolar → 5 ta shablon (har birida 3 telefon + izoh) → solishtiruv jadvali → tavsiya */
+:root{
+  --pg-bg:#f1f2f7; --pg-surf:#ffffff; --pg-ink:#12162b; --pg-mut:#5f6580; --pg-line:#dcdfeb; --pg-acc:#3d50d6; --pg-chip:#e6e9f5;
+  --pg-ok:#12844f; --pg-bad:#c42f26;
+  --f-ui:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#0c0e18;--pg-surf:#151827;--pg-ink:#eceefa;--pg-mut:#9ba1bd;--pg-line:#272b40;--pg-acc:#9aa8ff;--pg-chip:#1d2135;--pg-ok:#5fd39a;--pg-bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#0c0e18;--pg-surf:#151827;--pg-ink:#eceefa;--pg-mut:#9ba1bd;--pg-line:#272b40;--pg-acc:#9aa8ff;--pg-chip:#1d2135;--pg-ok:#5fd39a;--pg-bad:#ff8a80;color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--pg-bg);color:var(--pg-ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 72px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-acc)}
+h1{font-size:clamp(26px,3.6vw,40px);line-height:1.1;margin:6px 0 10px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.lede{color:var(--pg-mut);max-width:68ch;margin:0}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.jump a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--pg-surf);border:1px solid var(--pg-line);color:var(--pg-ink);text-decoration:none;font-size:13px;font-weight:600}
+.jump a span{font-family:var(--f-mono);font-size:11px;background:var(--pg-ink);color:var(--pg-surf);border-radius:999px;padding:1px 7px}
+.jump a:hover{border-color:var(--pg-acc)}
+
+.pain{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:4px}
+.pain div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px;min-width:0}
+.pain b{display:block;font-size:14px;margin-bottom:4px}
+.pain p{margin:0;font-size:13.5px;color:var(--pg-mut)}
+.pain code,.notes code,.rec code{font-family:var(--f-mono);font-size:12px;background:var(--pg-chip);border-radius:5px;padding:1px 5px;overflow-wrap:anywhere}
+h2.sec{font-size:22px;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+
+.tpl{display:flex;flex-direction:column;gap:16px;padding-top:28px;border-top:1px solid var(--pg-line);scroll-margin-top:16px}
+.tpl-head{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;justify-content:space-between}
+.tpl-head>div{min-width:0}
+.tpl h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tpl h2 .n{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--pg-surf);background:var(--pg-ink);border-radius:8px;padding:2px 8px}
+.tpl-head p{margin:6px 0 0;color:var(--pg-mut);max-width:64ch;font-size:14px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--pg-chip);color:var(--pg-ink);white-space:nowrap}
+.tag.s{background:color-mix(in srgb,var(--pg-ok) 16%,transparent);color:var(--pg-ok)}
+.tag.l{background:color-mix(in srgb,var(--pg-bad) 14%,transparent);color:var(--pg-bad)}
+.rail{display:flex;gap:24px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
+.slot{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;scroll-snap-align:start}
+.slot b{font-size:13px}
+.slot span{font-size:12px;color:var(--pg-mut);font-weight:400}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.notes div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px;min-width:0}
+.notes h3{margin:0 0 8px;font-size:14px}
+.notes ul{margin:0;padding-left:18px;color:var(--pg-mut);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.notes em{font-style:normal;color:var(--pg-ink);font-weight:600}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--pg-line);border-radius:14px;background:var(--pg-surf)}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--pg-line);vertical-align:top}
+th{font-size:12px;font-weight:700;color:var(--pg-mut);text-transform:uppercase;letter-spacing:.04em;background:var(--pg-chip)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700}
+td.now{color:var(--pg-bad)}
+td.best{color:var(--pg-ok);font-weight:700}
+.fn{font-size:12.5px;color:var(--pg-mut);margin:8px 2px 0}
+.rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.rec div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:16px;min-width:0}
+.rec div.main{border-color:var(--pg-acc);box-shadow:0 0 0 1px var(--pg-acc)}
+.rec h3{margin:0 0 6px;font-size:15px}
+.rec p,.rec li{margin:0;font-size:13.5px;color:var(--pg-mut)}
+.rec ol{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.foot-note{font-size:12.5px;color:var(--pg-mut)}
+
+/* ───────── telefon (ilova palitrasi — `apps/mobile/src/design/tokens.ts`, light) ───────── */
+.phone{width:272px;height:588px;border-radius:44px;padding:8px;background:#0b0d0f;box-shadow:0 22px 44px -22px #0b134180,inset 0 0 0 1px #2b3036}
+.scr{
+  --bg:#f5f6fb;--surf:#fff;--ink:#0e1330;--mut:#646b8a;--line:#e4e7f1;
+  --brand:#5266ee;--brandSoft:#e2e5fd;--brandInk:#0b1c8e;--inv:#0b1341;--acc:#ff7a52;
+  --ok:#12844f;--okSolid:#16a34a;--okBg:#e2f5ea;--warn:#9a5800;--warnSolid:#f59e0b;--warnBg:#fff1d9;
+  --bad:#c42f26;--badSolid:#e5483d;--badBg:#fde6e4;--info:#0a6f9f;--infoBg:#e6f4fb;--prod:#7523ed;--prodBg:#f2ecff;
+  position:relative;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:600 11px/1.35 "Nunito",ui-sans-serif,system-ui,sans-serif;display:flex;flex-direction:column;color-scheme:light}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:80px;height:23px;border-radius:12px;background:#000;z-index:8}
+.sb{position:absolute;top:0;left:0;right:0;height:40px;display:flex;justify-content:space-between;align-items:center;padding:3px 24px 0;font-size:11px;font-weight:800;color:var(--ink);z-index:7;font-family:var(--f-ui)}
+.sb .r{display:flex;gap:4px;align-items:center}
+.sb .sig{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.sb .sig i{width:2.5px;background:currentColor;border-radius:1px}
+.sb .bat{width:20px;height:10px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat::after{content:"";position:absolute;inset:1px 5px 1px 1px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;border-radius:3px;background:var(--ink);opacity:.85;z-index:9}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ic.fill{fill:currentColor;stroke:none}
+
+.main{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:9px;padding:44px 12px 8px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--mut)}
+.row{display:flex;align-items:center;gap:6px}
+.hdr{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+.av{width:34px;height:34px;border-radius:50%;background:var(--brandSoft);color:var(--brandInk);display:grid;place-items:center;font-weight:900;font-size:11px;flex:0 0 auto}
+.who{flex:1;min-width:0}
+.who small{display:block;font:600 8.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.who b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bell{width:32px;height:32px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center;position:relative;flex:0 0 auto}
+.bell::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--badSolid);box-shadow:0 0 0 1.5px var(--surf)}
+.back{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.back i{width:30px;height:30px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center}
+.back b{font-size:15px;font-weight:900}
+h3.ttl{margin:0;font-size:17px;font-weight:900;letter-spacing:-.01em}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:10px 12px;flex:0 0 auto}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.ch b{font-size:12px;font-weight:900}
+.li{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.ch+.li{border-top:0}
+.li b{display:block;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li small{display:block;font-size:9px;color:var(--mut)}
+.li .r{font-weight:900;font-size:10.5px;white-space:nowrap}
+.it{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto}
+.t-brand{background:var(--brandSoft);color:var(--brandInk)}
+.t-ok{background:var(--okBg);color:var(--ok)}
+.t-warn{background:var(--warnBg);color:var(--warn)}
+.t-bad{background:var(--badBg);color:var(--bad)}
+.t-info{background:var(--infoBg);color:var(--info)}
+.t-prod{background:var(--prodBg);color:var(--prod)}
+.c-bad{color:var(--bad)!important}
+.c-ok{color:var(--ok)!important}
+.c-warn{color:var(--warn)!important}
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;font-size:8.5px;font-weight:900;white-space:nowrap}
+.bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:4px}
+.bar.ok i{background:var(--okSolid)} .bar.bad i{background:var(--badSolid)} .bar.warn i{background:var(--warnSolid)}
+
+.scr:not([data-tabs]) .dock{padding-bottom:22px}
+.dock{flex:0 0 auto;padding:6px 12px 10px;display:flex;flex-direction:column;gap:5px;position:relative;z-index:2}
+.hint{font-size:9px;color:var(--mut);text-align:center}
+.btn{height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:900;font-size:13px;color:#fff;background:var(--brand);box-shadow:0 10px 20px -10px var(--brand);flex:0 0 auto}
+.btn .ic{width:16px;height:16px}
+.btn.big{height:50px;font-size:14px;border-radius:16px}
+.btn.ok{background:var(--okSolid);box-shadow:0 10px 20px -10px var(--okSolid)}
+.btn.bad{background:var(--badSolid);box-shadow:0 10px 20px -10px var(--badSolid)}
+.btn.ghost{background:var(--surf);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.sm{height:36px;font-size:11.5px;border-radius:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+
+.tabs{flex:0 0 auto;height:58px;background:var(--surf);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px 14px;position:relative;z-index:2}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8.5px;font-weight:800;color:var(--mut);min-width:44px}
+.tab i{width:32px;height:22px;border-radius:9px;display:grid;place-items:center}
+.tab .ic{width:15px;height:15px}
+.tab.on{color:var(--brand)}
+.tab.on i{background:var(--brandSoft)}
+
+/* 01 — qadamlar */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);position:relative;flex:0 0 auto}
+.steps::before{content:"";position:absolute;top:10px;left:12.5%;right:12.5%;height:2px;background:var(--line);border-radius:2px}
+.steps .fill{position:absolute;top:10px;left:12.5%;height:2px;background:var(--okSolid);border-radius:2px}
+.step{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;font-weight:800;color:var(--mut)}
+.step b{width:21px;height:21px;border-radius:50%;display:grid;place-items:center;background:var(--surf);border:1.5px solid var(--line);font-size:9.5px;font-weight:900}
+.step b .ic{width:11px;height:11px;stroke-width:3}
+.step.done b{background:var(--okSolid);border-color:var(--okSolid);color:#fff}
+.step.on{color:var(--ink)}
+.step.on b{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 0 4px var(--brandSoft)}
+.now{background:var(--inv);color:#fff;border-radius:20px;padding:13px 14px;position:relative;overflow:hidden;flex:0 0 auto}
+.now::before{content:"";position:absolute;inset:0;background-image:linear-gradient(#ffffff0d 1px,transparent 1px),linear-gradient(90deg,#ffffff0d 1px,transparent 1px);background-size:14px 14px}
+.now>*{position:relative}
+.now .k{font:600 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#aab4ff}
+.now h4{margin:4px 0;font-size:19px;font-weight:900;letter-spacing:-.01em;line-height:1.1}
+.now p{margin:0;font-size:10px;color:#c9cff5}
+.now .num{display:flex;align-items:baseline;gap:4px;margin:6px 0 6px}
+.now .num b{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.now .num span{font-size:12px;color:#c9cff5}
+.now .bar{background:#ffffff26;margin-bottom:6px}
+.now .bar i{background:#8fa0ff}
+.now .bgic{position:absolute;right:-10px;bottom:-14px;width:78px;height:78px;color:#ffffff14}
+.crew{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px;margin-top:4px}
+.mem{display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap;font-size:8.5px;font-weight:800;color:var(--mut);text-align:center}
+.mem .a{position:relative;width:35px;height:35px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:11px;background:var(--brandSoft);color:var(--brandInk)}
+.mem .a .m{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--surf);background:var(--okSolid);color:#fff}
+.mem .a .m .ic{width:8px;height:8px;stroke-width:3.5}
+.mem .a .fc{position:absolute;left:-3px;top:-3px;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--surf);background:var(--prod);color:#fff}
+.mem .a .fc .ic{width:8px;height:8px;stroke-width:2.6}
+.mem.x .a{background:var(--badBg);color:var(--bad)}
+.mem.x .a .m{background:var(--badSolid)}
+.mem.late .a .m{background:var(--warnSolid)}
+.mem.x{color:var(--bad)}
+.legend{display:flex;gap:7px;white-space:nowrap;font-size:8px;color:var(--mut);margin-top:6px}
+.legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:0}
+.tip{display:flex;gap:8px;align-items:center;background:var(--prodBg);color:var(--prod);border-radius:12px;padding:8px 10px;font-size:9.5px;flex:0 0 auto}
+
+/* 02 — tez fakt */
+.task{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:10px 11px;display:flex;flex-direction:column;gap:6px;flex:0 0 auto;position:relative}
+.task .t1{display:flex;align-items:center;gap:6px}
+.no{font:600 9px var(--f-mono);color:var(--mut);white-space:nowrap}
+.task h5{margin:0;font-size:12.5px;font-weight:900}
+.task .t3{display:flex;align-items:center;gap:8px}
+.task .t3 .meta{flex:1;font-size:9px;color:var(--mut);min-width:0}
+.task .t3 .meta b{color:var(--ink);font-size:11px;font-weight:900}
+.act{height:32px;padding:0 12px;border-radius:11px;background:var(--brand);color:#fff;font-weight:900;font-size:11px;display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;box-shadow:0 8px 14px -8px var(--brand)}
+.act .ic{width:13px;height:13px;stroke-width:2.6}
+.act.okA{background:var(--okSolid);box-shadow:0 8px 14px -8px var(--okSolid)}
+.act.dis{background:var(--bg);color:var(--mut);border:1px dashed #c9cde0;box-shadow:none}
+.task.flash{border-color:var(--okSolid);box-shadow:0 0 0 3px var(--okBg)}
+.sumchip{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:9.5px;font-weight:800}
+.dim{position:absolute;inset:0;background:#0b134173;z-index:3}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surf);border-radius:24px 24px 0 0;padding:8px 14px 20px;box-shadow:0 -12px 30px -12px #0b134166;z-index:4;display:flex;flex-direction:column;gap:7px}
+.grab{width:36px;height:4px;border-radius:3px;background:var(--line);margin:0 auto 1px}
+.sh-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sh-h b{display:block;font-size:13px;font-weight:900}
+.disp{display:flex;align-items:baseline;justify-content:center;gap:5px;padding:2px 0}
+.disp b{font-size:40px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.disp b::after{content:"";display:inline-block;width:2px;height:30px;background:var(--brand);margin-left:2px;vertical-align:-3px}
+.disp span{font-size:15px;color:var(--mut);font-weight:800}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chips.c{justify-content:center;flex-wrap:nowrap;gap:4px}
+.chips.c .chip{padding:0 8px}
+.chip{height:27px;padding:0 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);display:inline-flex;align-items:center;gap:4px;font-weight:800;font-size:10.5px;white-space:nowrap}
+.chip .ic{width:11px;height:11px;stroke-width:2.6}
+.chip.on{background:var(--brandSoft);border-color:var(--brand);color:var(--brandInk)}
+.chip.okC{background:var(--okBg);border-color:#9fd9b9;color:var(--ok)}
+.chip.lg{height:33px;padding:0 10px;font-size:11px;border-radius:12px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.key{height:34px;border-radius:11px;background:var(--bg);display:grid;place-items:center;font-size:16px;font-weight:800}
+.key .ic{width:17px;height:17px}
+.segrow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:10.5px}
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:2px}
+.seg span{padding:5px 12px;border-radius:8px;font-weight:800;font-size:10px;color:var(--mut)}
+.seg span.on{background:var(--surf);color:var(--ink);box-shadow:0 1px 3px #0b134122}
+.toast{position:absolute;left:10px;right:10px;bottom:66px;background:var(--inv);color:#fff;border-radius:14px;padding:9px 9px 9px 11px;display:flex;align-items:center;gap:8px;z-index:4;box-shadow:0 14px 24px -12px #0b1341}
+.toast .ok{width:24px;height:24px;border-radius:50%;background:var(--okSolid);display:grid;place-items:center;flex:0 0 auto}
+.toast .ok .ic{width:12px;height:12px;stroke-width:3}
+.toast b{display:block;font-size:10.5px}
+.toast small{display:block;font-size:8.5px;color:#c9cff5}
+.toast .u{margin-left:auto;background:#ffffff1f;border-radius:9px;padding:6px 8px;font-weight:900;font-size:9.5px;color:#d3d8ff;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.toast .u .ic{width:11px;height:11px}
+
+/* 03 — katta plitkalar */
+.tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;flex:1;min-height:0}
+.tile{border-radius:20px;padding:11px 12px;display:flex;flex-direction:column;justify-content:space-between;position:relative;min-height:0;border:1px solid transparent}
+.tile .ti{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:var(--surf)}
+.tile .ti .ic{width:22px;height:22px}
+.tile b{display:block;font-size:15px;font-weight:900;line-height:1.1}
+.tile small{display:block;font-size:9px;font-weight:800;opacity:.85;margin-top:2px}
+.tile.brandT{background:var(--brand);color:#fff;box-shadow:0 14px 22px -14px var(--brand)}
+.tile.brandT .ti{background:#ffffff2e}
+.tile.invT{background:var(--inv);color:#fff}
+.tile.invT .ti{background:#ffffff1f}
+.tile.okT{background:var(--okBg);color:var(--ok);border-color:#c4ebd4}
+.tile.badT{background:var(--badBg);color:var(--bad);border-color:#f8cdc8}
+.tile.warnT{background:var(--warnBg);color:var(--warn);border-color:#f6ddb0}
+.tile.infoT{background:var(--infoBg);color:var(--info);border-color:#c5e5f4}
+.tile.grayT{background:var(--surf);color:var(--ink);border-color:var(--line)}
+.tile.grayT .ti{background:var(--bg)}
+.tile .badge{position:absolute;top:10px;right:10px;min-width:20px;height:20px;border-radius:10px;background:var(--badSolid);color:#fff;font-weight:900;font-size:10px;display:grid;place-items:center;padding:0 5px}
+.tile .to{font-size:8.5px;font-weight:800;opacity:.8;display:flex;align-items:center;gap:3px;margin-top:4px}
+.tile .to .ic{width:9px;height:9px}
+.slim{display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:8px 11px;flex:0 0 auto}
+.slim .bar{flex:1}
+.slim b{font-size:12px;font-weight:900;white-space:nowrap}
+.q{font-size:11px;font-weight:900;margin:2px 0 -2px}
+.ph{height:50px;border-radius:12px;border:1.5px dashed #c9cde0;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--mut);font-weight:800;flex:0 0 auto;background:var(--surf)}
+.ph .ic{width:16px;height:16px}
+
+/* 04 — svayp */
+.flt{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;flex:0 0 auto}
+.flt span{height:38px;border-radius:12px;background:var(--surf);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:8.5px;white-space:nowrap;color:var(--mut)}
+.flt span i{order:-1;font-style:normal;font-size:13px;font-weight:900;line-height:1.1;color:var(--ink)}
+.flt span.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.flt span.on i{color:#fff}
+.flt span.bad i{color:var(--bad)}
+.swhint{display:flex;justify-content:space-between;font-size:9px;color:var(--mut);font-weight:800;padding:0 2px;flex:0 0 auto}
+.swhint span{display:flex;align-items:center;gap:3px}
+.swhint .ic{width:11px;height:11px}
+.swr{position:relative;border-radius:14px;overflow:hidden;flex:0 0 auto}
+.under{position:absolute;inset:0;display:flex}
+.under .l{background:var(--okSolid);color:#fff;display:flex;align-items:center;gap:5px;padding-left:13px;font-weight:900;font-size:11px;flex:1}
+.under .r{margin-left:auto;display:flex}
+.under .r span{width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;font-weight:900;font-size:9.5px}
+.under .r .m{background:var(--badSolid)}
+.under .r .d{background:var(--warnSolid)}
+.under .ic{width:15px;height:15px}
+.rc{position:relative;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:9px 10px;display:flex;flex-direction:column;gap:5px}
+.rc .r1{display:flex;align-items:center;gap:6px}
+.rc .r1 b{font-size:11.5px;font-weight:900;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .r2{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--mut)}
+.rc .r2 .bar{flex:1;height:5px}
+.rc.done{opacity:.6}
+.rc.moved{box-shadow:-10px 0 18px -10px #0b134155}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:10px;padding:5px 0;border-top:1px solid var(--line)}
+.kv span{color:var(--mut)}
+.kv b{font-weight:900;text-align:right}
+.timer{display:inline-flex;align-items:center;gap:4px;color:var(--bad);font-weight:900}
+.timer .ic{width:11px;height:11px}
+
+/* 05 — chat-lenta */
+.chat-h{padding:42px 12px 8px;background:var(--surf);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;flex:0 0 auto}
+.chat-h .av{background:var(--inv);color:#fff;width:34px;height:34px}
+.chat-h b{display:block;font-size:12.5px;font-weight:900}
+.chat-h small{display:block;font-size:9px;color:var(--ok);font-weight:800}
+.feed{flex:1;min-height:0;overflow:hidden;padding:9px 10px 6px;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;background:#e7eaf5;background-image:radial-gradient(#d3d8ec 1px,transparent 1px);background-size:12px 12px}
+.daychip{align-self:center;background:#ffffffd9;border-radius:999px;padding:2px 9px;font-size:8.5px;font-weight:800;color:var(--mut)}
+.bub{max-width:84%;padding:6px 9px 4px;border-radius:14px;font-size:10px;position:relative;box-shadow:0 1px 1px #0b134114;flex:0 0 auto}
+.bub.in{align-self:flex-start;background:var(--surf);border-bottom-left-radius:5px}
+.bub.me{align-self:flex-end;background:#dbe1ff;border-bottom-right-radius:5px}
+.bub.alert{background:#ffe9e6}
+.bub .tm{display:flex;justify-content:flex-end;align-items:center;gap:2px;font-size:8px;color:var(--mut);margin-top:1px}
+.bub .tm .ic{width:11px;height:11px;color:var(--brand)}
+.bub .who{display:block;font-weight:900;font-size:9px}
+.bub .mini{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:9px;color:var(--mut)}
+.bub .mini .bar{flex:1;height:4px;background:#ffffff99}
+.bub.wide{max-width:94%;width:94%}
+.kb{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px}
+.kb.one{grid-template-columns:1fr}
+.kb span{background:#ffffff;border:1px solid #cfd6ff;border-radius:9px;text-align:center;padding:6px 4px;font-weight:900;color:var(--brandInk);font-size:9.5px}
+.kb span.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.rep{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.rep .kv{font-size:9.5px;padding:4px 0}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:6px 10px;overflow:hidden;background:var(--surf);border-top:1px solid var(--line);flex:0 0 auto}
+.quick span{justify-content:center;height:30px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;font-weight:900;font-size:9.5px;white-space:nowrap;border:1px solid var(--line);background:var(--bg)}
+.quick span.p{background:var(--brand);border-color:var(--brand);color:#fff}
+.quick .ic{width:11px;height:11px;stroke-width:2.6}
+.composer{display:flex;align-items:center;gap:7px;padding:3px 10px 22px;background:var(--surf);flex:0 0 auto}
+.composer .in{flex:1;height:32px;border-radius:16px;background:var(--bg);display:flex;align-items:center;gap:6px;padding:0 12px;color:var(--mut);font-size:10.5px}
+.composer .in .ic{width:15px;height:15px}
+.composer .send{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center}
+.composer .send .ic{width:15px;height:15px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><path d="M18 7 8 17l-4-4"/><path d="m22 10-7 7-1.5-1.5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5h11v14H10l-7-7z"/><path d="m18 9-6 6M12 9l6 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Insof ECO · Brigadir kabineti · 2026-11-05</div>
+    <h1>Brigada uchun TOP 5 shablon</h1>
+    <p class="lede">Maqsad — brigadir topshiriqni tez va xatosiz bajarib qayd qilsin: smenani ochish, davomat, fakt, muammo, brak va smenani yopish. Har bir shablon shu oqimni boshqacha yo'l bilan soddalashtiradi. Ma'lumotlar va amallar hozirgi ERP kodidan olingan (<code>lib/mobile/brigadier.ts</code>, <code>detail.ts → taskDetail</code>), raqamlar — namuna.</p>
+    <nav class="jump" aria-label="Shablonlar">
+      <a href="#s1"><span>01</span>Keyingi qadam</a>
+      <a href="#s2"><span>02</span>Tez fakt</a>
+      <a href="#s3"><span>03</span>Katta plitkalar</a>
+      <a href="#s4"><span>04</span>Svayp ro'yxat</a>
+      <a href="#s5"><span>05</span>Chat-lenta</a>
+      <a href="#solish"><span>⇄</span>Solishtiruv va tavsiya</a>
+    </nav>
+  </header>
+
+  <div class="pain" style="grid-template-columns:1fr"><div style="border-color:var(--pg-bad)"><b>Yangilanish · 2026-11-05</b><p>Ish tartibida smena yo'q; ta'til, kasallik, dam olish, so'rovnoma, xabarlar va murojaatlar ham kerak emas. Bu sahifadagi smena qadamlari eskirgan — yakuniy sodda dizayn: <a href="brigada-sahifalar.html" style="color:var(--pg-acc)">brigada-sahifalar.html</a>.</p></div></div>
+
+  <section>
+    <h2 class="sec">Hozir nima qiyin</h2>
+    <div class="pain">
+      <div><b>Bosh ekran — hisobot, ish emas</b><p>KPI, diagramma va 5 ta bo'lim (ogohlantirish, xodimlar, topshiriqlar, uskunalar, hisobotlar). «Hozir nima qilaman?» degan savolga javob yo'q.</p></div>
+      <div><b>Amallar chuqurda</b><p>Smenani boshlash, davomat, muammo, brak va yopish — hammasi «Smena holati» kartasi ichida. Bosh ekrandagi tezkor tugmalar faqat sahifa ochadi.</p></div>
+      <div><b>Fakt — 4 teginish va klaviatura</b><p>Topshiriq → karta → «Faktni kiritish» → miqdorni o'chirib qayta yozish (oldindan qoldiq turadi) → Saqlash. Xato yozilsa, tezda qaytarib bo'lmaydi.</p></div>
+      <div><b>Muammo — majburiy matn</b><p>«Uskuna muammosi» formasida uskuna nomi va sabab — ikkalasi qo'lda yoziladi. Sexda, qo'lqop bilan buni qilish qiyin, natijada muammo umuman yozilmaydi.</p></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 01 ═════════════ -->
+  <section class="tpl" id="s1">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">01</span>Keyingi qadam</h2>
+        <p>Bosh ekran kunni 4 qadamga bo'ladi: Smena → Davomat → Ish → Yopish. Ekranda doim bitta katta tugma — server hozirgi holatga qarab qaysi amal kerakligini o'zi aytadi.</p>
+      </div>
+      <div class="meta"><span class="tag s">Ish hajmi: kichik</span><span class="tag">Har bir brigadir uchun</span></div>
+    </div>
+    <div class="rail">
+
+      <div class="slot"><b>Ertalab <span>· smena ochilmagan</span></b>
+        <div class="phone"><div class="scr" data-tabs="lite:0">
+          <div class="main">
+            <div class="hdr"><div class="av">BQ</div><div class="who"><small>Brigadir · Gazoblok-1</small><b>Xayrli tong, Bahodir</b></div><div class="bell"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="steps"><i class="fill" style="width:0"></i>
+              <div class="step on"><b>1</b>Smena</div><div class="step"><b>2</b>Davomat</div><div class="step"><b>3</b>Ish</div><div class="step"><b>4</b>Yopish</div>
+            </div>
+            <div class="now"><span class="k">1-qadam · 07:52</span><h4>Smenani boshlang</h4><p>Ochilgan vaqt ish vaqtining boshi hisoblanadi. Keyin davomat o'zi ochiladi.</p><svg class="ic bgic fill"><use href="#i-play"/></svg></div>
+            <div class="card">
+              <div class="ch"><b>Bugungi reja</b><span class="muted">3 topshiriq</span></div>
+              <div class="li"><span class="it t-brand"><svg class="ic"><use href="#i-clip"/></svg></span><div class="grow"><b>TB-118 · Gazoblok D500</b><small>muddat bugun · 42/60 m³</small></div><span class="r">18 m³</span></div>
+              <div class="li"><span class="it t-info"><svg class="ic"><use href="#i-clip"/></svg></span><div class="grow"><b>TB-121 · Gazoblok D600</b><small>muddat ertaga</small></div><span class="r">24 m³</span></div>
+              <div class="li"><span class="it t-bad"><svg class="ic"><use href="#i-box"/></svg></span><div class="grow"><b>TB-115 · Peremichka PB-1</b><small class="c-bad">material yetishmaydi</small></div><span class="r">40 dona</span></div>
+            </div>
+          </div>
+          <div class="dock"><div class="btn ok big"><svg class="ic fill"><use href="#i-play"/></svg>Smenani boshlash</div><div class="hint">keyingi qadam: davomat</div></div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Davomat <span>· bitta ekranda</span></b>
+        <div class="phone"><div class="scr" data-tabs="lite:0">
+          <div class="main">
+            <div class="hdr"><div class="av">BQ</div><div class="who"><small>Smena ochiq · 07:52 dan</small><b>Kim keldi?</b></div><div class="bell"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="steps"><i class="fill" style="width:25%"></i>
+              <div class="step done"><b><svg class="ic"><use href="#i-check"/></svg></b>Smena</div><div class="step on"><b>2</b>Davomat</div><div class="step"><b>3</b>Ish</div><div class="step"><b>4</b>Yopish</div>
+            </div>
+            <div class="card">
+              <div class="ch"><b>Brigada tarkibi</b><span class="pill t-ok">11 / 12 keldi</span></div>
+              <div class="crew">
+                <div class="mem"><div class="a">BQ<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Bahodir</div>
+                <div class="mem"><div class="a">ST<i class="fc"><svg class="ic"><use href="#i-face"/></svg></i><i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Sardor</div>
+                <div class="mem"><div class="a">JK<i class="fc"><svg class="ic"><use href="#i-face"/></svg></i><i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Jasur</div>
+                <div class="mem"><div class="a">AR<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Akmal</div>
+                <div class="mem x"><div class="a">RN<i class="m"><svg class="ic"><use href="#i-plus"/></svg></i></div>Rustam</div>
+                <div class="mem"><div class="a">DA<i class="fc"><svg class="ic"><use href="#i-face"/></svg></i><i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Dilshod</div>
+                <div class="mem"><div class="a">BM<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Bekzod</div>
+                <div class="mem"><div class="a">US<i class="fc"><svg class="ic"><use href="#i-face"/></svg></i><i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Ulug'bek</div>
+                <div class="mem late"><div class="a">FE<i class="m"><svg class="ic"><use href="#i-clock"/></svg></i></div>Farrux</div>
+                <div class="mem"><div class="a">SI<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Sherzod</div>
+                <div class="mem"><div class="a">NY<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Nodir</div>
+                <div class="mem"><div class="a">IB<i class="m"><svg class="ic"><use href="#i-check"/></svg></i></div>Islom</div>
+              </div>
+              <div class="legend"><span><i style="background:#16a34a"></i>keldi</span><span><i style="background:#f59e0b"></i>kechikdi</span><span><i style="background:#e5483d"></i>kelmadi</span><span><i style="background:#7523ed"></i>Face ID</span></div>
+            </div>
+            <div class="tip"><svg class="ic"><use href="#i-face"/></svg><span>Face ID bilan kelganlar o'zi belgilanadi — qolganini bosib o'zgartiring.</span></div>
+          </div>
+          <div class="dock"><div class="btn ok big"><svg class="ic"><use href="#i-check"/></svg>Tasdiqlash · 11/12 keldi</div></div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Ish vaqti <span>· hozirgi topshiriq</span></b>
+        <div class="phone"><div class="scr" data-tabs="lite:0">
+          <div class="main">
+            <div class="hdr"><div class="av">BQ</div><div class="who"><small>Smena ochiq · 07:52 dan</small><b>Hozirgi ish</b></div><div class="bell"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="steps"><i class="fill" style="width:50%"></i>
+              <div class="step done"><b><svg class="ic"><use href="#i-check"/></svg></b>Smena</div><div class="step done"><b><svg class="ic"><use href="#i-check"/></svg></b>Davomat</div><div class="step on"><b>3</b>Ish</div><div class="step"><b>4</b>Yopish</div>
+            </div>
+            <div class="now"><span class="k">TB-118 · muddat bugun</span><h4>Gazoblok D500</h4>
+              <div class="num"><b>42</b><span>/ 60 m³</span></div>
+              <div class="bar"><i style="width:70%"></i></div>
+              <p>18 m³ qoldi · Insof Qurilish MCHJ</p>
+            </div>
+            <div class="two">
+              <div class="btn ghost sm"><svg class="ic c-bad"><use href="#i-alert"/></svg>Muammo</div>
+              <div class="btn ghost sm"><svg class="ic c-warn"><use href="#i-shield"/></svg>Brak</div>
+            </div>
+            <div class="card">
+              <div class="li" style="border:0;padding:2px 0"><span class="it t-info"><svg class="ic"><use href="#i-clip"/></svg></span><div class="grow"><b>Keyin: TB-121 · D600</b><small>24 m³ · muddat ertaga</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+            </div>
+          </div>
+          <div class="dock"><div class="btn big"><svg class="ic"><use href="#i-plus"/></svg>Fakt yozish</div><div class="hint">17:00 dan keyin bu tugma «Smenani yopish» bo'ladi</div></div>
+        </div></div>
+      </div>
+
+    </div>
+    <div class="notes">
+      <div><h3>Nima soddalashadi</h3><ul>
+        <li>Bosh ekran bitta savolga javob beradi — <em>hozir nima qilaman</em>. KPI va diagramma «Menyu → Hisobot» ga o'tadi.</li>
+        <li>Ketma-ketlik o'zi ochiladi: smenasiz davomat, davomatsiz fakt qolib ketmaydi.</li>
+        <li>Pastki tab 5 tadan 3 taga tushadi: Bugun, Topshiriqlar, Menyu.</li>
+      </ul></div>
+      <div><h3>Qaysi mavjud amallar</h3><ul>
+        <li><code>shift.open</code>, <code>att.all</code> (+ Face ID), <code>task.start</code>, <code>task.progress</code>, <code>shift.close</code> — hammasi <code>/api/mobile/action</code> da bor.</li>
+        <li>Reja qatorlari — <code>dayPlan()</code>, ogohlantirishlar — <code>brigadierHome</code> dagi <code>alerts</code>.</li>
+      </ul></div>
+      <div><h3>Kodda nima o'zgaradi</h3><ul>
+        <li>ERP <code>brigadierHome</code> → yangi <code>next</code> maydoni: qadam raqami, sarlavha, matn, amal id'si.</li>
+        <li>ECO <code>ErpHome</code>: <code>next</code> bo'lsa — qadamlar va katta tugma. Eski ilova maydonni e'tiborsiz qoldiradi, buzilmaydi.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 02 ═════════════ -->
+  <section class="tpl" id="s2">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">02</span>Tez fakt</h2>
+        <p>Fakt tugmasi topshiriq kartasining o'zida. Bosilganda pastdan katta raqam klaviaturasi chiqadi: «Hammasi», +1, +5, +10. Saqlangach 5 soniya «Bekor qilish» turadi.</p>
+      </div>
+      <div class="meta"><span class="tag s">Ish hajmi: kichik–o'rta</span><span class="tag">Kun davomida ko'p fakt yozadiganlar uchun</span></div>
+    </div>
+    <div class="rail">
+
+      <div class="slot"><b>Topshiriqlar <span>· tugma kartada</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <div class="row" style="justify-content:space-between"><h3 class="ttl">Topshiriqlar</h3><span class="sumchip"><svg class="ic"><use href="#i-bolt"/></svg>42 / 60 m³</span></div>
+            <div class="task">
+              <div class="t1"><span class="no">TB-118</span><span class="pill t-warn">Qisman bajarildi</span><span class="grow"></span><span class="no">bugun</span></div>
+              <h5>Gazoblok D500 · 600×300×200</h5>
+              <div class="bar warn"><i style="width:70%"></i></div>
+              <div class="t3"><div class="meta"><b>42 / 60 m³</b> · 18 qoldi</div><span class="act"><svg class="ic"><use href="#i-plus"/></svg>Fakt</span></div>
+            </div>
+            <div class="task">
+              <div class="t1"><span class="no">TB-121</span><span class="pill t-info">Brigadaga berildi</span><span class="grow"></span><span class="no">ertaga</span></div>
+              <h5>Gazoblok D600 · 600×250×300</h5>
+              <div class="bar"><i style="width:0"></i></div>
+              <div class="t3"><div class="meta"><b>0 / 24 m³</b> · shoshilinch emas</div><span class="act okA"><svg class="ic fill"><use href="#i-play"/></svg>Boshlash</span></div>
+            </div>
+            <div class="task">
+              <div class="t1"><span class="no">TB-115</span><span class="pill t-bad">Material yetishmaydi</span><span class="grow"></span><span class="no">7-noy</span></div>
+              <h5>Peremichka PB-1</h5>
+              <div class="bar bad"><i style="width:67%"></i></div>
+              <div class="t3"><div class="meta"><b>80 / 120 dona</b> · Sklad javobi kutilmoqda</div><span class="act dis"><svg class="ic"><use href="#i-clock"/></svg>Kutish</span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Fakt oynasi <span>· tizim klaviaturasisiz</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <div class="row" style="justify-content:space-between"><h3 class="ttl">Topshiriqlar</h3><span class="sumchip"><svg class="ic"><use href="#i-bolt"/></svg>42 / 60 m³</span></div>
+            <div class="task"><div class="t1"><span class="no">TB-118</span><span class="pill t-warn">Qisman bajarildi</span></div><h5>Gazoblok D500 · 600×300×200</h5><div class="bar warn"><i style="width:70%"></i></div></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sh-h"><div><span class="no">TB-118 · bugun</span><b>Gazoblok D500</b></div><span class="pill t-warn">qoldiq 18 m³</span></div>
+            <div class="disp"><b>12</b><span>m³</span></div>
+            <div class="chips c"><span class="chip okC"><svg class="ic"><use href="#i-check"/></svg>Hammasi · 18</span><span class="chip">+1</span><span class="chip">+5</span><span class="chip">+10</span></div>
+            <div class="keys">
+              <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+              <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+              <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+              <div class="key">,</div><div class="key">0</div><div class="key"><svg class="ic"><use href="#i-del"/></svg></div>
+            </div>
+            <div class="segrow"><span>Brak chiqdimi?</span><div class="seg"><span class="on">Yo'q</span><span>Ha</span></div></div>
+            <div class="btn">Saqlash · 12 m³</div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Saqlandi <span>· 5 soniya qaytarish</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <div class="row" style="justify-content:space-between"><h3 class="ttl">Topshiriqlar</h3><span class="sumchip"><svg class="ic c-ok"><use href="#i-bolt"/></svg>54 / 60 m³</span></div>
+            <div class="task flash">
+              <div class="t1"><span class="no">TB-118</span><span class="pill t-warn">Qisman bajarildi</span><span class="grow"></span><span class="pill t-ok">+12</span></div>
+              <h5>Gazoblok D500 · 600×300×200</h5>
+              <div class="bar ok"><i style="width:90%"></i></div>
+              <div class="t3"><div class="meta"><b>54 / 60 m³</b> · 6 qoldi</div><span class="act okA"><svg class="ic"><use href="#i-flag"/></svg>Yakunlash</span></div>
+            </div>
+            <div class="task">
+              <div class="t1"><span class="no">TB-121</span><span class="pill t-info">Brigadaga berildi</span><span class="grow"></span><span class="no">ertaga</span></div>
+              <h5>Gazoblok D600 · 600×250×300</h5>
+              <div class="bar"><i style="width:0"></i></div>
+              <div class="t3"><div class="meta"><b>0 / 24 m³</b></div><span class="act okA"><svg class="ic fill"><use href="#i-play"/></svg>Boshlash</span></div>
+            </div>
+          </div>
+          <div class="toast"><span class="ok"><svg class="ic"><use href="#i-check"/></svg></span><div><b>TB-118: +12 m³ yozildi</b><small>Brak yo'q · 14:20</small></div><span class="u"><svg class="ic"><use href="#i-undo"/></svg>Bekor · 5</span></div>
+        </div></div>
+      </div>
+
+    </div>
+    <div class="notes">
+      <div><h3>Nima soddalashadi</h3><ul>
+        <li>Fakt: <em>Fakt → raqam → Saqlash</em>. Topshiriq kartasini ochish shart emas.</li>
+        <li>«Hammasi · 18» bir bosishda qoldiqni yozadi; qoldiq 0 bo'lsa tugma «Yakunlash» ga aylanadi.</li>
+        <li>Brak — oddiy Yo'q / Ha. «Ha» bosilsa miqdor va sabab qo'shiladi.</li>
+      </ul></div>
+      <div><h3>Qaysi mavjud amallar</h3><ul>
+        <li><code>task.progress</code> (qty + defectQty + defectReason) va <code>task.finish</code> — formasi bilan birga bor.</li>
+        <li>Brak sabablari — <code>DEFECT_REASONS</code> (yoriq, o'lcham, mustahkamlik...).</li>
+      </ul></div>
+      <div><h3>Kodda nima o'zgaradi</h3><ul>
+        <li><code>FormField</code> (<code>number</code>) ga <code>presets</code> va <code>display: "numpad"</code>. Eski ilova oddiy raqam maydonini chizadi.</li>
+        <li>Ro'yxat qatoriga <code>action</code> tugmasi; ECO'da pastki oyna komponenti.</li>
+        <li>Yangi <code>task.progress.undo</code>: o'z yozuvi, 2 daqiqa ichida; <code>doneQty</code> va holat qayta hisoblanadi.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 03 ═════════════ -->
+  <section class="tpl" id="s3">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">03</span>Katta plitkalar</h2>
+        <p>«Qo'lqop rejimi»: bosh ekranda 6 ta katta plitka, har biri bitta ish. Muammo va brak umuman yozmasdan — rasm-belgilar va tayyor variantlar bilan bildiriladi.</p>
+      </div>
+      <div class="meta"><span class="tag">Ish hajmi: o'rta</span><span class="tag">Sex, chang, qo'lqop · telefon bilan kam ishlaydiganlar</span></div>
+    </div>
+    <div class="rail">
+
+      <div class="slot"><b>Bosh ekran <span>· 6 ta ish</span></b>
+        <div class="phone"><div class="scr">
+          <div class="main" style="padding-bottom:20px">
+            <div class="hdr"><div class="av">G1</div><div class="who"><small>Brigadir</small><b>Gazoblok-1</b></div><span class="pill t-ok">Ochiq · 07:52</span></div>
+            <div class="slim"><span class="muted" style="font-weight:800">Bugun</span><div class="bar"><i style="width:70%"></i></div><b>42 / 60 m³</b></div>
+            <div class="tiles">
+              <div class="tile brandT"><span class="ti"><svg class="ic"><use href="#i-plus"/></svg></span><div><b>Bajarildi</b><small>fakt yozish</small></div></div>
+              <div class="tile okT"><span class="ti"><svg class="ic"><use href="#i-users"/></svg></span><div><b>Davomat</b><small>11 / 12 keldi</small></div></div>
+              <div class="tile badT"><span class="badge">2</span><span class="ti"><svg class="ic"><use href="#i-alert"/></svg></span><div><b>Muammo</b><small>2 ta ochiq</small></div></div>
+              <div class="tile warnT"><span class="ti"><svg class="ic"><use href="#i-shield"/></svg></span><div><b>Brak</b><small>bugun 0,6 m³</small></div></div>
+              <div class="tile infoT"><span class="ti"><svg class="ic"><use href="#i-clip"/></svg></span><div><b>Topshiriq</b><small>3 ta faol</small></div></div>
+              <div class="tile invT"><span class="ti"><svg class="ic"><use href="#i-flag"/></svg></span><div><b>Yopish</b><small>smenani tugatish</small></div></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Muammo <span>· nima bo'ldi?</span></b>
+        <div class="phone"><div class="scr">
+          <div class="main" style="padding-bottom:20px">
+            <div class="back"><i><svg class="ic"><use href="#i-left"/></svg></i><b>Nima bo'ldi?</b></div>
+            <p class="muted" style="margin:0;font-size:10px">Bitta plitkani bosing — yozish shart emas. Kim hal qilishi pastida ko'rinadi.</p>
+            <div class="tiles" style="flex:0 0 auto;grid-auto-rows:128px">
+              <div class="tile badT"><span class="ti"><svg class="ic"><use href="#i-wrench"/></svg></span><div><b>Uskuna buzildi</b><span class="to"><svg class="ic"><use href="#i-right"/></svg>Mexanik</span></div></div>
+              <div class="tile warnT"><span class="ti"><svg class="ic"><use href="#i-box"/></svg></span><div><b>Material yo'q</b><span class="to"><svg class="ic"><use href="#i-right"/></svg>Sklad, Snabjeniye</span></div></div>
+              <div class="tile infoT"><span class="ti"><svg class="ic"><use href="#i-userplus"/></svg></span><div><b>Ishchi kerak</b><span class="to"><svg class="ic"><use href="#i-right"/></svg>Otdel kadr</span></div></div>
+              <div class="tile grayT"><span class="ti"><svg class="ic"><use href="#i-dots"/></svg></span><div><b>Boshqa</b><span class="to"><svg class="ic"><use href="#i-right"/></svg>Ishlab chiqarish</span></div></div>
+            </div>
+            <div class="card">
+              <div class="ch"><b>Ochiq muammolar</b><span class="pill t-bad">2</span></div>
+              <div class="li"><span class="it t-bad"><svg class="ic"><use href="#i-wrench"/></svg></span><div class="grow"><b>Kesish mashinasi</b><small>to'xtagan · 35 daq</small></div></div>
+              <div class="li"><span class="it t-warn"><svg class="ic"><use href="#i-box"/></svg></span><div class="grow"><b>Alyumin kukuni kam</b><small>TB-118 · 11:10 dan</small></div></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Uskuna <span>· faqat tanlash</span></b>
+        <div class="phone"><div class="scr">
+          <div class="main">
+            <div class="back"><i><svg class="ic"><use href="#i-left"/></svg></i><b>Uskuna buzildi</b></div>
+            <div class="q">Qaysi uskuna?</div>
+            <div class="chips"><span class="chip lg on"><svg class="ic"><use href="#i-check"/></svg>Kesish mashinasi</span><span class="chip lg">Vibrostol</span><span class="chip lg">Aralashtirgich</span><span class="chip lg">Avtoklav</span><span class="chip lg"><svg class="ic"><use href="#i-plus"/></svg>Boshqa</span></div>
+            <div class="q">Qaysi topshiriq?</div>
+            <div class="chips"><span class="chip lg on">TB-118</span><span class="chip lg">TB-121</span><span class="chip lg">Umumiy</span></div>
+            <div class="q">Qachondan beri to'xtagan?</div>
+            <div class="chips"><span class="chip lg">Hozir</span><span class="chip lg">15 daq</span><span class="chip lg on">30 daq</span><span class="chip lg">1 soat+</span></div>
+            <div class="q">Rasm <span class="muted" style="font-weight:700">(ixtiyoriy)</span></div>
+            <div class="ph"><svg class="ic"><use href="#i-camera"/></svg>Rasmga olish</div>
+          </div>
+          <div class="dock"><div class="btn bad big"><svg class="ic"><use href="#i-send"/></svg>Yuborish · Mexanik</div><div class="hint">mexanik va ishlab chiqarish darhol ko'radi</div></div>
+        </div></div>
+      </div>
+
+    </div>
+    <div class="notes">
+      <div><h3>Nima soddalashadi</h3><ul>
+        <li>Klaviatura yo'q: muammo <em>3–4 bosishda</em>, hammasi tanlash bilan.</li>
+        <li>Uskunalar ro'yxati so'nggi 30 kundagi nosozliklardan o'zi yig'iladi — har safar nomini yozish shart emas.</li>
+        <li>Kim hal qilishi tugmaning o'zida yozilgan — brigadir kimga borishini biladi.</li>
+      </ul></div>
+      <div><h3>Qaysi mavjud amallar</h3><ul>
+        <li><code>issue.equipment</code>, <code>issue.material</code>, <code>issue.staff</code>, <code>issue.other</code>; mas'ullar — <code>BRIGADE_ISSUE.owner</code>.</li>
+        <li>Uskunalar — <code>brigadierHome</code> dagi 30 kunlik <code>equipment</code> so'rovi; rasm — mavjud <code>photo</code> maydoni.</li>
+      </ul></div>
+      <div><h3>Kodda nima o'zgaradi</h3><ul>
+        <li><code>select</code> maydoniga <code>display: "tiles" | "chips"</code> (eski ilova oddiy ro'yxat chizadi).</li>
+        <li><code>issue.*</code> formalarida <code>note</code> majburiy emas, agar variant tanlangan bo'lsa; vaqt chip'lari → <code>downtimeMin</code>.</li>
+        <li>ECO'da plitkali bosh ekran — rol sozlamasida yoqiladigan alohida ko'rinish.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 04 ═════════════ -->
+  <section class="tpl" id="s4">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">04</span>Svayp ro'yxat</h2>
+        <p>Topshiriqlar holat bo'yicha filtrda: Bugun, Jarayonda, To'xtagan, Tayyor. Qatorni o'ngga surish — fakt, oxirigacha surish — yakunlash, chapga — muammo yoki brak.</p>
+      </div>
+      <div class="meta"><span class="tag">Ish hajmi: o'rta</span><span class="tag">Topshirig'i ko'p yoki 2+ brigadali brigadirlar</span></div>
+    </div>
+    <div class="rail">
+
+      <div class="slot"><b>O'ngga <span>· fakt</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <h3 class="ttl">Topshiriqlar</h3>
+            <div class="flt"><span class="on">Bugun <i>3</i></span><span>Ishda <i>1</i></span><span class="bad">To'xtagan <i>1</i></span><span>Tayyor <i>4</i></span></div>
+            <div class="swhint"><span><svg class="ic"><use href="#i-right"/></svg>o'ngga — fakt</span><span>chapga — muammo<svg class="ic"><use href="#i-left"/></svg></span></div>
+            <div class="swr"><div class="under"><div class="l"><svg class="ic"><use href="#i-plus"/></svg>Fakt</div></div>
+              <div class="rc moved" style="transform:translateX(74px)"><div class="r1"><span class="no">TB-118</span><b>Gazoblok D500</b></div><div class="r2"><div class="bar warn"><i style="width:70%"></i></div>42/60 m³</div></div></div>
+            <div class="swr"><div class="rc"><div class="r1"><span class="no">TB-121</span><b>Gazoblok D600</b><span class="pill t-info">Berildi</span></div><div class="r2"><div class="bar"><i style="width:0"></i></div>0/24 m³ · ertaga</div></div></div>
+            <div class="swr"><div class="rc"><div class="r1"><span class="no">TB-115</span><b>Peremichka PB-1</b><span class="pill t-bad">Material</span></div><div class="r2"><div class="bar bad"><i style="width:67%"></i></div>80/120 dona</div></div></div>
+            <div class="swr"><div class="rc done"><div class="r1"><span class="no">TB-112</span><b>Gazoblok D500</b><span class="pill t-ok">Bajarildi</span></div><div class="r2"><div class="bar ok"><i style="width:100%"></i></div>36/36 m³</div></div></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Oxirigacha / chapga <span>· yakunlash, muammo</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <h3 class="ttl">Topshiriqlar</h3>
+            <div class="flt"><span class="on">Bugun <i>3</i></span><span>Ishda <i>1</i></span><span class="bad">To'xtagan <i>1</i></span><span>Tayyor <i>4</i></span></div>
+            <div class="swhint"><span><svg class="ic"><use href="#i-right"/></svg>o'ngga — fakt</span><span>chapga — muammo<svg class="ic"><use href="#i-left"/></svg></span></div>
+            <div class="swr"><div class="under"><div class="l"><svg class="ic"><use href="#i-flag"/></svg>Yakunlash · 18 m³</div></div>
+              <div class="rc moved" style="transform:translateX(218px)"><div class="r1"><span class="no">TB-118</span><b>Gazoblok D500</b></div><div class="r2"><div class="bar"><i style="width:70%"></i></div></div></div></div>
+            <div class="swr"><div class="under"><div class="r"><span class="m"><svg class="ic"><use href="#i-alert"/></svg>Muammo</span><span class="d"><svg class="ic"><use href="#i-shield"/></svg>Brak</span></div></div>
+              <div class="rc" style="transform:translateX(-128px)"><div class="r1"><span class="no">TB-121</span><b>Gazoblok D600</b></div><div class="r2"><div class="bar"><i style="width:0"></i></div>0/24</div></div></div>
+            <div class="swr"><div class="rc"><div class="r1"><span class="no">TB-115</span><b>Peremichka PB-1</b><span class="pill t-bad">Material</span></div><div class="r2"><div class="bar bad"><i style="width:67%"></i></div>80/120 dona</div></div></div>
+            <div class="swr"><div class="rc done"><div class="r1"><span class="no">TB-112</span><b>Gazoblok D500</b><span class="pill t-ok">Bajarildi</span></div><div class="r2"><div class="bar ok"><i style="width:100%"></i></div>36/36 m³</div></div></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>To'xtagan <span>· kim va qancha kutilmoqda</span></b>
+        <div class="phone"><div class="scr" data-tabs="std:1">
+          <div class="main">
+            <h3 class="ttl">Topshiriqlar</h3>
+            <div class="flt"><span>Bugun <i>3</i></span><span>Ishda <i>1</i></span><span class="on">To'xtagan <i>1</i></span><span>Tayyor <i>4</i></span></div>
+            <div class="card" style="border-color:#f8cdc8">
+              <div class="r1 row"><span class="no">TB-115</span><b class="grow" style="font-size:12px;font-weight:900">Peremichka PB-1</b><span class="pill t-bad">Material yetishmaydi</span></div>
+              <div class="bar bad" style="margin:7px 0 4px"><i style="width:67%"></i></div>
+              <div class="kv"><span>Bajarildi</span><b>80 / 120 dona</b></div>
+              <div class="kv"><span>Kerak</span><b>armatura 12 mm · 200 kg</b></div>
+              <div class="kv"><span>Mas'ul</span><b>Sklad, Snabjeniye</b></div>
+              <div class="kv"><span>Kutilmoqda</span><b class="timer"><svg class="ic"><use href="#i-clock"/></svg>1 soat 20 daq</b></div>
+              <div class="two" style="margin-top:6px"><div class="btn sm"><svg class="ic"><use href="#i-bell"/></svg>Eslatish</div><div class="btn ok sm"><svg class="ic"><use href="#i-check"/></svg>Hal bo'ldi</div></div>
+            </div>
+            <div class="card">
+              <div class="ch"><b>Topshiriqqa bog'lanmagan</b></div>
+              <div class="li"><span class="it t-bad"><svg class="ic"><use href="#i-wrench"/></svg></span><div class="grow"><b>Kesish mashinasi</b><small>Mexanik · ochiq 35 daq</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+    </div>
+    <div class="notes">
+      <div><h3>Nima soddalashadi</h3><ul>
+        <li>Kartani ochmasdan: <em>bitta surish</em> — boshlash, fakt yoki muammo.</li>
+        <li>«To'xtagan» filtri ish nima uchun turganini, kim mas'ul va qancha kutilayotganini ko'rsatadi.</li>
+        <li>2+ brigadasi bor brigadir uchun qulay — hammasi bitta ro'yxatda.</li>
+      </ul></div>
+      <div><h3>Qaysi mavjud amallar</h3><ul>
+        <li>Holatlar — <code>taskPhase()</code> (Brigadaga berildi, Jarayonda, Qisman, Material yetishmaydi...).</li>
+        <li>Ro'yxat filtrlari — <code>brigIssuesList</code> dagi kabi mavjud mexanizm; <code>issue.resolve</code> brigadirga ham ochiq.</li>
+      </ul></div>
+      <div><h3>Kodda nima o'zgaradi</h3><ul>
+        <li><code>MobileList</code> qatoriga <code>swipe: { right, full, left }</code> — amal id'lari.</li>
+        <li>ECO'da <code>react-native-gesture-handler</code> Swipeable komponenti.</li>
+        <li>Brigadirga <code>issue.remind</code> ruxsati (hozir faqat direktorda) — «Eslatish» tugmasi uchun.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 05 ═════════════ -->
+  <section class="tpl" id="s5">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">05</span>Chat-lenta</h2>
+        <p>Telegram'dagidek tanish ko'rinish: smena voqealari bitta lentada, pastida tayyor javob tugmalari. Fakt va muammo bot bilan suhbatdek tugmalar orqali kiritiladi, smena oxirida xulosa o'zi tayyor bo'ladi.</p>
+      </div>
+      <div class="meta"><span class="tag l">Ish hajmi: katta</span><span class="tag">Telegram'ga o'rgangan brigadirlar · pilot</span></div>
+    </div>
+    <div class="rail">
+
+      <div class="slot"><b>Smena lentasi <span>· hamma voqea bitta joyda</span></b>
+        <div class="phone"><div class="scr">
+          <div class="chat-h"><svg class="ic muted"><use href="#i-left"/></svg><div class="av">G1</div><div class="grow"><b>Gazoblok-1 · smena</b><small>ochiq · 11/12 keldi</small></div><svg class="ic muted"><use href="#i-dots"/></svg></div>
+          <div class="feed">
+            <span class="daychip">Bugun, 5-noyabr</span>
+            <div class="bub me"><b>▶ Smenani boshladim</b><span class="tm">07:52<svg class="ic"><use href="#i-check2"/></svg></span></div>
+            <div class="bub in"><span class="who" style="color:var(--ok)">Davomat</span>11/12 keldi · Rustam — kasal · Farrux 08:24 da keldi<span class="tm">08:30</span></div>
+            <div class="bub me"><b>TB-118 · +12 m³</b><div class="mini"><div class="bar"><i style="width:70%"></i></div>42/60</div><span class="tm">10:40<svg class="ic"><use href="#i-check2"/></svg></span></div>
+            <div class="bub me alert"><b class="c-bad">⚠ Kesish mashinasi to'xtadi</b><br>TB-118 · 30 daq<span class="tm">11:05<svg class="ic"><use href="#i-check2"/></svg></span></div>
+            <div class="bub in"><span class="who" style="color:var(--prod)">Mexanik · Anvar</span>Ta'mirlandi, ishlayapti. Jami to'xtash 35 daq.<span class="tm">11:40</span></div>
+          </div>
+          <div class="quick"><span class="p"><svg class="ic"><use href="#i-plus"/></svg>Fakt</span><span><svg class="ic c-bad"><use href="#i-alert"/></svg>Muammo</span><span><svg class="ic c-warn"><use href="#i-shield"/></svg>Brak</span></div>
+          <div class="composer"><div class="in"><svg class="ic"><use href="#i-msg"/></svg>Izoh yozing…</div><span class="send"><svg class="ic"><use href="#i-send"/></svg></span></div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Fakt — suhbat <span>· yozmasdan, tugma bilan</span></b>
+        <div class="phone"><div class="scr">
+          <div class="chat-h"><svg class="ic muted"><use href="#i-left"/></svg><div class="av">G1</div><div class="grow"><b>Gazoblok-1 · smena</b><small>ochiq · 11/12 keldi</small></div><svg class="ic muted"><use href="#i-dots"/></svg></div>
+          <div class="feed">
+            <div class="bub in"><span class="who" style="color:var(--prod)">Mexanik · Anvar</span>Ta'mirlandi, ishlayapti.<span class="tm">11:40</span></div>
+            <div class="bub me"><b>+ Fakt</b><span class="tm">14:18<svg class="ic"><use href="#i-check2"/></svg></span></div>
+            <div class="bub in wide"><span class="who" style="color:var(--brand)">Insof</span>Qaysi topshiriq?
+              <div class="kb one"><span class="on">TB-118 · D500 — 18 m³ qoldi</span><span>TB-121 · D600 — 24 m³</span></div></div>
+            <div class="bub in wide"><span class="who" style="color:var(--brand)">Insof</span>Qancha bajarildi, m³?
+              <div class="kb"><span>6</span><span class="on">12</span><span>18 · hammasi</span><span>Boshqa…</span></div></div>
+            <div class="bub in wide"><span class="who" style="color:var(--brand)">Insof</span>Brak chiqdimi?
+              <div class="kb"><span>Yo'q</span><span>Ha</span></div></div>
+          </div>
+          <div class="quick"><span class="p"><svg class="ic"><use href="#i-plus"/></svg>Fakt</span><span><svg class="ic c-bad"><use href="#i-alert"/></svg>Muammo</span><span><svg class="ic c-warn"><use href="#i-shield"/></svg>Brak</span></div>
+          <div class="composer"><div class="in"><svg class="ic"><use href="#i-msg"/></svg>Izoh yozing…</div><span class="send"><svg class="ic"><use href="#i-send"/></svg></span></div>
+        </div></div>
+      </div>
+
+      <div class="slot"><b>Smena xulosasi <span>· «ko'rildi» belgisi bilan</span></b>
+        <div class="phone"><div class="scr">
+          <div class="chat-h"><svg class="ic muted"><use href="#i-left"/></svg><div class="av">G1</div><div class="grow"><b>Gazoblok-1 · smena</b><small style="color:var(--mut)">yopildi · 19:58</small></div><svg class="ic muted"><use href="#i-dots"/></svg></div>
+          <div class="feed">
+            <div class="bub in wide"><span class="who" style="color:var(--brand)">Insof · smena xulosasi</span>
+              <div class="rep">
+                <div class="kv"><span>Reja / fakt</span><b class="c-ok">60 / 60 m³ · 100%</b></div>
+                <div class="kv"><span>Davomat</span><b>11/12 · 1 kechikdi</b></div>
+                <div class="kv"><span>Brak</span><b class="c-warn">0,6 m³ · 1%</b></div>
+                <div class="kv"><span>To'xtash</span><b>35 daq</b></div>
+                <div class="kv"><span>Ochiq muammo</span><b class="c-bad">Alyumin kukuni</b></div>
+              </div>
+              <div class="kb"><span class="on">Yopish va yuborish</span><span>Izoh qo'shish</span></div></div>
+            <div class="bub me"><b>Smenani yopdim</b><br>Ertaga TB-121 dan boshlaymiz<span class="tm">19:58<svg class="ic"><use href="#i-check2"/></svg></span></div>
+            <div class="bub in"><span class="who" style="color:var(--info)">Ishlab chiqarish · Komil</span>Ko'rdim, rahmat. Alyumin ertalab keladi.<span class="tm">20:05</span></div>
+          </div>
+          <div class="quick"><span class="p"><svg class="ic"><use href="#i-plus"/></svg>Fakt</span><span><svg class="ic c-bad"><use href="#i-alert"/></svg>Muammo</span><span><svg class="ic c-warn"><use href="#i-shield"/></svg>Brak</span></div>
+          <div class="composer"><div class="in"><svg class="ic"><use href="#i-msg"/></svg>Izoh yozing…</div><span class="send"><svg class="ic"><use href="#i-send"/></svg></span></div>
+        </div></div>
+      </div>
+
+    </div>
+    <div class="notes">
+      <div><h3>Nima soddalashadi</h3><ul>
+        <li>Yangi narsa o'rganish shart emas — <em>Telegram'dagi bot kabi</em> tugmalar bilan.</li>
+        <li>Kun tarixi bitta joyda: kim qachon nima yozdi, mexanik nima javob berdi.</li>
+        <li>Smena xulosasi lentada o'zi chiqadi; ishlab chiqarish ko'rgani «✓✓» bilan ko'rinadi.</li>
+      </ul></div>
+      <div><h3>Qaysi mavjud amallar</h3><ul>
+        <li>Xulosa — <code>buildShiftReport()</code>; «ko'rildi» — <code>BrigadeShift.seenAt</code>.</li>
+        <li>Tugmalar ortida o'sha amallar: <code>task.progress</code>, <code>issue.*</code>, <code>shift.close</code>.</li>
+      </ul></div>
+      <div><h3>Kodda nima o'zgaradi</h3><ul>
+        <li>Yangi <code>/api/mobile/feed</code>: <code>TaskProgress</code>, <code>BrigadeIssue</code>, davomat, <code>BrigadeShift</code>, <code>ProductDefect</code> dan vaqt bo'yicha lenta.</li>
+        <li>ECO'da yangi <code>feed</code> ekran turi va suhbat-forma (formani savollarga bo'lib so'rash).</li>
+        <li>Mas'ul javobi uchun <code>issue.resolve</code> izohi lentaga chiqadi. Eng katta ish — pilotdan keyin.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ solishtiruv ═════════════ -->
+  <section class="tpl" id="solish">
+    <h2 class="sec" style="margin:0">Solishtiruv</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Ish</th><th>Hozir</th><th>01 Keyingi qadam</th><th>02 Tez fakt</th><th>03 Plitkalar</th><th>04 Svayp</th><th>05 Chat-lenta</th></tr></thead>
+        <tbody>
+          <tr><td>Fakt kiritish</td><td class="now">4 bosish + klaviatura</td><td class="best">1 + raqam</td><td class="best">2 + raqam</td><td>3 + raqam</td><td>1 surish + raqam</td><td>3 bosish</td></tr>
+          <tr><td>Muammo bildirish</td><td class="now">4 bosish + 2 matn</td><td>3 bosish</td><td>hozirgidek</td><td class="best">3–4 bosish, matnsiz</td><td>1 surish + forma</td><td>3–4 bosish</td></tr>
+          <tr><td>Smenani ochish + davomat</td><td class="now">~5 bosish</td><td class="best">2 bosish</td><td>hozirgidek</td><td>2–3 bosish</td><td>hozirgidek</td><td>2–3 bosish</td></tr>
+          <tr><td>Smenani yopish</td><td>3 bosish</td><td class="best">1 bosish</td><td>hozirgidek</td><td>2 bosish</td><td>hozirgidek</td><td>1 bosish</td></tr>
+          <tr><td>Klaviatura kerakmi</td><td class="now">ha</td><td>faqat izoh</td><td class="best">yo'q</td><td class="best">yo'q</td><td>qisman</td><td>faqat izoh</td></tr>
+          <tr><td>Ish hajmi</td><td>—</td><td class="best">kichik (ERP + 1 komponent)</td><td>kichik–o'rta</td><td>o'rta</td><td>o'rta</td><td>katta</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fn">Bosish soni taxminiy — hozirgi ilova oqimi bo'yicha sanaldi (bosh ekrandan boshlab, tasdiq oynalari bilan). 01-shablonda fakt oynasi 02 dagi raqam klaviaturasi deb olindi.</p>
+
+    <h2 class="sec" style="margin:12px 0 0">Tavsiya</h2>
+    <div class="rec">
+      <div class="main"><h3>1-bosqich: «Sodda kabinet» = 01 + 02 + 03</h3>
+        <p>Uchalasi bir-birini to'ldiradi: bosh ekran — keyingi qadam, fakt — raqam klaviaturasi, muammo — plitka va variantlar.</p>
+        <ol>
+          <li>ERP: <code>brigadierHome.next</code>, <code>presets</code>/<code>display</code> maydonlari, <code>task.progress.undo</code>, ixtiyoriy <code>note</code>.</li>
+          <li>ECO: qadamlar + katta tugma, pastki raqam oynasi, plitka/chip tanlov — 3 ta komponent.</li>
+          <li>Server-driven: eski ilova ham ishlayveradi, yangisi OTA bilan chiqadi.</li>
+        </ol>
+      </div>
+      <div><h3>2-bosqich: 04 Svayp ro'yxat</h3><p>Topshirig'i ko'p (5+) yoki 2 ta brigadasi bor brigadirlar uchun «Topshiriqlar» tabida. «To'xtagan» filtri va «Eslatish» rahbarlarga ham foyda beradi.</p></div>
+      <div><h3>3-bosqich: 05 Chat-lenta — pilot</h3><p>Bitta brigadada sinab ko'riladi. Yangi lenta API va ekran turi kerak; foydasi — mas'ul bo'limlar bilan aloqa tarixi bir joyda.</p></div>
+    </div>
+    <p class="foot-note">Manba: ERP <code>src/lib/mobile/brigadier.ts</code>, <code>src/lib/mobile/detail.ts</code> (<code>taskDetail</code>), <code>src/lib/brigade-shift.ts</code>; ECO <code>apps/mobile/src/features/erp/roles.ts</code>, <code>dashboards.ts</code>. Maketdagi ism va raqamlar — namuna.</p>
+  </section>
+
+</div>
+
+<script>
+// Telefon "qobig'i": status bar, Dynamic Island, pastki tablar va home indikator — har ekranga bir xil
+const TABS = {
+  std: [["Brigadam","home"],["Topshiriq","clip"],["Muammolar","alert"],["Smenalar","cal"],["Menyu","menu"]],
+  lite: [["Bugun","home"],["Topshiriqlar","clip"],["Menyu","menu"]],
+};
+document.querySelectorAll(".scr").forEach((s) => {
+  s.insertAdjacentHTML("afterbegin", '<div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>');
+  if (s.dataset.tabs) {
+    const [set, on] = s.dataset.tabs.split(":");
+    s.insertAdjacentHTML("beforeend", '<nav class="tabs">' + TABS[set].map(([label, icon], i) =>
+      `<div class="tab${String(i) === on ? " on" : ""}"><i><svg class="ic"><use href="#i-${icon}"/></svg></i>${label}</div>`).join("") + "</nav>");
+  }
+  s.insertAdjacentHTML("beforeend", '<div class="homebar"></div>');
+});
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpTabRoute } from '@/features/erp/screens';
+import { BrigadierTasks } from '@/features/erp/brigadier';
 
-/** Ishchi ro'yxat tabi — kaliti `features/erp/roles.ts` dagi `listKey`. */
+/** Brigadir — «Topshiriqlar»: holat filtri, kartada «Boshlash» / «Fakt». */
 export default function Work() {
-  return <ErpTabRoute role="BRIGADIER" route="work" />;
+  return <BrigadierTasks />;
 }

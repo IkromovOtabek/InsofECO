@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpMenu } from '@/features/erp/screens';
+import { BrigadierMenu } from '@/features/erp/brigadier';
 
-/** Brigadir — profil va chiqish. */
+/** Brigadir — «Men»: davomat, ish haqi, vazifalar, arizalar, ish tarixi, sozlamalar. */
 export default function Menu() {
-  return <ErpMenu />;
+  return <BrigadierMenu />;
 }

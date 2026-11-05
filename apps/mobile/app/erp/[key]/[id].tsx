@@ -8,10 +8,10 @@ import { PageHeader, Reveal, SkeletonList, StickyActionBar } from '@/design/bloc
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ErpField, ErpSection } from '@/core/erp';
+import type { ErpDetailData, ErpField, ErpSection } from '@/core/erp';
 import type { ErpAction } from '@/core/erp';
 import { ApiException } from '@/core/api';
-import { useErpAction, useErpDetail } from '@/features/erp/api';
+import { useErpAction, useErpDetail, useErpHome } from '@/features/erp/api';
 import { flushErpGps, pushErpFix, refreshErpPosition, startErpTracking, stopErpTracking } from '@/core/erp-track';
 import { trackStartNote } from '@/core/location';
 import { erpAuth, erpPhotoData } from '@/core/erp';
@@ -19,6 +19,7 @@ import { useSession } from '@/core/session';
 import { confirmAtSite } from '@/features/address/site-check';
 import { openNavigation } from '@/core/navigate';
 import { ActionSheet } from '@/features/erp/action-sheet';
+import { DefectSheet, FactSheet, type IssueKind } from '@/features/erp/brigadier-sheets';
 import { SectionChartView } from '@/features/erp/charts';
 import { ROW_ICON, RowsGroup, SectionEmpty, SectionHead, idSeg, listModule, splitValue, statusLabel } from '@/features/erp/ui';
 import { useHeaderRaise } from '@/design/motion';
@@ -81,6 +82,7 @@ const ACTION_ICON: Record<string, IconName> = {
   'shift.open': 'log-in', 'shift.close': 'clipboard-check', 'shift.defect': 'circle-x', 'task.defect': 'circle-x',
   'task.start': 'hammer', 'task.finish': 'circle-check',
   'issue.equipment': 'wrench', 'issue.material': 'package', 'issue.staff': 'user-plus', 'issue.other': 'triangle-alert', 'issue.resolve': 'circle-check', 'issue.remind': 'bell',
+  'issue.pick': 'triangle-alert',
   // Ta'minot zanjiri va direktor qarorlari
   'supply.approve': 'circle-check', 'supply.director': 'circle-check', 'supply.fund': 'banknote', 'supply.reject': 'circle-x',
   'supply.price': 'tag', 'supply.receive': 'package-check', 'supply.fact': 'pencil', 'supply.delivery': 'truck', 'supply.incident': 'triangle-alert',
@@ -147,6 +149,9 @@ export default function ErpDetail() {
   const [checking, setChecking] = useState(false);
   const inFlight = useRef(false);
   const isDriver = useSession((s) => s.kind === 'erp' && s.erp?.role === 'DRIVER');
+  // Brigadir topshirig'i: fakt, muammo va brak — sodda oynalarda (server formasi o'rniga)
+  const brigTask = useSession((s) => s.kind === 'erp' && s.erp?.role === 'BRIGADIER') && key === 'tasks';
+  const [brig, setBrig] = useState<BrigSheet | null>(null);
   // Reysning yurilgan yo'li (eski serverda yo'q — bo'lim ko'rinmaydi); xarita surilganda sahifa aylanmasin
   const track = useErpTripTrack(key === 'trips' ? id : null);
   const mapLock = useMapScrollLock();
@@ -298,6 +303,12 @@ export default function ErpDetail() {
       }
       return;
     }
+    if (brigTask) {
+      const b = brigSheetOf(a);
+      // Muammo — to'liq sahifa (`/erp/muammo`, maket 03); fakt va brak — pastki oyna
+      if (b?.kind === 'issue') { router.push(`/erp/muammo?ref=${encodeURIComponent(id!)}${b.issue ? `&kind=${b.issue}` : ''}` as never); return; }
+      if (b) { setBrig(b); return; }
+    }
     if (a.form?.length) { setForm(a); return; }
     if (a.confirm) {
       dialog(a.label, a.confirm, [
@@ -329,7 +340,7 @@ export default function ErpDetail() {
    * Ilgari birinchi amal ko'r-ko'rona asosiy bo'lardi: server faqat "Bekor qilish"ni bersa yoki u birinchi
    * kelsa, qizil tugma asosiy bo'lib, tasdiqlash ko'rinmay qolardi.
    */
-  const acts = data?.actions ?? [];
+  const acts = brigTask ? brigActions(data?.actions ?? []) : data?.actions ?? [];
   const negative = (a: ErpAction) => a.tone === 'danger';
   const primary = acts.find((a) => !negative(a)) ?? acts[0];
   const secondary = acts.find((a) => a !== primary && negative(a)) ?? acts.find((a) => a !== primary);
@@ -455,6 +466,7 @@ export default function ErpDetail() {
         </View>
       </Sheet>
 
+      {brig && data ? <BrigTaskSheet sheet={brig} detail={data} onClose={() => setBrig(null)} /> : null}
       {form ? (
         <ActionSheet
           action={form}
@@ -466,6 +478,43 @@ export default function ErpDetail() {
       ) : null}
     </View>
   );
+}
+
+type BrigSheet = { kind: 'fact' } | { kind: 'issue'; issue?: IssueKind } | { kind: 'defect' };
+
+/**
+ * Brigadir topshirig'i: 4 ta muammo tugmasi bitta «Muammo bildirish»ga birlashadi (oynada turi tanlanadi),
+ * «Ishni yakunlash» — fakt oynasidagi «Hammasi» bilan bir xil, alohida tugma kerak emas.
+ */
+function brigActions(acts: ErpAction[]): ErpAction[] {
+  const issue = acts.some((a) => a.id.startsWith('issue.') && a.id !== 'issue.resolve' && a.id !== 'issue.remind');
+  const rest = acts.filter((a) => !(a.id.startsWith('issue.') && a.id !== 'issue.resolve' && a.id !== 'issue.remind') && a.id !== 'task.finish');
+  return issue ? [...rest, { id: 'issue.pick', label: 'Muammo bildirish', tone: 'danger', local: true }] : rest;
+}
+function brigSheetOf(a: ErpAction): BrigSheet | null {
+  if (a.id === 'task.progress' || a.id === 'task.finish') return { kind: 'fact' };
+  if (a.id === 'task.defect') return { kind: 'defect' };
+  if (a.id === 'issue.pick') return { kind: 'issue' };
+  if (['issue.equipment', 'issue.material', 'issue.staff', 'issue.other'].includes(a.id)) return { kind: 'issue', issue: a.id.slice(6) as IssueKind };
+  return null;
+}
+
+/** Topshiriq kartochkasidan ochiladigan brigadir oynasi — ma'lumot kartochka formalaridan (qoldiq, birlik, sabablar). */
+function BrigTaskSheet({ sheet, detail, onClose }: { sheet: BrigSheet; detail: ErpDetailData; onClose: () => void }) {
+  const today = useErpHome().data?.brigadeToday;
+  const field = (action: string, name: string) => detail.actions.find((x) => x.id === action)?.form?.find((f) => f.name === name);
+  const reasons = (field('task.progress', 'defectReason') ?? field('task.defect', 'reason'))?.options?.map((o) => o.label) ?? today?.defectReasons ?? [];
+  if (sheet.kind === 'fact') {
+    const q = field('task.progress', 'qty');
+    const product = detail.fields.find((f) => f.label === 'Mahsulot')?.value ?? detail.subtitle ?? '';
+    return <FactSheet task={{ id: detail.id, taskNo: detail.title, product, unit: q?.label.match(/\(([^)]+)\)/)?.[1] ?? '', left: Number(q?.value) || 0 }} reasons={reasons} onClose={onClose} />;
+  }
+  if (sheet.kind === 'issue') return null;
+  const products = (field('task.defect', 'productId')?.options ?? []).map((o) => {
+    const m = o.label.match(/^(.*) \(([^)]+)\)$/);
+    return { id: o.value, name: m?.[1] ?? o.label, unit: m?.[2] ?? '' };
+  });
+  return <DefectSheet refId={detail.id} products={products} reasons={reasons} onClose={onClose} />;
 }
 
 /** Hujjat surati (server `photo.url`) — Bearer bilan yuklanadi, keshda 10 daqiqa. */

@@ -1,7 +1,7 @@
 import React from 'react';
-import { ErpHome } from '@/features/erp/screens';
+import { BrigadierHome } from '@/features/erp/brigadier';
 
-/** Brigadir — bosh ekran: brigadaga tayinlangan topshiriqlar va bugungi bajarilgani (`/api/mobile/home`). */
+/** Brigadir — «Bugun»: hozirgi ish, «Fakt yozish», topshiriq / muammo / davomat / brak (`brigadeToday`). Smena yo'q. */
 export default function Home() {
-  return <ErpHome />;
+  return <BrigadierHome />;
 }
