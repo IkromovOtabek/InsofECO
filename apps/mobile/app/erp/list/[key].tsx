@@ -7,9 +7,9 @@ import { ErpList } from '@/features/erp/screens';
  * sarlavha (orqaga · nom · "+") ekranning o'zida, navigator sarlavhasi yashiriladi.
  */
 export default function ErpListScreen() {
-  const { key } = useLocalSearchParams<{ key: string }>();
+  const { key, f } = useLocalSearchParams<{ key: string; f?: string }>();
   const nav = useNavigation();
   const router = useRouter();
   useEffect(() => { nav.setOptions({ headerShown: false }); }, [nav]);
-  return <ErpList listKey={key!} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />;
+  return <ErpList listKey={key!} initialFilter={f} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />;
 }

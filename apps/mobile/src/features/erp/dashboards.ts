@@ -16,8 +16,8 @@ import type { IconName } from '@/design/icons';
 export type QuickTarget =
   /** Yangi hujjat formasi (`/erp/new/<key>`) — faqat rol ocha olsa (server `quick` da `new`). */
   | { kind: 'new'; key: string }
-  /** Ro'yxat (`/erp/list/<key>`) — faqat rolga ruxsat bo'lsa (server `quick` da `list`). */
-  | { kind: 'list'; key: string }
+  /** Ro'yxat (`/erp/list/<key>`) — faqat rolga ruxsat bo'lsa (server `quick` da `list`). `filter` — ochilgandagi chip (`?f=`). */
+  | { kind: 'list'; key: string; filter?: string }
   /** Shu bo'limning tabi. */
   | { kind: 'tab'; tab: 'work' | 'ai' | 'menu' }
   /** Bosh sahifadagi karta ochadigan joy (`card.open`) — karta bo'lmasa amal ko'rinmaydi. */
@@ -31,6 +31,8 @@ export interface QuickSpec {
   label: string; icon: IconName; to: QuickTarget;
   /** `to` (forma yoki ro'yxat) rolga ochiq bo'lmasa (masalan eski server bermasa) — shu manzil, o'z yorlig'i bilan. */
   orElse?: { label: string; icon: IconName; to: QuickTarget };
+  /** Son nishoni — bosh sahifadagi shu kalitli kartaning qiymati (0 bo'lsa nishon yo'q). */
+  badgeCard?: string;
 }
 
 /** Davr kalitlari — server `?period=` (direktorda `?revenue=`) qabul qiladi. */
@@ -63,6 +65,8 @@ export interface RoleDashboard {
   countList?: { key: string; title: string; sub: string; icon: IconName };
   /** Bosh sahifada ko'rsatilmaydigan bo'limlar (spek bo'yicha ortiqcha). */
   hide?: RegExp[];
+  /** Bosh sahifada ko'rsatilmaydigan kartalar (server `key`i). */
+  hideCards?: string[];
   quick: QuickSpec[];
   /** Spekdagi, lekin API'da manbasi yo'q ko'rsatkichlar — backend uchun. */
   missing: string[];
@@ -115,8 +119,12 @@ export const ROLE_DASHBOARDS: Record<ErpRole, RoleDashboard> = {
     breakdown: /^Mahsulotlar ulushi/,
     progress: { section: /^Plan \/ fakt/ },
     attention: [/^Sklad — .* kam/],
+    // Zames boshliqqa kerak emas (RBU operatori yozadi): tab ham, bosh sahifadagi ro'yxat va karta ham yo'q
+    hide: [/^Bugungi zameslar/],
+    hideCards: ['today'],
     quick: [
-      { label: 'Zameslar', icon: 'package', to: { kind: 'tab', tab: 'work' } },
+      // Zameslar o'rnida — brigadasi yo'q zayavkalar (`lib/production.ts` "unassigned")
+      { label: 'Brigada kutayotgan', icon: 'hard-hat', to: { kind: 'list', key: 'orders', filter: 'unassigned' }, badgeCard: 'unassigned' },
       { label: 'Topshiriqlar', icon: 'clipboard-list', to: { kind: 'list', key: 'tasks' } },
       { label: 'Kunlik hisobot', icon: 'file-text', to: { kind: 'list', key: 'prod-report' } },
       { label: "Ta'minot so'rash", icon: 'shopping-cart', to: { kind: 'new', key: 'supply' } },

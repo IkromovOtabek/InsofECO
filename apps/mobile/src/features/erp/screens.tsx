@@ -149,7 +149,7 @@ interface DashModel {
 
 /** Server kartalari va bo'limlarini rol speki bo'yicha bloklarga taqsimlaydi. Raqam qo'shilmaydi. */
 function buildModel(data: ErpHomeData, cfg: RoleDashboard): DashModel {
-  const cards = data.cards;
+  const cards = cfg.hideCards ? data.cards.filter((x) => !cfg.hideCards!.includes(x.key)) : data.cards;
   const hero = (cfg.hero && cards.find((x) => cfg.hero!.includes(x.key))) || cards[0] || null;
   const pool = cards.filter((x) => x !== hero);
   const kpis: ErpCard[] = [];
@@ -521,7 +521,8 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
   const hasNew = (k: string) => data.quick.some((q) => q.kind === 'new' && q.key === k) || data.create?.key === k;
   const hasList = (k: string) => data.quick.some((q) => q.kind === 'list' && q.key === k);
   const out: ActionItem[] = [];
-  const add = (label: string, icon: ActionItem['icon'], href: string, m: ModuleTone = module) => out.push({ label, icon, module: m, onPress: () => go(href) });
+  const add = (label: string, icon: ActionItem['icon'], href: string, m: ModuleTone = module, badge?: number) => out.push({ label, icon, module: m, onPress: () => go(href), badge });
+  const cardCount = (k?: string) => (k ? Number(data.cards.find((x) => x.key === k)?.value) || undefined : undefined);
   for (const spec of specs) {
     // Forma yoki ro'yxat rolga ochiq bo'lmasa (eski server / direktor ruxsat bermagan) — zaxira manzil
     const open = spec.to.kind === 'new' ? hasNew(spec.to.key) : spec.to.kind === 'list' ? data.list.key === spec.to.key || hasList(spec.to.key) : true;
@@ -530,7 +531,7 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
     if (t.kind === 'new' && hasNew(t.key)) add(q.label, q.icon, `/erp/new/${t.key}`);
     else if (t.kind === 'list') {
       if (data.list.key === t.key) add(q.label, q.icon, `/${group}/work`);
-      else if (hasList(t.key)) add(q.label, q.icon, `/erp/list/${t.key}`, listModule(t.key) === 'brand' ? module : listModule(t.key));
+      else if (hasList(t.key)) add(q.label, q.icon, `/erp/list/${t.key}${t.filter ? `?f=${t.filter}` : ''}`, listModule(t.key) === 'brand' ? module : listModule(t.key), cardCount(q === spec ? spec.badgeCard : undefined));
     } else if (t.kind === 'tab') {
       if (t.tab !== 'ai' || hasAi) add(q.label, q.icon, `/${group}/${t.tab}`);
     } else if (t.kind === 'href') {
@@ -694,13 +695,13 @@ function groupByDay(rows: ErpRow[]): { label: string | null; rows: ErpRow[] }[] 
  * ("Bugun", "Kecha" — sana bo'lsa), ListGroup qatorlari: plitka, nom, izoh, o'ngda qiymat va holat nishoni.
  * `fallback` — ro'yxat rolga ochiq bo'lmasa (server rad etsa) shu ko'rsatiladi.
  */
-export function ErpList({ listKey, title, onBack, fallback }: { listKey: string; title?: string; onBack?: () => void; fallback?: React.ReactNode }) {
+export function ErpList({ listKey, title, onBack, fallback, initialFilter }: { listKey: string; title?: string; onBack?: () => void; fallback?: React.ReactNode; initialFilter?: string }) {
   const { c } = useTheme();
   const router = useRouter();
   const raise = useHeaderRaise();
   const [q, setQ] = useState('');
-  // Filtrlar bo'lsa (ishlab chiqarish "Zayavkalar"i) — tanlangani serverga yuboriladi
-  const [filter, setFilter] = useState<string | undefined>(undefined);
+  // Filtrlar bo'lsa (ishlab chiqarish "Zayavkalar"i) — tanlangani serverga yuboriladi; tezkor amal `?f=` bilan ochishi mumkin
+  const [filter, setFilter] = useState<string | undefined>(initialFilter);
   // Qidiruv — yozib bo'lingach (350 ms) so'raladi; oldingi natija turadi, har harfda skelet chiqmaydi
   const dq = useDebounced(q.trim());
   const { data, isLoading, refetch, isRefetching, error } = useErpList(listKey, dq || undefined, filter);
