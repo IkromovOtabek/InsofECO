@@ -462,7 +462,7 @@ export function BrigadeAttendanceScreen({ onBack }: { onBack: () => void }) {
 
 // ───────────────────────── Men ─────────────────────────
 
-/** «Men» — shaxsiy hamma narsa bitta joyda (so'rovnoma, xabarlar, murojaat va smena grafigi yo'q). */
+/** «Men» — shaxsiy hamma narsa bitta joyda: davomat, ish haqi, vazifalar va ish tarixi (otdel kadr arizalari, KPI, kurslar olib tashlangan). */
 export function BrigadierMenu() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -500,7 +500,6 @@ export function BrigadierMenu() {
             ...(data?.selfAttendance ? [{ label: 'Davomatim', icon: 'calendar-days' as const, module: 'logistics' as const, onPress: () => go('/erp/davomatim') }] : []),
             ...(has('oyligim') ? [{ label: 'Ish haqim', icon: 'wallet' as const, module: 'brand' as const, onPress: () => go('/erp/list/oyligim') }] : []),
             ...(has('vazifalarim') ? [{ label: 'Vazifalar', icon: 'clipboard-check' as const, module: 'production' as const, onPress: () => go('/erp/list/vazifalarim') }] : []),
-            ...(has('arizalarim') ? [{ label: 'Arizalarim', icon: 'file-text' as const, module: 'warehouse' as const, onPress: () => go('/erp/list/arizalarim') }] : []),
           ]}
         />
 
@@ -509,14 +508,6 @@ export function BrigadierMenu() {
           {has('brig-days') ? <ListItem icon="history" module="production" title="Ish tarixi" subtitle="Kunlar bo'yicha: bajarilgan ish, brak" onPress={() => go('/erp/list/brig-days')} /> : null}
           {has('brig-issues') ? <ListItem icon="triangle-alert" tone="danger" title="Muammolar" subtitle="Ochiq va hal qilinganlar" onPress={() => go('/erp/list/brig-issues')} /> : null}
           {t ? <ListItem icon="package" module="warehouse" title="Mening skladim" subtitle="Qo'limdagi xomashyo" onPress={() => go(`/erp/brig-stock/${idSeg(t.brigade.id)}`)} /> : null}
-          {has('cheklistim') ? <ListItem icon="square-check" module="production" title="Bugungi cheklist" onPress={() => go('/erp/list/cheklistim')} /> : null}
-        </ListGroup>
-
-        <SectionHead title="Ariza va rivojlanish" />
-        <ListGroup>
-          <ListItem icon="plus" module="brand" title="Ariza yuborish" subtitle="Avans, kechikish yoki kelmaslik sababi" onPress={() => go('/erp/new/ariza')} />
-          {has('kpim') ? <ListItem icon="star" module="brand" title="KPI'm" onPress={() => go('/erp/list/kpim')} /> : null}
-          {has('kurslarim') ? <ListItem icon="layers" module="brand" title="Kurslarim" onPress={() => go('/erp/list/kurslarim')} /> : null}
         </ListGroup>
 
         <LogoutButton size="md" textColor={c.danger} />
