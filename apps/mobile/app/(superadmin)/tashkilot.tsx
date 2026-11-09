@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { KpiGrid, ListGroup, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
-import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, Txt, fmtDateFull } from '@/design/primitives';
+import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, Txt, fmtDateTime } from '@/design/primitives';
 import { Avatar, Confirm, fmtRel, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
@@ -45,7 +45,7 @@ export default function AdminOrganization() {
                 {o.address ? <Txt v="bodySm" color="muted">{o.address}</Txt> : null}
               </View>
 
-              {o.blockedAt ? <Callout tone="danger" icon="ban">{`${fmtDateFull(o.blockedAt)} da bloklangan: ${o.blockedReason ?? '—'}. A'zolar bu tashkilot nomidan hech qanday amal bajara olmaydi.`}</Callout> : null}
+              {o.blockedAt ? <Callout tone="danger" icon="ban">{`${fmtDateTime(o.blockedAt)} da bloklangan: ${o.blockedReason ?? '—'}. A'zolar bu tashkilot nomidan hech qanday amal bajara olmaydi.`}</Callout> : null}
 
               <KpiGrid items={[
                 { label: 'Bugun buyurtma', value: o.counts.ordersToday, icon: 'clipboard-list' },
@@ -57,7 +57,7 @@ export default function AdminOrganization() {
               <KVList rows={[
                 { label: 'INN', value: o.inn ?? '—' },
                 { label: 'ERP kartasi', value: o.externalRef ?? '—' },
-                { label: 'Yaratilgan', value: fmtDateFull(o.createdAt) },
+                { label: 'Yaratilgan', value: fmtDateTime(o.createdAt) },
                 { label: 'Id', value: o.id },
               ]} />
 

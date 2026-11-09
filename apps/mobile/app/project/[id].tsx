@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EXPENSE_LABEL, SPECIALTY_LABEL } from '@insof/shared';
 import { BreakdownCard, ChipGroup, KpiGrid, ListGroup, ProgressCard, Reveal, SectionHead, SkeletonList, StickyActionBar } from '@/design/blocks';
-import { Badge, Card, EmptyState, KVList, ListItem, ProgressBar, Screen, StatusChip, Timeline, Txt, fmtDate, fmtDateFull, fmtSum, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Card, EmptyState, KVList, ListItem, ProgressBar, Screen, StatusChip, Timeline, Txt, fmtDate, fmtDateFull, fmtDateTime, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { dialog, Avatar, daysLeft, fmtShort, toast } from '@/design/ui';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -157,7 +157,7 @@ export default function ProjectScreen() {
               <SectionHead title="Oxirgi xarajatlar" />
               {p.expenses.length ? (
                 <ListGroup>
-                  {p.expenses.slice(0, 15).map((e) => <ListItem key={e.id} icon="circle-arrow-up" tone="danger" title={e.description} subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category} · ${fmtDateFull(e.date)}`} right={<Txt v="bodyStrong" color="danger">−{fmtShort(e.amount)}</Txt>} />)}
+                  {p.expenses.slice(0, 15).map((e) => <ListItem key={e.id} icon="circle-arrow-up" tone="danger" title={e.description} subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category} · ${fmtDateTime(e.date)}`} right={<Txt v="bodyStrong" color="danger">−{fmtShort(e.amount)}</Txt>} />)}
                 </ListGroup>
               ) : <ListGroup><EmptyState compact icon="receipt" title="Xarajatlar yo'q" /></ListGroup>}
             </View>
@@ -167,7 +167,7 @@ export default function ProjectScreen() {
             <View style={{ gap: space.stack }}>
               <SectionHead title="Hujjatlar, foto/video" count={p.documents.length || undefined} />
               <ListGroup>
-                {p.documents.map((d) => <ListItem key={d.id} icon={d.kind === 'photo' || d.kind === 'video' ? 'image' : 'file-text'} tone={d.kind === 'photo' ? 'info' : 'brand'} title={d.name} subtitle={fmtDateFull(d.createdAt)} />)}
+                {p.documents.map((d) => <ListItem key={d.id} icon={d.kind === 'photo' || d.kind === 'video' ? 'image' : 'file-text'} tone={d.kind === 'photo' ? 'info' : 'brand'} title={d.name} subtitle={fmtDateTime(d.createdAt)} />)}
                 <ListItem icon="chart-column" tone="neutral" title="Hisobot (PDF)" subtitle="Progress, xarajat, jamoa — keyingi versiyada" />
               </ListGroup>
             </View>

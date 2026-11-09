@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ListGroup, Reveal, SkeletonList } from '@/design/blocks';
-import { EmptyState, ListItem, Screen, SearchField, fmtDate, statusLabel, statusTone } from '@/design/primitives';
+import { EmptyState, ListItem, Screen, SearchField, fmtDateTime, statusLabel, statusTone } from '@/design/primitives';
 import { fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
@@ -33,7 +33,7 @@ export default function History() {
               {list.map((s) => (
                 <ListItem
                   key={s.id} size="lg" icon="package-check" module="logistics" tone={s.status === 'CANCELLED' ? 'danger' : undefined}
-                  title={s.cargo} subtitle={`№${s.number} · ${s.project.name}${s.deliveredAt ? ` · ${fmtDate(s.deliveredAt)}` : ''}`} subtitleLines={1}
+                  title={s.cargo} subtitle={`№${s.number} · ${s.project.name}${s.deliveredAt ? ` · ${fmtDateTime(s.deliveredAt)}` : ''}`} subtitleLines={1}
                   onPress={() => router.push(`/shipment/${s.id}`)}
                   value={`${fmtShort(s.driverFee)} so'm`}
                   badge={{ text: statusLabel(s.status), tone: statusTone(s.status) }}

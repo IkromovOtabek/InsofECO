@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { EmptyState, IconTile, ListGroup, Txt, fmtDate, fmtTime } from '@/design/primitives';
+import { EmptyState, IconTile, ListGroup, Txt, fmtDateTime, fmtTime } from '@/design/primitives';
 import { ErrorScreen, OfflineBar, isNetworkError } from '@/components/offline';
 import { ChipGroup, SkeletonList } from '@/design/blocks';
 import { IconName, toast } from '@/design/ui';
@@ -70,7 +70,7 @@ function HeaderLink({ title, onPress, disabled }: { title: string; onPress: () =
 /** Demo bildirishnoma qatori: plitka, sarlavha (o'raladi) + 2 qator izoh, o'ngda vaqt va o'qilmagan nuqtasi (`.udot`). */
 function NoticeRow({ n, unread, first, onPress }: { n: FeedItem; unread: boolean; first: boolean; onPress: () => void }) {
   const { c } = useTheme();
-  const time = bucketOf(n.createdAt, new Date()) === 'older' ? fmtDate(n.createdAt) : fmtTime(n.createdAt);
+  const time = bucketOf(n.createdAt, new Date()) === 'older' ? fmtDateTime(n.createdAt) : fmtTime(n.createdAt);
   const ps = usePressScale(0.98);
   return (
     <Pressable

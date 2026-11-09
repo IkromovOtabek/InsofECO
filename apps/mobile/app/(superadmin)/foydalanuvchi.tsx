@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChipGroup, ListGroup, Reveal, SectionHead, SkeletonList, Toggle } from '@/design/blocks';
-import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, SearchField, Txt, fmtDateFull } from '@/design/primitives';
+import { Badge, Button, Callout, EmptyState, KVList, ListItem, Screen, SearchField, Txt, fmtDateTime } from '@/design/primitives';
 import { Avatar, Confirm, Sheet, fmtRel, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { size, space } from '@/design/tokens';
@@ -66,15 +66,15 @@ export default function AdminUser() {
                 </View>
               </View>
 
-              {u.blockedAt ? <Callout tone="danger" icon="ban">{`${fmtDateFull(u.blockedAt)} da bloklangan: ${u.blockedReason ?? '—'}`}</Callout> : null}
+              {u.blockedAt ? <Callout tone="danger" icon="ban">{`${fmtDateTime(u.blockedAt)} da bloklangan: ${u.blockedReason ?? '—'}`}</Callout> : null}
               {u.isSuperAdmin && u.id !== me ? <Callout tone="info" icon="shield-check">Superadmin huquqi faqat serverdagi skript bilan olinadi — ilovadan bloklab bo&apos;lmaydi.</Callout> : null}
 
               <KVList rows={[
                 { label: 'Faol seanslar', value: String(u.activeSessions) },
                 { label: 'Parol', value: u.hasPassword ? "o'rnatilgan" : "yo'q (Telegram kodi)" },
                 { label: 'Til', value: u.locale },
-                { label: "Ro'yxatdan o'tgan", value: fmtDateFull(u.createdAt) },
-                { label: 'Seanslar yopilgan', value: u.tokensValidAfter ? fmtDateFull(u.tokensValidAfter) : '—' },
+                { label: "Ro'yxatdan o'tgan", value: fmtDateTime(u.createdAt) },
+                { label: 'Seanslar yopilgan', value: u.tokensValidAfter ? fmtDateTime(u.tokensValidAfter) : '—' },
                 { label: 'Id', value: u.id },
               ]} />
 

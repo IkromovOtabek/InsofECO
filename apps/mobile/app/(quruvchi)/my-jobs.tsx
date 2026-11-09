@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChipGroup, KpiGrid, ListGroup, Reveal, SectionHead, SkeletonList } from '@/design/blocks';
-import { EmptyState, ListItem, Screen, fmtDateFull, statusLabel, statusTone } from '@/design/primitives';
+import { EmptyState, ListItem, Screen, fmtDateTime, statusLabel, statusTone } from '@/design/primitives';
 import { Stars, fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { LiveItem, LiveList } from '@/design/motion';
@@ -59,7 +59,7 @@ export default function MyJobs() {
                 <LiveItem key={o.id}>
                 <ListItem
                   icon="hammer" module="production" tone={o.status === 'CANCELLED' ? 'danger' : undefined}
-                  title={o.title} subtitle={`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateFull(o.createdAt)}`} subtitleLines={1}
+                  title={o.title} subtitle={`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateTime(o.createdAt)}`} subtitleLines={1}
                   onPress={() => router.push(`/work-order/${o.id}`)}
                   value={`${fmtShort(o.price)} so'm`}
                   badge={{ text: statusLabel(o.status), tone: statusTone(o.status) }}

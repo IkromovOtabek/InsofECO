@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { HeroCard, KpiGrid, ListGroup, Reveal, SectionHead } from '@/design/blocks';
-import { EmptyState, ListItem, Screen, fmtDate, fmtNum } from '@/design/primitives';
+import { EmptyState, ListItem, Screen, fmtDateTime, fmtNum } from '@/design/primitives';
 import { fmtShort } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
@@ -40,7 +40,7 @@ export function Earnings() {
                   {e.items.map((p) => (
                     <ListItem
                       key={p.id} icon={p.status === 'PAID' ? 'circle-check' : 'clock'} tone={p.status === 'PAID' ? 'success' : 'warning'}
-                      title={p.description} subtitle={fmtDate(p.earnedAt)} subtitleLines={1}
+                      title={p.description} subtitle={fmtDateTime(p.earnedAt)} subtitleLines={1}
                       value={money(p.amount)}
                       badge={{ text: p.status === 'PAID' ? "To'langan" : 'Kutilmoqda', tone: p.status === 'PAID' ? 'success' : 'warning' }}
                     />

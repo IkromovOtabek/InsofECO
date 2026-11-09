@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { EXPENSE_LABEL, INCOME_LABEL } from '@insof/shared';
 import { BarChartCard, BreakdownCard, ChipGroup, HeroCard, KpiGrid, ListGroup, Reveal, SkeletonList } from '@/design/blocks';
-import { Button, Card, EmptyState, Gap, Input, ListItem, Screen, Txt, fmtDateFull, fmtNum } from '@/design/primitives';
+import { Button, Card, EmptyState, Gap, Input, ListItem, Screen, Txt, fmtDateFull, fmtDateTime, fmtNum } from '@/design/primitives';
 import { fmtShort, toast } from '@/design/ui';
 import { useTheme } from '@/design/theme';
 import { space } from '@/design/tokens';
@@ -61,7 +61,7 @@ export default function Finance() {
                 {incomes.map((i) => (
                   <ListItem
                     key={i.id} icon={i.isExpected ? 'clock' : 'circle-arrow-down'} tone={i.isExpected ? 'warning' : 'success'} title={i.description}
-                    subtitle={`${INCOME_LABEL[i.source as keyof typeof INCOME_LABEL] ?? i.source}${i.project ? ' · ' + i.project.name : ''} · ${fmtDateFull(i.date)}`}
+                    subtitle={`${INCOME_LABEL[i.source as keyof typeof INCOME_LABEL] ?? i.source}${i.project ? ' · ' + i.project.name : ''} · ${i.isExpected ? fmtDateFull(i.date) : fmtDateTime(i.date)}`}
                     value={`+${fmtShort(i.amount)} so'm`}
                     badge={i.isExpected ? { text: 'Kutilmoqda', tone: 'warning' } : { text: 'Tushdi', tone: 'success' }}
                   />
@@ -86,7 +86,7 @@ export default function Finance() {
                 {expenses.map((e) => (
                   <ListItem
                     key={e.id} icon="circle-arrow-up" tone="danger" title={e.description}
-                    subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category}${e.project ? ' · ' + e.project.name : ''} · ${fmtDateFull(e.date)}`}
+                    subtitle={`${EXPENSE_LABEL[e.category as keyof typeof EXPENSE_LABEL] ?? e.category}${e.project ? ' · ' + e.project.name : ''} · ${fmtDateTime(e.date)}`}
                     value={`−${fmtShort(e.amount)} so'm`}
                   />
                 ))}

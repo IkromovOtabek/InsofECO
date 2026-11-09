@@ -785,5 +785,7 @@ export const fmtUnit = (n: number | string, unit: string) => `${fmtNum(n, Number
 export const fmtTime = (d: string | Date) => { const x = new Date(d); return `${String(x.getHours()).padStart(2, '0')}:${String(x.getMinutes()).padStart(2, '0')}`; };
 export const fmtDate = (d: string | Date) => { const x = new Date(d); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}`; };
 export const fmtDateFull = (d: string | Date) => { const x = new Date(d); return `${fmtDate(x)}.${x.getFullYear()}`; };
+/** Amal vaqti: "09.11 14:32"; joriy yil bo'lmasa "09.11.2025 14:32". */
+export const fmtDateTime = (d: string | Date) => { const x = new Date(d); return `${x.getFullYear() === new Date().getFullYear() ? fmtDate(x) : fmtDateFull(x)} ${fmtTime(x)}`; };
 
 export { type as typeScale, space, radius, size };

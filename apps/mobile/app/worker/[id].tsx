@@ -3,7 +3,7 @@ import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { KpiGrid, ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar } from '@/design/blocks';
-import { Badge, Card, EmptyState, KVList, ListItem, Screen, Txt, fmtDateFull, fmtSum, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Card, EmptyState, KVList, ListItem, Screen, Txt, fmtDateTime, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { Avatar, Stars, fmtShort } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -81,7 +81,7 @@ export default function WorkerScreen() {
             {w.workOrders.map((o) => (
               <ListItem
                 key={o.id} icon="hammer" module="production" title={o.title}
-                subtitle={`${o.project?.name ? `${o.project.name} · ` : ''}${fmtDateFull(o.createdAt)}`}
+                subtitle={`${o.project?.name ? `${o.project.name} · ` : ''}${fmtDateTime(o.createdAt)}`}
                 value={fmtShort(o.price)} badge={{ text: statusLabel(o.status), tone: statusTone(o.status) }}
                 onPress={() => router.push(`/work-order/${o.id}`)}
               />
@@ -91,13 +91,13 @@ export default function WorkerScreen() {
           <SectionHead title="Baholar" count={w.reviews.length || undefined} />
           <ListGroup>
             {w.reviews.length === 0 ? <EmptyState compact icon="star" title="Baholar yo'q" hint="Tadbirkor ishni qabul qilganda baho beradi" /> : null}
-            {w.reviews.map((r) => <ListItem key={r.id} icon="star" tone="warning" title={r.comment || 'Izohsiz baho'} subtitle={fmtDateFull(r.createdAt)} right={<Stars value={r.scoreOverall} />} />)}
+            {w.reviews.map((r) => <ListItem key={r.id} icon="star" tone="warning" title={r.comment || 'Izohsiz baho'} subtitle={fmtDateTime(r.createdAt)} right={<Stars value={r.scoreOverall} />} />)}
           </ListGroup>
 
           <SectionHead title="Ish haqi" />
           <ListGroup>
             {w.payouts.length === 0 ? <EmptyState compact icon="wallet" title="To'lovlar yo'q" /> : null}
-            {w.payouts.slice(0, 10).map((pp) => <ListItem key={pp.id} icon={pp.status === 'PAID' ? 'circle-check' : 'clock'} tone={pp.status === 'PAID' ? 'success' : 'warning'} title={pp.description} subtitle={fmtDateFull(pp.earnedAt)} value={fmtSum(pp.amount)} badge={pp.status === 'PAID' ? { text: "To'langan", tone: 'success' } : { text: 'Kutilmoqda', tone: 'warning' }} />)}
+            {w.payouts.slice(0, 10).map((pp) => <ListItem key={pp.id} icon={pp.status === 'PAID' ? 'circle-check' : 'clock'} tone={pp.status === 'PAID' ? 'success' : 'warning'} title={pp.description} subtitle={fmtDateTime(pp.earnedAt)} value={fmtSum(pp.amount)} badge={pp.status === 'PAID' ? { text: "To'langan", tone: 'success' } : { text: 'Kutilmoqda', tone: 'warning' }} />)}
           </ListGroup>
         </Reveal>
       </ScrollView>

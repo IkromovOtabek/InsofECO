@@ -1,7 +1,7 @@
 import React from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, EmptyState, ListGroup, ListItem, Txt, fmtDate, fmtTime } from '@/design/primitives';
+import { Button, EmptyState, ListGroup, ListItem, Txt, fmtDateTime, fmtTime } from '@/design/primitives';
 import { dialog, Avatar, toast } from '@/design/ui';
 import { Appear } from '@/design/motion';
 import { useTheme } from '@/design/theme';
@@ -13,15 +13,15 @@ import i18n from '@/core/i18n';
 
 const ROLE: Record<string, string> = { TADBIRKOR: 'Tadbirkor', QURUVCHI: 'Quruvchi', HAYDOVCHI: 'Haydovchi' };
 
-/** Bugungi xabar — HH:mm, kechagi — "Kecha", eskisi — sana. */
+/** Bugungi xabar — HH:mm, kechagi — "Kecha HH:mm", eskisi — sana va soat. */
 function when(iso?: string | null) {
   if (!iso) return '';
   const d = new Date(iso);
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (d.getTime() >= start) return fmtTime(d);
-  if (d.getTime() >= start - 86_400_000) return 'Kecha';
-  return fmtDate(d);
+  if (d.getTime() >= start - 86_400_000) return `Kecha ${fmtTime(d)}`;
+  return fmtDateTime(d);
 }
 
 function ConvRow({ x, onPress }: { x: Conversation; onPress: () => void }) {

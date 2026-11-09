@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SPECIALTY_LABEL } from '@insof/shared';
 import { ListGroup, Reveal, SectionHead, SkeletonList, StickyActionBar, StickyPrimary } from '@/design/blocks';
-import { Badge, Card, EmptyState, FitTxt, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
+import { Badge, Card, EmptyState, FitTxt, IconTile, Input, KVList, ListItem, Screen, Timeline, Txt, fmtDateFull, fmtDateTime, fmtNum, fmtSum, statusLabel, statusTone } from '@/design/primitives';
 import { dialog, Avatar, IconName, Stars, daysLeft, toast } from '@/design/ui';
 import { size, space } from '@/design/tokens';
 import { useTheme } from '@/design/theme';
@@ -97,7 +97,7 @@ export default function WorkOrderScreen() {
                 {fmtNum(Math.round(Number(o.price)))}
                 <Txt v="tSm">{" so'm"}</Txt>
               </FitTxt>
-              <Txt v="tSm" numberOfLines={2}>{`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateFull(o.createdAt)}`}</Txt>
+              <Txt v="tSm" numberOfLines={2}>{`${o.project?.name ?? 'Loyihasiz'} · ${fmtDateTime(o.createdAt)}`}</Txt>
             </Card>
 
             <KVList rows={details} />
