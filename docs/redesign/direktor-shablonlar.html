@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Direktor kabineti shablonlari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sarlavha + savolga javob → 5 shablon (har birida 2 telefon + izoh) → hammasida umumiy ekranlar (Menyu, Tasdiqlar) → solishtiruv → tavsiya */
+:root{
+  --pg-bg:#f1f3f8; --pg-surf:#ffffff; --pg-ink:#10162b; --pg-mut:#5f6a85; --pg-line:#dce1ec; --pg-acc:#10265c; --pg-yel:#ffbb0f; --pg-chip:#e7ebf4;
+  --pg-ok:#00804d; --pg-bad:#c0001c;
+  --f-ui:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#0b0f19;--pg-surf:#141a28;--pg-ink:#eef1f8;--pg-mut:#9ea8c0;--pg-line:#26304a;--pg-acc:#9fb4ee;--pg-chip:#1c2438;--pg-ok:#4fd39a;--pg-bad:#ff8a95;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#0b0f19;--pg-surf:#141a28;--pg-ink:#eef1f8;--pg-mut:#9ea8c0;--pg-line:#26304a;--pg-acc:#9fb4ee;--pg-chip:#1c2438;--pg-ok:#4fd39a;--pg-bad:#ff8a95;color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--pg-bg);color:var(--pg-ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 72px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-acc)}
+h1{font-size:clamp(26px,3.6vw,40px);line-height:1.1;margin:6px 0 10px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h1 mark{background:linear-gradient(transparent 62%,var(--pg-yel) 62%);color:inherit;padding:0 2px}
+.lede{color:var(--pg-mut);max-width:70ch;margin:0}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.jump a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--pg-surf);border:1px solid var(--pg-line);color:var(--pg-ink);text-decoration:none;font-size:13px;font-weight:600}
+.jump a span{font-family:var(--f-mono);font-size:11px;background:var(--pg-acc);color:var(--pg-surf);border-radius:999px;padding:1px 7px}
+.jump a:hover{border-color:var(--pg-acc)}
+h2.sec{font-size:22px;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+
+.answer{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.answer div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px;min-width:0}
+.answer div.y{border-color:var(--pg-yel);box-shadow:0 0 0 1px var(--pg-yel)}
+.answer b{display:block;font-size:14px;margin-bottom:4px}
+.answer p,.answer li{margin:0;font-size:13.5px;color:var(--pg-mut)}
+.answer ul{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.answer em{font-style:normal;color:var(--pg-ink);font-weight:700}
+
+.tpl{display:flex;flex-direction:column;gap:16px;padding-top:28px;border-top:1px solid var(--pg-line);scroll-margin-top:16px}
+.tpl-head{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;justify-content:space-between}
+.tpl-head>div{min-width:0}
+.tpl h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tpl h2 .n{font-family:var(--f-mono);font-size:13px;font-weight:500;color:#fff;background:var(--pg-acc);border-radius:8px;padding:2px 8px}
+.tpl-head p{margin:6px 0 0;color:var(--pg-mut);max-width:66ch;font-size:14px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--pg-chip);color:var(--pg-ink);white-space:nowrap}
+.tag.s{background:color-mix(in srgb,var(--pg-ok) 16%,transparent);color:var(--pg-ok)}
+.tag.y{background:color-mix(in srgb,var(--pg-yel) 30%,transparent);color:var(--pg-ink)}
+.tabline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--pg-mut)}
+.tabline b{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:8px;background:var(--pg-surf);border:1px solid var(--pg-line);color:var(--pg-ink)}
+.tabline b.new{border-color:var(--pg-yel);background:color-mix(in srgb,var(--pg-yel) 22%,var(--pg-surf))}
+.rail{display:flex;gap:24px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
+.slot{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;scroll-snap-align:start}
+.slot b{font-size:13px}
+.slot span{font-size:12px;color:var(--pg-mut);font-weight:400}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.notes div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:14px 16px;min-width:0}
+.notes h3{margin:0 0 8px;font-size:14px}
+.notes ul{margin:0;padding-left:18px;color:var(--pg-mut);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.notes em{font-style:normal;color:var(--pg-ink);font-weight:600}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--pg-line);border-radius:14px;background:var(--pg-surf)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--pg-line);vertical-align:top}
+th{font-size:12px;font-weight:700;color:var(--pg-mut);text-transform:uppercase;letter-spacing:.04em;background:var(--pg-chip)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;white-space:nowrap}
+td.best{color:var(--pg-ok);font-weight:700}
+.rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.rec div{background:var(--pg-surf);border:1px solid var(--pg-line);border-radius:14px;padding:16px;min-width:0}
+.rec div.main{border-color:var(--pg-yel);box-shadow:0 0 0 2px var(--pg-yel)}
+.rec h3{margin:0 0 6px;font-size:15px}
+.rec p,.rec li{margin:0;font-size:13.5px;color:var(--pg-mut)}
+.rec ol{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.foot-note{font-size:12.5px;color:var(--pg-mut)}
+
+/* ───────── telefon: ERP brendi — to'q ko'k (navy) + signal sariq (vebdagi brand-400 #ffbb0f), light ───────── */
+.phone{width:272px;height:588px;border-radius:44px;padding:8px;background:#0b0d0f;box-shadow:0 22px 44px -22px #0b183f80,inset 0 0 0 1px #2b3036}
+.scr{
+  --bg:#f3f5fa;--surf:#fff;--ink:#10162b;--mut:#5f6a85;--line:#e3e8f1;
+  --navy:#10265c;--navy2:#1c3d86;--navySoft:#e7edfa;--logo:#4f6ebe;
+  --yel:#ffbb0f;--yelD:#ffa300;--yelSoft:#fff5d1;--yelLine:#ffe28a;--yelInk:#7a4700;
+  --ok:#00804d;--okSolid:#00a862;--okBg:#e3f6ec;--bad:#c0001c;--badSolid:#e60d28;--badBg:#ffecef;--info:#0068ad;--infoBg:#e6f4fb;
+  position:relative;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:600 11px/1.35 "Nunito",ui-sans-serif,system-ui,sans-serif;display:flex;flex-direction:column;color-scheme:light}
+.island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:80px;height:23px;border-radius:12px;background:#000;z-index:8}
+.sb{position:absolute;top:0;left:0;right:0;height:40px;display:flex;justify-content:space-between;align-items:center;padding:3px 24px 0;font-size:11px;font-weight:800;color:var(--ink);z-index:7;font-family:var(--f-ui)}
+.scr.top-dark .sb{color:#fff}
+.sb .r{display:flex;gap:4px;align-items:center}
+.sb .sig{display:flex;gap:1.5px;align-items:flex-end;height:9px}
+.sb .sig i{width:2.5px;background:currentColor;border-radius:1px}
+.sb .bat{width:20px;height:10px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat::after{content:"";position:absolute;inset:1px 5px 1px 1px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;border-radius:3px;background:var(--ink);opacity:.85;z-index:9}
+.scr.tb-dark .homebar{background:#fff}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+
+.main{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:44px 12px 8px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--mut)}
+.row{display:flex;align-items:center;gap:6px}
+.sp{justify-content:space-between}
+.c-ok{color:var(--ok)!important} .c-bad{color:var(--bad)!important} .c-yel{color:var(--yelInk)!important}
+
+/* sarlavha */
+.hdr{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+.av{width:34px;height:34px;border-radius:50%;background:var(--navySoft);color:var(--navy);display:grid;place-items:center;font-weight:900;font-size:11px;flex:0 0 auto}
+.who{flex:1;min-width:0}
+.who small{display:block;font:600 8.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.who b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb{width:32px;height:32px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center;position:relative;flex:0 0 auto}
+.rb.dot::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--badSolid);box-shadow:0 0 0 1.5px var(--surf)}
+.band{background:var(--navy);color:#fff;margin:-44px -12px 0;padding:44px 12px 12px;border-radius:0 0 22px 22px;display:flex;flex-direction:column;gap:9px;flex:0 0 auto;position:relative;overflow:hidden}
+.band::before{content:"";position:absolute;inset:0;background-image:linear-gradient(#ffffff0b 1px,transparent 1px),linear-gradient(90deg,#ffffff0b 1px,transparent 1px);background-size:14px 14px}
+.band>*{position:relative}
+.band .av{background:#ffffff1f;color:#fff}
+.band .who small{color:#aebfe8}
+.band .rb{background:#ffffff14;border-color:#ffffff26;color:#fff}
+.band .rb.dot::after{box-shadow:0 0 0 1.5px var(--navy)}
+.back{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.back i{width:30px;height:30px;border-radius:50%;background:var(--surf);border:1px solid var(--line);display:grid;place-items:center}
+.back b{font-size:15px;font-weight:900;flex:1}
+h3.ttl{margin:0;font-size:17px;font-weight:900;letter-spacing:-.01em}
+
+/* kartalar */
+.card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:9px 11px;flex:0 0 auto}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:6px}
+.ch b{font-size:11.5px;font-weight:900}
+.ch a{font-size:9.5px;font-weight:800;color:var(--logo);text-decoration:none;white-space:nowrap}
+.li{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+.ch+.li{border-top:0}
+.li b{display:block;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li small{display:block;font-size:9px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .r{font-weight:900;font-size:10.5px;white-space:nowrap;text-align:right}
+.li .r small{text-align:right}
+.it{width:27px;height:27px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto}
+.t-nv{background:var(--navySoft);color:var(--navy)}
+.t-y{background:var(--yelSoft);color:var(--yelInk)}
+.t-ok{background:var(--okBg);color:var(--ok)}
+.t-bad{background:var(--badBg);color:var(--bad)}
+.t-info{background:var(--infoBg);color:var(--info)}
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;font-size:8.5px;font-weight:900;white-space:nowrap}
+.p-bad{background:var(--badBg);color:var(--bad)} .p-y{background:var(--yelSoft);color:var(--yelInk)} .p-ok{background:var(--okBg);color:var(--ok)} .p-nv{background:var(--navy);color:#fff}
+
+/* tasdiq banneri */
+.appr{display:flex;align-items:center;gap:8px;background:var(--yelSoft);border:1px solid var(--yelLine);border-radius:14px;padding:7px 9px;flex:0 0 auto}
+.appr .it{background:var(--yel);color:#14181d}
+.appr b{display:block;font-size:10.5px;font-weight:900}
+.appr small{display:block;font-size:9px;color:var(--yelInk)}
+.appr .cnt{min-width:24px;height:22px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900;font-size:10.5px;padding:0 6px}
+.band .appr{background:#ffffff12;border-color:#ffbb0f66}
+.band .appr b{color:#fff} .band .appr small{color:#ffd76a}
+.band .appr .cnt{background:var(--yel);color:#14181d}
+
+/* hero */
+.hero{background:var(--navy);color:#fff;border-radius:18px;padding:11px 12px;position:relative;overflow:hidden;flex:0 0 auto}
+.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(#ffffff0b 1px,transparent 1px),linear-gradient(90deg,#ffffff0b 1px,transparent 1px);background-size:14px 14px}
+.hero::after{content:"";position:absolute;left:12px;top:0;width:34px;height:3px;border-radius:0 0 3px 3px;background:var(--yel)}
+.hero>*{position:relative}
+.hero .k{font:600 8.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#aebfe8}
+.hero .v{display:flex;align-items:baseline;gap:4px;margin:3px 0 5px}
+.hero .v b{font-size:27px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.hero .v span{font-size:11px;color:#c7d3f2}
+.hero .io{display:flex;gap:6px}
+.hero .io span{flex:1;display:flex;align-items:center;gap:4px;background:#ffffff14;border-radius:9px;padding:4px 6px;font-size:9.5px;font-weight:800;white-space:nowrap}
+.hero .io .in{color:#7fe3b3} .hero .io .out{color:#ff9fae}
+.hero .io .ic{width:11px;height:11px;stroke-width:2.6}
+.hero.yel{background:var(--yel);color:#14181d}
+.hero.yel::before{background-image:linear-gradient(#0000000a 1px,transparent 1px),linear-gradient(90deg,#0000000a 1px,transparent 1px)}
+.hero.yel::after{background:var(--navy)}
+.hero.yel .k{color:#7a4700}
+.hero.yel .v span{color:#5b3a00}
+.hero.yel .io span{background:#ffffff73;color:#14181d}
+
+/* KPI */
+.kg{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:0 0 auto}
+.kg.c3{grid-template-columns:repeat(3,1fr)}
+.kp{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:7px 9px;min-width:0}
+.kp small{display:block;font-size:8.5px;color:var(--mut);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kp b{display:block;font-size:14px;font-weight:900;letter-spacing:-.01em;white-space:nowrap}
+.kg.c3 .kp{padding:7px 6px}
+.kg.c3 .kp b{font-size:12px}
+.kp em{display:block;font-style:normal;font-size:8.5px;font-weight:800;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kp .bar{margin-top:3px}
+
+/* tezkor amallar */
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;flex:0 0 auto}
+.q{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:8.5px;font-weight:800;text-align:center;white-space:nowrap}
+.q i{width:42px;height:42px;border-radius:14px;background:var(--surf);border:1px solid var(--line);color:var(--navy);display:grid;place-items:center;position:relative}
+.q i .ic{width:17px;height:17px}
+.q.p i{background:var(--yel);border-color:var(--yel);color:#14181d;box-shadow:0 8px 14px -8px var(--yelD)}
+.q i u{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:8px;background:var(--badSolid);color:#fff;font-size:8.5px;font-weight:900;display:grid;place-items:center;text-decoration:none;padding:0 4px;box-shadow:0 0 0 2px var(--bg)}
+
+/* grafik / progress */
+.bars{display:flex;align-items:flex-end;gap:4px;height:44px;margin-top:2px}
+.bars i{flex:1;display:flex;align-items:flex-end;gap:1.5px;height:100%}
+.bars s{flex:1;background:var(--navy);border-radius:3px 3px 0 0;display:block}
+.bars s+s{background:var(--yel)}
+.axis{display:flex;gap:4px;font-size:8px;color:var(--mut);margin-top:2px}
+.axis span{flex:1;text-align:center}
+.lg{display:flex;gap:8px;font-size:8.5px;color:var(--mut);font-weight:700;white-space:nowrap}
+.lg i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:3px;vertical-align:0}
+.bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--navy);border-radius:4px}
+.bar.y i{background:var(--yel)} .bar.ok i{background:var(--okSolid)} .bar.bad i{background:var(--badSolid)}
+.pg{padding:5px 0;border-top:1px solid var(--line)}
+.ch+.pg{border-top:0}
+.pg .row{font-size:10px;font-weight:800;margin-bottom:3px}
+.pg .row span{margin-left:auto;font-weight:900}
+.pg small{display:block;font-size:8.5px;color:var(--mut);margin-top:2px}
+.stack{display:flex;height:9px;border-radius:5px;overflow:hidden;gap:2px;margin:4px 0}
+.stack i{display:block;height:100%}
+
+/* segment / chip */
+.seg{display:flex;background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:2px;flex:0 0 auto}
+.seg b{flex:1;text-align:center;padding:5px 0;border-radius:10px;font-size:10px;font-weight:900;color:var(--mut);white-space:nowrap}
+.seg b.on{background:var(--navy);color:#fff}
+.band .seg{background:#ffffff14;border-color:#ffffff22}
+.band .seg b{color:#c7d3f2}
+.band .seg b.on{background:var(--yel);color:#14181d}
+.chips{display:flex;gap:5px;flex:0 0 auto;overflow:hidden}
+.chip{height:26px;padding:0 9px;border-radius:999px;background:var(--surf);border:1px solid var(--line);display:inline-flex;align-items:center;gap:4px;font-weight:800;font-size:10px;white-space:nowrap}
+.chip u{text-decoration:none;font-size:8.5px;background:var(--bg);border-radius:6px;padding:0 4px;color:var(--mut)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip.on u{background:#ffffff26;color:#fff}
+
+/* tugmalar */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn{height:32px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:900;font-size:10.5px;background:var(--yel);color:#14181d}
+.btn.gh{background:var(--surf);border:1px solid var(--line);color:var(--ink)}
+.btn .ic{width:13px;height:13px;stroke-width:2.6}
+
+/* qidiruv, menyu guruhlari */
+.search{height:34px;border-radius:12px;background:var(--surf);border:1px solid var(--line);display:flex;align-items:center;gap:7px;padding:0 10px;color:var(--mut);font-size:10.5px;flex:0 0 auto}
+.lbl{font:600 8.5px var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center;flex:0 0 auto}
+.lbl a{font:800 9.5px "Nunito",sans-serif;letter-spacing:0;text-transform:none;color:var(--logo);text-decoration:none}
+.grp{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--line)}
+.card>.grp:first-child{border-top:0}
+.grp b{flex:1;font-size:11px;font-weight:900}
+.grp u{text-decoration:none;font-size:9px;font-weight:900;color:var(--mut);background:var(--bg);border-radius:6px;padding:1px 6px}
+.grp.open{border-bottom:0}
+.sub{padding:0 0 4px 35px;display:flex;flex-direction:column}
+.sub span{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;padding:3px 0;border-top:1px dashed var(--line)}
+.sub span:first-child{border-top:0}
+.sub span em{font-style:normal;font-size:8.5px;color:var(--mut)}
+.star{color:var(--yelD)}
+
+/* tab panel */
+.tabs{flex:0 0 auto;height:60px;background:var(--surf);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:flex-start;padding:6px 4px 14px;position:relative;z-index:2}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8.5px;font-weight:800;color:var(--mut);min-width:44px;position:relative}
+.tab i{width:34px;height:22px;border-radius:9px;display:grid;place-items:center;position:relative}
+.tab .ic{width:15px;height:15px}
+.tab.on{color:var(--navy)}
+.tab.on i{background:var(--navySoft)}
+.tab u{position:absolute;top:-4px;right:-3px;min-width:15px;height:15px;border-radius:8px;background:var(--badSolid);color:#fff;font-size:8px;font-weight:900;display:grid;place-items:center;text-decoration:none;padding:0 3px;box-shadow:0 0 0 2px var(--surf)}
+.tabs.nv{background:var(--navy);border-top-color:var(--navy)}
+.tabs.nv .tab{color:#9fb1db}
+.tabs.nv .tab.on{color:#fff}
+.tabs.nv .tab.on i{background:var(--yel);color:#14181d}
+.tabs.nv .tab u{box-shadow:0 0 0 2px var(--navy)}
+.tab.fab i{width:48px;height:48px;border-radius:17px;background:var(--yel);color:#14181d;margin-top:-24px;box-shadow:0 10px 18px -8px #ffa300,0 0 0 4px var(--navy)}
+.tab.fab .ic{width:22px;height:22px;stroke-width:2.6}
+.tab.fab{color:#fff;min-width:54px}
+
+/* pastdan oyna */
+.dim{position:absolute;inset:0;background:#0b183f80;z-index:3}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surf);border-radius:24px 24px 0 0;padding:8px 14px 22px;box-shadow:0 -12px 30px -12px #0b183f66;z-index:4;display:flex;flex-direction:column;gap:8px}
+.grab{width:36px;height:4px;border-radius:3px;background:var(--line);margin:0 auto 1px}
+.agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.ag{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:9px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;font-weight:900;text-align:center;position:relative}
+.ag i{width:32px;height:32px;border-radius:11px;display:grid;place-items:center}
+.ag i .ic{width:16px;height:16px}
+.ag.p{background:var(--yelSoft);border-color:var(--yelLine)}
+.ag u{position:absolute;top:6px;right:8px;text-decoration:none;font-size:8.5px;font-weight:900;color:#fff;background:var(--badSolid);border-radius:7px;padding:0 5px}
+
+/* jonli sex */
+.live{display:inline-flex;align-items:center;gap:4px;font-size:8.5px;font-weight:900;color:#7fe3b3}
+.live::before{content:"";width:6px;height:6px;border-radius:50%;background:#2ee08f;box-shadow:0 0 0 3px #2ee08f33}
+.big3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.big3 div{background:#ffffff12;border-radius:11px;padding:6px 7px;min-width:0}
+.big3 small{display:block;font-size:8px;color:#aebfe8;font-weight:700;white-space:nowrap}
+.big3 b{display:block;font-size:14px;font-weight:900;white-space:nowrap}
+.big3 em{display:block;font-style:normal;font-size:8px;color:#ffd76a;font-weight:800;white-space:nowrap}
+.ring{width:62px;height:62px;border-radius:50%;background:conic-gradient(var(--yel) 0 74%,var(--line) 74% 100%);display:grid;place-items:center;flex:0 0 auto}
+.ring b{width:48px;height:48px;border-radius:50%;background:var(--surf);display:grid;place-items:center;font-size:13px;font-weight:900}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1M12 18h1M7 18h1"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18v-2M12 18v-4M16 18v-6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-ucheck" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-ccheck" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.9 5.8 6.1 1.9-6.1 1.9L12 18.5l-1.9-5.9L4 10.7l6.1-1.9z"/><path d="M19 3v4M17 5h4"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-in" viewBox="0 0 24 24"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M14.1 6.3 9.9 4.2a2 2 0 0 0-1.8 0L3.6 6.5A1 1 0 0 0 3 7.4v12.2a1 1 0 0 0 1.5.9l3.6-1.8a2 2 0 0 1 1.8 0l4.2 2.1a2 2 0 0 0 1.8 0l4.5-2.3a1 1 0 0 0 .6-.9V5.4a1 1 0 0 0-1.5-.9l-3.6 1.8a2 2 0 0 1-1.8 0z"/><path d="M15 6v15M9 3v15"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7"/><path d="m12 2 8 5H4z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Insof ERP · Direktor kabineti · 2026-11-24</div>
+    <h1>Direktor uchun <mark>TOP 5</mark> shablon</h1>
+    <p class="lede">Har shablonda — bosh sahifa (vebdagi «Bugun · Boshqaruv paneli» raqamlari) va o'sha variantning o'ziga xos ekrani. Ranglar ERP brendidan: to'q ko'k (navy) asos, sariq — signal (asosiy tugma, faol tab, ogohlantirish). Pastki panelda «Tasdiqlar», «Bo'limlar» va «AI» yo'q — ular qayerga o'tgani har shablonda ko'rsatilgan.</p>
+    <nav class="jump" aria-label="Shablonlar">
+      <a href="#t1"><span>01</span>Pul markazi</a>
+      <a href="#t2"><span>02</span>Nazorat markazi</a>
+      <a href="#t3"><span>03</span>Zavod jonli</a>
+      <a href="#t4"><span>04</span>Hisobotlar</a>
+      <a href="#t5"><span>05</span>Markaziy tugma</a>
+      <a href="#common"><span>+</span>Menyu va Tasdiqlar</a>
+      <a href="#cmp"><span>=</span>Solishtiruv</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2 class="sec">Savolingiz: «Zayavka» va «Xarita» o'rniga boshqa narsa qo'ysa bo'ladimi?</h2>
+    <div class="answer">
+      <div class="y"><b>Ha, bo'ladi</b><p>Direktor zayavkani kamdan-kam o'zi ochadi (uni sotuv va dispetcher yuritadi), xaritani esa kuniga bir-ikki marta ko'radi. Tab — har kuni bir necha marta ochiladigan narsa uchun. Shuning uchun bu ikki joyga <em>pul, qarz va nazorat</em> ko'proq mos.</p></div>
+      <div><b>Zayavka qayerga o'tadi</b><ul><li>Bosh sahifada — «Bloklangan zayavka» tasdiq bannerida</li><li>Menyu → Sotuv → Zayavkalar (sevimlilarga qo'shsa bo'ladi)</li></ul></div>
+      <div><b>Xarita qayerga o'tadi</b><ul><li>Bosh sahifada — «Yo'lda 6 mashina» qatori, bosilsa xarita</li><li>Menyu → Logistika → Reyslar xaritada</li><li>03-shablonda esa tabning o'zida qoladi</li></ul></div>
+      <div><b>O'rniga qo'yish mumkin bo'lganlar</b><ul><li><em>Qarzlar</em> — bizga va bizning qarzimiz, 60+ kun</li><li><em>Nazorat</em> — plan/fakt, egasi qarori, tasdiqlar</li><li><em>Sex</em> — bugungi beton m³, zameslar, xomashyo</li><li><em>Hisobot</em> — PNL, DDS, kunlik Excel</li><li><em>Xodimlar</em> — bugungi davomat</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 01 — Pul markazi ═══════════════ -->
+  <section class="tpl" id="t1">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">01</span>Pul markazi</h2>
+        <p>Egasi eng ko'p qaraydigan uch savol — pul qancha, kim qarz, reja bajarilyaptimi — har biri alohida tab. Bosh sahifa navy hero bilan vebdagi panelni takrorlaydi.</p>
+      </div>
+      <div class="meta"><span class="tag y">Tavsiya</span><span class="tag s">Server: panel maydoni</span><span class="tag">Tablar: 5</span></div>
+    </div>
+    <div class="tabline">Tablar: <b>Asosiy</b><b>Pul</b><b class="new">Qarzlar</b><b class="new">Nazorat</b><b>Menyu</b></div>
+    <div class="rail">
+      <div class="slot"><b>Asosiy <span>— bosh sahifa</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><div class="av">OI</div><div class="who"><small>Bugun · 24-noyabr</small><b>Xayrli tong, Otabek</b></div><div class="rb dot"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="appr"><div class="it"><svg class="ic"><use href="#i-ccheck"/></svg></div><div class="grow"><b>Tasdig'ingiz kutilmoqda</b><small>3 zayavka · 2 ta'minot · 1 ish haqi</small></div><div class="cnt">6</div></div>
+            <div class="hero"><div class="k">Jami pul · hozir</div><div class="v"><b>1,24</b><span>mlrd so'm</span></div>
+              <div class="io"><span class="in"><svg class="ic"><use href="#i-in"/></svg>Kirim +186 mln</span><span class="out"><svg class="ic"><use href="#i-out"/></svg>Chiqim −74 mln</span></div></div>
+            <div class="kg">
+              <div class="kp"><small>Bugun sotuv</small><b>212 mln</b><em class="c-ok">▲ 14% kechagidan</em></div>
+              <div class="kp"><small>Oy sotuvi</small><b>4,86 mlrd</b><div class="bar y"><i style="width:81%"></i></div></div>
+              <div class="kp"><small>Oy sof foydasi</small><b>412 mln</b><em>marja 8,5%</em></div>
+              <div class="kp"><small>Bizga qarzlar</small><b>1,62 mlrd</b><em class="c-bad">60+ kun: 214 mln</em></div>
+            </div>
+            <div class="qa">
+              <div class="q p"><i><svg class="ic"><use href="#i-ccheck"/></svg><u>6</u></i>Tasdiqlash</div>
+              <div class="q"><i><svg class="ic"><use href="#i-in"/></svg></i>Kirim</div>
+              <div class="q"><i><svg class="ic"><use href="#i-out"/></svg></i>Chiqim</div>
+              <div class="q"><i><svg class="ic"><use href="#i-spark"/></svg></i>AI so'rov</div>
+            </div>
+            <div class="card"><div class="ch"><b>Bugun e'tibor bering</b><a>Barchasi 4</a></div>
+              <div class="li"><div class="it t-bad"><svg class="ic"><use href="#i-alert"/></svg></div><div class="grow"><b>28.11 da pul yetmaydi</b><small>Prognoz −96 mln · to'lovlarni surish</small></div></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab on"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-receipt"/></svg></i>Qarzlar</div><div class="tab"><i><svg class="ic"><use href="#i-gauge"/></svg></i>Nazorat</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>Qarzlar <span>— yangi tab</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><h3 class="ttl grow">Qarzlar</h3><div class="rb"><svg class="ic"><use href="#i-search"/></svg></div></div>
+            <div class="seg"><b class="on">Bizga qarz</b><b>Bizning qarz</b></div>
+            <div class="hero"><div class="k">Haqdorlik · 148 mijoz</div><div class="v"><b>1,62</b><span>mlrd so'm</span></div>
+              <div class="stack"><i style="width:58%;background:#7fe3b3"></i><i style="width:29%;background:var(--yel)"></i><i style="width:13%;background:#ff7b8e"></i></div>
+              <div class="lg" style="color:#c7d3f2"><span><i style="background:#7fe3b3"></i>0–30: 940</span><span><i style="background:var(--yel)"></i>31–60: 466</span><span><i style="background:#ff7b8e"></i>60+: 214 mln</span></div>
+            </div>
+            <div class="chips"><span class="chip on">Hammasi <u>148</u></span><span class="chip">60+ kun <u>12</u></span><span class="chip">Naqd <u>61</u></span><span class="chip">Bank</span></div>
+            <div class="card"><div class="ch"><b>Eng katta qarzdorlar</b><a>Barchasi</a></div>
+              <div class="li"><div class="it t-bad">MQ</div><div class="grow"><b>"Mega Qurilish" MChJ</b><small>74 kun · limit 200 mln</small></div><div class="r c-bad">186 mln</div></div>
+              <div class="li"><div class="it t-y">TS</div><div class="grow"><b>Toshkent Stroy</b><small>41 kun · oxirgi to'lov 18.11</small></div><div class="r">142 mln</div></div>
+              <div class="li"><div class="it t-nv">AB</div><div class="grow"><b>Asl Beton Servis</b><small>12 kun</small></div><div class="r">98 mln</div></div>
+              <div class="li"><div class="it t-nv">YO</div><div class="grow"><b>Yangi Obod Invest</b><small>9 kun</small></div><div class="r">76 mln</div></div>
+              <div class="li"><div class="it t-nv">GS</div><div class="grow"><b>Grand Story</b><small>5 kun</small></div><div class="r">54 mln</div></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab on"><i><svg class="ic"><use href="#i-receipt"/></svg></i>Qarzlar</div><div class="tab"><i><svg class="ic"><use href="#i-gauge"/></svg></i>Nazorat</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Afzallik</h3><ul><li><em>Pul</em> va <em>qarz</em> — egasining kundalik ikki savoli, ikkalasi bir bosishda</li><li>«Nazorat» tabida plan/fakt va egasi qarori (02 dagi ekran)</li><li>Tasdiq soni Asosiy tabining nishonida — yo'qolmaydi</li></ul></div>
+      <div><h3>Kamchilik</h3><ul><li>Zavod (sex) va reyslar faqat bosh sahifa va menyu orqali</li><li>«Qarzlar» uchun serverga qarzdorlar ro'yxati yoshi bilan kerak (vebda bor, ilovaga ulash kerak)</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 02 — Nazorat markazi ═══════════════ -->
+  <section class="tpl" id="t2">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">02</span>Nazorat markazi</h2>
+        <p>Bosh sahifa — vebdagi 8 ta KPI kartasi to'liq (2×4). «Nazorat» tabi — tasdiqlar, plan/fakt va egasi qarori bitta joyda; «Sex» — ishlab chiqarish.</p>
+      </div>
+      <div class="meta"><span class="tag s">Vebga eng yaqin</span><span class="tag">Tablar: 5</span></div>
+    </div>
+    <div class="tabline">Tablar: <b>Asosiy</b><b>Pul</b><b class="new">Nazorat</b><b class="new">Sex</b><b>Menyu</b></div>
+    <div class="rail">
+      <div class="slot"><b>Asosiy <span>— vebdagi 8 KPI</span></b>
+        <div class="phone"><div class="scr top-dark">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="band">
+              <div class="hdr"><div class="av">OI</div><div class="who"><small>Insof · Boshqaruv paneli</small><b>Xayrli tong, Otabek</b></div><div class="rb dot"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+              <div class="appr"><div class="it"><svg class="ic"><use href="#i-ccheck"/></svg></div><div class="grow"><b>Tasdig'ingiz kutilmoqda</b><small>Nazorat tabida · 6 ta</small></div><div class="cnt">6</div></div>
+            </div>
+            <div class="kg">
+              <div class="kp"><small>Jami pul (hozir)</small><b>1,24 mlrd</b><em>kassa 0,31 · bank 0,93</em></div>
+              <div class="kp"><small>Bugun kirim</small><b class="c-ok">+186 mln</b><em>14 ta to'lov</em></div>
+              <div class="kp"><small>Bugun chiqim</small><b class="c-bad">−74 mln</b><em>9 ta yozuv</em></div>
+              <div class="kp"><small>Bugun sotuv</small><b>212 mln</b><em>318 m³ beton</em></div>
+              <div class="kp"><small>Oy sotuvi</small><b>4,86 mlrd</b><em>reja 6,0 · 81%</em></div>
+              <div class="kp"><small>Oy sof foydasi</small><b>412 mln</b><em>hisoblangan PNL</em></div>
+              <div class="kp"><small>Bizga qarzlar</small><b>1,62 mlrd</b><em class="c-bad">60+ kun: 214 mln</em></div>
+              <div class="kp"><small>Bizning qarzimiz</small><b>2,05 mlrd</b><em>bank kredit 1,40</em></div>
+            </div>
+            <div class="card"><div class="ch"><b>Kunlik sotuv va tushum</b><span class="lg"><span><i style="background:var(--navy)"></i>Sotuv</span><span><i style="background:var(--yel)"></i>Kassa</span></span></div>
+              <div class="bars" style="height:26px"><i><s style="height:62%"></s><s style="height:40%"></s></i><i><s style="height:78%"></s><s style="height:55%"></s></i><i><s style="height:54%"></s><s style="height:61%"></s></i><i><s style="height:88%"></s><s style="height:50%"></s></i><i><s style="height:70%"></s><s style="height:72%"></s></i><i><s style="height:92%"></s><s style="height:64%"></s></i><i><s style="height:66%"></s><s style="height:58%"></s></i></div>
+            </div>
+          </div>
+          <div class="tabs nv"><div class="tab on"><i><svg class="ic"><use href="#i-home"/></svg></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-gauge"/></svg><u>6</u></i>Nazorat</div><div class="tab"><i><svg class="ic"><use href="#i-factory"/></svg></i>Sex</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>Nazorat <span>— yangi tab</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><h3 class="ttl grow">Nazorat</h3><div class="rb"><svg class="ic"><use href="#i-cal"/></svg></div></div>
+            <div class="card" style="background:var(--yelSoft);border-color:var(--yelLine)"><div class="ch"><b>Tasdiq kutmoqda · 6</b><a style="color:var(--yelInk)">Ochish</a></div>
+              <div class="row" style="gap:4px;flex-wrap:wrap"><span class="pill p-nv">Zayavka 3</span><span class="pill p-nv">Ta'minot 2</span><span class="pill p-nv">Ish haqi 1</span></div></div>
+            <div class="card"><div class="ch"><b>Direktor nazorati — plan / fakt</b></div>
+              <div class="pg"><div class="row">Tushum <span>81%</span></div><div class="bar y"><i style="width:81%"></i></div><small>fakt 4,86 mlrd · plan 6,0 mlrd</small></div>
+              <div class="pg"><div class="row">Ishlab chiqarish (beton) <span>76%</span></div><div class="bar"><i style="width:76%"></i></div><small>fakt 7 920 m³ · plan 10 400 m³</small></div>
+              <div class="pg"><div class="row">Debitorka (muddati o'tgan) <span class="c-bad">132%</span></div><div class="bar bad"><i style="width:100%"></i></div><small>fakt 214 mln · chegara 160 mln</small></div>
+            </div>
+            <div class="card"><div class="ch"><b>Egasi qarori kerak</b><a>Barchasi 5</a></div>
+              <div class="li"><div class="it t-bad"><svg class="ic"><use href="#i-alert"/></svg></div><div class="grow"><b>Sement 2 kunga qoldi</b><small>Xarid · Snabjeniye · bugun</small></div><div class="r">320 mln</div></div>
+              <div class="li"><div class="it t-y"><svg class="ic"><use href="#i-truck"/></svg></div><div class="grow"><b>2 ta miksyer 3 kun turibdi</b><small>Ta'mir · Mexanik · ertaga</small></div></div>
+            </div>
+          </div>
+          <div class="tabs nv"><div class="tab"><i><svg class="ic"><use href="#i-home"/></svg></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab on"><i><svg class="ic"><use href="#i-gauge"/></svg><u>6</u></i>Nazorat</div><div class="tab"><i><svg class="ic"><use href="#i-factory"/></svg></i>Sex</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Afzallik</h3><ul><li>Raqamlar vebdagi «Bugun» paneli bilan <em>1:1</em> — direktor kompyuterda ham, telefonda ham bir xil 8 karta ko'radi</li><li>Navy panel — ERP sidebar'i kabi, sariq faol tab</li><li>Tasdiqlar «Nazorat» ichida, nishon shu tabda</li></ul></div>
+      <div><h3>Kamchilik</h3><ul><li>8 ta karta — ekranning yarmi, grafik pastga tushadi</li><li>Qarzdorlar ro'yxati alohida tab emas (Pul tabida segment)</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 03 — Zavod jonli ═══════════════ -->
+  <section class="tpl" id="t3">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">03</span>Zavod jonli</h2>
+        <p>Operatsion direktor uchun: zavod hozir nima qilyapti. Bosh sahifa tepasida jonli uch raqam (beton m³, yo'ldagi mashina, bugun sotuv). Xarita «Reyslar» nomi bilan qoladi, Zayavka o'rniga «Sex».</p>
+      </div>
+      <div class="meta"><span class="tag">Xarita qoladi</span><span class="tag">Tablar: 5</span></div>
+    </div>
+    <div class="tabline">Tablar: <b>Asosiy</b><b class="new">Sex</b><b>Reyslar (xarita)</b><b>Pul</b><b>Menyu</b></div>
+    <div class="rail">
+      <div class="slot"><b>Asosiy <span>— jonli panel</span></b>
+        <div class="phone"><div class="scr top-dark">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="band">
+              <div class="hdr"><div class="av">OI</div><div class="who"><small>Bugun · 24-noyabr</small><b>Zavod hozir</b></div><span class="live">jonli</span></div>
+              <div class="big3"><div><small>Beton bugun</small><b>318 m³</b><em>plan 420 · 76%</em></div><div><small>Yo'lda</small><b>6 ta</b><em>ETA 12–40 daq</em></div><div><small>Bugun sotuv</small><b>212 mln</b><em>▲ 14%</em></div></div>
+            </div>
+            <div class="appr"><div class="it"><svg class="ic"><use href="#i-ccheck"/></svg></div><div class="grow"><b>Tasdig'ingiz kutilmoqda</b><small>3 zayavka · 2 ta'minot · 1 ish haqi</small></div><div class="cnt">6</div></div>
+            <div class="kg c3">
+              <div class="kp"><small>Jami pul</small><b>1,24 mlrd</b></div>
+              <div class="kp"><small>Bizga qarz</small><b>1,62 mlrd</b></div>
+              <div class="kp"><small>Oy foyda</small><b>412 mln</b></div>
+            </div>
+            <div class="card"><div class="ch"><b>Yo'ldagi reyslar</b><a>Xaritada</a></div>
+              <div class="li"><div class="it t-info"><svg class="ic"><use href="#i-truck"/></svg></div><div class="grow"><b>01 A 777 AA · Mega Qurilish</b><small>Yo'lda · ~12 daq · 34 km/soat</small></div><div class="r">8 m³</div></div>
+              <div class="li"><div class="it t-info"><svg class="ic"><use href="#i-truck"/></svg></div><div class="grow"><b>01 B 214 BB · T. Stroy</b><small>Yuklandi · zavodda</small></div><div class="r">10 m³</div></div>
+            </div>
+            <div class="card"><div class="ch"><b>Xom-ashyo skladi</b><a>Sklad</a></div>
+              <div class="li"><div class="it t-bad"><svg class="ic"><use href="#i-box"/></svg></div><div class="grow"><b>Sement M400</b><small>2 kunga yetadi · normadan +3%</small></div><div class="r c-bad">84 t</div></div>
+            </div>
+          </div>
+          <div class="tabs nv"><div class="tab on"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-factory"/></svg></i>Sex</div><div class="tab"><i><svg class="ic"><use href="#i-map"/></svg></i>Reyslar</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>Sex <span>— yangi tab</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><h3 class="ttl grow">Sex</h3><div class="rb"><svg class="ic"><use href="#i-cal"/></svg></div></div>
+            <div class="seg"><b class="on">Bugun</b><b>Hafta</b><b>Oy</b></div>
+            <div class="card row" style="gap:10px"><div class="ring"><b>76%</b></div><div class="grow"><small class="muted" style="font-size:9px;font-weight:700">Beton · bugun</small><div style="font-size:19px;font-weight:900;line-height:1.1">318 m³</div><small class="muted" style="font-size:9px">plan 420 m³ · 41 zames · brak 0,4%</small></div></div>
+            <div class="card"><div class="ch"><b>Soatma-soat (m³)</b><span class="lg"><span><i style="background:var(--navy)"></i>Fakt</span><span><i style="background:var(--yel)"></i>Plan</span></span></div>
+              <div class="bars"><i><s style="height:45%"></s><s style="height:55%"></s></i><i><s style="height:70%"></s><s style="height:55%"></s></i><i><s style="height:82%"></s><s style="height:55%"></s></i><i><s style="height:60%"></s><s style="height:55%"></s></i><i><s style="height:38%"></s><s style="height:55%"></s></i><i><s style="height:66%"></s><s style="height:55%"></s></i><i><s style="height:20%"></s><s style="height:55%"></s></i></div>
+              <div class="axis"><span>08</span><span>09</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span></div>
+            </div>
+            <div class="card"><div class="ch"><b>Tayyor mahsulot</b><a>Barchasi</a></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-box"/></svg></div><div class="grow"><b>Gazoblok D500</b><small>bugun +42 m³ · oy 610 m³</small></div><div class="r">1 240 m³</div></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-box"/></svg></div><div class="grow"><b>FBS blok</b><small>bugun +36 dona</small></div><div class="r">412 dona</div></div>
+              <div class="li"><div class="it t-y"><svg class="ic"><use href="#i-box"/></svg></div><div class="grow"><b>Ustun (stalba)</b><small>bugun 0 · reja 20</small></div><div class="r c-yel">88 dona</div></div>
+            </div>
+          </div>
+          <div class="tabs nv"><div class="tab"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab on"><i><svg class="ic"><use href="#i-factory"/></svg></i>Sex</div><div class="tab"><i><svg class="ic"><use href="#i-map"/></svg></i>Reyslar</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Afzallik</h3><ul><li>Beton zavodiga xos: <em>m³, miksyer, sement</em> birinchi ekranda</li><li>Xarita tabda qoladi — jonli kuzatuv bir bosishda</li></ul></div>
+      <div><h3>Kamchilik</h3><ul><li>Pul raqamlari ikkinchi o'rinda (3 ta kichik karta)</li><li>Egasidan ko'ra ishlab chiqarish boshlig'iga yaqinroq — direktor ish uslubiga bog'liq</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 04 — Hisobotlar ═══════════════ -->
+  <section class="tpl" id="t4">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">04</span>Hisobotlar</h2>
+        <p>Raqamni o'zi tahlil qiladigan egasi uchun: davr tanlanadi (Bugun / Hafta / Oy), sariq hero — sotuv. «Hisobot» tabida PNL, DDS, balans va kunlik Excel; «Xodimlar» — bugungi davomat.</p>
+      </div>
+      <div class="meta"><span class="tag">Davr filtri</span><span class="tag">Tablar: 5</span></div>
+    </div>
+    <div class="tabline">Tablar: <b>Asosiy</b><b>Pul</b><b class="new">Hisobot</b><b class="new">Xodimlar</b><b>Menyu</b></div>
+    <div class="rail">
+      <div class="slot"><b>Asosiy <span>— davr bo'yicha</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><div class="av">OI</div><div class="who"><small>Direktor · Insof Beton</small><b>Bosh sahifa</b></div><div class="rb dot"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="seg"><b>Bugun</b><b>Hafta</b><b class="on">Oy</b><b>Kalendar</b></div>
+            <div class="hero yel"><div class="k">Sotuv · noyabr</div><div class="v"><b>4,86</b><span>mlrd so'm · reja 81%</span></div>
+              <div class="io"><span>Foyda 412 mln</span><span>Xarajat 1,1 mlrd</span></div></div>
+            <div class="card"><div class="ch"><b>Asosiy ko'rsatkichlar</b></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-wallet"/></svg></div><div class="grow"><b>Jami pul</b><small>kassa 0,31 · bank 0,93 mlrd</small></div><div class="r">1,24 mlrd</div></div>
+              <div class="li"><div class="it t-bad"><svg class="ic"><use href="#i-receipt"/></svg></div><div class="grow"><b>Bizga qarzlar</b><small>60+ kun: 214 mln</small></div><div class="r">1,62 mlrd</div></div>
+              <div class="li"><div class="it t-y"><svg class="ic"><use href="#i-bank"/></svg></div><div class="grow"><b>Bizning qarzimiz</b><small>bank kredit 1,40 mlrd</small></div><div class="r">2,05 mlrd</div></div>
+            </div>
+            <div class="appr"><div class="it"><svg class="ic"><use href="#i-ccheck"/></svg></div><div class="grow"><b>Tasdig'ingiz kutilmoqda</b><small>3 zayavka · 2 ta'minot · 1 ish haqi</small></div><div class="cnt">6</div></div>
+            <div class="qa">
+              <div class="q p"><i><svg class="ic"><use href="#i-ccheck"/></svg><u>6</u></i>Tasdiqlash</div>
+              <div class="q"><i><svg class="ic"><use href="#i-receipt"/></svg></i>Qarzdorlar</div>
+              <div class="q"><i><svg class="ic"><use href="#i-map"/></svg></i>Xarita</div>
+              <div class="q"><i><svg class="ic"><use href="#i-spark"/></svg></i>AI so'rov</div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab on"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-chart"/></svg></i>Hisobot</div><div class="tab"><i><svg class="ic"><use href="#i-users"/></svg></i>Xodimlar</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>Hisobot <span>— yangi tab</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><h3 class="ttl grow">Hisobotlar</h3><div class="rb"><svg class="ic"><use href="#i-cal"/></svg></div></div>
+            <div class="card"><div class="ch"><b>Foyda va zarar · noyabr</b><a>PNL</a></div>
+              <div class="li"><div class="grow"><b>Daromad</b></div><div class="r">4,86 mlrd</div></div>
+              <div class="li"><div class="grow"><b>Tannarx</b></div><div class="r c-bad">−3,21 mlrd</div></div>
+              <div class="li"><div class="grow"><b>Yalpi foyda</b></div><div class="r">1,65 mlrd</div></div>
+              <div class="li"><div class="grow"><b>Zavod sof foydasi</b><small>marja 8,5%</small></div><div class="r c-ok">412 mln</div></div>
+            </div>
+            <div class="card"><div class="ch"><b>Hisobotlar</b></div>
+              <div class="li"><div class="it t-y"><svg class="ic"><use href="#i-dl"/></svg></div><div class="grow"><b>Kunlik hisobot (Excel)</b><small>Sotuv, sex, reyslar, to'lovlar</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-trend"/></svg></div><div class="grow"><b>DDS — pul oqimi</b><small>Kirim / chiqim moddalar bo'yicha</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-bank"/></svg></div><div class="grow"><b>Balans</b><small>Aktiv · passiv · kapital</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-cal"/></svg></div><div class="grow"><b>To'lov kalendari</b><small>30 kunlik prognoz</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-chart"/></svg></div><div class="grow"><b>Mahsulot foydasi</b><small>Beton · gazoblok · JBI</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab on"><i><svg class="ic"><use href="#i-chart"/></svg></i>Hisobot</div><div class="tab"><i><svg class="ic"><use href="#i-users"/></svg></i>Xodimlar</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Afzallik</h3><ul><li>Vebdagi «Tahlil → Moliya» hisobotlari telefonda bitta tabda</li><li>Davr filtri bosh sahifaning hamma raqamiga ta'sir qiladi (hozirgi «Tushum» chiplari kabi)</li></ul></div>
+      <div><h3>Kamchilik</h3><ul><li>PNL, DDS, Balans uchun mobil ekranlar yo'q — ularni server tomonda ham qo'shish kerak (eng katta ish)</li><li>«Xodimlar» tab sifatida kamdan-kam ochiladi</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 05 — Markaziy tugma ═══════════════ -->
+  <section class="tpl" id="t5">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">05</span>Markaziy tugma</h2>
+        <p>Navy panel o'rtasida katta sariq «＋» tugma — tasdiqlash, kirim, chiqim, zames, vazifa, AI bitta joyda. Tablar: Pul va Qarzlar. Eng kam tab, eng tez amal.</p>
+      </div>
+      <div class="meta"><span class="tag">Amal tez</span><span class="tag">Tablar: 4 + tugma</span></div>
+    </div>
+    <div class="tabline">Tablar: <b>Asosiy</b><b>Pul</b><b class="new">＋ Amal</b><b class="new">Qarzlar</b><b>Menyu</b></div>
+    <div class="rail">
+      <div class="slot"><b>Asosiy <span>— ixcham</span></b>
+        <div class="phone"><div class="scr tb-dark">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><div class="av">OI</div><div class="who"><small>Bugun · 24-noyabr</small><b>Xayrli tong, Otabek</b></div><div class="rb dot"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="hero"><div class="k">Jami pul · hozir</div><div class="v"><b>1,24</b><span>mlrd so'm</span></div>
+              <div class="io"><span class="in"><svg class="ic"><use href="#i-in"/></svg>+186 mln</span><span class="out"><svg class="ic"><use href="#i-out"/></svg>−74 mln</span></div></div>
+            <div class="kg">
+              <div class="kp"><small>Bugun sotuv</small><b>212 mln</b><em class="c-ok">▲ 14%</em></div>
+              <div class="kp"><small>Oy sotuvi · reja 81%</small><b>4,86 mlrd</b><div class="bar y"><i style="width:81%"></i></div></div>
+            </div>
+            <div class="card"><div class="ch"><b>Bugun e'tibor bering</b><a>Barchasi 4</a></div>
+              <div class="li"><div class="it t-y"><svg class="ic"><use href="#i-ccheck"/></svg></div><div class="grow"><b>6 ta tasdiq kutmoqda</b><small>«＋» tugmasi orqali</small></div><span class="pill p-y">6</span></div>
+              <div class="li"><div class="it t-info"><svg class="ic"><use href="#i-truck"/></svg></div><div class="grow"><b>Yo'lda 6 mashina</b><small>Xaritada ochish</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+            </div>
+            <div class="card"><div class="ch"><b>Pul qoldiqlari</b><a>Barchasi</a></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-wallet"/></svg></div><div class="grow"><b>Asosiy kassa</b><small>bugun +42 · −18 mln</small></div><div class="r">312 mln</div></div>
+              <div class="li"><div class="it t-nv"><svg class="ic"><use href="#i-bank"/></svg></div><div class="grow"><b>Kapitalbank · h/r</b><small>bugun +144 · −56 mln</small></div><div class="r">928 mln</div></div>
+            </div>
+          </div>
+          <div class="tabs nv"><div class="tab on"><i><svg class="ic"><use href="#i-home"/></svg></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab fab"><i><svg class="ic"><use href="#i-plus"/></svg><u>6</u></i>Amal</div><div class="tab"><i><svg class="ic"><use href="#i-receipt"/></svg></i>Qarzlar</div><div class="tab"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>«＋» bosilganda <span>— amallar oynasi</span></b>
+        <div class="phone"><div class="scr tb-dark">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><div class="av">OI</div><div class="who"><small>Bugun · 24-noyabr</small><b>Xayrli tong, Otabek</b></div><div class="rb dot"><svg class="ic"><use href="#i-bell"/></svg></div></div>
+            <div class="hero"><div class="k">Jami pul · hozir</div><div class="v"><b>1,24</b><span>mlrd so'm</span></div><div class="io"><span class="in">+186 mln</span><span class="out">−74 mln</span></div></div>
+            <div class="kg"><div class="kp"><small>Bugun sotuv</small><b>212 mln</b></div><div class="kp"><small>Oy sotuvi</small><b>4,86 mlrd</b></div></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="row sp"><b style="font-size:13px;font-weight:900">Nima qilamiz?</b><div class="rb" style="width:28px;height:28px"><svg class="ic"><use href="#i-x"/></svg></div></div>
+            <div class="agrid">
+              <div class="ag p"><i style="background:var(--yel);color:#14181d"><svg class="ic"><use href="#i-ccheck"/></svg></i>Tasdiqlash<u>6</u></div>
+              <div class="ag"><i class="t-ok"><svg class="ic"><use href="#i-in"/></svg></i>Kirim</div>
+              <div class="ag"><i class="t-bad"><svg class="ic"><use href="#i-out"/></svg></i>Chiqim</div>
+              <div class="ag"><i class="t-nv"><svg class="ic"><use href="#i-factory"/></svg></i>Zames yozish</div>
+              <div class="ag"><i class="t-nv"><svg class="ic"><use href="#i-file"/></svg></i>Vazifa</div>
+              <div class="ag"><i class="t-nv"><svg class="ic"><use href="#i-spark"/></svg></i>AI so'rov</div>
+            </div>
+            <div class="li" style="border-top:1px solid var(--line)"><div class="it t-y"><svg class="ic"><use href="#i-dl"/></svg></div><div class="grow"><b>Kunlik hisobot (Excel)</b><small>Kunni tanlang — fayl ulashiladi</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+            <div class="li"><div class="it t-info"><svg class="ic"><use href="#i-map"/></svg></div><div class="grow"><b>Reyslar xaritada</b><small>6 ta mashina yo'lda</small></div><svg class="ic muted"><use href="#i-right"/></svg></div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Afzallik</h3><ul><li>Hamma <em>amal</em> bitta sariq tugmada — direktor ko'p amal qiladigan bo'lsa qulay</li><li>Bosh sahifa qisqa: pul, sotuv, e'tibor, qoldiqlar</li></ul></div>
+      <div><h3>Kamchilik</h3><ul><li>Hozirgi tab paneli (`FloatingTabBar`) markaziy tugmani bilmaydi — yangi komponent kerak</li><li>Apple tavsiyasiga zid: tab amal bajarmasligi kerak (shuning uchun «Amal» yorlig'i alohida)</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Hammasida bir xil ═══════════════ -->
+  <section class="tpl" id="common">
+    <div class="tpl-head">
+      <div>
+        <h2><span class="n">+</span>Hamma shablonda bir xil: Menyu va Tasdiqlar</h2>
+        <p>Menyu — 60 dan ortiq bo'lim vebdagi kabi 7 guruhga bo'linadi, tepada qidiruv va sevimlilar. Tasdiqlar — tab emas, orqaga tugmasi bor ekran: har kartada «Rad etish» / «Tasdiqlash».</p>
+      </div>
+    </div>
+    <div class="rail">
+      <div class="slot"><b>Menyu <span>— guruhlangan</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main">
+            <div class="hdr"><div class="av" style="background:var(--navy);color:#fff">OI</div><div class="who"><small>Direktor</small><b>Otabek Ikromov</b></div><div class="rb"><svg class="ic"><use href="#i-gear"/></svg></div></div>
+            <div class="search"><svg class="ic"><use href="#i-search"/></svg>Bo'lim qidirish: qarz, sement, reys…</div>
+            <div class="lbl">Sevimlilar <a>Tahrirlash</a></div>
+            <div class="qa">
+              <div class="q p"><i><svg class="ic"><use href="#i-ccheck"/></svg><u>6</u></i>Tasdiqlar</div>
+              <div class="q"><i><svg class="ic"><use href="#i-spark"/></svg></i>AI</div>
+              <div class="q"><i><svg class="ic"><use href="#i-dl"/></svg></i>Hisobot</div>
+              <div class="q"><i><svg class="ic"><use href="#i-file"/></svg></i>Zayavkalar</div>
+            </div>
+            <div class="lbl">Yangi hujjat</div>
+            <div class="chips"><span class="chip"><svg class="ic"><use href="#i-plus"/></svg>Zames</span><span class="chip"><svg class="ic"><use href="#i-plus"/></svg>Kirim</span><span class="chip"><svg class="ic"><use href="#i-plus"/></svg>Chiqim</span><span class="chip"><svg class="ic"><use href="#i-plus"/></svg>Vazifa</span></div>
+            <div class="card" style="padding-block:3px">
+              <div class="grp"><div class="it t-nv"><svg class="ic"><use href="#i-cart"/></svg></div><b>Sotuv</b><u>8</u><svg class="ic muted"><use href="#i-down"/></svg></div>
+              <div class="grp open"><div class="it t-y"><svg class="ic"><use href="#i-wallet"/></svg></div><b>Moliya</b><u>12</u><svg class="ic muted" style="transform:rotate(180deg)"><use href="#i-down"/></svg></div>
+              <div class="sub"><span>Kirim-chiqim <svg class="ic star"><use href="#i-star"/></svg></span><span>Ish haqi <em>vedomost 1</em></span></div>
+              <div class="grp"><div class="it t-nv"><svg class="ic"><use href="#i-factory"/></svg></div><b>Ishlab chiqarish</b><u>9</u><svg class="ic muted"><use href="#i-down"/></svg></div>
+              <div class="grp"><div class="it t-info"><svg class="ic"><use href="#i-truck"/></svg></div><b>Logistika</b><u>11</u><svg class="ic muted"><use href="#i-down"/></svg></div>
+              <div class="grp"><div class="it t-nv"><svg class="ic"><use href="#i-box"/></svg></div><b>Sklad · Kadrlar · Tahlil</b><u>+3</u><svg class="ic muted"><use href="#i-down"/></svg></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab"><i><svg class="ic"><use href="#i-home"/></svg><u>6</u></i>Asosiy</div><div class="tab"><i><svg class="ic"><use href="#i-wallet"/></svg></i>Pul</div><div class="tab"><i><svg class="ic"><use href="#i-receipt"/></svg></i>Qarzlar</div><div class="tab"><i><svg class="ic"><use href="#i-gauge"/></svg></i>Nazorat</div><div class="tab on"><i><svg class="ic"><use href="#i-menu"/></svg></i>Menyu</div></div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+      <div class="slot"><b>Tasdiqlar <span>— orqaga tugmali ekran</span></b>
+        <div class="phone"><div class="scr">
+          <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:9px"></i></span><span class="bat"></span></span></div>
+          <div class="main" style="padding-bottom:22px">
+            <div class="back"><i><svg class="ic"><use href="#i-left"/></svg></i><b>Tasdiqlar</b><span class="pill p-nv">6</span></div>
+            <div class="chips"><span class="chip on">Hammasi <u>6</u></span><span class="chip">Zayavka <u>3</u></span><span class="chip">Ta'minot <u>2</u></span><span class="chip">Ish haqi</span></div>
+            <div class="card"><div class="row sp" style="margin-bottom:4px"><span class="pill p-bad">Bloklangan zayavka</span><small class="muted" style="font-size:9px">bugun 08:42</small></div>
+              <b style="font-size:12px;font-weight:900;display:block">"Mega Qurilish" MChJ · 24 m³ B25</b>
+              <small class="muted" style="font-size:9.5px;display:block;margin:2px 0 4px">Qarz 186 mln · limit 200 mln · yangi 31 mln</small>
+              <div class="bar bad" style="margin-bottom:3px"><i style="width:100%"></i></div><small class="c-bad" style="font-size:9px;font-weight:800;display:block;margin-bottom:6px">Limitdan 17 mln oshadi</small>
+              <div class="two"><div class="btn gh"><svg class="ic"><use href="#i-x"/></svg>Rad etish</div><div class="btn"><svg class="ic"><use href="#i-check"/></svg>Tasdiqlash</div></div></div>
+            <div class="card"><div class="row sp" style="margin-bottom:4px"><span class="pill p-y">Ta'minot · to'lov</span><small class="muted" style="font-size:9px">kecha 17:10</small></div>
+              <b style="font-size:12px;font-weight:900;display:block">Sement M400 · 120 t · Qizilqum</b>
+              <small class="muted" style="font-size:9.5px;display:block;margin:2px 0 6px">Narx 1 150 000 so'm/t · jami 138 mln · Snabjeniye</small>
+              <div class="two"><div class="btn gh"><svg class="ic"><use href="#i-x"/></svg>Rad etish</div><div class="btn"><svg class="ic"><use href="#i-check"/></svg>To'lovga</div></div></div>
+            <div class="card"><div class="row sp" style="margin-bottom:4px"><span class="pill p-nv">Ish haqi</span><small class="muted" style="font-size:9px">22.11</small></div>
+              <b style="font-size:12px;font-weight:900;display:block">Noyabr avansi · 64 xodim</b>
+              <small class="muted" style="font-size:9.5px;display:block;margin-top:2px">Jami 192 mln · Otdel kadr</small></div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Solishtiruv ═══════════════ -->
+  <section id="cmp">
+    <h2 class="sec">Solishtiruv</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Shablon</th><th>Tablar</th><th>Zayavka</th><th>Xarita</th><th>Kimga mos</th><th>Ish hajmi</th></tr></thead>
+      <tbody>
+        <tr><td>01 Pul markazi</td><td>Asosiy · Pul · Qarzlar · Nazorat · Menyu</td><td>Menyu, tasdiq banneri</td><td>Bosh sahifa qatori, menyu</td><td class="best">Egasi / moliya nazorati</td><td>O'rta: server — panel + qarzdorlar yoshi</td></tr>
+        <tr><td>02 Nazorat markazi</td><td>Asosiy · Pul · Nazorat · Sex · Menyu</td><td>Menyu, Nazorat tabi</td><td>Menyu</td><td>Vebdagi panelga o'rgangan direktor</td><td>O'rta: server — panel</td></tr>
+        <tr><td>03 Zavod jonli</td><td>Asosiy · Sex · Reyslar · Pul · Menyu</td><td>Menyu</td><td class="best">Tabda qoladi</td><td>Operatsion direktor</td><td>O'rta: sex ekrani</td></tr>
+        <tr><td>04 Hisobotlar</td><td>Asosiy · Pul · Hisobot · Xodimlar · Menyu</td><td>Menyu</td><td>Tezkor amal</td><td>Tahlilchi egasi</td><td>Katta: PNL, DDS, Balans mobil ekranlari</td></tr>
+        <tr><td>05 Markaziy tugma</td><td>Asosiy · Pul · ＋ · Qarzlar · Menyu</td><td>Menyu</td><td>«＋» oynasi</td><td>Ko'p amal qiladigan direktor</td><td>O'rta: yangi tab panel komponenti</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2 class="sec">Tavsiya</h2>
+    <div class="rec">
+      <div class="main"><h3>01 + 02 aralash</h3><p>Tablar 01 dan (Asosiy · Pul · Qarzlar · Nazorat · Menyu), bosh sahifa 02 dan — navy panel va vebdagi 8 KPI to'liq. «Nazorat» tabi 02 dagi ekran.</p>
+        <ol><li>Server: `panel` maydoni (vebdagi «Bugun»)</li><li>Ilova: bosh sahifa, 2 ta yangi tab, Tasdiqlar va AI orqaga tugmali ekran</li><li>Menyu shabloni — hamma rollar uchun</li></ol></div>
+      <div><h3>Tanlash qanday</h3><p>Raqam yozing, masalan «01» yoki «01 tablar + 02 bosh sahifa + 05 tugma». Bir nechta shablondan bo'laklarni ham olish mumkin — bloklar mustaqil.</p></div>
+      <div><h3>Ranglar</h3><p>Navy #10265c — asos (panel, hero, faol chip), sariq #ffbb0f — signal (asosiy tugma, faol tab, tasdiq), sariq ustida doim qora matn (vebdagi qoida). Qizil/yashil — faqat holat uchun.</p></div>
+    </div>
+    <p class="foot-note">Raqamlar namuna uchun. Ilovada ular serverdan keladi (`/api/mobile/home`), vebdagi «Boshqaruv paneli» bilan bir manba.</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -18,7 +18,7 @@ import { LogoutButton } from '@/features/auth/logout';
 import { DriverMarker, MapView, useMapScrollLock } from '@/core/map';
 import { config } from '@/core/config';
 import { type ErpCard, type ErpHomeData, type ErpLiveTruck, type ErpRole, type ErpRow, type ErpSection, type ErpSectionChart } from '@/core/erp';
-import { erpRoleConfig, type ErpTabSpec } from './roles';
+import { erpRoleConfig, type ErpRoleConfig, type ErpTabSpec } from './roles';
 import { roleDashboard, type QuickSpec, type RoleDashboard } from './dashboards';
 import { useErpHome, useErpList, useErpNotifications } from './api';
 import { ErpRowItem, ROW_ICON, RowsGroup, SectionEmpty, cardHref, idSeg, isZero, listModule, parseHint, splitValue, statusLabel } from './ui';
@@ -33,6 +33,7 @@ import { KirimScreen } from './kirim';
 import { ShipmentBanner } from './shipments';
 import { AvtoPartsBanner } from './avto-parts';
 import { ArendaScreen } from './arenda';
+import { ControlScreen } from './control';
 import { kv } from '@/core/storage';
 import type { IconName } from '@/design/icons';
 import { setBadge } from '@/core/push';
@@ -64,8 +65,10 @@ export function ErpTabs({ role }: { role: ErpRole }) {
   const reduce = useReducedMotion();
   const cfg = erpRoleConfig(role);
   const driver = role === 'DRIVER';
-  // Direktor: "Tasdiqlar" tabida kutayotganlar soni (bosh sahifadagi bilan bitta kesh)
+  // Direktor: tasdiq kutayotganlar soni (bosh sahifadagi bilan bitta kesh) — ishchi ro'yxat tabi bo'lsa o'shanda,
+  // bo'lmasa (Tasdiqlar tab emas, alohida ekran) "Asosiy" tabida
   const approvals = useErpList(cfg.ai ? cfg.listKey : '').data?.rows.length ?? 0;
+  const badgeOn: ErpTabSpec['screen']['kind'] = cfg.tabs.some((t) => t.screen.kind === 'work') ? 'work' : 'home';
   // Sklad: snabjeniye jo'natmasi kelsa ekranning tepasidan banner tushadi (qaysi tabda bo'lmasin)
   const shipments = role === 'WAREHOUSE';
   const tabs = (
@@ -78,7 +81,7 @@ export function ErpTabs({ role }: { role: ErpRole }) {
             title: t.title,
             headerShown: !ownHeader(t),
             tabBarIcon: tabIcon(t.icon, { driver }),
-            tabBarBadge: t.screen.kind === 'work' && cfg.ai && approvals > 0 ? approvals : undefined,
+            tabBarBadge: t.screen.kind === badgeOn && cfg.ai && approvals > 0 ? approvals : undefined,
           }}
         />
       ))}
@@ -114,6 +117,7 @@ export function ErpTabRoute({ role, route }: { role: ErpRole; route: string }) {
     case 'attendance': return <StaffAttendanceScreen />;
     case 'kirim': return <KirimScreen title={title} />;
     case 'arenda': return <ArendaScreen title={title} />;
+    case 'control': return <ControlScreen title={title} />;
     case 'notifications':
     case 'sections':
     default: return <ErpSections title={title} />;
@@ -222,6 +226,10 @@ const DETAIL_OF: Record<string, string> = { 'brig-issues': 'brig-issue', 'brig-s
 
 /** Jonli reyslar xaritasini kim ochadi (server `GET /api/mobile/fleet` ruxsati bilan bir xil). */
 const FLEET_ROLES: ErpRole[] = ['DIRECTOR', 'LOGISTICS', 'MECHANIC', 'DISPATCHER'];
+
+/** Rolning ishchi ro'yxati (`listKey`): tab bo'lsa — tab; bo'lmasa (direktor tasdiqlari) — orqaga tugmali ro'yxat ekrani. */
+const hasWorkTab = (r: ErpRoleConfig) => r.tabs.some((t) => t.screen.kind === 'work');
+const workHref = (r: ErpRoleConfig) => (hasWorkTab(r) ? `/${r.group}/work` : `/erp/list/${r.listKey}`);
 
 /** Ro'yxat bo'limlarida bosh sahifada ko'rinadigan qatorlar soni ("Barchasi" — qolgani). */
 const SECTION_ROWS = 6;
@@ -357,7 +365,7 @@ export function ErpHome() {
     if (model.kpis.length) blocks.push(<KpiGrid key="kpi" items={model.kpis.map((k) => kpiOf(k, module, openCard(k)))} />);
 
     // ── 4 tezkor amal (birinchisi asosiy) ──
-    const quick = resolveQuick(cfg.quick, data, rcfg.group, !!rcfg.ai, module, go);
+    const quick = resolveQuick(cfg.quick, data, rcfg, module, go);
     if (quick.length) blocks.push(<ActionGrid key="qa" items={quick} />);
 
     // ── Kuzatuv va hisobot: jonli reyslar xaritasi, kunlik Excel hisobot (direktor; xarita — mexanikka ham) ──
@@ -381,7 +389,7 @@ export function ErpHome() {
     const attention: AttentionItem[] = [];
     const pendingCount = pending.data?.rows.length ?? 0;
     if (cfg.countList && pendingCount > 0) {
-      attention.push({ title: cfg.countList.title, sub: cfg.countList.sub, icon: cfg.countList.icon, module, badge: { text: String(pendingCount), tone: 'warning' }, onPress: () => go(`/${rcfg.group}/work`) });
+      attention.push({ title: cfg.countList.title, sub: cfg.countList.sub, icon: cfg.countList.icon, module, badge: { text: String(pendingCount), tone: 'warning' }, onPress: () => go(workHref(rcfg)) });
     }
     for (const x of model.alertCards) {
       const h = parseHint(x.hint, x.key);
@@ -516,8 +524,13 @@ function serverSection(s: ErpSection, moduleOf: (target?: string) => ModuleTone,
 /** Kartochka turi ro'yxat sifatida ham ochiladimi (`problem`, `dash`, `sex` — faqat kartochka). */
 const listable = (target: string) => !['problem', 'dash', 'sex', 'rep', 'activity'].includes(target);
 
-/** Spekdagi tezkor amallar → mavjud manzillar. Rolga yopiq yoki ma'lumoti yo'q amal tushib qoladi. */
-function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasAi: boolean, module: ModuleTone, go: (h: string) => void): ActionItem[] {
+/**
+ * Spekdagi tezkor amallar → mavjud manzillar. Rolga yopiq yoki ma'lumoti yo'q amal tushib qoladi.
+ * Ishchi ro'yxat — tab yoki `/erp/list/…` (`workHref`), AI — orqaga tugmali `/erp/ai` ekrani.
+ */
+function resolveQuick(specs: QuickSpec[], data: ErpHomeData, role: ErpRoleConfig, module: ModuleTone, go: (h: string) => void): ActionItem[] {
+  const group = role.group;
+  const work = workHref(role);
   const hasNew = (k: string) => data.quick.some((q) => q.kind === 'new' && q.key === k) || data.create?.key === k;
   const hasList = (k: string) => data.quick.some((q) => q.kind === 'list' && q.key === k);
   const out: ActionItem[] = [];
@@ -530,10 +543,12 @@ function resolveQuick(specs: QuickSpec[], data: ErpHomeData, group: string, hasA
     const t = q.to;
     if (t.kind === 'new' && hasNew(t.key)) add(q.label, q.icon, `/erp/new/${t.key}`);
     else if (t.kind === 'list') {
-      if (data.list.key === t.key) add(q.label, q.icon, `/${group}/work`);
+      if (data.list.key === t.key) add(q.label, q.icon, work);
       else if (hasList(t.key)) add(q.label, q.icon, `/erp/list/${t.key}${t.filter ? `?f=${t.filter}` : ''}`, listModule(t.key) === 'brand' ? module : listModule(t.key), cardCount(q === spec ? spec.badgeCard : undefined));
     } else if (t.kind === 'tab') {
-      if (t.tab !== 'ai' || hasAi) add(q.label, q.icon, `/${group}/${t.tab}`);
+      if (t.tab === 'work') add(q.label, q.icon, work);
+      else if (t.tab === 'ai') { if (role.ai) add(q.label, q.icon, '/erp/ai'); }
+      else add(q.label, q.icon, `/${group}/${t.tab}`);
     } else if (t.kind === 'href') {
       add(q.label, q.icon, t.href);
     } else if (t.kind === 'card') {
@@ -881,6 +896,8 @@ export function ErpMenu() {
   const [reportOpen, setReportOpen] = useState(false);
   const isDirector = erp?.role === 'DIRECTOR';
   const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
+  // Direktor: Tasdiqlar va AI pastki panelda emas — Menyuning "Tezkor" guruhida ham turadi
+  const workCount = useErpList(cfg?.ai && !hasWorkTab(cfg) ? cfg.listKey : '').data?.rows.length ?? 0;
   const payLinks = erp ? payLinksFor(erp.role, homeData?.attendance?.canViewTable ?? null) : [];
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
@@ -902,6 +919,23 @@ export function ErpMenu() {
             {`${cfg?.label ?? 'ERP'} bo'limi — ekrandagi raqamlar kompyuterdagi Insof ERP bilan bir xil, bevosita bog'langan.`}
           </Callout>
         </Appear>
+
+        {cfg?.ai ? (
+          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
+            <SectionHead title="Tezkor" />
+            <ListGroup>
+              {!hasWorkTab(cfg) ? (
+                <ListItem
+                  icon={cfg.workIcon} module={module} title={cfg.workTitle}
+                  subtitle={erp ? roleDashboard(erp.role).countList?.sub : undefined}
+                  badge={workCount ? { text: String(workCount), tone: 'warning' } : undefined}
+                  onPress={() => router.push(workHref(cfg) as never)}
+                />
+              ) : null}
+              <ListItem icon="sparkles" module={module} title="AI yordamchi" subtitle="Zavod haqida savol — javob ERP raqamlaridan" onPress={() => router.push('/erp/ai' as never)} />
+            </ListGroup>
+          </Appear>
+        ) : null}
 
         {lists.length || forms.length ? (
           <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>

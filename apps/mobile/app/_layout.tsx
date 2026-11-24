@@ -174,6 +174,8 @@ function Nav() {
         <Stack.Screen name="erp/new/[key]" options={{ title: 'Yangi', ...modalScreen({ reduce }) }} />
         <Stack.Screen name="erp/list/[key]" options={{ title: "Ro'yxat" }} />
         <Stack.Screen name="erp/bildirishnomalar" options={{ title: 'Bildirishnomalar' }} />
+        {/* AI yordamchi — navigator sarlavhasi bilan (o'ngida "Yangi suhbat" tugmasi ekranning o'zidan qo'yiladi) */}
+        <Stack.Screen name="erp/ai" options={{ title: 'AI yordamchi' }} />
         {/* Reyslar xaritasi — sarlavha ekranning o'zida; e'lon qilinmasa birinchi kadrda "erp/fleet" sarlavhasi miltillaydi */}
         <Stack.Screen name="erp/fleet" options={{ headerShown: false }} />
         <Stack.Screen name="erp/davomat" options={{ headerShown: false }} />

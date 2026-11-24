@@ -16,7 +16,7 @@ export interface ErpRoleConfig {
   listKey: string;
   workTitle: string;
   workIcon: IconName;
-  /** Pastki panelda "AI yordamchi" tabi — `app/(erp-<kalit>)/ai.tsx` fayli ham bo'lishi shart. */
+  /** Rolga AI yordamchi ochiq (`/erp/ai`); ishchi ro'yxati (`listKey`) soni pastki panelda nishon bo'lib turadi. */
   ai?: boolean;
   /**
    * Pastki panel — `docs/redesign/roles/<ROLE>.json` dagi `tabs` (yorliq, ikonka, tartib) 1:1.
@@ -42,6 +42,8 @@ export type ErpTabScreen =
   | { kind: 'kirim' }
   /** Sekretar «Arenda»: do'konlar ijarasi oy varag'i, kassa, kirim/chiqim (`features/erp/arenda.tsx`). */
   | { kind: 'arenda' }
+  /** Direktor «Nazorat»: tasdiq kutayotganlar, plan/fakt va egasi qarori (`features/erp/control.tsx`). */
+  | { kind: 'control' }
   | { kind: 'menu' };
 
 export interface ErpTabSpec { route: string; title: string; icon: IconName; screen: ErpTabScreen }
@@ -59,8 +61,10 @@ export const AI_TAB = { title: 'AI', icon: 'message-circle' } as const;
 export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   // Tab yorliqlari va ikonkalar — `docs/redesign/roles/<ROLE>.json` dagi `tabs` (mavjud ekranlarga mos keladiganlari)
   // Mexanik: Texnika tabi o'rnida Xizmat, Xizmat o'rnida Kirim (pul so'rovi); Texnika — bosh sahifadagi tezkor amal (`/erp/fleet`)
-  // Ikkinchi tab — direktor qarorini kutayotganlar (bloklangan zayavka, ta'minot tasdig'i/to'lovi); zayavkalar "Bo'limlar"da
-  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true , tabs: [HOME('Asosiy'), WORK('Tasdiqlar', 'check'), { route: 'sections', title: "Bo'limlar", icon: 'layers', screen: { kind: 'sections' } }, { route: 'ai', title: 'AI', icon: 'message-circle', screen: { kind: 'ai' } }, MENU()] },
+  // Direktor paneli: Asosiy · Pul (kirim/chiqim) · Qarzlar (mijozlar qarzi) · Nazorat (tasdiq, plan/fakt, egasi qarori) · Menyu.
+  // Tasdiqlar va AI — tab emas, orqaga tugmali ekran (`/erp/list/approvals`, `/erp/ai`); tasdiq soni Asosiy tab nishonida.
+  // Bo'limlar ro'yxati — Menyuda, reyslar xaritasi — bosh sahifada va Menyuda
+  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true , tabs: [HOME('Asosiy'), LIST('pul', 'Pul', 'wallet', 'cashflow'), LIST('qarzlar', 'Qarzlar', 'receipt', 'customers'), { route: 'nazorat', title: 'Nazorat', icon: 'gauge', screen: { kind: 'control' } }, MENU()] },
   SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'orders',     workTitle: 'Zayavka',    workIcon: 'file-text' , tabs: [HOME('Bugun'), WORK('Zayavka', 'file-text'), LIST('customers', 'Mijozlar', 'users', 'customers'), LIST('nasiya', 'Nasiya', 'wallet', 'invoices'), MENU()] },
   PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',       homeIcon: 'house', listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' , tabs: [HOME('Sex'), LIST('tasks', 'Topshiriq', 'clipboard-list', 'tasks'), { route: 'xabarlar', title: 'Xabarlar', icon: 'bell', screen: { kind: 'notifications' } }, MENU()] },
   SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',    homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' , tabs: [HOME('Ishlar'), WORK('Topshiriq', 'clipboard-list'), LIST('brigades', 'Brigada', 'hard-hat', 'brigades'), LIST('issues', 'Muammolar', 'triangle-alert', 'brig-issues'), MENU()] },

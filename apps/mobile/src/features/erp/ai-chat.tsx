@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { HeaderHeightContext } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, IconButton, IconTile, Skeleton, Txt } from '@/design/primitives';
 import { Icon } from '@/design/icons';
@@ -32,8 +33,10 @@ const nextId = () => `m${++seq}`;
 /** Javobning nusxalanadigan to'liq matni: asosiy matn + ro'yxat nuqtalari. */
 const plain = (m: Msg) => [m.text, ...(m.answer?.bullets ?? []).map((b) => `• ${b}`)].filter(Boolean).join('\n');
 
-export function ErpAiChat() {
+/** `standalone` — tab ichida emas, alohida ekran (`/erp/ai`): ostida tab paneli yo'q, yozish maydoni home indikatoridan ko'tariladi. */
+export function ErpAiChat({ standalone = false }: { standalone?: boolean } = {}) {
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const headerH = React.useContext(HeaderHeightContext) ?? 0;
   const catalog = useQuery({ queryKey: ['erp', 'ai-catalog'], queryFn: erpAuth.aiCatalog, staleTime: 10 * 60_000 });
@@ -145,7 +148,7 @@ export function ErpAiChat() {
         onSend={ask}
         canSend={canSend}
         placeholder="Savol yozing… masalan, bu hafta kim ko'p oldi?"
-        bottom={space.md + 2}
+        bottom={space.md + 2 + (standalone ? insets.bottom : 0)}
         inputProps={{ accessibilityLabel: 'Savol matni', autoCorrect: false, spellCheck: false, onSubmitEditing: ask, blurOnSubmit: true }}
         top={msgs.length && suggestions.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.md + 2, paddingTop: space.sm, paddingBottom: space.xs }}>
