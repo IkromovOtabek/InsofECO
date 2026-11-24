@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Callout, Card, EmptyState, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
-import { Avatar, fmtShort, tabIcon } from '@/design/ui';
+import { Badge, Button, Callout, Card, EmptyState, IconButton, ListItem, Txt, fmtUnit, typeScale } from '@/design/primitives';
+import { fmtShort, tabIcon } from '@/design/ui';
 import {
   ActionGrid, AttentionList, BarChartCard, BreakdownCard, ChipGroup, HBarList, HeroCard, KpiGrid, ListGroup, OfflineBanner, PageHeader,
   ProgressCard, Reveal, SectionHead, SkeletonDashboard, SkeletonList, type ActionItem, type AttentionItem, type KpiItem,
@@ -12,7 +12,7 @@ import { SearchField } from '@/design/primitives';
 import { useTheme } from '@/design/theme';
 import { ERP_ROLE_MODULE, LIST_MODULE, ModuleTone, radius, size, space, textRoom } from '@/design/tokens';
 import { floatingTabBar, tabsOptions } from '@/design/nav';
-import { Appear, PressScale, stagger, useHeaderRaise, useReducedMotion } from '@/design/motion';
+import { PressScale, useHeaderRaise, useReducedMotion } from '@/design/motion';
 import { useSession } from '@/core/session';
 import { LogoutButton } from '@/features/auth/logout';
 import { DriverMarker, MapView, useMapScrollLock } from '@/core/map';
@@ -34,7 +34,7 @@ import { ShipmentBanner } from './shipments';
 import { AvtoPartsBanner } from './avto-parts';
 import { ArendaScreen } from './arenda';
 import { ControlScreen } from './control';
-import { kv } from '@/core/storage';
+import { MENU_GROUPS, groupOf, loadChip, loadFavs, matches, saveChip, saveFavs, type MenuItem } from './menu-catalog';
 import type { IconName } from '@/design/icons';
 import { setBadge } from '@/core/push';
 import { useDebounced } from '@/shared/hooks';
@@ -109,7 +109,8 @@ export function ErpTabRoute({ role, route }: { role: ErpRole; route: string }) {
   switch (s.kind) {
     case 'home': return <ErpHome />;
     case 'work': return <ErpList listKey={cfg.listKey} title={title} />;
-    case 'list': return <ErpList listKey={s.key} title={title} fallback={<ErpSections title={title} embedded />} />;
+    // Filtrli tab (direktor «Qarzlar» → mijozlar ro'yxatining «Qarzdorlar» filtri): sarlavha — tab nomi
+    case 'list': return <ErpList listKey={s.key} title={title} heading={s.filter ? title : undefined} initialFilter={s.filter} fallback={<ErpSections title={title} embedded />} />;
     case 'ai': return <ErpAiChat />;
     case 'map': return <ErpMapTab title={title} />;
     case 'road': return <ErpRoadTab title={title} />;
@@ -710,7 +711,11 @@ function groupByDay(rows: ErpRow[]): { label: string | null; rows: ErpRow[] }[] 
  * ("Bugun", "Kecha" — sana bo'lsa), ListGroup qatorlari: plitka, nom, izoh, o'ngda qiymat va holat nishoni.
  * `fallback` — ro'yxat rolga ochiq bo'lmasa (server rad etsa) shu ko'rsatiladi.
  */
-export function ErpList({ listKey, title, onBack, fallback, initialFilter }: { listKey: string; title?: string; onBack?: () => void; fallback?: React.ReactNode; initialFilter?: string }) {
+export function ErpList({ listKey, title, heading, onBack, fallback, initialFilter }: {
+  listKey: string; title?: string;
+  /** Server sarlavhasi o'rniga doim shu (tab nomi) — `title` esa faqat server sarlavha bermasa. */ heading?: string;
+  onBack?: () => void; fallback?: React.ReactNode; initialFilter?: string;
+}) {
   const { c } = useTheme();
   const router = useRouter();
   const raise = useHeaderRaise();
@@ -732,7 +737,7 @@ export function ErpList({ listKey, title, onBack, fallback, initialFilter }: { l
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
       <TabHeader
-        title={data?.title ?? title ?? "Ro'yxat"}
+        title={heading ?? data?.title ?? title ?? "Ro'yxat"}
         onBack={onBack}
         raised={raise.raised}
         actions={canCreate ? [{ icon: 'plus', label: 'Yangi', onPress: () => router.push(`/erp/new/${listKey}` as never) }] : undefined}
@@ -878,132 +883,121 @@ function payLinksFor(role: ErpRole, canViewTable: boolean | null): { href: strin
   return out;
 }
 
+/**
+ * Menyu — artifaktdagi M3 shabloni: qidiruv, guruh chiplari (Sevimli · Boshqaruv · Sotuv · Moliya…) va tanlangan
+ * guruhning bo'limlari; har qatorda yulduzcha — sevimlilarga qo'shish (telefonda, rol bo'yicha). Qidiruv hamma
+ * guruh bo'yicha ishlaydi. Bo'limlar — `/api/mobile/home` → `quick` (vebdagi menyu) + rolning maxsus ekranlari.
+ */
 export function ErpMenu() {
   const { c } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const raise = useHeaderRaise();
   const { erp } = useSession();
+  const role: ErpRole = erp?.role ?? 'DIRECTOR';
   const cfg = erp ? erpRoleConfig(erp.role) : null;
-  const module = roleModule(erp?.role ?? 'DIRECTOR');
-  // "Bo'limlar" ro'yxati standart yig'iq — ochiq/yopiqligi eslab qolinadi
-  const [sectionsOpen, setSectionsOpenRaw] = useState(() => kv.getBoolean('erp.menu.sectionsOpen') ?? false);
-  const toggleSections = () => setSectionsOpenRaw((v) => { kv.set('erp.menu.sectionsOpen', !v); return !v; });
-  // Bo'limlar ro'yxati — `/api/mobile/home` dagi `quick`: kompyuterdagi ERP menyusida ko'ringan har bir bo'lim shu yerda ham turadi.
+  const module = roleModule(role);
   const homeData = useErpHome().data;
-  const quick = homeData?.quick ?? [];
-  const lists = quick.filter((q) => q.kind === 'list');
-  const forms = quick.filter((q) => q.kind === 'new');
   const [reportOpen, setReportOpen] = useState(false);
-  const isDirector = erp?.role === 'DIRECTOR';
-  const canFleet = !!erp && FLEET_ROLES.includes(erp.role);
-  // Direktor: Tasdiqlar va AI pastki panelda emas — Menyuning "Tezkor" guruhida ham turadi
+  const isDirector = role === 'DIRECTOR';
+  // Direktor: Tasdiqlar pastki panelda emas — menyuda soni bilan turadi
   const workCount = useErpList(cfg?.ai && !hasWorkTab(cfg) ? cfg.listKey : '').data?.rows.length ?? 0;
-  const payLinks = erp ? payLinksFor(erp.role, homeData?.attendance?.canViewTable ?? null) : [];
+  const [q, setQ] = useState('');
+  const [favs, setFavs] = useState(() => loadFavs(role));
+  const [chip, setChipRaw] = useState(loadChip);
+  const go = (href: string) => () => router.push(href as never);
+
+  const items: MenuItem[] = [];
+  if (cfg?.ai && !hasWorkTab(cfg)) {
+    items.push({ id: 'work', label: cfg.workTitle, sub: roleDashboard(role).countList?.sub, icon: cfg.workIcon, module, group: 'boshqaruv', badge: workCount || undefined, onPress: go(workHref(cfg)) });
+  }
+  if (cfg?.ai) items.push({ id: 'ai', label: 'AI yordamchi', sub: 'Zavod haqida savol — javob ERP raqamlaridan', icon: 'sparkles', module, group: 'boshqaruv', onPress: go('/erp/ai') });
+  if (isDirector) items.push({ id: 'report', label: 'Kunlik hisobot (Excel)', sub: 'Kunni tanlang — fayl ulashiladi yoki ochiladi', icon: 'download', module, group: 'boshqaruv', onPress: () => setReportOpen(true) });
+  if (FLEET_ROLES.includes(role)) items.push({ id: 'fleet', label: 'Reyslar xaritada', sub: 'Jonli kuzatuv: mashina, haydovchi, ETA', icon: 'map', module: 'logistics', group: 'logistika', onPress: go('/erp/fleet') });
+  if (role === 'WAREHOUSE' || role === 'PROCUREMENT') {
+    items.push({ id: 'jonatma', label: "Jo'natmalar", sub: role === 'WAREHOUSE' ? 'Qabul kutayotgan nakladnoylar' : "Skladga jo'natganlaringiz va natijasi", icon: 'package-check', module: 'warehouse', group: 'sklad', onPress: go('/erp/jonatma') });
+  }
+  for (const l of payLinksFor(role, homeData?.attendance?.canViewTable ?? null)) {
+    items.push({ id: l.href, label: l.title, sub: l.subtitle, icon: l.icon, module: l.module ?? module, group: l.module === 'logistics' ? 'logistika' : 'kadr', onPress: go(l.href) });
+  }
+  if (homeData?.selfAttendance) items.push({ id: 'davomatim', label: 'Mening davomatim', sub: homeData.selfAttendance.label, icon: 'calendar-days', module, group: 'kadr', onPress: go('/erp/davomatim') });
+  for (const x of homeData?.quick ?? []) {
+    if (x.kind === 'new') items.push({ id: `new:${x.key}`, label: x.label, sub: 'Yangi hujjat', icon: 'plus', module, group: 'yangi', onPress: go(`/erp/new/${x.key}`) });
+    else items.push({ id: `list:${x.key}`, label: x.label, icon: ROW_ICON[x.key] ?? x.icon, module: listModule(x.key) === 'brand' ? module : listModule(x.key), group: groupOf(x.key), onPress: go(`/erp/list/${x.key}`) });
+  }
+
+  const favSet = new Set(favs);
+  const favItems = favs.map((id) => items.find((it) => it.id === id)).filter((x): x is MenuItem => !!x);
+  const groups = MENU_GROUPS.map((g) => ({ ...g, items: items.filter((it) => it.group === g.key) })).filter((g) => g.items.length);
+  const chips = [{ key: 'fav', label: 'Sevimli', count: favItems.length }, ...groups.map((g) => ({ key: g.key as string, label: g.label, count: g.items.length }))];
+  const active = chips.some((x) => x.key === chip) ? chip : 'fav';
+  const searching = !!q.trim();
+  const shown = searching ? items.filter((it) => matches(it, q)) : active === 'fav' ? favItems : groups.find((g) => g.key === active)?.items ?? [];
+  const groupLabel = (g: MenuItem['group']) => MENU_GROUPS.find((x) => x.key === g)?.label;
+  const setChip = (k: string) => { setChipRaw(k); saveChip(k); };
+  const toggleFav = (id: string) => setFavs((prev) => {
+    const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+    saveFavs(role, next);
+    return next;
+  });
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp }}>
-      <TabHeader title="Menyu" raised={raise.raised} />
-      <ScrollView onScroll={raise.onScroll} scrollEventThrottle={raise.scrollEventThrottle} style={{ backgroundColor: c.bgApp }} contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxxl }}>
-        <Appear>
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}>
-            <Avatar name={erp?.fullName} size={size.avatarLg} tone="brand" />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt v="overline" color="brand" numberOfLines={1}>{erp?.roleLabel}</Txt>
-              <Txt v="titleMd" numberOfLines={1}>{erp?.fullName}</Txt>
-              <Txt v="caption" numberOfLines={1}>{erp?.login}</Txt>
-            </View>
-          </Card>
-        </Appear>
-
-        <Appear delay={stagger(1)} style={{ marginTop: space.md }}>
-          <Callout tone="brand" icon="refresh-cw">
-            {`${cfg?.label ?? 'ERP'} bo'limi — ekrandagi raqamlar kompyuterdagi Insof ERP bilan bir xil, bevosita bog'langan.`}
-          </Callout>
-        </Appear>
-
-        {cfg?.ai ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-            <SectionHead title="Tezkor" />
-            <ListGroup>
-              {!hasWorkTab(cfg) ? (
-                <ListItem
-                  icon={cfg.workIcon} module={module} title={cfg.workTitle}
-                  subtitle={erp ? roleDashboard(erp.role).countList?.sub : undefined}
-                  badge={workCount ? { text: String(workCount), tone: 'warning' } : undefined}
-                  onPress={() => router.push(workHref(cfg) as never)}
-                />
-              ) : null}
-              <ListItem icon="sparkles" module={module} title="AI yordamchi" subtitle="Zavod haqida savol — javob ERP raqamlaridan" onPress={() => router.push('/erp/ai' as never)} />
-            </ListGroup>
-          </Appear>
-        ) : null}
-
-        {lists.length || forms.length ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-            <SectionHead
-              title="Bo'limlar"
-              count={lists.length + forms.length}
-              action={sectionsOpen ? 'Yashirish' : "Ko'rsatish"}
-              onAction={toggleSections}
-            />
-            {sectionsOpen ? (
-              <ListGroup>
-                {forms.map((q) => (
-                  <ListItem key={`new-${q.key}`} icon="plus" module={module} title={q.label} subtitle="Yangi hujjat" onPress={() => router.push(`/erp/new/${q.key}` as never)} />
-                ))}
-                {lists.map((q) => (
-                  <ListItem key={`list-${q.key}`} icon={ROW_ICON[q.key] ?? q.icon} module={listModule(q.key)} title={q.label} onPress={() => router.push(`/erp/list/${q.key}` as never)} />
-                ))}
-              </ListGroup>
-            ) : null}
-          </Appear>
-        ) : null}
-
-        {canFleet ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-            <SectionHead title="Kuzatuv va hisobot" />
-            <ListGroup>
-              <ListItem icon="map" module="logistics" title="Reyslar xaritada" subtitle="Jonli kuzatuv: mashina, haydovchi, ETA" onPress={() => router.push('/erp/fleet' as never)} />
-              {isDirector ? (
-                <ListItem icon="download" module={module} title="Kunlik hisobot (Excel)" subtitle="Kunni tanlang — fayl ulashiladi yoki ochiladi" onPress={() => setReportOpen(true)} />
-              ) : null}
-            </ListGroup>
-          </Appear>
-        ) : null}
-
-        {erp?.role === 'WAREHOUSE' || erp?.role === 'PROCUREMENT' ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-            <SectionHead title="Snabjeniye jo'natmalari" />
-            <ListGroup>
-              <ListItem icon="package-check" module="warehouse" title="Jo'natmalar"
-                subtitle={erp.role === 'WAREHOUSE' ? 'Qabul kutayotgan nakladnoylar' : "Skladga jo'natganlaringiz va natijasi"}
-                onPress={() => router.push('/erp/jonatma' as never)} />
-            </ListGroup>
-          </Appear>
-        ) : null}
-
-        {payLinks.length ? (
-          <Appear delay={stagger(2)} style={{ marginTop: space.xl }}>
-            <SectionHead title="Davomat va reyslar" />
-            <ListGroup>
-              {payLinks.map((l) => <ListItem key={l.href} icon={l.icon} module={l.module ?? module} title={l.title} subtitle={l.subtitle} onPress={() => router.push(l.href as never)} />)}
-            </ListGroup>
-          </Appear>
-        ) : null}
-
-        <Appear delay={stagger(3)} style={{ marginTop: space.xl }}>
-          <SectionHead title="Ilova" />
+      <PageHeader
+        overline={erp?.fullName ? `${erp.roleLabel} · ${erp.fullName}` : erp?.roleLabel}
+        title="Menyu"
+        avatar={{ name: erp?.fullName || erp?.roleLabel || 'ERP' }}
+        onAvatar={go('/settings')}
+        raised={raise.raised}
+        style={{ paddingTop: insets.top + space.sm }}
+      />
+      <ScrollView
+        onScroll={raise.onScroll}
+        scrollEventThrottle={raise.scrollEventThrottle}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: space.pageX, paddingTop: space.xs, paddingBottom: space.xxxl, gap: space.stack }}
+      >
+        <SearchField value={q} onChangeText={setQ} placeholder={items.length ? `${items.length} bo'lim ichidan qidirish` : "Bo'lim qidirish"} />
+        {!searching && chips.length > 1 ? <ChipGroup items={chips} value={active} onChange={setChip} scroll /> : null}
+        {shown.length ? (
           <ListGroup>
-            {homeData?.selfAttendance ? (
-              <ListItem icon="calendar-days" module={module} title="Mening davomatim" subtitle={homeData.selfAttendance.label} onPress={() => router.push('/erp/davomatim' as never)} />
-            ) : null}
-            {/* Bildirishnomalar, PIN kod, parol va hisobni o'chirish — Sozlamalar ichida (hamma kabinet uchun bir joy) */}
-            <ListItem icon="settings" module={module} title="Sozlamalar" subtitle="Til, mavzu, bildirishnomalar, PIN, parol, hisob" onPress={() => router.push('/settings' as never)} />
+            {shown.map((it) => (
+              <ListItem
+                key={it.id}
+                icon={it.icon}
+                module={it.module}
+                title={it.label}
+                subtitle={searching ? [groupLabel(it.group), it.sub].filter(Boolean).join(' · ') : it.sub}
+                subtitleLines={1}
+                onPress={it.onPress}
+                right={(
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                    {it.badge ? <Badge label={String(it.badge)} tone="warning" /> : null}
+                    <IconButton
+                      icon="star" tone="faint" active={favSet.has(it.id)}
+                      label={favSet.has(it.id) ? 'Sevimlilardan olish' : "Sevimlilarga qo'shish"}
+                      onPress={() => toggleFav(it.id)}
+                    />
+                  </View>
+                )}
+              />
+            ))}
           </ListGroup>
-        </Appear>
+        ) : (
+          <EmptyState
+            compact
+            icon={searching ? 'search' : 'star'}
+            title={searching ? 'Hech narsa topilmadi' : homeData ? "Sevimlilar hali bo'sh" : "Bo'limlar yuklanmoqda"}
+            hint={searching ? "Boshqa so'z bilan qidiring" : homeData ? "Guruhni tanlang va bo'lim yonidagi yulduzchani bosing" : undefined}
+          />
+        )}
 
-        <Appear delay={stagger(4)} style={{ marginTop: space.xl }}>
-          <LogoutButton size="md" textColor={c.danger} />
-        </Appear>
+        <SectionHead title="Ilova" />
+        <ListGroup>
+          {/* Bildirishnomalar, PIN kod, parol va hisobni o'chirish — Sozlamalar ichida (hamma kabinet uchun bir joy) */}
+          <ListItem icon="settings" module={module} title="Sozlamalar" subtitle="Til, mavzu, bildirishnomalar, PIN, parol, hisob" onPress={go('/settings')} />
+        </ListGroup>
+        <LogoutButton size="md" textColor={c.danger} />
       </ScrollView>
       {isDirector ? <DailyReportSheet open={reportOpen} onClose={() => setReportOpen(false)} /> : null}
     </View>

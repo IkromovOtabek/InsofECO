@@ -29,8 +29,11 @@ export interface ErpRoleConfig {
 export type ErpTabScreen =
   | { kind: 'home' }
   | { kind: 'work' }
-  /** Boshqa ro'yxat (`/api/mobile/list?key=`). Rolga ochiq bo'lmasa — "Bo'limlar" menyusi ko'rinadi. */
-  | { kind: 'list'; key: string }
+  /**
+   * Boshqa ro'yxat (`/api/mobile/list?key=`). Rolga ochiq bo'lmasa — "Bo'limlar" menyusi ko'rinadi.
+   * `filter` — ro'yxat shu server filtri bilan ochiladi va sarlavhasi tab nomi bo'ladi.
+   */
+  | { kind: 'list'; key: string; filter?: string }
   | { kind: 'sections' }
   | { kind: 'ai' }
   | { kind: 'notifications' }
@@ -50,7 +53,7 @@ export interface ErpTabSpec { route: string; title: string; icon: IconName; scre
 
 const HOME = (title: string): ErpTabSpec => ({ route: 'index', title, icon: 'house', screen: { kind: 'home' } });
 const WORK = (title: string, icon: IconName): ErpTabSpec => ({ route: 'work', title, icon, screen: { kind: 'work' } });
-const LIST = (route: string, title: string, icon: IconName, key: string): ErpTabSpec => ({ route, title, icon, screen: { kind: 'list', key } });
+const LIST = (route: string, title: string, icon: IconName, key: string, filter?: string): ErpTabSpec => ({ route, title, icon, screen: { kind: 'list', key, filter } });
 const MENU = (icon: IconName = 'list'): ErpTabSpec => ({ route: 'menu', title: 'Menyu', icon, screen: { kind: 'menu' } });
 
 /** Oxirgi tab — profil va bo'limlar menyusi (spekdagi "Menyu"). */
@@ -64,7 +67,7 @@ export const ERP_ROLES: Record<ErpRole, ErpRoleConfig> = {
   // Direktor paneli: Asosiy · Pul (kirim/chiqim) · Qarzlar (mijozlar qarzi) · Nazorat (tasdiq, plan/fakt, egasi qarori) · Menyu.
   // Tasdiqlar va AI — tab emas, orqaga tugmali ekran (`/erp/list/approvals`, `/erp/ai`); tasdiq soni Asosiy tab nishonida.
   // Bo'limlar ro'yxati — Menyuda, reyslar xaritasi — bosh sahifada va Menyuda
-  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true , tabs: [HOME('Asosiy'), LIST('pul', 'Pul', 'wallet', 'cashflow'), LIST('qarzlar', 'Qarzlar', 'receipt', 'customers'), { route: 'nazorat', title: 'Nazorat', icon: 'gauge', screen: { kind: 'control' } }, MENU()] },
+  DIRECTOR:    { group: '(erp-director)',    label: 'Direktor',         homeTitle: 'Asosiy',    homeIcon: 'house', listKey: 'approvals',  workTitle: 'Tasdiqlar',  workIcon: 'circle-check', ai: true , tabs: [HOME('Asosiy'), LIST('pul', 'Pul', 'wallet', 'cashflow'), LIST('qarzlar', 'Qarzlar', 'receipt', 'customers', 'debt'), { route: 'nazorat', title: 'Nazorat', icon: 'gauge', screen: { kind: 'control' } }, MENU()] },
   SALES:       { group: '(erp-sales)',       label: 'Sotuv',            homeTitle: 'Bugun',     homeIcon: 'house', listKey: 'orders',     workTitle: 'Zayavka',    workIcon: 'file-text' , tabs: [HOME('Bugun'), WORK('Zayavka', 'file-text'), LIST('customers', 'Mijozlar', 'users', 'customers'), LIST('nasiya', 'Nasiya', 'wallet', 'invoices'), MENU()] },
   PRODUCTION:  { group: '(erp-production)',  label: 'Ishlab chiqarish', homeTitle: 'Sex',       homeIcon: 'house', listKey: 'production', workTitle: 'Zameslar',   workIcon: 'package' , tabs: [HOME('Sex'), LIST('tasks', 'Topshiriq', 'clipboard-list', 'tasks'), { route: 'xabarlar', title: 'Xabarlar', icon: 'bell', screen: { kind: 'notifications' } }, MENU()] },
   SUPERVISOR:  { group: '(erp-supervisor)',  label: 'Ish boshqaruvchi', homeTitle: 'Ishlar',    homeIcon: 'house', listKey: 'tasks',      workTitle: 'Topshiriq',  workIcon: 'clipboard-list' , tabs: [HOME('Ishlar'), WORK('Topshiriq', 'clipboard-list'), LIST('brigades', 'Brigada', 'hard-hat', 'brigades'), LIST('issues', 'Muammolar', 'triangle-alert', 'brig-issues'), MENU()] },
